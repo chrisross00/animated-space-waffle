@@ -1,56 +1,30 @@
 <template>
   <div>
-    <button v-if="!showAll" @click="showAll = true">Show all transactions</button>
-    <button v-if="showAll" @click="showAll = false">Show transactions by category</button>
+    <!-- Button Container -->
+    <div class="button-container">
+      <button v-if="!showAll" @click="showAll = true">Show all transactions</button>
+      <button v-if="showAll" @click="showAll = false">Show transactions by category</button>
+      <select v-model="selectedDate" @change="setDate">
+        <option v-for="month in months" :key="month" :value="month">{{ month }}</option>
+      </select>
+    </div>
+
     <!-- If show all is false -->
     <div v-if="!showAll" class="categories">
       <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category">
-        <div class="category-row" @click="toggleCategory(category)">
+        <div class="category-row" @click="toggleCategory(category)"> <!-- Build the clickable category summary row -->
           <span>{{ category }}</span>
-          <span>{{ groupedTransactions.length }}</span>
+          <span>{{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }}</span>
         </div>
         <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Merchant Name</th>
-                <th>Category</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="transaction in groupedTransactions" :key="transaction._id">
-                <td>{{ transaction.Date }}</td>
-                <td>{{ transaction["Merchant Name"] }}</td>
-                <td>{{ transaction.Category }}</td>
-                <td>${{ transaction.Amount }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" />
         </div>
       </div>
     </div>
-  <!-- If show all is true -->
+
+    <!-- If show all is true -->
     <div v-if="showAll" class="categories">
-      <table v-if="showAll">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Merchant Name</th>
-            <th>Category</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="transaction in transactions" :key="transaction._id">
-            <td>{{ transaction.Date }}</td>
-            <td>{{ transaction["Merchant Name"] }}</td>
-            <td>{{ transaction.Category }}</td>
-            <td>${{ transaction.Amount }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <Table :headerLabels="tableHeaders" :tableData="transactions" />
     </div>
   </div>
 </template>
@@ -59,52 +33,48 @@
   .categories {
     display: flex;
     flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    max-width: 500px; /* set max width to limit the number of boxes */
+    margin: 0 auto; /* center the boxes horizontally */
+    border-radius: 10px; /* round the corners of the container */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* add a subtle drop shadow */
   }
 
+
+  .category {
+    max-height: 200px;
+    overflow: hidden;
+    border: 1px solid black;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: calc(30.33% - 20px);
+    margin-bottom: 20px;
+    background-color: #fff;
+  }
+
+  .category table tbody {
+    overflow-y: auto;
+  }
   .category-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
+    padding: 12px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+    transition: background-color 0.2s ease-in-out;
   }
+
+  .category-row:hover {
+    background-color: #e0e0e0;
+  }
+
 
   .category-transactions {
-    margin-left: 16px;
-  }
-
-  .categories {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    max-width: 960px; /* set max width to limit the number of boxes */
-    margin: 0 auto; /* center the boxes horizontally */
-  }
-
-  .category {
-    max-height: 200px; /* set max height */
-    overflow: hidden;
-    border: 1px solid black; /* add a black border */
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: calc(30.33% - 20px); /* set width to 33.33% minus 20px margin */
-    margin-bottom: 20px;
-    background-color: #fff;
-  }
-  .category table tbody {
-    overflow-y: auto; /* enable vertical scrolling only for the tbody element */
-  }
-
-  .category-row {
-    display: flex;
-    justify-content: space-between;
-    cursor: pointer;
-    padding: 8px;
-    background-color: #eee;
-  }
-
-  .category-transactions {
-    padding: 8px;
+    padding-top: 8px;
   }
 
   .category-transactions table {
@@ -115,8 +85,8 @@
   .transaction-table {
     position: sticky;
     top: 0;
-    overflow-y: auto; /* make the table scrollable */
-    max-height: calc(100% - 40px); /* subtract the padding from max-height */
+    overflow-y: auto;
+    max-height: calc(100% - 40px);
   }
 
   table {
@@ -136,42 +106,72 @@
     position: sticky;
     top: 0;
   }
-
-  button {
-    background-color: #41b883;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 5px;
-  }
 </style>
 
 <script>
+  import Table from "../components/Table.vue";
+
   export default {
+    components: {
+      Table,
+    },
     data() {
-      return {
+      const currentDate = new Date();
+      const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
+      return {      
+        tableHeaders: ["Date", "Merchant Name", "Category", "Amount"],
+        currentMonth: "",
+        selectedDate, //: "February 2023", // How to make this default? do I need a date to display date converter?
+        months: [], // array of month/year strings
         transactions: [],
         groupedTransactions: {},
         groupedTransactionsVisible: {},
-        showAll: false
-      }
+        showAll: false,
+      };
+    },
+    computed: {
+      filteredTransactions() {
+        return (groupedTransactions) => {
+          const selectedDate = new Date(this.selectedDate);
+          const filtered = groupedTransactions.filter(
+            (transaction) =>
+              new Date(transaction.Date).getFullYear() === selectedDate.getFullYear() &&
+              new Date(transaction.Date).getMonth() === selectedDate.getMonth()
+          );
+          return filtered;
+        };
+      },
+      categorySum() {
+        return (category) => {
+          const filtered = this.filteredTransactions(
+            this.groupedTransactions[category]
+          );
+          let sum = 0;
+          for (const transaction of filtered) {
+            sum += parseFloat(transaction.Amount);
+          }
+          return Number.isNaN(sum) ? NaN : sum;
+        };
+      },
+    },
+    created() {      
+      this.currentMonth = Date.now()
+      return this.currentMonth
     },
     methods: {
+      setDate() {
+        // this.selectedDate = date;
+        console.log('selected: ', this.selectedDate)
+      },
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;
       },
     },
-    // request json data from the server
+    // request json Transaction data from the server
     async mounted() {
       try {
-        const response = await fetch('/api/find');
+        const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
         this.transactions = data; // set transactions data
 
@@ -184,135 +184,56 @@
           }
           this.groupedTransactions[category].push(transaction);
         });
-      } catch (error) {
-        console.log(error);
-      }
-    }
-  }
-</script>
 
-<!-- Original template -->
-<!-- 
+        // Build a picker
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        const monthNames = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December"
+        ];
+        // Get the min/max date range from the transaction data
+        const dateRange = this.transactions.reduce(
+          (range, transaction) => {
+            const date = new Date(transaction.Date);
+            if (!range.minDate || date < range.minDate) {
+              range.minDate = date;
+            }
+            if (!range.maxDate || date > range.maxDate) {
+              range.maxDate = date;
+            }
+            return range;
+          },
+          { minDate: null, maxDate: null }
+        );
 
-
-<style>
-  .categories {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    max-width: 960px; /* set max width to limit the number of boxes */
-    margin: 0 auto; /* center the boxes horizontally */
-  }
-
-  .category {
-    max-height: 200px; /* set max height */
-    overflow: hidden;
-    border: 1px solid black; /* add a black border */
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: calc(30.33% - 20px); /* set width to 33.33% minus 20px margin */
-    margin-bottom: 20px;
-    background-color: #fff;
-  }
-  .category table tbody {
-    overflow-y: auto; /* enable vertical scrolling only for the tbody element */
-  }
-
-  .category-row {
-    display: flex;
-    justify-content: space-between;
-    cursor: pointer;
-    padding: 8px;
-    background-color: #eee;
-  }
-
-  .category-transactions {
-    padding: 8px;
-  }
-
-  .category-transactions table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .transaction-table {
-    position: sticky;
-    top: 0;
-    overflow-y: auto; /* make the table scrollable */
-    max-height: calc(100% - 40px); /* subtract the padding from max-height */
-  }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-  }
-
-  th,
-  td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-
-  th {
-    background-color: #f2f2f2;
-    position: sticky;
-    top: 0;
-  }
-
-  button {
-    background-color: #41b883;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    cursor: pointer;
-    border-radius: 5px;
-  }
-
-</style>
-
-<script>
-  export default {
-    data() {
-      return {
-        transactions: [],
-        groupedTransactions: {},
-        groupedTransactionsVisible: {},
-        showAll: false
-      }
-    },
-    methods: {
-      toggleCategory(category) {
-        this.groupedTransactionsVisible[category] =
-          !this.groupedTransactionsVisible[category] || false;
-      },
-    },
-    // request json data from the server
-    async mounted() {
-      try {
-        const response = await fetch('/api/find');
-        const data = await response.json(); // extract JSON data from response
-        this.transactions = data; // set transactions data
-
-        // Group transactions by category
-        this.transactions.forEach((transaction) => {
-          const category = transaction.Category;
-          if (!this.groupedTransactions[category]) {
-            this.groupedTransactions[category] = [];
-            this.groupedTransactionsVisible[category] = false;
+        const months = [];
+        for (let year = dateRange.minDate.getFullYear(); year <= currentYear; year++) {
+          const startMonth = year === dateRange.minDate.getFullYear() ? dateRange.minDate.getMonth() : 0;
+          const endMonth = year === currentYear ? currentMonth : 11;
+          for (let month = startMonth; month <= endMonth; month++) {
+            const monthString = `${monthNames[month]} ${year}`;
+            months.push(monthString);
           }
-          this.groupedTransactions[category].push(transaction);
-        });
+        }
+        this.months = months.reverse();
+
+        // end Build a picker (good lord get rid of this)
+
       } catch (error) {
         console.log(error);
       }
-    }
-  }
+    },
+  };
 </script>
- -->

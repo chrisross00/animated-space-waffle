@@ -2,7 +2,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { findData , insertData } = require('./db/database');
+const { findData , insertData, deduplicateData } = require('./db/database');
 const { migrateData } = require('./utils/migrateData');
 const path = require('path');
 const cors = require('cors');
@@ -23,11 +23,23 @@ router.get('/find', async (req, res) => {
     console.log('BE message: API got database data, sending back up to FE')    
     res.send(transactions);
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Error getting transactions');
+      console.error(err);
+      res.status(500).send('Error getting transactions');
   }
   console.log('BE message: done')
 });
+
+router.post('/dedupe', async (req,res) => {
+  try {
+    console.log('BE Message: starting de-dupe transaction flow...')
+    await deduplicateData('transactions');
+    console.log('BE Message: de-duplication complete');
+    res.send('De-duplication complete');
+  } catch (err) {
+      console.error(err);
+      res.status(500).send('Error de-duping transactions');
+  }
+})
 
 router.get('/test', function (req, res, next) {
   console.log('BE message: hit the /test endpoint')
