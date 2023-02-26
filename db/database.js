@@ -45,11 +45,51 @@ async function updateData(collectionName, filter, update) {
     console.error(err);
   }
 }
+
+async function deduplicateData(collectionName) {
+  try {
+    const dbName = process.env.DB_NAME
+    const db = await connectToDb();
+    const collection = db.collection(collectionName);
+
+    // Group documents by the "Transaction ID" field and count the number of occurrences
+    const result = await collection.aggregate([
+      {
+        $group: {
+          _id: { TransactionID: "$Transaction ID" },
+          count: { $sum: 1 },
+          docs: { $push: "$_id" }
+        }
+      },
+      // Find groups with more than one occurrence
+      { $match: { count: { $gt: 1 } } },
+      // Sort the results by count in descending order
+      { $sort: { count: -1 } }
+    ]).toArray(); // Use toArray() to convert the cursor to an array
+
+    // Iterate through each group of duplicate documents
+    let totalDocs = 0
+    for (const docGroup of result) {
+      // Remove all but the first occurrence of the document
+      const deleteResult = await collection.deleteMany({ _id: { $in: docGroup.docs.slice(1) } });
+      console.log(deleteResult.deletedCount + ' documents deleted');
+      totalDocs++;
+    }
+
+    console.log("Database.js Message: ran deduplicateData() successfully")
+    return;
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
   
   module.exports = {
     connectToDb,
     insertData,
     findData,
     updateData,
+    deduplicateData,
   };
   
