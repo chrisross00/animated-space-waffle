@@ -109,7 +109,7 @@
 </style>
 
 <script>
-  import Table from "../components/Table.vue";
+  import Table from "../components/TableView.vue";
 
   export default {
     components: {
