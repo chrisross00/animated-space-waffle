@@ -12,23 +12,23 @@ async function connectToDb() {
   
 async function insertData(collectionName, data) {
   try {
-    const db = client.db('<database>');
+    const db = await connectToDb();
     const collection = db.collection(collectionName);
-    await collection.insertOne(data);
-    console.log(`Inserted data: ${JSON.stringify(data)}`);
+    // await collection.deleteMany({})
+    await collection.insertMany(data);
+    console.log(`Database.js Message: Inserted data and closing.`);
   } catch (err) {
     console.error(err);
   }
 }
 
-async function findData(collectionName, query) {
-  try {
-    const dbName = process.env.DB_NAME
+async function findData(collectionName) {
+  try { // add toArray() override parameter in the future
     const db = await connectToDb();
     const collection = db.collection(collectionName);
     const result = await collection.find().sort({Date:-1}).toArray();
     // console.log(`Found data: ${JSON.stringify(result)}`);
-    console.log('BE message: got a response from MongoDb, sending back up to API')
+    console.log('BE message: findData got a response from MongoDb, sending back up to API')
     return result;
   } catch (err) {
     console.error(err);
@@ -37,9 +37,9 @@ async function findData(collectionName, query) {
 
 async function updateData(collectionName, filter, update) {
   try {
-    const db = client.db('<database>');
+    const db = await connectToDb();
     const collection = db.collection(collectionName);
-    await collection.updateOne(filter, { $set: update });
+    await collection.updateOne(filter, update);
     console.log(`Updated data: ${JSON.stringify(update)}`);
   } catch (err) {
     console.error(err);
@@ -48,7 +48,6 @@ async function updateData(collectionName, filter, update) {
 
 async function deduplicateData(collectionName) {
   try {
-    const dbName = process.env.DB_NAME
     const db = await connectToDb();
     const collection = db.collection(collectionName);
 

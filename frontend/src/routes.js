@@ -3,6 +3,7 @@ import ApiDr from './views/ApiDir.vue'
 import FindView from './views/FindView.vue'
 import TestView from './views/TestView.vue'
 import DeDupeView from './views/DeDupeView.vue'
+import GetNew from './views/GetNew.vue'
 
 const routes = [
   {
@@ -29,6 +30,11 @@ const routes = [
     path: '/api/dedupe',
     name: 'DeDupeView',
     component: DeDupeView
+  },
+  {
+    path: '/api/getnew',
+    name: 'GetNew',
+    component: GetNew
   }
 ]
 
