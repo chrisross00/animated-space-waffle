@@ -1,1 +1,4 @@
 node_modules/
+settings.json
+.env
+config.js

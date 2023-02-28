@@ -10,6 +10,7 @@
         <li><a href="/api/find" target="_blank" rel="noopener">Find</a></li>
         <li><a href="/api/test" target="_blank" rel="noopener">Test</a></li>
         <li><a href="/api/dedupe" target="_blank" rel="noopener">DeDupe</a></li>
+        <li><a href="/api/getnew" target="_blank" rel="noopener">Get New</a></li>
       </ul>
     </div>
   </template>
