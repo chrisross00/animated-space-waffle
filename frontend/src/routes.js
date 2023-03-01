@@ -4,6 +4,7 @@ import FindView from './views/FindView.vue'
 import TestView from './views/TestView.vue'
 import DeDupeView from './views/DeDupeView.vue'
 import GetNew from './views/GetNew.vue'
+import GetCategories from './views/GetCategories.vue'
 
 const routes = [
   {
@@ -35,6 +36,11 @@ const routes = [
     path: '/api/getnew',
     name: 'GetNew',
     component: GetNew
+  },
+  {
+    path: '/api/getcategories',
+    name: 'GetCategories',
+    component: GetCategories
   }
 ]
 
