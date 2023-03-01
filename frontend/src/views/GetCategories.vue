@@ -1,9 +1,15 @@
 <template>
+    <h1>Get Categories</h1>
     <div>
-      <h1>Get Categories</h1>
-      <p>{{ message }}</p>
+      <pre id="json">{{ message }}</pre>
     </div>
   </template>
+
+<style>
+#json {
+    text-align: left;
+    }
+</style>
   
   <script>
     export default {
@@ -14,11 +20,11 @@
       },
     async mounted() {
       try {
-        console.log("fetch start")
-        const response = await fetch('/api/getcategories');
-        const data = await response.json();
-        console.log('FE post complete: ', data);
-        this.message = data.message;
+          console.log("fetch start")
+          const response = await fetch('/api/getcategories');
+          const data = await response.json();
+          this.message = data.message;
+          document.getElementById("json").textContent = JSON.stringify(data, undefined, 2);
       } catch (error) {
           console.log('external catch', error);
       }

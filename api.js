@@ -123,9 +123,9 @@ router.post('/dedupe', async (req,res) => {
 
 router.get('/getcategories', async (req, res)=>{
   try {
-    console.log('API.js: Hello from /getcategories')
+    const categories = await findData('categories');
     const resObj = {
-      message: 'hello from api.js backend...'
+      message: categories
     }
     res.send(resObj)
   } catch (err){
