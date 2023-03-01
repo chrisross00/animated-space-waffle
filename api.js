@@ -121,9 +121,24 @@ router.post('/dedupe', async (req,res) => {
   }
 })
 
+router.get('/getcategories', async (req, res)=>{
+  try {
+    console.log('API.js: Hello from /getcategories')
+    const resObj = {
+      message: 'hello from api.js backend...'
+    }
+    res.send(resObj)
+  } catch (err){
+    console.log('API.js: error at /getcategories\n', err)
+  }
+})
+
 router.get('/test', function (req, res, next) {
-  console.log('BE message: hit the /test endpoint')
-  res.json({msg: 'This is CORS-enabled for all origins!'})
+  console.log('API.js message: hit the /test endpoint')
+  const resObj = {
+    message: 'hello from api.js /test endpoint... this is a message from the server'
+  }
+  res.send(resObj)
 })
 
 // Endpoint to insert a transaction into the database

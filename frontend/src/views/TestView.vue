@@ -17,12 +17,23 @@ export default {
   async mounted() {
     try {
       console.log("fetch start")
-      fetch("/api/test")
-        .then(data=>data.json().then(console.log))
-        .then(await(setTimeout(() => { this.message = "CORS Done!" }, 3000)))
-    } catch (error) {
-      console.log('external catch', error);
+      const response = await fetch("/api/test")
+      const data = await response.json();
+      this.message = data.message
+    } catch (err) {
+      console.log('external catch', err);
     }
   }
 }
 </script>
+
+<!-- To set up a new page and /api, copy the below files for the Test implementation
+  
+[ ] Api.js -> router.method(‘/path)
+[ ] routes.js -> copy/paste/manipulate block and import
+[ ] ApiDir.vue -> add link
+[ ] Page.vue -> copy/paste dedupe.vue
+
+Change the /url for all
+
+-->

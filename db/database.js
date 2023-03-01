@@ -46,7 +46,7 @@ async function updateData(collectionName, filter, update) {
   }
 }
 
-async function deduplicateData(collectionName) {
+async function deduplicateData(collectionName) { // this only works for Transactions collection right now
   try {
     const db = await connectToDb();
     const collection = db.collection(collectionName);

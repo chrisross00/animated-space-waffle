@@ -39,10 +39,8 @@ async function plaidTransactionsSync (access_token, cursor=null){
     })
     const data = response.data;
 
-    // console.log('data', data)
     // handle empty added, modified, removed; 
-      // Minimum case: if ALL those elements are empty, this should stop; 
-      // do we need to handle more cases?
+    // does not handle each uniquely
 
     if (data.added.length === 0 && data.modified.length === 0 && data.removed.length === 0) {
       let data = "All transactions up to date for this account"
