@@ -23,7 +23,7 @@
           console.log("fetch start")
           const response = await fetch('/api/getcategories');
           const data = await response.json();
-          this.message = data.message;
+          this.message = data;
           document.getElementById("json").textContent = JSON.stringify(data, undefined, 2);
       } catch (error) {
           console.log('external catch', error);

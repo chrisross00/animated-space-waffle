@@ -4,6 +4,7 @@ const router = express.Router();
 const { findData , insertData, deduplicateData, updateData } = require('./db/database');
 const { plaidTransactionsSync, getAccountData } = require('./utils/plaidTools');
 const { migrateData } = require('./utils/migrateData');
+const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const path = require('path');
 const cors = require('cors');
 
@@ -28,11 +29,6 @@ router.get('/find', async (req, res) => {
 });
 
 router.get('/getnew' , async (req, res) => {
-// Top to do:
-// v update responses so it's grouping getAccountData response with transactionSync response -- right now everything gets pushed to this responses array that starts out as the getAccountData response
-  // v alt approach is to not store the account info in the txn table, make a new table for the txn stuff and only us the account stuff as the loop mechanic
-// v update so you don't always insert transactions; should only insert if `newTxns` = true
-
   const transactions = [];
 
   try { // Get Account data to set up `tokens` and `next_cursors` for API calls. 
@@ -73,40 +69,39 @@ router.get('/getnew' , async (req, res) => {
   
     transactions.push(...updatedResponses); // Append the updatedResponses array to the responses array
 
+// Need to categorize transactions before inserting to 'Plaid-Transactions'
+  // const categories = await findData('categories');
+  // const ruleList = await getMappingRuleList(categories);
+  // const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
+
+
 // IS IT POSSIBLE TO NOT CALL PLAID-TRANSACTIONS IF THE API RESPONSE WAS EMPTY
-    if (transactions.length > 0) {
-      insertData('Plaid-Transactions', transactions)
+  if (transactions.length > 0) {
+    insertData('Plaid-Transactions', transactions)
+  }
+
+  // Update next_cursor on each account level with the latest next_cursor value for next time
+  responses.forEach(element => {  
+    const key1 = 'Accounts.'
+    const key2 = element.account;
+    const key3 = '.token'
+    const key = key1 + key2 + key3
+    let updateObject = { $set: {} };
+    let filter = { [key]: element.token };
+
+    // if you're looking at `responses` and you have an account summary object, not a transaction, and it has new Txns
+    if(element.next_cursor && element.token && element.newTxns === true){ 
+      updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
+      updateData('Plaid-Accounts', filter, updateObject);
+      // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
     }
-
-    // Update next_cursor on each account level with the latest next_cursor value for next time
-    responses.forEach(element => {  
-      const key1 = 'Accounts.'
-      const key2 = element.account;
-      const key3 = '.token'
-      const key = key1 + key2 + key3
-      let updateObject = { $set: {} };
-      let filter = { [key]: element.token };
-
-      // if you're looking at `responses` and you have an account summary object, not a transaction, and it has new Txns
-      if(element.next_cursor && element.token && element.newTxns === true){ 
-        updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
-        updateData('Plaid-Accounts', filter, updateObject);
-        // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
-      }
-    });
-    res.send(transactions); // send responses (all transactions) back to the UI at GetNew.vue
-    
-    } catch (err) {
-        console.log('error in /getnew', err);
-
-// end of try        
-  } 
-  console.log('     /getnew: end of try statement');
-
-
+  });
+  res.send(transactions); // send responses (all transactions) back to the UI at GetNew.vue
+  
+  } catch (err) {
+      console.log('error in /getnew', err);
+  } // end of try
   // Transform the data into a new format for the app
-
-  console.log('     /getNew done')
 });
 
 router.post('/dedupe', async (req,res) => {
@@ -124,10 +119,7 @@ router.post('/dedupe', async (req,res) => {
 router.get('/getcategories', async (req, res)=>{
   try {
     const categories = await findData('categories');
-    const resObj = {
-      message: categories
-    }
-    res.send(resObj)
+    res.send(categories)
   } catch (err){
     console.log('API.js: error at /getcategories\n', err)
   }
@@ -149,7 +141,7 @@ router.post('/insert', async (req, res) => {
     res.status(201).send(result);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error inserting transaction');
+    res.status(500).send({error: 'Error inserting transaction'});
   }
 });
 
