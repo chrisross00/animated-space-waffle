@@ -32,7 +32,7 @@ async function getAccountData () {
 
 async function plaidTransactionsSync (access_token, cursor=null){
   try {
-    console.log('plaidTransactionsSync() Messages:\n     Access Token:', access_token, '\n     Cursor:', cursor, '\n');
+    // console.log('plaidTransactionsSync() Messages:\n     Access Token:', access_token, '\n     Cursor:', cursor, '\n');
     const response = await plaidClient.transactionsSync({
       access_token,
       cursor,
@@ -50,7 +50,7 @@ async function plaidTransactionsSync (access_token, cursor=null){
     }
     } 
   catch (err) {
-      console.log('error with plaidTransactionsSync, `err.response.data`: ', err.response.data)
+      // console.log('error with plaidTransactionsSync, `err.response.data`: ', err.response.data)
     }
 }
   module.exports = {

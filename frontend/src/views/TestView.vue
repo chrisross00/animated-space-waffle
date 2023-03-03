@@ -16,12 +16,12 @@ export default {
   },
   async mounted() {
     try {
-      console.log("fetch start")
+      // console.log("fetch start")
       const response = await fetch("/api/test")
       const data = await response.json();
       this.message = data.message
     } catch (err) {
-      console.log('external catch', err);
+      // console.log('external catch', err);
     }
   }
 }
