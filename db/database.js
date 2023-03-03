@@ -35,12 +35,25 @@ async function findData(collectionName) {
   }
 }
 
-async function updateData(collectionName, filter, update) {
+async function findUnmappedData(collectionName) {
+  try { // add toArray() override parameter in the future
+    const db = await connectToDb();
+    const collection = db.collection(collectionName);
+    const result = await collection.find({ "mappedCategory" : { "$exists" : false } }).toArray();
+    // console.log(`Found data: ${JSON.stringify(result)}`);
+    // console.log('BE message: findData got a response from MongoDb, sending back up to API')
+    return result;
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function updateData(collectionName, filter, update, options = null) {
   try {
     const db = await connectToDb();
     const collection = db.collection(collectionName);
-    await collection.updateOne(filter, update);
-    // console.log(`Updated data: ${JSON.stringify(update)}`);
+    await collection.updateOne(filter, update, options);
+    console.log(`Updated data: ${JSON.stringify(update)}`);
   } catch (err) {
     console.error(err);
   }
@@ -90,5 +103,6 @@ async function deduplicateData(collectionName) { // this only works for Transact
     findData,
     updateData,
     deduplicateData,
+    findUnmappedData,
   };
   

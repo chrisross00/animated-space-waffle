@@ -12,6 +12,7 @@
         <li><a href="/api/dedupe" target="_blank" rel="noopener">DeDupe</a></li>
         <li><a href="/api/getnew" target="_blank" rel="noopener">Get New</a></li>
         <li><a href="/api/getcategories" target="_blank" rel="noopener">Get Categories</a></li>
+        <li><a href="/api/mapunmapped" target="_blank" rel="noopener">Map Unmapped Categories</a></li>
       </ul>
     </div>
   </template>
