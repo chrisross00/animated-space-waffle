@@ -104,7 +104,7 @@ router.get('/getnew' , async (req, res) => {
 router.post('/dedupe', async (req,res) => {
   try {
     // console.log('BE Message: starting de-dupe transaction flow...')
-    await deduplicateData('transactions');
+    await deduplicateData('Plaid-Transactions');
     // console.log('BE Message: de-duplication complete');
     res.send('De-duplication complete');
   } catch (err) {
@@ -148,7 +148,6 @@ router.get('/mapunmapped', async (req, res) => {
         console.log(txn._id, txn.mappedCategory)
       });
     }
-    console.log('done!')
     // finish
     res.send(mappedTxns)
     
