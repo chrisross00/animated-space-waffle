@@ -32,13 +32,17 @@ async function mapTransactions (transactionArray, rulesArray) {
 * TODO: could add a call to get rules if it's null...
 
 */
-        
-    const transactions = transactionArray; 
+    let transactions = []
+    // const transactionsArray = transactionArray; 
     const ruleList = rulesArray;
+    transactionArray.filter(block => {
+        if(block.added) transactions.push(...block.added) 
+    })
+    console.log('Top of mapTransactions, transactions = ',)
 
     // Function beginning messages
-    // console.log(JSON.stringify(ruleList),'\n\nRules List')
-    // console.log('\n// Beginning of mapping work... //\n')
+    console.log(JSON.stringify(ruleList),'\n\nRules List')
+    console.log('\n// Beginning of mapping work... //\n')
 
     // BUILD SPECIFIC RULES: 
     let nameList = []
@@ -53,7 +57,7 @@ async function mapTransactions (transactionArray, rulesArray) {
     for (i=0; i<nameList.length;i++){
         transactions.filter(transaction => {
             if (!transaction.mappedCategory) {
-                if (transaction.name == nameList[i]) {
+                if (transaction.name && transaction.name == nameList[i]) {
                     ruleList.filter(rule => {
                         if(rule.rules.name && rule.rules.name.includes(nameList[i])){
                             transaction.mappedCategory = rule.category
@@ -68,7 +72,7 @@ async function mapTransactions (transactionArray, rulesArray) {
     for (i=0; i<cat2List.length;i++){
         transactions.filter(transaction => {
             if (!transaction.mappedCategory) {
-                if (transaction.category[1] == cat2List[i]) {
+                if (transaction.category?.[1] && transaction.category[1] == cat2List[i]) {
                     ruleList.filter(rule => {
                         if(rule.rules.category1 && rule.rules.category1.includes(cat2List[i])){
                             transaction.mappedCategory = rule.category
@@ -92,7 +96,7 @@ async function mapTransactions (transactionArray, rulesArray) {
                 if(rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)){
                     transaction.mappedCategory = rule.category
                 }
-                if(rule.rules.category0 && rule.rules.category0.includes(transaction.category[0])){
+                if(rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])){
                     transaction.mappedCategory = rule.category
                 }
             }) 

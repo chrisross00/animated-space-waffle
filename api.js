@@ -70,14 +70,14 @@ router.get('/getnew' , async (req, res) => {
     transactions.push(...updatedResponses); // Append the updatedResponses array to the responses array
 
 // Need to categorize transactions before inserting to 'Plaid-Transactions'
-  // const categories = await findData('categories');
-  // const ruleList = await getMappingRuleList(categories);
-  // const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
+  const categories = await findData('categories');
+  const ruleList = await getMappingRuleList(categories);
+  const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
 
 
 // IS IT POSSIBLE TO NOT CALL PLAID-TRANSACTIONS IF THE API RESPONSE WAS EMPTY
-  if (transactions.length > 0) {
-    insertData('Plaid-Transactions', transactions)
+  if (mappedTxns.length > 0) {
+    insertData('Plaid-Transactions', mappedTxns)
   }
 
   // Update next_cursor on each account level with the latest next_cursor value for next time
@@ -96,7 +96,7 @@ router.get('/getnew' , async (req, res) => {
       // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
     }
   });
-  res.send(transactions); // send responses (all transactions) back to the UI at GetNew.vue
+  res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
       console.log('error in /getnew', err);
