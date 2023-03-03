@@ -14,8 +14,6 @@ async function getMappingRuleList (dbCategories=null) {
     return ruleList;
   }
   
-
-
 async function mapTransactions (transactionArray, rulesArray) {
 /**
  *  // NAME FILTER -- duplicate block for new filter
@@ -32,13 +30,12 @@ async function mapTransactions (transactionArray, rulesArray) {
 * TODO: could add a call to get rules if it's null...
 
 */
-    let transactions = []
-    // const transactionsArray = transactionArray; 
+    let transactions = transactionArray; 
     const ruleList = rulesArray;
     transactionArray.filter(block => {
         if(block.added) transactions.push(...block.added) 
     })
-    // console.log('Top of mapTransactions, transactions = ',)
+    // console.log('Top of mapTransactions, transactions = ')
 
     // Function beginning messages
     // console.log(JSON.stringify(ruleList),'\n\nRules List')
@@ -102,11 +99,16 @@ async function mapTransactions (transactionArray, rulesArray) {
             }) 
         }
     })
+    // last catch... if still not mapped to anything, map to 'To Sort'
+    transactions.filter(transaction => {
+        if(!transaction.mappedCategory){
+            transaction.mappedCategory = "To Sort"
+        }
+    })
 
     return transactions
 }
 
-  
 module.exports = {
     mapTransactions,
     getMappingRuleList,

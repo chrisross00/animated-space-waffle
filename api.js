@@ -1,7 +1,7 @@
 // This was effectively the API / router for backend stuff
 const express = require("express");
 const router = express.Router();
-const { findData , insertData, deduplicateData, updateData } = require('./db/database');
+const { findData , insertData, deduplicateData, updateData, findUnmappedData } = require('./db/database');
 const { plaidTransactionsSync, getAccountData } = require('./utils/plaidTools');
 const { migrateData } = require('./utils/migrateData');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
@@ -79,10 +79,10 @@ router.get('/getnew' , async (req, res) => {
 
   // Update next_cursor on each account level with the latest next_cursor value for next time
   responses.forEach(element => {  
-    const key1 = 'Accounts.'
-    const key2 = element.account;
-    const key3 = '.token'
-    const key = key1 + key2 + key3
+    // const key1 = 'Accounts.'
+    // const key2 = element.account;
+    // const key3 = '.token'
+    const key = `Accounts.${element.account}.token`;
     let updateObject = { $set: {} };
     let filter = { [key]: element.token };
 
@@ -129,6 +129,48 @@ router.get('/test', function (req, res, next) {
   }
   res.send(resObj)
 })
+
+router.get('/mapunmapped', async (req, res) => {
+  // console.log('API.js message: hit the /test endpoint')
+  try {
+    const unmappedTransactions = await findUnmappedData('Plaid-Transactions');
+    const categories = await findData('categories');
+    const ruleList = await getMappingRuleList(categories);
+    const mappedTxns = await mapTransactions(unmappedTransactions, ruleList); // insert this to 79 below
+
+    if(mappedTxns.length > 0){
+      mappedTxns.forEach(txn => {
+        let updateObject = { $set: {} };
+        let filter = { ['transaction_id']: txn.transaction_id } 
+        let options = {upsert: true} 
+        updateObject.$set["mappedCategory"] = txn.mappedCategory;
+        updateData('Plaid-Transactions', filter, updateObject, options);
+        console.log(txn._id, txn.mappedCategory)
+      });
+    }
+    console.log('done!')
+    // finish
+    res.send(mappedTxns)
+    
+  } catch (err) {
+    console.log(err)
+  }
+})
+
+// working
+  // router.get('/mapunmapped', async (req, res) => {
+  //   // console.log('API.js message: hit the /test endpoint')
+  //   try {
+  //     const mappedTransactions = await findUnmappedData('Plaid-Transactions');
+  //     const resObj = {
+  //       message: mappedTransactions
+  //     }
+  //     res.send(resObj)
+      
+  //   } catch (err) {
+  //     console.log(err)
+  //   }
+  // })
 
 // Endpoint to insert a transaction into the database
 router.post('/insert', async (req, res) => {

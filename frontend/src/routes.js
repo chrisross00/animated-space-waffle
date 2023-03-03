@@ -5,6 +5,7 @@ import TestView from './views/TestView.vue'
 import DeDupeView from './views/DeDupeView.vue'
 import GetNew from './views/GetNew.vue'
 import GetCategories from './views/GetCategories.vue'
+import MapUnmapped from './views/MapUnmapped.vue'
 
 const routes = [
   {
@@ -41,6 +42,11 @@ const routes = [
     path: '/api/getcategories',
     name: 'GetCategories',
     component: GetCategories
+  },
+  {
+    path: '/api/mapunmapped',
+    name: 'MapUnmapped',
+    component: MapUnmapped
   }
 ]
 

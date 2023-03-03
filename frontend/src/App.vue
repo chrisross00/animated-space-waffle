@@ -1,7 +1,6 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png">
   <div id="app">
-    <h1>App.vue is working</h1>
     <router-view></router-view>
   </div>
 </template>
