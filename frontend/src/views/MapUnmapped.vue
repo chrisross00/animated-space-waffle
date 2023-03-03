@@ -19,7 +19,7 @@
         // console.log("fetch start")
         const response = await fetch("/api/mapunmapped")
         const data = await response.json();
-        this.message = data
+        this.message = data.length > 0 ? data : 'No unmapped transactions found'
       } catch (err) {
         // console.log('external catch', err);
       }

@@ -68,7 +68,7 @@ async function deduplicateData(collectionName) { // this only works for Transact
     const result = await collection.aggregate([
       {
         $group: {
-          _id: { TransactionID: "$Transaction ID" },
+          _id: { transaction_id: "$transaction_id" },
           count: { $sum: 1 },
           docs: { $push: "$_id" }
         }
