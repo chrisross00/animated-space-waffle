@@ -14,12 +14,12 @@
     },
   async mounted() {
     try {
-      console.log("fetch start")
+      // console.log("fetch start")
       await axios.post('/api/dedupe');
-      console.log('post complete');
+      // console.log('post complete');
       this.message = 'Dedupe Done!';
     } catch (error) {
-        console.log('external catch', error);
+        // console.log('external catch', error);
     }
     }
   }

@@ -8,8 +8,8 @@
       <tbody>
         <tr v-for="row in tableData" :key="row._id">
           <td v-for="header in headerLabels" :key="header">
-            <template v-if="header === 'Amount'">
-              ${{ row[header] }}
+            <template v-if="header === 'amount'">
+              ${{ row[header] }} 
             </template>
             <template v-else>
               {{ row[header] }}
@@ -21,6 +21,8 @@
   </template>
   
   <script>
+  // Note: header labels need to match the keys of the object you're passing in
+  console.log('table script')
     export default {
       props: {
         headerLabels: {
@@ -32,6 +34,9 @@
           required: true,
         },
       },
+      async mounted() {
+        console.log('mounted TableView', this.tableData[0])
+      }
     };
   </script>
   

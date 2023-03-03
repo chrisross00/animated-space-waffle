@@ -119,7 +119,7 @@
       const currentDate = new Date();
       const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
       return {      
-        tableHeaders: ["Date", "Merchant Name", "Category", "Amount"],
+        tableHeaders: ["date", "name", "mappedCategory", "amount"],
         currentMonth: "",
         selectedDate, //: "February 2023", // How to make this default? do I need a date to display date converter?
         months: [], // array of month/year strings
@@ -135,8 +135,8 @@
           const selectedDate = new Date(this.selectedDate);
           const filtered = groupedTransactions.filter(
             (transaction) =>
-              new Date(transaction.Date).getFullYear() === selectedDate.getFullYear() &&
-              new Date(transaction.Date).getMonth() === selectedDate.getMonth()
+              new Date(transaction.date).getFullYear() === selectedDate.getFullYear() &&
+              new Date(transaction.date).getMonth() === selectedDate.getMonth()
           );
           return filtered;
         };
@@ -148,7 +148,7 @@
           );
           let sum = 0;
           for (const transaction of filtered) {
-            sum += parseFloat(transaction.Amount);
+            sum += parseFloat(transaction.amount);
           }
           return Number.isNaN(sum) ? NaN : sum;
         };
@@ -161,7 +161,7 @@
     methods: {
       setDate() {
         // this.selectedDate = date;
-        console.log('selected: ', this.selectedDate)
+        // console.log('selected: ', this.selectedDate)
       },
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
@@ -173,11 +173,10 @@
       try {
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
-        this.transactions = data; // set transactions data
+        this.transactions = data;
 
-        // Group transactions by category
         this.transactions.forEach((transaction) => {
-          const category = transaction.Category;
+          const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {
             this.groupedTransactions[category] = [];
             this.groupedTransactionsVisible[category] = false;
@@ -206,7 +205,7 @@
         // Get the min/max date range from the transaction data
         const dateRange = this.transactions.reduce(
           (range, transaction) => {
-            const date = new Date(transaction.Date);
+            const date = new Date(transaction.date);
             if (!range.minDate || date < range.minDate) {
               range.minDate = date;
             }
@@ -232,7 +231,7 @@
         // end Build a picker (good lord get rid of this)
 
       } catch (error) {
-        console.log(error);
+        // console.log(error);
       }
     },
   };

@@ -17,15 +17,14 @@ router.get('/', (req, res) => {
 // Endpoint to retrieve all transactions from the database
 router.get('/find', async (req, res) => {
   try {
-    console.log('BE message: starting the Find flow...')
-    const transactions = await findData('transactions');
-    console.log('BE message: API got database data, sending back up to FE')    
+    // console.log('BE message: starting the Find flow...')
+    const transactions = await findData('Plaid-Transactions');
     res.send(transactions);
   } catch (err) {
       console.error(err);
       res.status(500).send('Error getting transactions');
   }
-  console.log('BE message: done')
+  // console.log('BE message: done')
 });
 
 router.get('/getnew' , async (req, res) => {
@@ -74,8 +73,6 @@ router.get('/getnew' , async (req, res) => {
   const ruleList = await getMappingRuleList(categories);
   const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
 
-
-// IS IT POSSIBLE TO NOT CALL PLAID-TRANSACTIONS IF THE API RESPONSE WAS EMPTY
   if (mappedTxns.length > 0) {
     insertData('Plaid-Transactions', mappedTxns)
   }
@@ -99,16 +96,16 @@ router.get('/getnew' , async (req, res) => {
   res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
-      console.log('error in /getnew', err);
+      // console.log('error in /getnew', err);
   } // end of try
   // Transform the data into a new format for the app
 });
 
 router.post('/dedupe', async (req,res) => {
   try {
-    console.log('BE Message: starting de-dupe transaction flow...')
+    // console.log('BE Message: starting de-dupe transaction flow...')
     await deduplicateData('transactions');
-    console.log('BE Message: de-duplication complete');
+    // console.log('BE Message: de-duplication complete');
     res.send('De-duplication complete');
   } catch (err) {
       console.error(err);
@@ -121,12 +118,12 @@ router.get('/getcategories', async (req, res)=>{
     const categories = await findData('categories');
     res.send(categories)
   } catch (err){
-    console.log('API.js: error at /getcategories\n', err)
+    // console.log('API.js: error at /getcategories\n', err)
   }
 })
 
 router.get('/test', function (req, res, next) {
-  console.log('API.js message: hit the /test endpoint')
+  // console.log('API.js message: hit the /test endpoint')
   const resObj = {
     message: 'hello from api.js /test endpoint... this is a message from the server'
   }

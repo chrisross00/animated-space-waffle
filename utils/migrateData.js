@@ -10,7 +10,7 @@ async function migrateData() {
     const url = process.env.DB_URI;   
     const dbName = process.env.DB_NAME;
     const client = await MongoClient.connect(url);
-    console.log('Connected to database');
+    // console.log('Connected to database');
 
     const db = client.db(dbName);
     const categories = db.collection('categories');
@@ -18,7 +18,7 @@ async function migrateData() {
     const accounts = db.collection('accounts');
 
     // Migrate Categories
-    console.log('Migrating Categories...');
+    // console.log('Migrating Categories...');
     const categoriesData = [];
 
     fs.createReadStream(path.join(__dirname, 'data', 'categories.csv'))
@@ -28,11 +28,11 @@ async function migrateData() {
       })
       .on('end', async () => {
         await categories.insertMany(categoriesData);
-        console.log('Categories migrated successfully');
+        // console.log('Categories migrated successfully');
       });
 
     // Migrate Transactions
-    console.log('Migrating Transactions...');
+    // console.log('Migrating Transactions...');
     const transactionsData = [];
 
     fs.createReadStream(path.join(__dirname, 'data', 'transactions.csv'))
@@ -42,11 +42,11 @@ async function migrateData() {
       })
       .on('end', async () => {
         await transactions.insertMany(transactionsData);
-        console.log('Transactions migrated successfully');
+        // console.log('Transactions migrated successfully');
       });
 
     // Migrate Accounts
-    console.log('Migrating Accounts...');
+    // console.log('Migrating Accounts...');
     const accountsData = [];
 
     fs.createReadStream(path.join(__dirname, 'data', 'accounts.csv'))
@@ -56,11 +56,11 @@ async function migrateData() {
       })
       .on('end', async () => {
         await accounts.insertMany(accountsData);
-        console.log('Accounts migrated successfully');
+        // console.log('Accounts migrated successfully');
       });
 
     // client.close();
-    console.log('Disconnected from database');
+    // console.log('Disconnected from database');
   } catch (err) {
     console.error('Failed to migrate data:', err);
   }

@@ -16,7 +16,7 @@ async function insertData(collectionName, data) {
     const collection = db.collection(collectionName);
     // await collection.deleteMany({})
     await collection.insertMany(data);
-    console.log(`Database.js Message: Inserted data and closing.`);
+    // console.log(`Database.js Message: Inserted data and closing.`);
   } catch (err) {
     console.error(err);
   }
@@ -26,9 +26,9 @@ async function findData(collectionName) {
   try { // add toArray() override parameter in the future
     const db = await connectToDb();
     const collection = db.collection(collectionName);
-    const result = await collection.find().sort({Date:-1}).toArray();
+    const result = await collection.find().sort({'date': -1}).toArray();
     // console.log(`Found data: ${JSON.stringify(result)}`);
-    console.log('BE message: findData got a response from MongoDb, sending back up to API')
+    // console.log('BE message: findData got a response from MongoDb, sending back up to API')
     return result;
   } catch (err) {
     console.error(err);
@@ -40,7 +40,7 @@ async function updateData(collectionName, filter, update) {
     const db = await connectToDb();
     const collection = db.collection(collectionName);
     await collection.updateOne(filter, update);
-    console.log(`Updated data: ${JSON.stringify(update)}`);
+    // console.log(`Updated data: ${JSON.stringify(update)}`);
   } catch (err) {
     console.error(err);
   }
@@ -71,11 +71,11 @@ async function deduplicateData(collectionName) { // this only works for Transact
     for (const docGroup of result) {
       // Remove all but the first occurrence of the document
       const deleteResult = await collection.deleteMany({ _id: { $in: docGroup.docs.slice(1) } });
-      console.log(deleteResult.deletedCount + ' documents deleted');
+      // console.log(deleteResult.deletedCount + ' documents deleted');
       totalDocs++;
     }
 
-    console.log("Database.js Message: ran deduplicateData() successfully")
+    // console.log("Database.js Message: ran deduplicateData() successfully")
     return;
 
   } catch (err) {

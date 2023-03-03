@@ -20,17 +20,14 @@
       },
     async mounted() {
       try {
-          console.log("fetch start")
+          // console.log("fetch start")
           const response = await fetch('/api/getcategories');
           const data = await response.json();
           this.message = data;
           document.getElementById("json").textContent = JSON.stringify(data, undefined, 2);
       } catch (error) {
-          console.log('external catch', error);
+          // console.log('external catch', error);
       }
       }
     }
   </script>
-<!-- const response = await fetch('/example');
-const data = await response.json();
-console.log(data.customProperty); -->

@@ -38,11 +38,11 @@ async function mapTransactions (transactionArray, rulesArray) {
     transactionArray.filter(block => {
         if(block.added) transactions.push(...block.added) 
     })
-    console.log('Top of mapTransactions, transactions = ',)
+    // console.log('Top of mapTransactions, transactions = ',)
 
     // Function beginning messages
-    console.log(JSON.stringify(ruleList),'\n\nRules List')
-    console.log('\n// Beginning of mapping work... //\n')
+    // console.log(JSON.stringify(ruleList),'\n\nRules List')
+    // console.log('\n// Beginning of mapping work... //\n')
 
     // BUILD SPECIFIC RULES: 
     let nameList = []
