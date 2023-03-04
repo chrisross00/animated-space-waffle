@@ -1,5 +1,5 @@
 <template>
-    <div class="hello">
+    <div>
       <h1>{{ msg }}</h1>
       <h2>
         Welcome to the API directory
@@ -7,12 +7,12 @@
       <p>The links below take you to various tools to manage your Plaid data</p>
       <em>Select an endpoint below</em>
       <ul>
-        <li><a href="/api/find" target="_blank" rel="noopener">Find</a></li>
-        <li><a href="/api/test" target="_blank" rel="noopener">Test</a></li>
-        <li><a href="/api/dedupe" target="_blank" rel="noopener">DeDupe</a></li>
-        <li><a href="/api/getnew" target="_blank" rel="noopener">Get New</a></li>
-        <li><a href="/api/getcategories" target="_blank" rel="noopener">Get Categories</a></li>
-        <li><a href="/api/mapunmapped" target="_blank" rel="noopener">Map Unmapped Categories</a></li>
+        <li><a href="/api/find" rel="noopener">Find</a></li>
+        <li><a href="/api/test" rel="noopener">Test</a></li>
+        <li><a href="/api/dedupe" rel="noopener">DeDupe</a></li>
+        <li><a href="/api/getnew" rel="noopener">Get New</a></li>
+        <li><a href="/api/getcategories" rel="noopener">Get Categories</a></li>
+        <li><a href="/api/mapunmapped" rel="noopener">Map Unmapped Categories</a></li>
       </ul>
     </div>
   </template>

@@ -1,41 +1,75 @@
 <template>
   <div>
+    <h2>
+      Monthly Budgets
+    </h2>
     <!-- Button Container -->
     <div class="button-container">
-      <button v-if="!showAll" @click="showAll = true">Show all transactions</button>
-      <button v-if="showAll" @click="showAll = false">Show transactions by category</button>
-      <select v-model="selectedDate">
-        <option v-for="month in months" :key="month" :value="month">{{ month }}</option>
-      </select>
+      <q-btn v-if="!showAll" @click="showAll = true" label="Show all transactions" />
+      <q-btn v-if="showAll" @click="showAll = false" label="Show transactions by category"  />
+      <q-select outlined v-model="selectedDate" :options="months" label="Budgets" />
     </div>
 
-    <!-- If show all is false -->
-    <div v-if="!showAll" class="categories">
-      <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category">
-        <div class="category-row" @click="toggleCategory(category)"> <!-- Build the clickable category summary row -->
-          <span>{{ category }}</span>
-          <span>{{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }}</span>
+    <!-- If show all is false -->    
+    <div class="q-pa-md" style="max-width: 900px">
+      <q-list bordered>
+        <div v-show="!showAll" class="categories">
+          <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category">
+            <q-item clickable v-ripple @click="toggleCategory(category)" category="category" elevated>
+              <q-item-section>
+                <q-item-label>{{category}}</q-item-label>
+                <q-item-label caption>{{ (category.length) ? category: "N/A" }}</q-item-label>
+              </q-item-section>
+              <q-item-section side top>
+                {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }}
+              </q-item-section>
+            </q-item>
+          <!-- show the nested rows -->
+          <q-list>
+            <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
+              <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
+              <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
+                <q-item clickable v-ripple>
+                  <q-item-section avatar>
+                    <q-item-label caption lines="2">{{ item.date }}</q-item-label>
+                  </q-item-section>
+
+                  <q-item-section>
+                    <q-item-label lines="1">{{item.name}}</q-item-label>
+                  </q-item-section>
+
+                  <q-item-section side middle>
+                    {{ isNaN(item.amount) ? "N/A" : "$" + item.amount.toFixed(2) }}                    
+                  </q-item-section>
+
+                  </q-item>
+                </div>
+              </div>
+            </q-list>
+          </div>
         </div>
-        <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
-          <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" />
-        </div>
-      </div>
-    </div>
+    </q-list>
+  </div>
 
     <!-- If show all is true -->
-    <div v-if="showAll" class="categories">
-      <Table :headerLabels="tableHeaders" :tableData="transactions" />
+    <div v-show="showAll" class="q-pa-md">
+        <q-table
+          title="All Transactions"
+          :rows="transactions"
+          :columns="columns"
+          row-key="transaction_id"
+        />
     </div>
   </div>
 </template>
 
 <style>
   .categories {
-    display: flex;
+    /* display: flex; */
     flex-direction: column;
     flex-wrap: wrap;
     justify-content: space-between;
-    max-width: 500px; /* set max width to limit the number of boxes */
+    max-width: 900px; /* set max width to limit the number of boxes */
     margin: 0 auto; /* center the boxes horizontally */
     border-radius: 10px; /* round the corners of the container */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* add a subtle drop shadow */
@@ -49,7 +83,7 @@
     border-radius: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     padding: 20px;
-    width: calc(30.33% - 20px);
+    width: calc(66.33% - 20px);
     margin-bottom: 20px;
     background-color: #fff;
   }
@@ -109,16 +143,32 @@
 </style>
 
 <script>
-  import Table from "../components/TableView.vue";
+  import {ref} from 'vue'
 
+  const columns = [
+  {
+    name: 'date',
+    required: true,
+    label: 'Date',
+    align: 'left',
+    field: row => row.date,
+    format: val => `${val}`,
+    sortable: true //"date", "name", "mappedCategory", "amount", "pending"
+  },
+  { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
+  { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
+  { name: 'amount', label: 'Amount', field: 'amount'  ,format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true},
+  { name: 'pending', label: 'Pending', field: 'pending' },
+]
   export default {
     components: {
-      Table,
     },
     data() {
       const currentDate = new Date();
       const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
-      return {      
+      return {   
+        columns,
+        model: ref(null),
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
         currentMonth: "",
         selectedDate, //: "February 2023", // How to make this default? do I need a date to display date converter?

@@ -1,5 +1,5 @@
 <template>
-    <h1>Get Categories</h1>
+    <h2>Get Categories</h2>
     <div>
       <pre id="json">{{ message }}</pre>
     </div>
