@@ -1,85 +1,117 @@
 <template>
-  <a href="/api">
-    <img alt="Vue logo" src="./assets/logo.png">
-  </a>
-  <div id="app">
-    <router-view></router-view>
-  </div>
+  <q-layout view="hHh Lpr lFf">
+    <q-header elevated class="bg-primary text-white" height-hint="98">
+      <q-toolbar>
+        <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
+
+        <q-toolbar-title>
+          <q-avatar>
+            <a href="/">
+              <img alt="Vue logo" src="./assets/logo.png">
+            </a>
+          </q-avatar>
+          Basil
+        </q-toolbar-title>
+      </q-toolbar>
+
+      <q-tabs align="left">
+        <q-route-tab to="/api" label="Toolbox" />
+        <q-route-tab to="/api/find" label="View Budget" />
+        <q-route-tab to="/#" label="Nothing" />
+      </q-tabs>
+    </q-header>
+
+    <q-drawer
+      v-model="leftDrawerOpen"
+      side="left"
+      class="bg-grey-2"
+      overlay
+      elevated
+    >
+      <q-list>
+        <q-item-label header>Essential Links</q-item-label>
+        <q-item clickable tag="a" target="_blank" href="/api">
+          <q-item-section avatar>
+            <q-icon name="code" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Toolbox</q-item-label>
+            <q-item-label caption>/api endpoint with various</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item clickable tag="a" target="_blank" href="https://github.com/quasarframework/">
+          <q-item-section avatar>
+            <q-icon name="school" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Github</q-item-label>
+            <q-item-label caption>github.com/quasarframework</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item clickable tag="a" target="_blank" href="https://chat.quasar.dev">
+          <q-item-section avatar>
+            <q-icon name="chat" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Discord Chat Channel</q-item-label>
+            <q-item-label caption>chat.quasar.dev</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item clickable tag="a" target="_blank" href="https://forum.quasar.dev">
+          <q-item-section avatar>
+            <q-icon name="forum" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Forum</q-item-label>
+            <q-item-label caption>forum.quasar.dev</q-item-label>
+          </q-item-section>
+        </q-item>
+        <q-item clickable tag="a" target="_blank" href="https://twitter.com/quasarframework">
+          <q-item-section avatar>
+            <q-icon name="rss_feed" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Twitter</q-item-label>
+            <q-item-label caption>@quasarframework</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-drawer>
+
+    <q-page-container  class="flex flex-center"> 
+        <q-page-container>
+          <router-view></router-view>
+        </q-page-container>
+    </q-page-container>
+    
+  </q-layout>
 </template>
 
-<script>
-  export default {
-    name: 'App',
-    components: {
-    }
-  }
-</script>
-
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-
 .button-container {
   display: flex;
-  justify-content: space-evenly;
-  align-items: center;
-  max-width: 900px;
-  margin: 0 auto;
-  margin-top: 20px;
+  justify-content: space-between;
 }
-
-.button-container * {
-  vertical-align: middle;
-}
-
-button {
-  background-color: #41b883;
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  font-size: 16px;
-  margin: 4px 2px;
-  cursor: pointer;
-  border-radius: 5px;
-}
-
-select {
-  padding: 10px 40px 10px 10px;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  background-color: #f5f5f5;
-  color: #333;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-}
-select::after {
-  content: "\25BE";
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-}
-
-select:focus {
-  outline: none;
-}
-
-select option {
-  font-size: 16px;
-  background-color: #f5f5f5;
-  color: #333;
-}
-
 </style>
 
+<script>
+import { ref } from 'vue'
 
+export default {
+  name: 'LayoutDefault',
+  // name: 'App',
+
+  components: {
+  },
+
+  setup () {
+    const leftDrawerOpen = ref(false);
+    return {
+      leftDrawerOpen,
+      toggleLeftDrawer () {
+        leftDrawerOpen.value = !leftDrawerOpen.value
+      }
+    }
+  }
+}
+</script>

@@ -1,6 +1,6 @@
 <template>
     <div>
-      <h1>Get New Plaid Transactions</h1>
+      <h2>Get New Plaid Transactions</h2>
       <p>{{ message }}</p>
       {{ transactions }}
     </div>
