@@ -4,8 +4,8 @@
       <h2>
         Welcome to the API directory
       </h2>
+      <p>The links below take you to various tools to manage your Plaid data</p>
       <em>Select an endpoint below</em>
-      <h3>Find Transactions</h3>
       <ul>
         <li><a href="/api/find" target="_blank" rel="noopener">Find</a></li>
         <li><a href="/api/test" target="_blank" rel="noopener">Test</a></li>

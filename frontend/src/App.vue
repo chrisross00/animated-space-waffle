@@ -1,5 +1,7 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
+  <a href="/api">
+    <img alt="Vue logo" src="./assets/logo.png">
+  </a>
   <div id="app">
     <router-view></router-view>
   </div>
