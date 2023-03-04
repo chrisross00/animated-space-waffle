@@ -4,7 +4,7 @@
     <div class="button-container">
       <button v-if="!showAll" @click="showAll = true">Show all transactions</button>
       <button v-if="showAll" @click="showAll = false">Show transactions by category</button>
-      <select v-model="selectedDate" @change="setDate">
+      <select v-model="selectedDate">
         <option v-for="month in months" :key="month" :value="month">{{ month }}</option>
       </select>
     </div>
@@ -119,7 +119,7 @@
       const currentDate = new Date();
       const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
       return {      
-        tableHeaders: ["date", "name", "mappedCategory", "amount"],
+        tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
         currentMonth: "",
         selectedDate, //: "February 2023", // How to make this default? do I need a date to display date converter?
         months: [], // array of month/year strings
@@ -159,10 +159,6 @@
       return this.currentMonth
     },
     methods: {
-      setDate() {
-        // this.selectedDate = date;
-        // console.log('selected: ', this.selectedDate)
-      },
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;

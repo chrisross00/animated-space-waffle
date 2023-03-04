@@ -156,21 +156,6 @@ router.get('/mapunmapped', async (req, res) => {
   }
 })
 
-// working
-  // router.get('/mapunmapped', async (req, res) => {
-  //   // console.log('API.js message: hit the /test endpoint')
-  //   try {
-  //     const mappedTransactions = await findUnmappedData('Plaid-Transactions');
-  //     const resObj = {
-  //       message: mappedTransactions
-  //     }
-  //     res.send(resObj)
-      
-  //   } catch (err) {
-  //     console.log(err)
-  //   }
-  // })
-
 // Endpoint to insert a transaction into the database
 router.post('/insert', async (req, res) => {
   try {

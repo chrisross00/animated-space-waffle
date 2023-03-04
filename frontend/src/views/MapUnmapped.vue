@@ -26,14 +26,3 @@
     }
   }
   </script>
-  
-  <!-- To set up a new page and /api, copy the below files for the Test implementation
-    
-  [x] Api.js -> router.method(‘/path)
-  [x] routes.js -> copy/paste/manipulate block and import
-  [x] ApiDir.vue -> add link
-  [x] Page.vue -> copy/paste dedupe.vue
-  
-  Change the /url for all
-  
-  -->
