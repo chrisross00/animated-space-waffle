@@ -79,9 +79,7 @@
     </q-drawer>
 
     <q-page-container  class="flex flex-center"> 
-        <q-page-container>
           <router-view></router-view>
-        </q-page-container>
     </q-page-container>
     
   </q-layout>
@@ -92,6 +90,11 @@
   display: flex;
   justify-content: space-between;
 }
+
+.page-padder {
+  padding: 0 1em;
+}
+
 </style>
 
 <script>

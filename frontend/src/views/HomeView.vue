@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="page-padder">
     <h2>{{ message }}</h2>
   </div>
 </template>

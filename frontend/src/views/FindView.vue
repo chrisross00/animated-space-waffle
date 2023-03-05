@@ -1,10 +1,12 @@
 <template>
   <div>
-    <h2>
-      Monthly Budgets
-    </h2>
+    <div class="page-padder p-3">
+      <h2>
+        Monthly Budgets
+      </h2>
+    </div>
     <!-- Button Container -->
-    <div class="button-container">
+    <div class="q-pa-md button-container">
       <q-btn v-if="!showAll" @click="showAll = true" label="Show all transactions" />
       <q-btn v-if="showAll" @click="showAll = false" label="Show transactions by category"  />
       <q-select outlined v-model="selectedDate" :options="months" label="Budgets" />
@@ -15,30 +17,40 @@
       <q-list bordered>
         <div v-show="!showAll" class="categories">
           <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category">
-            <q-item clickable v-ripple @click="toggleCategory(category)" category="category" elevated>
+            <q-item clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
               <q-item-section>
                 <q-item-label>{{category}}</q-item-label>
-                <q-item-label caption>{{ (category.length) ? category: "N/A" }}</q-item-label>
+                <q-item-label caption>{{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }} out of [[THRESHOLD]]</q-item-label>
               </q-item-section>
-              <q-item-section side top>
+              <q-item-section side>
                 {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }}
               </q-item-section>
+              <q-item-section side>
+                <q-icon 
+                  style="font-size: 16px;"
+                  name="edit"
+                  class="icon-hover"
+                  clickable
+                  @click.stop="handleIconClick(category)"
+                />
+              </q-item-section>
             </q-item>
-          <!-- show the nested rows -->
+            
+          <!-- When clicking the category row, show the nested rows grouped under each category -->
           <q-list>
             <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
               <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
               <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
                 <q-item clickable v-ripple>
                   <q-item-section avatar>
-                    <q-item-label caption lines="2">{{ item.date }}</q-item-label>
                   </q-item-section>
 
                   <q-item-section>
                     <q-item-label lines="1">{{item.name}}</q-item-label>
+                    <q-item-label caption lines="2">{{ item.date }}</q-item-label>
                   </q-item-section>
 
-                  <q-item-section side middle>
+                  <q-item-section side top>
                     {{ isNaN(item.amount) ? "N/A" : "$" + item.amount.toFixed(2) }}                    
                   </q-item-section>
 
@@ -48,8 +60,8 @@
             </q-list>
           </div>
         </div>
-    </q-list>
-  </div>
+      </q-list>
+    </div>
 
     <!-- If show all is true -->
     <div v-show="showAll" class="q-pa-md">
@@ -64,6 +76,14 @@
 </template>
 
 <style>
+.icon-hover:hover {
+  color: #424242;
+  font-size: 20px;
+}
+
+  .active {
+    background-color: #f0f0f0;
+  }
   .categories {
     /* display: flex; */
     flex-direction: column;
@@ -177,6 +197,7 @@
         groupedTransactions: {},
         groupedTransactionsVisible: {},
         showAll: false,
+        clickedCategories: [], // stores the clicked categories
       };
     },
     computed: {
@@ -209,9 +230,20 @@
       return this.currentMonth
     },
     methods: {
+      handleIconClick(category){
+        console.log('Stubbed out: handleIconClick() handler code starts here. Receieved category from click as:', category)
+      },
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;
+
+        if (this.clickedCategories.includes(category)) {
+          // remove category from clickedCategories if it's already clicked
+          this.clickedCategories = this.clickedCategories.filter((c) => c !== category);
+        } else {
+          // add category to clickedCategories if it's not already clicked
+          this.clickedCategories.push(category) 
+        }
       },
     },
     // request json Transaction data from the server
