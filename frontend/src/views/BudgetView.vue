@@ -252,7 +252,7 @@
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
         this.transactions = data;
-
+        // Use the transaction.mappedCategory to push to the groupedTransactions array
         this.transactions.forEach((transaction) => {
           const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {

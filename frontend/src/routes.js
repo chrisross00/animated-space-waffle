@@ -1,6 +1,6 @@
 import HomeView from './views/HomeView.vue'
 import ApiDr from './views/ApiDir.vue'
-import FindView from './views/FindView.vue'
+import BudgetView from './views/BudgetView.vue'
 import TestView from './views/TestView.vue'
 import DeDupeView from './views/DeDupeView.vue'
 import GetNew from './views/GetNew.vue'
@@ -20,8 +20,8 @@ const routes = [
   },
   {
     path: '/api/find',
-    name: 'FindView',
-    component: FindView
+    name: 'BudgetView',
+    component: BudgetView
   },
   {
     path: '/api/test',
