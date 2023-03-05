@@ -20,10 +20,17 @@
             <q-item clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
               <q-item-section>
                 <q-item-label>{{category}}</q-item-label>
-                <q-item-label caption>{{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }} out of [[THRESHOLD]]</q-item-label>
+                <q-item-label caption>
+                  {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(this.decimalPlaces) }} 
+                  {{ isNaN(monthlyLimitVal(category)) ? "" : " out of $" + monthlyLimitVal(category).toFixed(this.decimalPlaces) }}
+                </q-item-label>
               </q-item-section>
               <q-item-section side>
-                {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(2) }}
+                {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(0) + " spent") 
+                                                    : (budgetRemaining(category) > 0 ? "$" + budgetRemaining(category).toFixed(0) + " left" 
+                                                                                      : "$" + Math.abs(budgetRemaining(category).toFixed(0)) + " over" ) 
+                                                    }}
+                                                    <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
               </q-item-section>
               <q-item-section side>
                 <q-icon 
@@ -41,6 +48,7 @@
             <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
               <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
               <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
+
                 <q-item clickable v-ripple>
                   <q-item-section avatar>
                   </q-item-section>
@@ -187,6 +195,7 @@
       const currentDate = new Date();
       const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
       return {   
+        decimalPlaces: 0,
         columns,
         model: ref(null),
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
@@ -198,6 +207,7 @@
         groupedTransactionsVisible: {},
         showAll: false,
         clickedCategories: [], // stores the clicked categories
+        categorymonthlyLimits: []
       };
     },
     computed: {
@@ -212,7 +222,7 @@
           return filtered;
         };
       },
-      categorySum() {
+      categorySum() { // returns sums of txns for each group in budget table
         return (category) => {
           const filtered = this.filteredTransactions(
             this.groupedTransactions[category]
@@ -224,6 +234,31 @@
           return Number.isNaN(sum) ? NaN : sum;
         };
       },
+      monthlyLimitVal() { // gets the monthly limit for each category
+        return (category) => { 
+          const filtered = this.groupedTransactions[category];
+          let monthly_limit = 0;
+          filtered.filter(transaction => {
+            if(!transaction.monthly_limit) {
+              monthly_limit = NaN
+            }
+            if(transaction.monthly_limit && transaction.monthly_limit !== 0){
+              monthly_limit = transaction.monthly_limit
+            }
+          })
+          return Number.isNaN(monthly_limit) ? NaN : monthly_limit;
+        };
+      },
+      budgetRemaining(){ // does math between monthlyLimit and Category sum to get budget
+        return (category) =>{
+          let diff = 0
+          const monthlyLimit = this.monthlyLimitVal(category)
+          const categorySpend = this.categorySum(category)
+          diff = monthlyLimit - categorySpend
+          if (category == "Income") diff = Math.abs(diff)
+          return Number.isNaN(diff) ? NaN : diff
+        }
+      }
     },
     created() {      
       this.currentMonth = Date.now()
@@ -249,19 +284,36 @@
     // request json Transaction data from the server
     async mounted() {
       try {
+        // Get category monthlyLimit info
+        const categoryResponse = await fetch('/api/getcategories');
+        const categoryData = await categoryResponse.json();
+        this.categorymonthlyLimits.push(...categoryData) // push the monthlyLimit data to the categorymonthlyLimits array
+
+        // Get txn info
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
         this.transactions = data;
+
         // Use the transaction.mappedCategory to push to the groupedTransactions array
         this.transactions.forEach((transaction) => {
           const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {
-            this.groupedTransactions[category] = [];
-            this.groupedTransactionsVisible[category] = false;
+            this.groupedTransactions[category] = []; // category for this txn's array doesn't exist in grouped Transactions, so make one
+            this.groupedTransactionsVisible[category] = false; // set visibility to false, since we know it's empty
           }
           this.groupedTransactions[category].push(transaction);
         });
-
+        
+        // Get the monthly_limits from each category and match to the groupedTransactions
+        this.categorymonthlyLimits.forEach(category => {
+          if(this.groupedTransactions[category.category]){
+            this.groupedTransactions[category.category].push({"monthly_limit":category.monthly_limit})
+          }
+        });
+        
+        // console.log('done build this.categorymonthlyLimits', this.categorymonthlyLimits)
+        // console.log('done build this.groupedTransactions', this.groupedTransactions)
+        
         // Build a picker
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
@@ -305,7 +357,6 @@
           }
         }
         this.months = months.reverse();
-
         // end Build a picker (good lord get rid of this)
 
       } catch (error) {

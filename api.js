@@ -115,10 +115,12 @@ router.post('/dedupe', async (req,res) => {
 
 router.get('/getcategories', async (req, res)=>{
   try {
+    console.log('get categories hit and starting')
     const categories = await findData('categories');
     res.send(categories)
   } catch (err){
-    // console.log('API.js: error at /getcategories\n', err)
+    console.error(err);
+    res.status(500).send('Error getting categories');
   }
 })
 
