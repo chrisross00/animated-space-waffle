@@ -16,21 +16,32 @@
     <div class="q-pa-md" style="max-width: 900px">
       <q-list bordered>
         <div v-show="!showAll" class="categories">
-          <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category">
-            <q-item clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
+          <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
+
+            <!-- Make a category List Item -->
+            <q-item v-show="this.groupedTransactions[category].showOnBudgetPage" clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
               <q-item-section>
-                <q-item-label>{{category}}</q-item-label>
-                <q-item-label caption>
+
+                <div class="budget-container header">
+                  <q-item-label>{{category}}</q-item-label>
+                  <q-item-label class="budget-container total">
+                  {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(0) + " spent") 
+                                                      : (budgetRemaining(category) > 0 ? "$" + budgetRemaining(category).toFixed(0) + " left" 
+                                                                                        : "$" + Math.abs(budgetRemaining(category).toFixed(0)) + " over" ) 
+                                                      }}
+                                                      <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
+
+                  </q-item-label>
+                </div>
+                <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
+                  <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getProgressColor(category)" size="md"/> 
+                </div>
+
+                <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
                   {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(this.decimalPlaces) }} 
-                  {{ isNaN(monthlyLimitVal(category)) ? "" : " out of $" + monthlyLimitVal(category).toFixed(this.decimalPlaces) }}
+                  {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
+                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of $" + this.groupedTransactions[category].monthly_limit }}
                 </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(0) + " spent") 
-                                                    : (budgetRemaining(category) > 0 ? "$" + budgetRemaining(category).toFixed(0) + " left" 
-                                                                                      : "$" + Math.abs(budgetRemaining(category).toFixed(0)) + " over" ) 
-                                                    }}
-                                                    <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
               </q-item-section>
               <q-item-section side>
                 <q-icon 
@@ -43,7 +54,7 @@
               </q-item-section>
             </q-item>
             
-          <!-- When clicking the category row, show the nested rows grouped under each category -->
+          <!-- Make the nested rows grouped under each category List Item -->
           <q-list>
             <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
               <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
@@ -84,6 +95,23 @@
 </template>
 
 <style>
+
+.budget-container .progress .q-mt-sm {
+    margin-top: 0.3rem;
+    margin-bottom: 0.23rem;
+}
+
+.budget-container .header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.budget-container .total {
+  font-size: 14px;
+  margin-top: 0px !important;
+  color: rgba(0, 0, 0, 0.54);
+}
+
 .icon-hover:hover {
   color: #424242;
   font-size: 20px;
@@ -102,7 +130,6 @@
     border-radius: 10px; /* round the corners of the container */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* add a subtle drop shadow */
   }
-
 
   .category {
     max-height: 200px;
@@ -171,7 +198,6 @@
 </style>
 
 <script>
-  import {ref} from 'vue'
 
   const columns = [
   {
@@ -197,10 +223,9 @@
       return {   
         decimalPlaces: 0,
         columns,
-        model: ref(null),
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
         currentMonth: "",
-        selectedDate, //: "February 2023", // How to make this default? do I need a date to display date converter?
+        selectedDate, 
         months: [], // array of month/year strings
         transactions: [],
         groupedTransactions: {},
@@ -224,6 +249,7 @@
       },
       categorySum() { // returns sums of txns for each group in budget table
         return (category) => {
+          console.log('groupedTransactions (reminder) ', this.groupedTransactions[category].monthly_limit)
           const filtered = this.filteredTransactions(
             this.groupedTransactions[category]
           );
@@ -234,37 +260,47 @@
           return Number.isNaN(sum) ? NaN : sum;
         };
       },
-      monthlyLimitVal() { // gets the monthly limit for each category
-        return (category) => { 
-          const filtered = this.groupedTransactions[category];
-          let monthly_limit = 0;
-          filtered.filter(transaction => {
-            if(!transaction.monthly_limit) {
-              monthly_limit = NaN
-            }
-            if(transaction.monthly_limit && transaction.monthly_limit !== 0){
-              monthly_limit = transaction.monthly_limit
-            }
-          })
-          return Number.isNaN(monthly_limit) ? NaN : monthly_limit;
-        };
-      },
-      budgetRemaining(){ // does math between monthlyLimit and Category sum to get budget
-        return (category) =>{
-          let diff = 0
-          const monthlyLimit = this.monthlyLimitVal(category)
-          const categorySpend = this.categorySum(category)
-          diff = monthlyLimit - categorySpend
-          if (category == "Income") diff = Math.abs(diff)
-          return Number.isNaN(diff) ? NaN : diff
-        }
-      }
-    },
-    created() {      
-      this.currentMonth = Date.now()
-      return this.currentMonth
     },
     methods: {
+      getProgressColor(category) {
+        let budgetRemaining = this.groupedTransactions[category].budgetRemaining
+        let progressRatio = this.groupedTransactions[category].progressRatio
+
+        
+        return budgetRemaining >= 0 
+                ? (progressRatio >= 1 
+                    ? "positive" 
+                    : (progressRatio < 1 && progressRatio > 0.9 
+                        ? "warning" 
+                        : "secondary"))
+                : "negative"
+      },
+      getProgressRatio (category) {
+        console.log('getprogressRatio running')
+        let progressRatio;
+        const monthlyLimit = this.groupedTransactions[category].monthly_limit
+        const categorySpend = this.categorySum(category).valueOf()
+        if(!isNaN(monthlyLimit) && monthlyLimit != 0){
+          progressRatio = categorySpend / monthlyLimit
+        } else {
+          progressRatio = 0
+        }
+        this.groupedTransactions[category].progressRatio = progressRatio
+        return progressRatio// something category
+      },
+      budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
+        // console.log('budget Remaining running...')
+        let diff = 0
+        const monthlyLimit = this.groupedTransactions[category].monthly_limit
+        const categorySpend = this.categorySum(category).valueOf()
+        diff = monthlyLimit - categorySpend
+
+        // set up income for UI (negative)
+        if (category == "Income") diff = Math.abs(diff)
+        if (monthlyLimit == 0) diff = NaN//if the monthly_limit was already zero, then just mark it NaN so it gets labeled 'spent' in UI
+        this.groupedTransactions[category].budgetRemaining = diff
+        return Number.isNaN(diff) ? NaN : diff
+      },
       handleIconClick(category){
         console.log('Stubbed out: handleIconClick() handler code starts here. Receieved category from click as:', category)
       },
@@ -287,7 +323,7 @@
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
-        this.categorymonthlyLimits.push(...categoryData) // push the monthlyLimit data to the categorymonthlyLimits array
+        this.categorymonthlyLimits.push(...categoryData) //
 
         // Get txn info
         const response = await fetch("/api/find");
@@ -298,22 +334,26 @@
         this.transactions.forEach((transaction) => {
           const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {
-            this.groupedTransactions[category] = []; // category for this txn's array doesn't exist in grouped Transactions, so make one
-            this.groupedTransactionsVisible[category] = false; // set visibility to false, since we know it's empty
+            this.groupedTransactions[category] = []; 
+            this.groupedTransactionsVisible[category] = false; 
           }
           this.groupedTransactions[category].push(transaction);
         });
         
         // Get the monthly_limits from each category and match to the groupedTransactions
+        // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
         this.categorymonthlyLimits.forEach(category => {
+          console.log('category, ', category.monthly_limit)
           if(this.groupedTransactions[category.category]){
-            this.groupedTransactions[category.category].push({"monthly_limit":category.monthly_limit})
+
+        // ADD PROPS TO groupedTransactions
+        // This implementation allows you to set and get things like this.groupedTransactions[category].monthly_limit, rather than pushing props as arrays along with the txns (push({key:value}))
+        // Let's you treat groupedTransactions object as a cross section of category and transaction data
+            this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
+            this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
           }
         });
-        
-        // console.log('done build this.categorymonthlyLimits', this.categorymonthlyLimits)
-        // console.log('done build this.groupedTransactions', this.groupedTransactions)
-        
+
         // Build a picker
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
