@@ -13,13 +13,13 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, 'frontend/dist')))
 app.use("/api", router);
 
-const db = connectToDb().then(() => {
-    // console.log('Connected to MongoDB');
-  })
-  .catch(err => {
-    console.error('Failed to connect to MongoDB:', err);
-    process.exit(1);
-  });
+// const db = connectToDb().then(() => {
+//     // console.log('Connected to MongoDB');
+//   })
+//   .catch(err => {
+//     console.error('Failed to connect to MongoDB:', err);
+//     process.exit(1);
+//   });
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
