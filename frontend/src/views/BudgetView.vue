@@ -60,7 +60,7 @@
               <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
               <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
 
-                <q-item clickable v-ripple>
+                <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']">
                   <q-item-section avatar>
                   </q-item-section>
 
@@ -95,7 +95,11 @@
 </template>
 
 <style>
-
+.budget-container .pending {
+  font-style: italic;
+  color: rgba(0, 0, 0, 0.54);
+  
+}
 .budget-container .progress .q-mt-sm {
     margin-top: 0.3rem;
     margin-bottom: 0.23rem;
