@@ -3,7 +3,7 @@ async function getMappingRuleList (dbCategories=null) {
         let ruleList = []
         const categories = dbCategories;
         categories.forEach((e) => {
-            const parentCategory = {category: e.Category}
+            const parentCategory = {category: e.category}
             const rule = { 
                 ...parentCategory,
                 rules: e.rules,
