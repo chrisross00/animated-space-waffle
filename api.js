@@ -73,6 +73,10 @@ router.get('/getnew' , async (req, res) => {
   const ruleList = await getMappingRuleList(categories);
   const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
 
+  /** 
+    COMMENTING OUT SO THAT NEW TRANSACTIONS BUILD UP
+
+    // UPDATE TRANSACTIONS
   if (mappedTxns.length > 0) {
     insertData('Plaid-Transactions', mappedTxns)
   }
@@ -90,18 +94,15 @@ router.get('/getnew' , async (req, res) => {
     if(element.next_cursor && element.token && element.newTxns === true){ 
       updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
       
-      
-      // commenting out so that new transactions build up 
-      
-      
+    // UPDATE ACCOUNT WITH NEXT_CURSOR
       // updateData('Plaid-Accounts', filter, updateObject); 
 
-
-
-      
       // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
     }
   });
+
+  
+   */
   res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
