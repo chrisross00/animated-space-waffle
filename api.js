@@ -89,7 +89,16 @@ router.get('/getnew' , async (req, res) => {
     // if you're looking at `responses` and you have an account summary object, not a transaction, and it has new Txns
     if(element.next_cursor && element.token && element.newTxns === true){ 
       updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
-      updateData('Plaid-Accounts', filter, updateObject);
+      
+      
+      // commenting out so that new transactions build up 
+      
+      
+      // updateData('Plaid-Accounts', filter, updateObject); 
+
+
+
+      
       // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
     }
   });
