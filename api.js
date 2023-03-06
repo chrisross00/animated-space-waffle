@@ -115,7 +115,7 @@ router.post('/dedupe', async (req,res) => {
 
 router.get('/getcategories', async (req, res)=>{
   try {
-    console.log('get categories hit and starting')
+    // console.log('get categories hit and starting')
     const categories = await findData('categories');
     res.send(categories)
   } catch (err){

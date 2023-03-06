@@ -7,6 +7,7 @@ const { MongoClient } = require('mongodb');
 async function connectToDb() {
   const client = new MongoClient(process.env.DB_URI);
   await client.connect();
+  console.log('DB: setting up new database connection...')
   return client.db(process.env.DB_NAME);
 }
   
@@ -32,7 +33,7 @@ async function findData(collectionName) {
     return result;
   } catch (err) {
     console.error(err);
-  }
+  } 
 }
 
 async function findUnmappedData(collectionName) {
