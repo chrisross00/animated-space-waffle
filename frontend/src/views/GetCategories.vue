@@ -1,5 +1,7 @@
 <template>
+  <div class="page-padder p-3">
     <h2>Get Categories</h2>
+  </div>
     <div>
       <pre id="json">{{ message }}</pre>
     </div>

@@ -1,5 +1,6 @@
 // This was effectively the API / router for backend stuff
 const express = require("express");
+const bodyParser = require('body-parser')
 const router = express.Router();
 const { findData , insertData, deduplicateData, updateData, findUnmappedData } = require('./db/database');
 const { plaidTransactionsSync, getAccountData } = require('./utils/plaidTools');
@@ -9,6 +10,7 @@ const path = require('path');
 const cors = require('cors');
 
 router.use(cors());
+router.use(bodyParser.json());
 
 router.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'))
@@ -137,7 +139,23 @@ router.get('/getcategories', async (req, res)=>{
 router.get('/test', function (req, res, next) {
   // console.log('API.js message: hit the /test endpoint')
   const resObj = {
-    message: 'hello from api.js /test endpoint... this is a message from the server'
+    message: 'hello from api.js GET /test endpoint... this is a message from the server'
+  }
+  res.send(resObj)
+})
+
+router.post('/testCategoryUpdate', function(req, res){
+  const categoryNameBEResponse = req.body.categoryName;
+  const monthlyLimitBEResponse = req.body.monthly_limit;
+  const showOnBudgetPageBEResponse = req.body.showOnBudgetPage;
+  let d = {
+    categoryNameBEResponse,
+    monthlyLimitBEResponse,
+    showOnBudgetPageBEResponse,
+  }
+  const resObj = {
+    message: 'Hello from api.js POST /testCategoryUpdate endpoint... your data has now come full circle:',
+    ...d
   }
   res.send(resObj)
 })
