@@ -5,6 +5,7 @@
         Monthly Budgets
       </h2>
     </div>
+
     <!-- Button Container -->
     <div class="q-pa-md button-container">
       <q-btn v-if="!showAll" @click="showAll = true" label="Show all transactions" />
@@ -43,14 +44,90 @@
                       this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of $" + this.groupedTransactions[category].monthly_limit }}
                 </q-item-label>
               </q-item-section>
+
+              <!-- Edit Pencil Icon -->
               <q-item-section side>
                 <q-icon 
-                  style="font-size: 16px;"
-                  name="edit"
-                  class="icon-hover"
-                  clickable
-                  @click.stop="handleIconClick(category)"
-                />
+                style="font-size: 16px;"
+                name="edit"
+                class="icon-hover"
+                clickable
+                @click.stop="buildEditCategoryDialog(category)">
+                
+              <!-- Start Making Dialog Box -->
+
+                      <!-- Dialog: Edit Category  -->
+                  <q-dialog
+                    class="dialog"
+                    v-model="clicker"
+                    :maximized="maximizedToggle"
+                    transition-show="slide-up"
+                    transition-hide="slide-down">
+
+                      <!-- Dialog: Top Bar -->
+                    <q-card class="bg-white">
+                      <q-bar class="bg-primary titlebar">
+                        <q-space />
+                        <q-btn dense flat icon="minimize" @click="maximizedToggle = false" :disable="!maximizedToggle">
+                          <q-tooltip v-if="maximizedToggle" class="bg-white text-primary">Minimize</q-tooltip>
+                        </q-btn>
+                        <q-btn dense flat icon="crop_square" @click="maximizedToggle = true" :disable="maximizedToggle">
+                          <q-tooltip v-if="!maximizedToggle" class="bg-white text-primary">Maximize</q-tooltip>
+                        </q-btn>
+                        <q-btn dense flat icon="close" v-close-popup>
+                          <q-tooltip class="bg-white text-primary">Close</q-tooltip>
+                        </q-btn>
+                      </q-bar>
+
+                      <!-- Dialog: Body Form -->
+                      <div class="dialog-body-form">
+                        <q-card-section>
+                          <div class="text-h2">{{this.dialogHeader}}</div>
+                        </q-card-section>
+
+                        <!-- Q-Form -->
+                        <q-form
+                          @submit="onSubmit"
+                          @reset="onFormReset"
+                          class="q-gutter-md"
+                        >
+                          <q-input
+                            filled
+                            v-model="this.dialogBody.categoryName"
+                            label="Category Name"
+                            hint="The display name for the category"
+                            lazy-rules
+                            :rules="[ val => val && val.length > 0 || 'Please type something']"
+                          />
+
+                          <q-input
+                            filled
+                            type="number"
+                            v-model="this.dialogBody.monthly_limit"
+                            label="Monthly Limit"
+                            hint="Upper limit for the category"
+                            lazy-rules
+                            :rules="[
+                              val => val !== null && val !== '' || 'Please enter a monthly limit',
+                            ]"
+                          />
+
+                          <q-toggle color="primary" label="Show on View Budgets screen" v-model="this.dialogBody.showOnBudgetPage" />
+
+                          <div class="button-container">
+                            <div>
+                              <q-btn label="Submit" type="submit" color="primary"/>
+                              <q-btn label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+                            </div>
+                            <div>
+                              <q-btn label="Cancel" v-close-popup  color="accent"/>
+                            </div>
+                          </div>
+                        </q-form>
+                      </div>
+                    </q-card>
+                  </q-dialog>
+                </q-icon>
               </q-item-section>
             </q-item>
             
@@ -116,10 +193,32 @@
   color: rgba(0, 0, 0, 0.54);
 }
 
+.budget-container .dialog {
+  color: red;
+}
+
+.dialog-body-form {
+  margin: 16px;
+}
+
+.q-dialog__content {
+  background-color: #f1f1f1 !important; /* replace with your desired color */
+}
+
+.dialog .titlebar {
+  box-shadow: 0 1px 5px rgb(0 0 0 / 20%), 0 2px 2px rgb(0 0 0 / 14%), 0 3px 1px -2px rgb(0 0 0 / 12%);
+}
+
+.dialog .button-container {
+  display:flex;
+  justify-content: space-between;
+}
+
 .icon-hover:hover {
   color: #424242;
   font-size: 20px;
 }
+
 
   .active {
     background-color: #f0f0f0;
@@ -202,7 +301,7 @@
 </style>
 
 <script>
-
+import {ref} from 'vue'
   const columns = [
   {
     name: 'date',
@@ -225,6 +324,8 @@
       const currentDate = new Date();
       const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
       return {   
+        clicker: ref(false),
+        maximizedToggle: ref(true),
         decimalPlaces: 0,
         columns,
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
@@ -236,7 +337,9 @@
         groupedTransactionsVisible: {},
         showAll: false,
         clickedCategories: [], // stores the clicked categories
-        categorymonthlyLimits: []
+        categoryMonthlyLimits: [],
+        dialogHeader:'',
+        dialogBody:{},
       };
     },
     computed: {
@@ -253,7 +356,7 @@
       },
       categorySum() { // returns sums of txns for each group in budget table
         return (category) => {
-          console.log('groupedTransactions (reminder) ', this.groupedTransactions[category].monthly_limit)
+          // console.log('groupedTransactions (reminder) ', this.groupedTransactions[category].monthly_limit)
           const filtered = this.filteredTransactions(
             this.groupedTransactions[category]
           );
@@ -266,31 +369,22 @@
       },
     },
     methods: {
-      getProgressColor(category) {
-        let budgetRemaining = this.groupedTransactions[category].budgetRemaining
-        let progressRatio = this.groupedTransactions[category].progressRatio
+      buildEditCategoryDialog(category){
+        let clickedCategory = category
+        this.clicker = !this.clicker;
 
-        
-        return budgetRemaining >= 0 
-                ? (progressRatio >= 1 
-                    ? "positive" 
-                    : (progressRatio < 1 && progressRatio > 0.9 
-                        ? "warning" 
-                        : "secondary"))
-                : "negative"
-      },
-      getProgressRatio (category) {
-        console.log('getprogressRatio running')
-        let progressRatio;
-        const monthlyLimit = this.groupedTransactions[category].monthly_limit
-        const categorySpend = this.categorySum(category).valueOf()
-        if(!isNaN(monthlyLimit) && monthlyLimit != 0){
-          progressRatio = categorySpend / monthlyLimit
-        } else {
-          progressRatio = 0
-        }
-        this.groupedTransactions[category].progressRatio = progressRatio
-        return progressRatio// something category
+        this.categoryMonthlyLimits.filter(categoryProps => {
+          if( categoryProps.category == clickedCategory) {
+            this.dialogBody.categoryDetails = categoryProps 
+            this.dialogBody.monthly_limit = categoryProps.monthly_limit
+            this.dialogBody.categoryName = categoryProps.category
+            this.dialogBody.showOnBudgetPage = categoryProps.showOnBudgetPage
+          } // categoryProps is the full category body in categoryMonthlyLimits
+        })
+
+    // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
+        this.dialogHeader = clickedCategory
+        return this.clicker;
       },
       budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
         // console.log('budget Remaining running...')
@@ -305,9 +399,64 @@
         this.groupedTransactions[category].budgetRemaining = diff
         return Number.isNaN(diff) ? NaN : diff
       },
-      handleIconClick(category){
-        console.log('Stubbed out: handleIconClick() handler code starts here. Receieved category from click as:', category)
+      getProgressColor(category) {
+        let budgetRemaining = this.groupedTransactions[category].budgetRemaining
+        let progressRatio = this.groupedTransactions[category].progressRatio
+
+        
+        return budgetRemaining >= 0 
+                ? (progressRatio >= 1 
+                    ? "positive" 
+                    : (progressRatio < 1 && progressRatio > 0.9 
+                        ? "warning" 
+                        : "secondary"))
+                : "negative"
       },
+      getProgressRatio (category) {
+        // console.log('getprogressRatio running')
+        let progressRatio;
+        const monthlyLimit = this.groupedTransactions[category].monthly_limit
+        const categorySpend = this.categorySum(category).valueOf()
+        if(!isNaN(monthlyLimit) && monthlyLimit != 0){
+          progressRatio = categorySpend / monthlyLimit
+        } else {
+          progressRatio = 0
+        }
+        this.groupedTransactions[category].progressRatio = progressRatio
+        return progressRatio// something category
+      },
+      onFormReset (){
+        this.dialogBody.categoryName = this.dialogBody.categoryDetails.category
+        this.dialogBody.monthly_limit = this.dialogBody.categoryDetails.monthly_limit
+        this.dialogBody.showOnBudgetPage = this.dialogBody.categoryDetails.showOnBudgetPage
+      },
+      onSubmit() { // Stubbed out for now: how do we get the form data in here?
+        console.log(this.dialogBody.categoryName)
+        console.log(this.dialogBody.monthly_limit)
+        console.log(this.dialogBody.showOnBudgetPage)
+
+        let d = {
+          'categoryName': this.dialogBody.categoryName,
+          'monthly_limit': this.dialogBody.monthly_limit,
+          'showOnBudgetPage': this.dialogBody.showOnBudgetPage,
+        }
+
+        fetch("/api/testCategoryUpdate", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(d)
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log(data)
+        })
+        .then(this.clicker = !this.clicker)
+        .catch(error => {
+          console.log('Error:', error)
+        })
+      }, 
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;
@@ -327,8 +476,8 @@
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
-        this.categorymonthlyLimits.push(...categoryData) //
-
+        this.categoryMonthlyLimits.push(...categoryData) //
+        // console.log(JSON.stringify(this.categoryMonthlyLimits), '\n', 'monthly limits')
         // Get txn info
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
@@ -346,8 +495,8 @@
         
         // Get the monthly_limits from each category and match to the groupedTransactions
         // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
-        this.categorymonthlyLimits.forEach(category => {
-          console.log('category, ', category.monthly_limit)
+        this.categoryMonthlyLimits.forEach(category => {
+          // console.log('category, ', category.monthly_limit)
           if(this.groupedTransactions[category.category]){
 
         // ADD PROPS TO groupedTransactions
