@@ -201,6 +201,10 @@
   margin: 16px;
 }
 
+/* .q-dialog__backdrop {
+  background: none;
+} */
+
 .q-dialog__content {
   background-color: #f1f1f1 !important; /* replace with your desired color */
 }
@@ -302,6 +306,8 @@
 
 <script>
 import {ref} from 'vue'
+import moment from 'moment'
+moment().format();
   const columns = [
   {
     name: 'date',
@@ -321,8 +327,8 @@ import {ref} from 'vue'
     components: {
     },
     data() {
-      const currentDate = new Date();
-      const selectedDate = `${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`;
+      const currentDate = moment();
+      const selectedDate = `${moment(currentDate).format('MMMM')} ${currentDate.year()}`;
       return {   
         clicker: ref(false),
         maximizedToggle: ref(true),
@@ -331,6 +337,7 @@ import {ref} from 'vue'
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
         currentMonth: "",
         selectedDate, 
+        currentDate,
         months: [], // array of month/year strings
         transactions: [],
         groupedTransactions: {},
@@ -343,14 +350,15 @@ import {ref} from 'vue'
       };
     },
     computed: {
-      filteredTransactions() {
-        return (groupedTransactions) => {
-          const selectedDate = new Date(this.selectedDate);
+      filteredTransactions: function() {
+        return function (groupedTransactions) {
+          let selectedDate = moment(this.selectedDate, "MMMM YYYY")
+
           const filtered = groupedTransactions.filter(
             (transaction) =>
-              new Date(transaction.date).getFullYear() === selectedDate.getFullYear() &&
-              new Date(transaction.date).getMonth() === selectedDate.getMonth()
-          );
+            moment(transaction.date).year() === selectedDate.year() &&
+            moment(transaction.date).month() === selectedDate.month()
+            );
           return filtered;
         };
       },
@@ -386,6 +394,19 @@ import {ref} from 'vue'
         this.dialogHeader = clickedCategory
         return this.clicker;
       },
+      buildDateList(transactions) {
+          const dates = transactions.map(t => moment(t.date));
+          const minDate = moment.min(dates);
+          const maxDate = moment.max(dates);
+          const dateList = [];
+
+          let currentDate = moment(minDate).startOf('month');
+          while (currentDate.isSameOrBefore(maxDate)) {
+            dateList.push(currentDate.format('MMMM YYYY'));
+            currentDate.add(1, 'month').startOf('month');
+          }
+          return dateList;
+        },
       budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
         // console.log('budget Remaining running...')
         let diff = 0
@@ -506,52 +527,8 @@ import {ref} from 'vue'
             this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
           }
         });
-
-        // Build a picker
-        const currentDate = new Date();
-        const currentMonth = currentDate.getMonth();
-        const currentYear = currentDate.getFullYear();
-        const monthNames = [
-          "January",
-          "February",
-          "March",
-          "April",
-          "May",
-          "June",
-          "July",
-          "August",
-          "September",
-          "October",
-          "November",
-          "December"
-        ];
-        // Get the min/max date range from the transaction data
-        const dateRange = this.transactions.reduce(
-          (range, transaction) => {
-            const date = new Date(transaction.date);
-            if (!range.minDate || date < range.minDate) {
-              range.minDate = date;
-            }
-            if (!range.maxDate || date > range.maxDate) {
-              range.maxDate = date;
-            }
-            return range;
-          },
-          { minDate: null, maxDate: null }
-        );
-
-        const months = [];
-        for (let year = dateRange.minDate.getFullYear(); year <= currentYear; year++) {
-          const startMonth = year === dateRange.minDate.getFullYear() ? dateRange.minDate.getMonth() : 0;
-          const endMonth = year === currentYear ? currentMonth : 11;
-          for (let month = startMonth; month <= endMonth; month++) {
-            const monthString = `${monthNames[month]} ${year}`;
-            months.push(monthString);
-          }
-        }
-        this.months = months.reverse();
-        // end Build a picker (good lord get rid of this)
-
+        this.months = this.buildDateList(this.transactions).reverse()
+        
       } catch (error) {
         // console.log(error);
       }
