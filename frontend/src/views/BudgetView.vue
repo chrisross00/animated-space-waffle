@@ -8,8 +8,8 @@
 
     <!-- Button Container -->
     <div class="q-pa-md button-container">
-      <q-btn v-if="!showAll" @click="showAll = true" label="Show all transactions" />
-      <q-btn v-if="showAll" @click="showAll = false" label="Show transactions by category"  />
+      <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
+      <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
       <q-select outlined v-model="selectedDate" :options="months" label="Budgets" />
     </div>
 
