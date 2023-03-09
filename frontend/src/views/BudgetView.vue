@@ -10,7 +10,7 @@
     <div class="q-pa-md button-container">
       <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
       <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
-      <q-select outlined v-model="selectedDate" :options="months" label="Budgets" />
+      <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
     </div>
 
     <!-- If show all is false -->    
@@ -24,7 +24,7 @@
               <q-item-section>
 
                 <div class="budget-container header">
-                  <q-item-label>{{category}}</q-item-label>
+                  <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
                   <q-item-label class="budget-container total">
                   {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(0) + " spent") 
                                                       : (budgetRemaining(category) > 0 ? "$" + budgetRemaining(category).toFixed(0) + " left" 
@@ -306,232 +306,297 @@
 
 <script>
 import {ref} from 'vue'
-import moment from 'moment'
-moment().format();
-  const columns = [
-  {
-    name: 'date',
-    required: true,
-    label: 'Date',
-    align: 'left',
-    field: row => row.date,
-    format: val => `${val}`,
-    sortable: true //"date", "name", "mappedCategory", "amount", "pending"
-  },
-  { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
-  { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
-  { name: 'amount', label: 'Amount', field: 'amount'  ,format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true},
-  { name: 'pending', label: 'Pending', field: 'pending' },
+import dayjs from 'dayjs'
+import minMax from 'dayjs/plugin/minMax';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+
+dayjs().format()
+dayjs.extend(minMax);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(customParseFormat);
+
+const columns = [
+{
+  name: 'date',
+  required: true,
+  label: 'Date',
+  align: 'left',
+  field: row => row.date,
+  format: val => `${val}`,
+  sortable: true //"date", "name", "mappedCategory", "amount", "pending"
+},
+{ name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
+{ name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
+{ name: 'amount', label: 'Amount', field: 'amount'  ,format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true},
+{ name: 'pending', label: 'Pending', field: 'pending' },
 ]
-  export default {
-    components: {
-    },
-    data() {
-      const currentDate = moment();
-      const selectedDate = `${moment(currentDate).format('MMMM')} ${currentDate.year()}`;
-      return {   
-        clicker: ref(false),
-        maximizedToggle: ref(true),
-        decimalPlaces: 0,
-        columns,
-        tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
-        currentMonth: "",
-        selectedDate, 
-        currentDate,
-        months: [], // array of month/year strings
-        transactions: [],
-        groupedTransactions: {},
-        groupedTransactionsVisible: {},
-        showAll: false,
-        clickedCategories: [], // stores the clicked categories
-        categoryMonthlyLimits: [],
-        dialogHeader:'',
-        dialogBody:{},
+export default {
+  components: {
+  },
+  data() {
+    const currentDate = dayjs();
+    const selectedDate = {
+      display: dayjs(currentDate).format('MMMM YYYY'),
+      actual: dayjs(currentDate)
+    }
+    return {   
+      selectedDate, 
+      currentDate,
+      clicker: ref(false),
+      maximizedToggle: ref(true),
+      decimalPlaces: 0,
+      columns,
+      tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
+      currentMonth: "",
+      months: [], // array of month/year strings
+      transactions: [],
+      groupedTransactions: {},
+      groupedTransactionsVisible: {},
+      showAll: false,
+      clickedCategories: [], // stores the clicked categories
+      categoryMonthlyLimits: [],
+      dialogHeader:'',
+      dialogBody:{},
+      updatedCategoryName:'',
+      updatedCategoryLimit:0,
+      updatedShowOnBudgetPage: ref(true),
+      updatedCategory:{}
+    };
+  },
+  computed: {
+    filteredTransactions: function() {
+      let selectedDate = this.selectedDate.actual;
+      return function (groupedTransactions) {
+        // console.log('this.selectedDate',selectedDate.year())
+        const filtered = groupedTransactions.filter(
+          (transaction) =>
+          dayjs(transaction.date).year() === selectedDate.year() &&
+          dayjs(transaction.date).month() === selectedDate.month()
+          );
+        // console.log('filteredTransactions', filtered)
+        return filtered; 
       };
     },
-    computed: {
-      filteredTransactions: function() {
-        return function (groupedTransactions) {
-          let selectedDate = moment(this.selectedDate, "MMMM YYYY")
-
-          const filtered = groupedTransactions.filter(
-            (transaction) =>
-            moment(transaction.date).year() === selectedDate.year() &&
-            moment(transaction.date).month() === selectedDate.month()
-            );
-          return filtered;
-        };
-      },
-      categorySum() { // returns sums of txns for each group in budget table
-        return (category) => {
-          // console.log('groupedTransactions (reminder) ', this.groupedTransactions[category].monthly_limit)
-          const filtered = this.filteredTransactions(
-            this.groupedTransactions[category]
-          );
-          let sum = 0;
-          for (const transaction of filtered) {
-            sum += parseFloat(transaction.amount);
-          }
-          return Number.isNaN(sum) ? NaN : sum;
-        };
-      },
+    categorySum() { // returns sums of txns for each group in budget table
+      return (category) => {
+        // console.log('groupedTransactions (reminder) ', this.groupedTransactions[category].monthly_limit)
+        const filtered = this.filteredTransactions(
+          this.groupedTransactions[category]
+        );
+        let sum = 0;
+        for (const transaction of filtered) {
+          sum += parseFloat(transaction.amount);
+        }
+        return Number.isNaN(sum) ? NaN : sum;
+      };
     },
-    methods: {
-      buildEditCategoryDialog(category){
-        let clickedCategory = category
-        this.clicker = !this.clicker;
+  },
+  methods: {
+    buildEditCategoryDialog(category){ // This is called when you click the edit icon and open the dialog
+      let clickedCategory = category
+      this.clicker = !this.clicker;
 
-        this.categoryMonthlyLimits.filter(categoryProps => {
-          if( categoryProps.category == clickedCategory) {
-            this.dialogBody.categoryDetails = categoryProps 
-            this.dialogBody.monthly_limit = categoryProps.monthly_limit
-            this.dialogBody.categoryName = categoryProps.category
-            this.dialogBody.showOnBudgetPage = categoryProps.showOnBudgetPage
-          } // categoryProps is the full category body in categoryMonthlyLimits
-        })
+      this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit
+      this.dialogBody.categoryName = this.groupedTransactions[category].categoryName
+      this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage
 
-    // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
-        this.dialogHeader = clickedCategory
-        return this.clicker;
-      },
-      buildDateList(transactions) {
-          const dates = transactions.map(t => moment(t.date));
-          const minDate = moment.min(dates);
-          const maxDate = moment.max(dates);
-          const dateList = [];
+      // Set up the client-side tracking for what to display at the category level
 
-          let currentDate = moment(minDate).startOf('month');
-          while (currentDate.isSameOrBefore(maxDate)) {
-            dateList.push(currentDate.format('MMMM YYYY'));
-            currentDate.add(1, 'month').startOf('month');
-          }
-          return dateList;
-        },
-      budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
-        // console.log('budget Remaining running...')
-        let diff = 0
-        const monthlyLimit = this.groupedTransactions[category].monthly_limit
-        const categorySpend = this.categorySum(category).valueOf()
-        diff = monthlyLimit - categorySpend
+      let isOriginalCategoryNameSet = false;
+      this.dialogBody.currentCategoryDetails = {
+        monthly_limit: this.dialogBody.monthly_limit,
+        categoryName: this.dialogBody.categoryName,
+        showOnBudgetPage: this.dialogBody.showOnBudgetPage,
+        originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentCategoryDetails.originalCategoryName : this.groupedTransactions[category].originalName
+      }
+      isOriginalCategoryNameSet = true;
+      if (!this.dialogBody.currentCategoryDetails.originalCategoryName){
+        console.log('if statement')
+        this.dialogBody.currentCategoryDetails.originalCategoryName = this.groupedTransactions[category].categoryName
+      } 
+      console.log('this.dialogBody.currentCategoryDetails.originalCategoryName', this.dialogBody.currentCategoryDetails.originalCategoryName)
 
-        // set up income for UI (negative)
-        if (category == "Income") diff = Math.abs(diff)
-        if (monthlyLimit == 0) diff = NaN//if the monthly_limit was already zero, then just mark it NaN so it gets labeled 'spent' in UI
-        this.groupedTransactions[category].budgetRemaining = diff
-        return Number.isNaN(diff) ? NaN : diff
-      },
-      getProgressColor(category) {
-        let budgetRemaining = this.groupedTransactions[category].budgetRemaining
-        let progressRatio = this.groupedTransactions[category].progressRatio
-
-        
-        return budgetRemaining >= 0 
-                ? (progressRatio >= 1 
-                    ? "positive" 
-                    : (progressRatio < 1 && progressRatio > 0.9 
-                        ? "warning" 
-                        : "secondary"))
-                : "negative"
-      },
-      getProgressRatio (category) {
-        // console.log('getprogressRatio running')
-        let progressRatio;
-        const monthlyLimit = this.groupedTransactions[category].monthly_limit
-        const categorySpend = this.categorySum(category).valueOf()
-        if(!isNaN(monthlyLimit) && monthlyLimit != 0){
-          progressRatio = categorySpend / monthlyLimit
-        } else {
-          progressRatio = 0
-        }
-        this.groupedTransactions[category].progressRatio = progressRatio
-        return progressRatio// something category
-      },
-      onFormReset (){
-        this.dialogBody.categoryName = this.dialogBody.categoryDetails.category
-        this.dialogBody.monthly_limit = this.dialogBody.categoryDetails.monthly_limit
-        this.dialogBody.showOnBudgetPage = this.dialogBody.categoryDetails.showOnBudgetPage
-      },
-      onSubmit() { // Stubbed out for now: how do we get the form data in here?
-        console.log(this.dialogBody.categoryName)
-        console.log(this.dialogBody.monthly_limit)
-        console.log(this.dialogBody.showOnBudgetPage)
-
-        let d = {
-          'categoryName': this.dialogBody.categoryName,
-          'monthly_limit': this.dialogBody.monthly_limit,
-          'showOnBudgetPage': this.dialogBody.showOnBudgetPage,
-        }
-
-        fetch("/api/testCategoryUpdate", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(d)
-        })
-        .then(response => response.json())
-        .then(data => {
-          console.log(data)
-        })
-        .then(this.clicker = !this.clicker)
-        .catch(error => {
-          console.log('Error:', error)
-        })
-      }, 
-      toggleCategory(category) {
-        this.groupedTransactionsVisible[category] =
-          !this.groupedTransactionsVisible[category] || false;
-
-        if (this.clickedCategories.includes(category)) {
-          // remove category from clickedCategories if it's already clicked
-          this.clickedCategories = this.clickedCategories.filter((c) => c !== category);
-        } else {
-          // add category to clickedCategories if it's not already clicked
-          this.clickedCategories.push(category) 
-        }
-      },
+  // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
+      this.dialogHeader = clickedCategory
+      return this.clicker;
     },
-    // request json Transaction data from the server
-    async mounted() {
+    buildDateList(transactions) {
       try {
-        // Get category monthlyLimit info
-        const categoryResponse = await fetch('/api/getcategories');
-        const categoryData = await categoryResponse.json();
-        this.categoryMonthlyLimits.push(...categoryData) //
-        // console.log(JSON.stringify(this.categoryMonthlyLimits), '\n', 'monthly limits')
-        // Get txn info
-        const response = await fetch("/api/find");
-        const data = await response.json(); // extract JSON data from response
-        this.transactions = data;
-
-        // Use the transaction.mappedCategory to push to the groupedTransactions array
-        this.transactions.forEach((transaction) => {
-          const category = transaction.mappedCategory;
-          if (!this.groupedTransactions[category]) {
-            this.groupedTransactions[category] = []; 
-            this.groupedTransactionsVisible[category] = false; 
-          }
-          this.groupedTransactions[category].push(transaction);
-        });
+        console.log('buildDateList starting')
+        const dates = transactions.map(transaction => dayjs(transaction.date));
+        const minDate = dayjs.min(dates).$d
+        const maxDate = dayjs.max(dates).$d
+        const dateList = [];
         
-        // Get the monthly_limits from each category and match to the groupedTransactions
-        // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
-        this.categoryMonthlyLimits.forEach(category => {
-          // console.log('category, ', category.monthly_limit)
-          if(this.groupedTransactions[category.category]){
-
-        // ADD PROPS TO groupedTransactions
-        // This implementation allows you to set and get things like this.groupedTransactions[category].monthly_limit, rather than pushing props as arrays along with the txns (push({key:value}))
-        // Let's you treat groupedTransactions object as a cross section of category and transaction data
-            this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
-            this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
-          }
-        });
-        this.months = this.buildDateList(this.transactions).reverse()
+        let currentDate = dayjs(minDate).startOf('month');
         
-      } catch (error) {
-        // console.log(error);
+        while (currentDate.isSameOrBefore(maxDate)) {
+          dateList.push(currentDate.format('MMMM YYYY'));
+          currentDate = currentDate.add(1, 'month').startOf('month');
+          // console.log('currentDate =', currentDate)
+        }
+        // console.log('dateList=', dateList)
+        return dateList;
+      } catch (err) {
+          console.log("error trying to buildDateList...", err)
       }
     },
-  };
+    budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
+      // console.log('budget Remaining running...')
+      let diff = 0
+      const monthlyLimit = this.groupedTransactions[category].monthly_limit
+      const categorySpend = this.categorySum(category).valueOf()
+      diff = monthlyLimit - categorySpend
+
+      // set up income for UI (negative)
+      if (category == "Income") diff = Math.abs(diff)
+      if (monthlyLimit == 0) diff = NaN//if the monthly_limit was already zero, then just mark it NaN so it gets labeled 'spent' in UI
+      this.groupedTransactions[category].budgetRemaining = diff
+      return Number.isNaN(diff) ? NaN : diff
+    },
+    getProgressColor(category) {
+      let budgetRemaining = this.groupedTransactions[category].budgetRemaining
+      let progressRatio = this.groupedTransactions[category].progressRatio
+
+      
+      return budgetRemaining >= 0 
+              ? (progressRatio >= 1 
+                  ? "positive" 
+                  : (progressRatio < 1 && progressRatio > 0.9 
+                      ? "warning" 
+                      : "secondary"))
+              : "negative"
+    },
+    getProgressRatio (category) {
+      // console.log('getprogressRatio running')
+      let progressRatio;
+      const monthlyLimit = this.groupedTransactions[category].monthly_limit
+      const categorySpend = this.categorySum(category).valueOf()
+      if(!isNaN(monthlyLimit) && monthlyLimit != 0){
+        progressRatio = categorySpend / monthlyLimit
+      } else {
+        progressRatio = 0
+      }
+      this.groupedTransactions[category].progressRatio = progressRatio
+      return progressRatio// something category
+    },
+    onFormReset (){
+      this.dialogBody.categoryName = this.dialogBody.currentCategoryDetails.categoryName
+      this.dialogBody.monthly_limit = this.dialogBody.currentCategoryDetails.monthly_limit
+      this.dialogBody.showOnBudgetPage = this.dialogBody.currentCategoryDetails.showOnBudgetPage
+    },
+    onSubmit() { // Stubbed out for now: how do we get the form data in here?
+      console.log(this.dialogBody.categoryName)
+      console.log(this.dialogBody.monthly_limit)
+      console.log(this.dialogBody.showOnBudgetPage)
+      console.log(this.dialogBody.currentCategoryDetails.originalCategoryName)
+
+      let d = {
+        'categoryName': this.dialogBody.categoryName,
+        'monthly_limit': this.dialogBody.monthly_limit,
+        'showOnBudgetPage': this.dialogBody.showOnBudgetPage,
+        'originalCategoryName': this.dialogBody.currentCategoryDetails.originalCategoryName ? this.dialogBody.currentCategoryDetails.originalCategoryName : ''
+      }
+
+      // TODO: Need to add logic to check the difference before sending post request
+
+      fetch("/api/testCategoryUpdate", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(d)
+      })
+      .then(response => response.json())
+      .then(data => {
+        // TODO: Need to add logic to check the response - should only update client props if success
+        // for now, they'll revert when you refresh
+
+        this.updatedCategory = {...data}
+        console.log(data)
+      })
+      .then(this.clicker = !this.clicker)
+      .catch(error => {
+        console.log('Error:', error)
+      })
+    }, 
+    toggleCategory(category) {
+      this.groupedTransactionsVisible[category] =
+        !this.groupedTransactionsVisible[category] || false;
+
+      if (this.clickedCategories.includes(category)) {
+        // remove category from clickedCategories if it's already clicked
+        this.clickedCategories = this.clickedCategories.filter((c) => c !== category);
+      } else {
+        // add category to clickedCategories if it's not already clicked
+        this.clickedCategories.push(category) 
+      }
+    },
+  },
+  watch: {
+    'selectedDate.display': function(newVal){//, oldVal) {
+      this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
+    },
+    
+    // category watchers
+    // What if all of this is in one object
+    'updatedCategory': function(t) {
+      console.log('updatedCategory, this.updatedCategory=',this.updatedCategory)
+      console.log('updatedCategory, t=',t)
+      this.groupedTransactions[t.originalCategoryName].categoryName = t.categoryNameBEResponse
+      this.groupedTransactions[t.originalCategoryName].monthly_limit = t.monthlyLimitBEResponse
+      this.groupedTransactions[t.originalCategoryName].showOnBudgetPage = t.showOnBudgetPageBEResponse
+    },
+    // don't want to do this for now... because then how do you show it again, blah blah blah
+    // 'updatedShowOnBudgetPage': function(t) {
+    //   console.log('updatedShowOnBudgetPage watcher', t)
+    //   // this.groupedTransactions[t].showOnBudgetPage = t
+    // },
+  },
+  // request json Transaction data from the server
+  async mounted() {
+    try {
+      // Get category monthlyLimit info
+      const categoryResponse = await fetch('/api/getcategories');
+      const categoryData = await categoryResponse.json();
+      this.categoryMonthlyLimits.push(...categoryData) //
+      // console.log(JSON.stringify(this.categoryMonthlyLimits), '\n', 'monthly limits')
+      // Get txn info
+      const response = await fetch("/api/find");
+      const data = await response.json(); // extract JSON data from response
+      this.transactions = data;
+
+      // Use the transaction.mappedCategory to push to the groupedTransactions array
+      this.transactions.forEach((transaction) => {
+        const category = transaction.mappedCategory;
+        if (!this.groupedTransactions[category]) {
+          this.groupedTransactions[category] = []; 
+          this.groupedTransactionsVisible[category] = false; 
+        }
+        this.groupedTransactions[category].push(transaction);
+      });
+      
+      // Get the monthly_limits from each category and match to the groupedTransactions
+      // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
+      this.categoryMonthlyLimits.forEach(category => {
+        // console.log('category, ', category.monthly_limit)
+        if(this.groupedTransactions[category.category]){
+
+      // ADD PROPS TO groupedTransactions
+      // This implementation allows you to set and get things like this.groupedTransactions[category].monthly_limit, rather than pushing props as arrays along with the txns (push({key:value}))
+      // Let's you treat groupedTransactions object as a cross section of category and transaction data
+          this.groupedTransactions[category.category].categoryName = category.category 
+          this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
+          this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
+          this.groupedTransactions[category.category].originalName = category.category 
+        }
+      });
+      this.months = this.buildDateList(this.transactions).reverse()
+      
+    } catch (error) {
+      // console.log(error);
+    }
+  },
+};
 </script>

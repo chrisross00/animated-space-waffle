@@ -105,7 +105,14 @@ router.get('/getnew' , async (req, res) => {
 
   
    */
-  res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
+
+  let resObj = {
+    transactions: mappedTxns,
+    message: 'New transactions found and mapped, no updates made to database.'
+
+  }
+  
+  res.send(resObj); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
       // console.log('error in /getnew', err);
@@ -148,10 +155,12 @@ router.post('/testCategoryUpdate', function(req, res){
   const categoryNameBEResponse = req.body.categoryName;
   const monthlyLimitBEResponse = req.body.monthly_limit;
   const showOnBudgetPageBEResponse = req.body.showOnBudgetPage;
+  const originalCategoryName = req.body.originalCategoryName;
   let d = {
     categoryNameBEResponse,
     monthlyLimitBEResponse,
     showOnBudgetPageBEResponse,
+    originalCategoryName
   }
   const resObj = {
     message: 'Hello from api.js POST /testCategoryUpdate endpoint... your data has now come full circle:',
