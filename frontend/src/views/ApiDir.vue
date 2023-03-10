@@ -13,6 +13,7 @@
         <ol><a href="/api/getnew" rel="noopener">Get New</a></ol>
         <ol><a href="/api/getcategories" rel="noopener">Get Categories</a></ol>
         <ol><a href="/api/mapunmapped" rel="noopener">Map Unmapped Categories</a></ol>
+        <ol><a href="/api/cleanPendingTransactions" rel="noopener">Clean Pending Transactions</a></ol>
       </ul>
     </div>
   </template>

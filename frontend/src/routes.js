@@ -6,6 +6,7 @@ import DeDupeView from './views/DeDupeView.vue'
 import GetNew from './views/GetNew.vue'
 import GetCategories from './views/GetCategories.vue'
 import MapUnmapped from './views/MapUnmapped.vue'
+import CleanPending from './views/CleanPending.vue'
 
 const routes = [
   {
@@ -47,6 +48,11 @@ const routes = [
     path: '/api/mapunmapped',
     name: 'MapUnmapped',
     component: MapUnmapped
+  },
+  {
+    path: '/api/cleanPendingTransactions',
+    name: 'CleanPending',
+    component: CleanPending
   }
 ]
 

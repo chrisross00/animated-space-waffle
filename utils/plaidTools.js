@@ -40,8 +40,16 @@ async function plaidTransactionsSync (access_token, cursor=null){
     const data = response.data;
 
     // handle empty added, modified, removed; 
-    // does not handle each uniquely
 
+    // if( data.added.length !== 0 ) console.log('added is not null, ', data.added)
+    // if( data.removed.length !== 0 ) console.log('removed is not null, ', data.removed)
+    // if( data.modified.length !== 0 ) console.log('modified is not null, ', data.modified)
+
+
+    // // console.log('plaidTransactionsSync: data = ', data)
+
+    // let d = "All transactions up to date for this account"
+    // return d
     if (data.added.length === 0 && data.modified.length === 0 && data.removed.length === 0) {
       let data = "All transactions up to date for this account"
       return data;

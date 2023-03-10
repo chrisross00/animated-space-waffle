@@ -1,9 +1,9 @@
 <template>
   <div>
     <div class="page-padder p-3">
-      <h2>
+      <h3>
         Monthly Budgets
-      </h2>
+      </h3>
     </div>
 
     <!-- Button Container -->
