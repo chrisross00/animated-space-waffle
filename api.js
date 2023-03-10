@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData , insertData, deduplicateData, updateData, findUnmappedData } = require('./db/database');
+const { findData , insertData, deduplicateData, updateData, findUnmappedData, deleteRemovedData, findFilterData, cleanPendingTransactions } = require('./db/database');
 const { plaidTransactionsSync, getAccountData } = require('./utils/plaidTools');
 const { migrateData } = require('./utils/migrateData');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
@@ -30,8 +30,6 @@ router.get('/find', async (req, res) => {
 });
 
 router.get('/getnew' , async (req, res) => {
-  const transactions = [];
-
   try { // Get Account data to set up `tokens` and `next_cursors` for API calls. 
     const responses = await getAccountData()
     const updatedResponses = [];
@@ -68,26 +66,32 @@ router.get('/getnew' , async (req, res) => {
       responses[i].next_cursor = next_cursor; // i'm not sure you need this; Update the cursor value in the responses array
     } // end of for loop
   
-    transactions.push(...updatedResponses); // Append the updatedResponses array to the responses array
+    // TODO DELETE THIS
+   // transactions.push(...updatedResponses); // Append the updatedResponses array to the responses array
 
 // Need to categorize transactions before inserting to 'Plaid-Transactions'
   const categories = await findData('categories');
   const ruleList = await getMappingRuleList(categories);
-  const mappedTxns = await mapTransactions(transactions, ruleList); // insert this to 79 below
+  const mappedTxns = await mapTransactions(updatedResponses, ruleList); // insert this to 79 below
+  // console.log('mapped Transactions = ', mappedTxns)
 
-  /** 
-    COMMENTING OUT SO THAT NEW TRANSACTIONS BUILD UP
-
-    // UPDATE TRANSACTIONS
+  // UPDATE TRANSACTIONS
   if (mappedTxns.length > 0) {
     insertData('Plaid-Transactions', mappedTxns)
   }
 
-  // Update next_cursor on each account level with the latest next_cursor value for next time
+  // REMOVE TRANSACTIONS
+  let filter = { $or: [] };
+  updatedResponses.filter(block => {
+    if (block.removed.length > 0) {filter.$or.push(...block.removed);}
+  });
+  if ( filter.length > 0 ) {
+    const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
+    console.log('deletedPendingResponse', deletedPendingResponse);
+  }
+  
+  // UPDATE ACCOUNT TOKENS AND CURSORS - update next_cursor on each account level with the latest next_cursor value for next time
   responses.forEach(element => {  
-    // const key1 = 'Accounts.'
-    // const key2 = element.account;
-    // const key3 = '.token'
     const key = `Accounts.${element.account}.token`;
     let updateObject = { $set: {} };
     let filter = { [key]: element.token };
@@ -97,22 +101,19 @@ router.get('/getnew' , async (req, res) => {
       updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
       
     // UPDATE ACCOUNT WITH NEXT_CURSOR
-      // updateData('Plaid-Accounts', filter, updateObject); 
+    updateData('Plaid-Accounts', filter, updateObject); 
 
       // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
     }
   });
-
   
-   */
-
   let resObj = {
-    transactions: mappedTxns,
-    message: 'New transactions found and mapped, no updates made to database.'
-
-  }
+      transactions: mappedTxns,
+      message: 'New transactions found and mapped, no updates made to database.'
+    
+    }
   
-  res.send(resObj); // send responses (all transactions) back to the UI at GetNew.vue
+  res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
       // console.log('error in /getnew', err);
@@ -143,12 +144,28 @@ router.get('/getcategories', async (req, res)=>{
   }
 })
 
-router.get('/test', function (req, res, next) {
-  // console.log('API.js message: hit the /test endpoint')
-  const resObj = {
-    message: 'hello from api.js GET /test endpoint... this is a message from the server'
+router.get('/test', async (req, res) => {
+
+  try {
+    const resObj = {
+      message: 'hello from api.js GET /test endpoint... this is a message from the server'
+    }
+    res.send(resObj)
+    
+  } catch (error) {
+    res.status(500).send('Error with /test endpiont');
   }
-  res.send(resObj)
+})
+
+router.get('/cleanPendingTransactions', async (req, res) => {
+
+  try {
+    const transactions = await cleanPendingTransactions('Plaid-Transactions');
+    res.send(transactions);
+    
+  } catch (error) {
+    res.status(500).send('Error with /test endpiont');
+  }
 })
 
 router.post('/testCategoryUpdate', function(req, res){

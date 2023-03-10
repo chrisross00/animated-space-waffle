@@ -48,6 +48,30 @@ async function findData(collectionName) {
   }
 }
 
+async function findFilterData(collectionName, filter) {
+  let client;
+  try { // add toArray() override parameter in the future
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    const collection = db.collection(collectionName);
+    let foundResults = []
+    for (const element of filter) {
+      let findFilter = { ['transaction_id']: element.transaction_id, ['pending']: true }
+      const result = await collection.find(findFilter).sort({date: -1}).toArray();
+      foundResults.push(...result)
+      // console.log('DB - found filtered item: ', JSON.stringify(result))
+    }
+    return foundResults;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("DB: database connection closed.")
+    }
+  }
+}
+
 async function findUnmappedData(collectionName) {
   let client;
   try { // add toArray() override parameter in the future
@@ -130,6 +154,76 @@ async function deduplicateData(collectionName) { // this only works for Transact
   }
 }
 
+async function deleteRemovedData(collectionName, filter) { // for when Plaid removedTransactions array is not empty
+  let client;
+  try { // add toArray() override parameter in the future
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    const collection = db.collection(collectionName);
+    const result = await collection.deleteMany(filter)
+
+
+    // for (const element of filter) {
+    //   let deleteFilter = { ['transaction_id']: element.transaction_id, ['pending']: true }
+    //   const result = await collection.find(deleteFilter).sort({date: -1}).toArray();
+    //   console.log('DB - found filtered item: ', result)
+    // }
+    
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("DB: database connection closed.")
+    }
+  }
+}
+
+async function cleanPendingTransactions(collectionName) {
+  console.log('cleaning pending transactions')
+  let client;
+  try { // add toArray() override parameter in the future
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    // const collection = db.collection('Plaid-Transactions');
+    const collection = db.collection(collectionName);
+
+    // get the transaction_ids from the db where pending = true
+    let allPendingTransactions = []
+    let findFilter = {['pending']: true}
+    const allPendingResults = await collection.find(findFilter).toArray();
+    allPendingTransactions.push(...allPendingResults)
+    
+    let allPendingTransactionIds = {
+        $or: allPendingTransactions.map(transaction => {
+          return {
+            $and: [
+              { pending_transaction_id: transaction.transaction_id },
+              { pending: false }
+            ]
+          };
+        })
+      };
+      
+    const keeperTransactions = await collection.find(allPendingTransactionIds).toArray();
+    const transactionIdsToRemove = new Set(keeperTransactions.map(t => t.pending_transaction_id));
+    const deleterFilter = {
+      transaction_id: { $in: [...transactionIdsToRemove] }
+    };
+    const result = await collection.deleteMany(deleterFilter)
+    console.log('final transactions to delete', result)
+
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("DB: database connection closed.")
+    }
+  }
+}
   
   module.exports = {
     connectToDb,
@@ -138,5 +232,8 @@ async function deduplicateData(collectionName) { // this only works for Transact
     updateData,
     deduplicateData,
     findUnmappedData,
+    deleteRemovedData,
+    findFilterData,
+    cleanPendingTransactions
   };
   

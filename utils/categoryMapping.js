@@ -30,8 +30,11 @@ async function mapTransactions (transactionArray, rulesArray) {
 * TODO: could add a call to get rules if it's null...
 
 */
-    let transactions = transactionArray; 
+    let transactions = []
     const ruleList = rulesArray;
+
+    // this is the problem spot
+    // its setting transactions = array passed in, but then pushes the transactions onto itself. 
     transactionArray.filter(block => {
         if(block.added) transactions.push(...block.added) 
     })
