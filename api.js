@@ -169,15 +169,26 @@ router.get('/cleanPendingTransactions', async (req, res) => {
 })
 
 router.post('/testCategoryUpdate', function(req, res){
-  const categoryNameBEResponse = req.body.categoryName;
-  const monthlyLimitBEResponse = req.body.monthly_limit;
-  const showOnBudgetPageBEResponse = req.body.showOnBudgetPage;
-  const originalCategoryName = req.body.originalCategoryName;
-  let d = {
-    categoryNameBEResponse,
-    monthlyLimitBEResponse,
-    showOnBudgetPageBEResponse,
-    originalCategoryName
+  const updateType = req.body.updateType;
+  // if updateType == 'transaction' ...
+  // if updateType == 'category' ...
+  let d = {}
+  if (updateType == 'category') {
+    d = {
+      categoryNameBEResponse: req.body.categoryName,
+      monthlyLimitBEResponse: req.body.monthly_limit,
+      showOnBudgetPageBEResponse: req.body.showOnBudgetPage,
+      originalCategoryName: req.body.originalCategoryName,
+      updateType: req.body.updateType,
+    }
+  }
+  if (updateType == 'transaction') {
+    d = {
+      mappedCategory: req.body.mappedCategory,
+      date: req.body.date,
+      transaction_id: req.body.transaction_id,
+      originalCategoryName: req.body.originalCategoryName
+    }
   }
   const resObj = {
     message: 'Hello from api.js POST /testCategoryUpdate endpoint... your data has now come full circle:',
