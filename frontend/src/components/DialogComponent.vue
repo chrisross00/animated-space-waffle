@@ -23,31 +23,32 @@
             </q-card-section>
 
             <!-- Q-Form -->
-            <div class="text-p">{{dialogBody.name}}</div>
-            <div class="form-input">
+                <div class="text-p">{{dialogBody.name}}</div>
                 <q-input
                 filled
                 v-model="this.dialogBody.date"
+                lazy-rules
                 label="Date"
+                class="q-field--with-bottom"
                 />
-            </div>
 
-            <q-select
-                filled
-                v-model="this.dialogBody.mappedCategory"
-                label="Category Name"
-                :options="dropDownOptions"
-                @touchmove.stop.prevent
-                />
-            <div class="button-container">
-            <div>
-                <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary"/>
-                <q-btn label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
-            </div>
-            <div>
-                <q-btn label="Cancel" v-close-popup color="accent"/>
-            </div>
-            </div>
+                <q-select
+                    filled
+                    v-model="this.dialogBody.mappedCategory"
+                    label="Category Name"
+                    :options="dropDownOptions"
+                    class="q-field--with-bottom"
+                    @touchmove.stop.prevent
+                    />
+                <div class="button-container">
+                    <div>
+                        <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary"/>
+                        <q-btn label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+                    </div>
+                    <div>
+                        <q-btn label="Cancel" v-close-popup color="accent"/>
+                    </div>
+                </div>
         </div>
 
 <!-- CATEGORY Body Form -->
@@ -76,7 +77,7 @@
             ]"
             />
 
-            <q-toggle color="primary" label="Show on View Budgets screen" v-model="this.dialogBody.showOnBudgetPage" />
+            <q-toggle color="primary" :disable="true" label="Show on View Budgets screen" v-model="this.dialogBody.showOnBudgetPage" />
 
             <div class="button-container">
             <div>
@@ -93,7 +94,7 @@
 
 <style>
 
-.form-input{
+input .select{
     padding: 10px;
 }
 
@@ -133,7 +134,8 @@
                 categoryName: this.item.categoryName ? this.item.categoryName : '',
                 originalCategoryName: this.item.categoryName ? this.item.categoryName : this.item.mappedCategory,
                 dialogType: this.dialogType
-            }
+            },
+            initialData: null
         };
       },
       
@@ -144,12 +146,13 @@ computed: {
 
         console.log('dropDownOptions =',this.dropDown)
         console.log('options =',options)
+        options.sort()
         return options
     }
   },
   methods: {
         onTransactionFormReset () {
-            console.log(this.item)
+            this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
         },
         updateTransaction() {
             this.editedTransaction = {...this.dialogBody}
@@ -163,10 +166,15 @@ computed: {
         },
         buildEditCategoryDialog() {
 
+        },
+        resetData(){
+            // reset the dialogBody to its initial state
+            this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
         }
     },
     created() {
-        console.log('created child component dialog')
+        this.initialData = JSON.parse(JSON.stringify(this.dialogBody));
+        console.log('created child component dialog', this.initialData)
     }
   }
 </script>
