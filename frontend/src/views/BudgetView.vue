@@ -80,7 +80,9 @@
                       {{ isNaN(item.amount) ? "N/A" : "$" + item.amount.toFixed(2) }}                    
                     </q-item-section>
                     <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
-                      <DialogComponent :dialogType="'transaction'" :item="item" @update-transaction="onSubmit"/>
+                      <DialogComponent :dialogType="'transaction'" :item="item" 
+                      :dropDown="this.categoryMonthlyLimits" 
+                      @update-transaction="onSubmit"/>
                     </q-dialog>
                   </q-item>
               </div>
@@ -535,7 +537,7 @@
           d.updateType == 'category' ? this.updatedCategory = {...data} : this.updatedTransaction = {...data}
         })
         .then(
-          e.dialogType == 'category' ? this.categoryClickers[e.categoryName] = !this.categoryClickers[e.categoryName] : this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id] // Clsoe the window by passing the txn_id back to transactionClickers 
+          d.updateType == 'category' ? this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName] : this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id] // Clsoe the window by passing the txn_id back to transactionClickers 
           )
         .catch(error => {
           console.log('Error:', error)
@@ -585,7 +587,7 @@
             }
           }
         })
-      }
+      },
       // don't want to do this for now... because then how do you show it again, blah blah blah
       // 'updatedShowOnBudgetPage': function(t) {
       //   console.log('updatedShowOnBudgetPage watcher', t)
@@ -599,7 +601,7 @@
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
         this.categoryMonthlyLimits.push(...categoryData) //
-        
+
         // Get txn info
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
