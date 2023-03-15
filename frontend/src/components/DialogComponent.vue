@@ -14,7 +14,7 @@
         </q-btn>
         </q-bar>
         
-<!-- Dialog: Edit Transaction Body Form -->
+<!-- TRANSACTION Body Form -->
         <div v-if="dialogType=='transaction'" class="dialog-body-form">
             <q-card-section>
                 <div class="text-h3">Edit Transaction</div>
@@ -31,13 +31,14 @@
                 label="Date"
                 />
             </div>
-            <div class="form-input">
-                <q-input
+
+            <q-select
                 filled
                 v-model="this.dialogBody.mappedCategory"
-                label="Category"
+                label="Category Name"
+                :options="dropDownOptions"
+                @touchmove.stop.prevent
                 />
-            </div>
             <div class="button-container">
             <div>
                 <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary"/>
@@ -49,7 +50,7 @@
             </div>
         </div>
 
-<!-- Dialog: Edit Category Body Form -->
+<!-- CATEGORY Body Form -->
         <div v-if="dialogType=='category'" class="dialog-body-form">
             <q-card-section>
                 <div class="text-h3">Edit Category: {{this.dialogBody.originalCategoryName}}</div>
@@ -110,6 +111,10 @@
         item: {
           type: Object,
           required: true,
+        },
+        dropDown: {
+            type: Array,
+            required: false,
         }
       },
       data(){
@@ -133,6 +138,14 @@
       },
       
 computed: {
+    dropDownOptions() {
+        // let dropDown = this.dropDown
+        const options = this.dropDown.map(item => item.category);
+
+        console.log('dropDownOptions =',this.dropDown)
+        console.log('options =',options)
+        return options
+    }
   },
   methods: {
         onTransactionFormReset () {
