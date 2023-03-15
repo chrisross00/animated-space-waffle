@@ -36,7 +36,8 @@ async function mapTransactions (transactionArray, rulesArray) {
     // this is the problem spot
     // its setting transactions = array passed in, but then pushes the transactions onto itself. 
     transactionArray.filter(block => {
-        if(block.added) transactions.push(...block.added) 
+        // if(block.added) transactions.push(...block.added) 
+        transactions.push(block)
     })
     // console.log('Top of mapTransactions, transactions = ')
 
@@ -52,7 +53,6 @@ async function mapTransactions (transactionArray, rulesArray) {
         if(rule.rules.name) nameList.push(...rule.rules.name) // this whole block is mostly needed because some name map to arrays and some map to values
         if(rule.rules.category1) cat2List.push(...rule.rules.category1)
     })
-
     // CAT RULE: Names
     for (i=0; i<nameList.length;i++){
         transactions.filter(transaction => {
@@ -87,17 +87,22 @@ async function mapTransactions (transactionArray, rulesArray) {
     transactions.filter(transaction => {
         if (!transaction.mappedCategory) {
             ruleList.filter(rule => {
-                if(rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)){
+                if(!transaction.mappedCategory && rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)){
                     transaction.mappedCategory = rule.category
+                    console.log('mapped type rule', transaction.mappedCategory)
                 }
-                if(rule.rules.merchant_name && rule.rules.merchant_name.includes(transaction.merchant_name)){
+
+                if(!transaction.mappedCategory && rule.rules.merchant_name && rule.rules.merchant_name.includes(transaction.merchant_name)){
                     transaction.mappedCategory = rule.category
+                    console.log('mapped merchant_name rule', transaction.mappedCategory)
                 }
-                if(rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)){
+                if(!transaction.mappedCategory && rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)){
                     transaction.mappedCategory = rule.category
+                    console.log('mapped accountName rule', transaction.mappedCategory)
                 }
-                if(rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])){
+                if(!transaction.mappedCategory && rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])){
                     transaction.mappedCategory = rule.category
+                    console.log('mapped category 0 rule', transaction.mappedCategory)
                 }
             }) 
         }

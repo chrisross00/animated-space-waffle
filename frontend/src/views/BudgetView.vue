@@ -612,7 +612,7 @@
         // Get the monthly_limits from each category and match to the groupedTransactions
         // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
         this.categoryMonthlyLimits.forEach(category => {
-        // console.log('category, ', category.monthly_limit)
+        console.log('categoryMonthlyLimits.forEach: category =, ', category)
           if(this.groupedTransactions[category.category]){
 
         // ADD PROPS TO groupedTransactions
