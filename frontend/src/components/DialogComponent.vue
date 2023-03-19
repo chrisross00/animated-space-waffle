@@ -119,6 +119,7 @@ input .select{
         }
       },
       data(){
+        console.log('beginning of data log: ', this.item)
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},

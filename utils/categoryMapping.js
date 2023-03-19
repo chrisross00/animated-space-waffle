@@ -36,8 +36,8 @@ async function mapTransactions (transactionArray, rulesArray) {
     // this is the problem spot
     // its setting transactions = array passed in, but then pushes the transactions onto itself. 
     transactionArray.filter(block => {
-        // if(block.added) transactions.push(...block.added) 
-        transactions.push(block)
+        if(block.added) transactions.push(...block.added) 
+        // transactions.push(block)
     })
     // console.log('Top of mapTransactions, transactions = ')
 
