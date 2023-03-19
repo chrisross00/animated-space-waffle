@@ -74,22 +74,22 @@ router.get('/getnew' , async (req, res) => {
   const ruleList = await getMappingRuleList(categories);
   const mappedTxns = await mapTransactions(updatedResponses, ruleList); // insert this to 79 below
   // console.log('mapped Transactions = ', mappedTxns)
-
+  
   // UPDATE TRANSACTIONS
   if (mappedTxns.length > 0) {
     insertData('Plaid-Transactions', mappedTxns)
   }
 
   // REMOVE TRANSACTIONS
-  let filter = { $or: [] };
-  updatedResponses.filter(block => {
-    if (block.removed.length > 0) {filter.$or.push(...block.removed);}
-  });
-  if ( filter.length > 0 ) {
-    const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
-    console.log('deletedPendingResponse', deletedPendingResponse);
-  }
-  
+    let filter = { $or: [] };
+    let newFoo = updatedResponses.filter(block => {
+      if (block.removed.length > 0) {filter.$or.push(...block.removed);}
+    });
+    if ( filter.$or.length > 0 ) {
+      const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
+      console.log('deletedPendingResponse', deletedPendingResponse);
+    }
+
   // UPDATE ACCOUNT TOKENS AND CURSORS - update next_cursor on each account level with the latest next_cursor value for next time
   responses.forEach(element => {  
     const key = `Accounts.${element.account}.token`;
@@ -100,10 +100,9 @@ router.get('/getnew' , async (req, res) => {
     if(element.next_cursor && element.token && element.newTxns === true){ 
       updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
       
-    // UPDATE ACCOUNT WITH NEXT_CURSOR
-    updateData('Plaid-Accounts', filter, updateObject); 
-
-      // console.log('forEach(element)', element.next_cursor) // element.next_cursor should update the account.next_cursor
+      // UPDATE ACCOUNT WITH NEXT_CURSOR
+      updateData('Plaid-Accounts', filter, updateObject); 
+      
     }
   });
   
@@ -113,6 +112,7 @@ router.get('/getnew' , async (req, res) => {
     
     }
   
+  console.log('Done and sending response to client')
   res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
