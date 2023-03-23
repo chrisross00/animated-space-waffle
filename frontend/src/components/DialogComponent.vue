@@ -64,6 +64,7 @@
             label="Category Name"
             lazy-rules
             :rules="[ val => val && val.length > 0 || 'Please type something']"
+            :disable="true"
             />
 
             <q-input
@@ -161,8 +162,8 @@ computed: {
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
-            this.editedCategory = {...this.dialogBody}
-            console.log('updateTransaction: edited Category: ', this.editedCategory)
+            this.editedCategory = {...this.dialogBody, '_id': this.item._id}
+            console.log('updateCategory: edited Category: ', this.editedCategory)
             this.$emit('update-category', this.editedCategory)
         },
         buildEditCategoryDialog() {

@@ -8,6 +8,7 @@ const { migrateData } = require('./utils/migrateData');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const path = require('path');
 const cors = require('cors');
+const ObjectID = require('mongodb').ObjectId;
 
 router.use(cors());
 router.use(bodyParser.json());
@@ -175,17 +176,25 @@ router.post('/testCategoryUpdate', function(req, res){
   let d = {}
   if (updateType == 'category') {
     d = {
+      _id: req.body._id,
       categoryNameBEResponse: req.body.categoryName,
       monthlyLimitBEResponse: req.body.monthly_limit,
       showOnBudgetPageBEResponse: req.body.showOnBudgetPage,
       originalCategoryName: req.body.originalCategoryName,
       updateType: req.body.updateType,
     }
+    const filter = { _id: new ObjectID(req.body._id) };
+    const update = {
+      $set: {
+        monthly_limit: req.body.monthly_limit,
+        // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
+      }
+    };
+    updateData('categories', filter, update)
   }
 
   // Call updateData function to update Mongo Db
   if (updateType == 'transaction'){
-    // get rid of this... make sure the client-side doesn't use it
     d = { 
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
@@ -196,6 +205,7 @@ router.post('/testCategoryUpdate', function(req, res){
     const update = {
       $set: {
         mappedCategory: req.body.mappedCategory,
+        date: req.body.date
       }
     };
     updateData('Plaid-Transactions', filter, update)

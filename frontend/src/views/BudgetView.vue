@@ -361,7 +361,7 @@
       },
 
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
-          console.log('buildEditCategoryDialog', category)
+          // console.log('buildEditCategoryDialog', this.groupedTransactions[category]._id)
         this.clicker = !this.clicker;
 
         if(!this.categoryClickers[category]){
@@ -370,17 +370,13 @@
             this.categoryClickers[category] = !this.categoryClickers[category]
           }
           // this.transactionDetails = e
-          
-          this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit
-          this.dialogBody.categoryName = this.groupedTransactions[category].categoryName
-          this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage
-          
           // // Set up the client-side tracking for what to display at the category level
           let isOriginalCategoryNameSet = false;
           this.dialogBody.currentCategoryDetails = {
-            monthly_limit: this.dialogBody.monthly_limit,
-            categoryName: this.dialogBody.categoryName,
-            showOnBudgetPage: this.dialogBody.showOnBudgetPage,
+            _id: this.dialogBody._id = this.groupedTransactions[category]._id,
+            monthly_limit: this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit,
+            categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
+            showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
             originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentCategoryDetails.originalCategoryName : this.groupedTransactions[category].originalName
           }
           isOriginalCategoryNameSet = true;
@@ -476,7 +472,7 @@
         // this.groupedTransactions = {}
         // Use the transaction.mappedCategory to push to the groupedTransactions array
         this.transactions.forEach((transaction) => {
-          console.log('starting foreach...') 
+          // console.log('starting foreach...') 
           const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {
             this.groupedTransactions[category] = []; 
@@ -512,6 +508,7 @@
         
         if (e.dialogType == 'category'){
           d = {
+          '_id': e._id,
           'updateType': e.dialogType,
           'categoryName': e.categoryName,
           'monthly_limit': e.monthly_limit,
@@ -606,18 +603,19 @@
         const response = await fetch("/api/find");
         const data = await response.json(); // extract JSON data from response
         this.transactions = data;
-        console.log("Haven't called groupTransactions yet, this.groupedTransactions = ", this.groupedTransactions)
+        // console.log("Haven't called groupTransactions yet, this.groupedTransactions = ", this.groupedTransactions)
         this.groupTransactions();
         
         // Get the monthly_limits from each category and match to the groupedTransactions
         // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
         this.categoryMonthlyLimits.forEach(category => {
-        console.log('categoryMonthlyLimits.forEach: category =, ', category)
+        // console.log('categoryMonthlyLimits.forEach: category =, ', category)
           if(this.groupedTransactions[category.category]){
 
         // ADD PROPS TO groupedTransactions
         // This implementation allows you to set and get things like this.groupedTransactions[category].monthly_limit, rather than pushing props as arrays along with the txns (push({key:value}))
         // Let's you treat groupedTransactions object as a cross section of category and transaction data
+            this.groupedTransactions[category.category]._id= category._id
             this.groupedTransactions[category.category].categoryName = category.category 
             this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
             this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
