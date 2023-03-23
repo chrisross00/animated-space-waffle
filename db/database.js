@@ -15,19 +15,20 @@ async function insertData(collectionName, data) {
   let client;
   try {
     client = await connectToDb();
+    console.log('database.js/insertdata() data=', data.length)
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
-    // await collection.deleteMany({})
     await collection.insertMany(data);
-    // console.log(`Database.js Message: Inserted data and closing.`);
+    console.log(`Database.js Message: Inserted data and closing.`);
   } catch (err) {
     console.error(err);
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by insertData().")
     }
   }
+  console.log('closing insertData()')
 }
 
 async function findData(collectionName) {
@@ -43,7 +44,7 @@ async function findData(collectionName) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by findData()")
     }
   }
 }
@@ -67,7 +68,7 @@ async function findFilterData(collectionName, filter) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by findFilterData().")
     }
   }
 }
@@ -105,7 +106,7 @@ async function updateData(collectionName, filter, update, options = null) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by findUnmappedData().")
     }
   }
 }
@@ -149,7 +150,7 @@ async function deduplicateData(collectionName) { // this only works for Transact
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by deduplicateData().")
     }
   }
 }
@@ -175,7 +176,7 @@ async function deleteRemovedData(collectionName, filter) { // for when Plaid rem
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by deleteRemovedData().")
     }
   }
 }
@@ -220,7 +221,7 @@ async function cleanPendingTransactions(collectionName) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("DB: database connection closed by cleanPendingTransactions().")
     }
   }
 }
