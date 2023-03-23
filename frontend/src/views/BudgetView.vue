@@ -137,6 +137,12 @@
   max-width: 600px;
 }
 
+@media (max-width: 600px) {
+  .all-transactions-table {
+    max-width: 400px;
+  }
+}
+
 .dialog-body-form {
   margin: 16px;
   text-align: center;
