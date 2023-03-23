@@ -75,23 +75,25 @@ router.get('/getnew' , async (req, res) => {
   const ruleList = await getMappingRuleList(categories);
   const mappedTxns = await mapTransactions(updatedResponses, ruleList); // insert this to 79 below
   // console.log('mapped Transactions = ', mappedTxns)
-  
   // UPDATE TRANSACTIONS
   if (mappedTxns.length > 0) {
-    insertData('Plaid-Transactions', mappedTxns)
+    await insertData('Plaid-Transactions', mappedTxns)
   }
+  // console.log('done inserting data... checking accounts Logic...', element.next_cursor && element.token && element.newTxns === true)
 
   // REMOVE TRANSACTIONS
-    let filter = { $or: [] };
-    let newFoo = updatedResponses.filter(block => {
-      if (block.removed.length > 0) {filter.$or.push(...block.removed);}
-    });
-    if ( filter.$or.length > 0 ) {
-      const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
-      console.log('deletedPendingResponse', deletedPendingResponse);
+  let filter = { $or: [] };
+  updatedResponses.forEach(block => {
+    if(block.removed && block.removed.length > 0) {
+      filter.$or.push(...block.removed);
     }
-
-  // UPDATE ACCOUNT TOKENS AND CURSORS - update next_cursor on each account level with the latest next_cursor value for next time
+  });
+  if ( filter.$or.length > 0 ) {
+    const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
+    console.log('deletedPendingResponse', deletedPendingResponse);
+  }
+  
+    // UPDATE ACCOUNT TOKENS AND CURSORS - update next_cursor on each account level with the latest next_cursor value for next time
   responses.forEach(element => {  
     const key = `Accounts.${element.account}.token`;
     let updateObject = { $set: {} };
