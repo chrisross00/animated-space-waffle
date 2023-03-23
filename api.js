@@ -182,18 +182,30 @@ router.post('/testCategoryUpdate', function(req, res){
       updateType: req.body.updateType,
     }
   }
-  if (updateType == 'transaction') {
-    d = {
+
+  // Call updateData function to update Mongo Db
+  if (updateType == 'transaction'){
+    // get rid of this... make sure the client-side doesn't use it
+    d = { 
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
       transaction_id: req.body.transaction_id,
       originalCategoryName: req.body.originalCategoryName
     }
+    const filter = { transaction_id: req.body.transaction_id };
+    const update = {
+      $set: {
+        mappedCategory: req.body.mappedCategory,
+      }
+    };
+    updateData('Plaid-Transactions', filter, update)
   }
+
   const resObj = {
     message: 'Hello from api.js POST /testCategoryUpdate endpoint... your data has now come full circle:',
     ...d
   }
+
   res.send(resObj)
 })
 
