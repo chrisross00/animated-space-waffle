@@ -3,47 +3,57 @@
     <div class="q-pa-md-page-padder p-3">
       <q-card class="my-card">
         <q-card-section horizontal>
-        <q-card-section class="q-pt-xs">
-          <div class="text-overline">Today</div>
-          <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ 
-            monthStats(groupedTransactions).monthlySum > 0 
-              ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget" 
-              : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over"  
-            }}
-            </div>
-          <p>This is what you can spend before breaking even for the month. It's your end of month balance if you were to stop spending in all categories now.</p>
-        </q-card-section>
+          <q-card-section class="q-pt-xs">
+            <div class="text-overline">Today</div>
+            <div class="text-h5 q-mt-sm q-mb-xs">
+              {{ 
+              monthStats(groupedTransactions).monthlySum > 0 
+                ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget." 
+                : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over."  
+              }}
+              </div>
+            <p>This is what you can spend before breaking even for the month. It's your end of month balance if you were to stop spending in all categories now.</p>
+          </q-card-section>
         </q-card-section>
         <q-card-section>
           <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ formatDollar(monthStats(groupedTransactions).totalSpend) + " spent so far"}}
+            {{ formatDollar(monthStats(groupedTransactions).totalSpend) + " spent."}}
           </div>
-          <p>Your month to date total for all spending</p>
+          <p>Your month to date total for all spending.</p>
         </q-card-section>
       </q-card>
 
 
       <q-card class="my-card">
         <q-card-section horizontal>
-        <q-card-section class="q-pt-xs">
-          <div class="text-overline">Projections</div>
-          <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ 
-              monthStats(groupedTransactions).projectedSum > 0 
-              ? formatDollar(monthStats(groupedTransactions).projectedSum) + " over budget" 
-              : formatDollar((monthStats(groupedTransactions).projectedSum)) + " left over"  
-            }}
-            </div>
-          <p>Projected end of month balance if you finish planned spending in all categories</p>
-        </q-card-section>
-        </q-card-section>
+          <q-card-section class="q-pt-xs">
+            <div class="text-overline">Projections</div>
+            <div class="text-h5 q-mt-sm q-mb-xs">
+              {{ 
+                monthStats(groupedTransactions).projectedSum > 0 
+                ? formatDollar(monthStats(groupedTransactions).projectedSum) + " over budget." 
+                : formatDollar((monthStats(groupedTransactions).projectedSum)) + " left over."  
+              }}
+              </div>
+            <p>End of month balance if you finish spending in all categories as planned.</p>
+          </q-card-section>
+          </q-card-section>
+          
+        <q-card-section horizontal>
         <q-card-section>
           <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ formatDollar(monthStats(groupedTransactions).remainingBudgetedSpending) }} planned spending remaining
+            {{ formatDollar(monthStats(groupedTransactions).remainingBudgetedSpending) }} budget remaining.
           </div>
-          <p>The total of all budgets where you haven't maxed out spending.</p>
+          <p>The money you've budgeted but have yet to spend.</p>
         </q-card-section>
+          <q-card-section class="col-5 flex flex-center">
+            <q-img
+              class="rounded-borders"
+              src="https://cdn.quasar.dev/img/parallax2.jpg"
+            />
+          </q-card-section>
+        </q-card-section>
+        
       </q-card>
     </div>
 
