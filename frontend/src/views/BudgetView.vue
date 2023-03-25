@@ -1,19 +1,50 @@
 <template>
   <div>
-    <div class="page-padder p-3">
-      <h4>
-        {{ 
-          monthStats(groupedTransactions).monthlySum > 0 
-            ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget" 
-            : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over"  
-        }}
-      </h4>
-      <p><em>expected end of month balance –– based on current budget</em></p>
-      <h4>
-        {{ 
-          formatDollar(monthStats(groupedTransactions).totalSpend) + " spent this month"
-        }}
-      </h4>
+    <div class="q-pa-md-page-padder p-3">
+      <q-card class="my-card">
+        <q-card-section horizontal>
+        <q-card-section class="q-pt-xs">
+          <div class="text-overline">Today</div>
+          <div class="text-h5 q-mt-sm q-mb-xs">
+            {{ 
+            monthStats(groupedTransactions).monthlySum > 0 
+              ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget" 
+              : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over"  
+            }}
+            </div>
+          <p>This is what you can spend before breaking even for the month. It's your end of month balance if you were to stop spending in all categories now.</p>
+        </q-card-section>
+        </q-card-section>
+        <q-card-section>
+          <div class="text-h5 q-mt-sm q-mb-xs">
+            {{ formatDollar(monthStats(groupedTransactions).totalSpend) + " spent so far"}}
+          </div>
+          <p>Your month to date total for all spending</p>
+        </q-card-section>
+      </q-card>
+
+
+      <q-card class="my-card">
+        <q-card-section horizontal>
+        <q-card-section class="q-pt-xs">
+          <div class="text-overline">Projections</div>
+          <div class="text-h5 q-mt-sm q-mb-xs">
+            {{ 
+              monthStats(groupedTransactions).projectedSum > 0 
+              ? formatDollar(monthStats(groupedTransactions).projectedSum) + " over budget" 
+              : formatDollar((monthStats(groupedTransactions).projectedSum)) + " left over"  
+            }}
+            </div>
+          <p>Projected end of month balance if you finish planned spending in all categories</p>
+        </q-card-section>
+        </q-card-section>
+        <q-card-section>
+          <div class="text-h5 q-mt-sm q-mb-xs">
+            {{ formatDollar(monthStats(groupedTransactions).remainingBudgetedSpending) }} planned spending remaining
+          </div>
+          <p>The total of all budgets where you haven't maxed out spending.</p>
+        </q-card-section>
+      </q-card>
     </div>
 
     <!-- Button Container -->
@@ -37,7 +68,7 @@
                   <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
                   <q-item-label class="budget-container total">
                   {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
-                                                      : (budgetRemaining(category) > 0 ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
+                                                      : (isBudgetRemaining(category) ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
                                                                                         : formatDollar(Math.abs(budgetRemaining(category).toFixed(0))) + " over" ) 
                                                       }}
                                                       <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
@@ -80,8 +111,6 @@
               <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
 
                 <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
-                    <q-item-section avatar>
-                    </q-item-section>
                     <q-item-section>
                       <q-item-label lines="1">{{item.name}}</q-item-label>
                       <q-item-label caption lines="2">{{ item.date }}</q-item-label>
@@ -117,6 +146,13 @@
 </template>
 
 <style>
+
+.my-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem;
+}
+
 .budget-container .pending {
   font-style: italic;
   color: rgba(0, 0, 0, 0.54);
@@ -271,6 +307,7 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
+// import e from 'express';
 
   dayjs().format()
   dayjs.extend(minMax);
@@ -362,24 +399,39 @@
       },
       monthStats() {
         return (groupedTransactions) => {
-          let monthlySum = 0;
-          let totalSpend = 0;
+          let monthlySum = 0; // sum of all categories
+          let totalSpend = 0; // sum of only spending, not income
+          let projectedSum = 0; // sum of spending + 
+          let remainingBudgetedSpending = 0;
           for (const category in groupedTransactions) {
             if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {
+              // if (category == 'Income') {
+              //   remainingBudgetedSpending += (this.budgetRemaining(category))
+              // }
               if(this.categorySum(category)!==0){
                 monthlySum += this.categorySum(category)
               }
               if(this.categorySum(category) > 0){
                 totalSpend += this.categorySum(category)
+              } 
+              if (this.isBudgetRemaining(category) == true) {
+                projectedSum += (Number(this.groupedTransactions[category].monthly_limit))
+                remainingBudgetedSpending += this.budgetRemaining(category)
               }
+              if (this.isBudgetRemaining(category) == false ){
+                projectedSum += this.categorySum(category)
+              }
+
             }
           }
           monthlySum=monthlySum.toFixed(2),
           totalSpend=totalSpend.toFixed(2)
-
+          console.log('remainingBudgetedSpending', remainingBudgetedSpending)
           let monthStats = {
             monthlySum,
             totalSpend,
+            projectedSum,
+            remainingBudgetedSpending,
           }
 
           return monthStats
@@ -475,16 +527,28 @@
         diff = monthlyLimit - categorySpend
 
         // set up income for UI (negative)
-        if (category == "Income") diff = Math.abs(diff)
+        // if (category == "Income") diff = Math.abs(diff)
         if (monthlyLimit == 0) diff = NaN//if the monthly_limit was already zero, then just mark it NaN so it gets labeled 'spent' in UI
         this.groupedTransactions[category].budgetRemaining = diff
         return Number.isNaN(diff) ? NaN : diff
       },
+      isBudgetRemaining(category){ // returns a boolean for if there is a budget remaining, yes or no
+        let isRemaining = false;
+        const monthlyLimit = this.groupedTransactions[category].monthly_limit
+        const categorySpend = this.categorySum(category).valueOf()
+        if (Math.abs(monthlyLimit) > Math.abs(categorySpend)) {
+          isRemaining = true
+        } else {
+          isRemaining = false
+        }
+        return isRemaining
+      },
       getProgressColor(category) {
-        let budgetRemaining = this.groupedTransactions[category].budgetRemaining
+        let budgetRemaining = this.isBudgetRemaining(category)
         let progressRatio = this.groupedTransactions[category].progressRatio
+
         
-        return budgetRemaining >= 0 
+        return budgetRemaining == true 
                 ? (progressRatio >= 1 
                     ? "positive" 
                     : (progressRatio < 1 && progressRatio > 0.9 
@@ -493,9 +557,8 @@
                 : "negative"
       },
       getProgressRatio (category) {
-        // console.log('getprogressRatio running')
         let progressRatio;
-        const monthlyLimit = this.groupedTransactions[category].monthly_limit
+        const monthlyLimit = Number(this.groupedTransactions[category].monthly_limit)
         const categorySpend = this.categorySum(category).valueOf()
         if(!isNaN(monthlyLimit) && monthlyLimit != 0){
           progressRatio = categorySpend / monthlyLimit
@@ -516,14 +579,8 @@
           if (!transaction.request_id) this.groupedTransactions[category].push(transaction); // only push if it's not a summary transaction
         });
       },
-      onFormReset (){
-        this.dialogBody.categoryName = this.dialogBody.currentCategoryDetails.categoryName
-        this.dialogBody.monthly_limit = this.dialogBody.currentCategoryDetails.monthly_limit
-        this.dialogBody.showOnBudgetPage = this.dialogBody.currentCategoryDetails.showOnBudgetPage
-      },
       onSubmit(e) { 
         let d = {}
-
         if (e.dialogType == 'transaction') {
           console.log('e.dialogtype == ', e)
           d = {
@@ -534,7 +591,6 @@
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
           }
         }
-        
         if (e.dialogType == 'category'){
           d = {
           '_id': e._id,
