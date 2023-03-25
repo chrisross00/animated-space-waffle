@@ -25,11 +25,13 @@
             <!-- Q-Form -->
                 <div class="text-p">{{dialogBody.name}}</div>
                 <q-input
+                type="date"
                 filled
                 v-model="this.dialogBody.date"
                 lazy-rules
                 label="Date"
                 class="q-field--with-bottom"
+                @change="isFormSubmittable()"
                 />
 
                 <q-select
@@ -38,12 +40,13 @@
                     label="Category Name"
                     :options="dropDownOptions"
                     class="q-field--with-bottom"
+                    @change="isFormSubmittable()"
                     @touchmove.stop.prevent
                     />
                 <div class="button-container">
                     <div>
-                        <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary"/>
-                        <q-btn label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+                        <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
+                        <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
                     </div>
                     <div>
                         <q-btn label="Cancel" v-close-popup color="accent"/>
@@ -65,6 +68,7 @@
             lazy-rules
             :rules="[ val => val && val.length > 0 || 'Please type something']"
             :disable="true"
+            @change="isFormSubmittable()"
             />
 
             <q-input
@@ -73,6 +77,7 @@
             v-model="this.dialogBody.monthly_limit"
             label="Monthly Limit"
             lazy-rules
+            @change="isFormSubmittable()"
             :rules="[
                 val => val !== null && val !== '' || 'Please enter a monthly limit',
             ]"
@@ -82,8 +87,8 @@
 
             <div class="button-container">
             <div>
-                <q-btn @click="updateCategory" label="Submit" type="submit" color="primary"/>
-                <q-btn label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+                <q-btn @click="updateCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
+                <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
             </div>
             <div>
                 <q-btn label="Cancel" v-close-popup  color="accent"/>
@@ -137,6 +142,7 @@ input .select{
                 originalCategoryName: this.item.categoryName ? this.item.categoryName : this.item.mappedCategory,
                 dialogType: this.dialogType
             },
+            formSubmittable:false,
             initialData: null
         };
       },
@@ -172,11 +178,52 @@ computed: {
         resetData(){
             // reset the dialogBody to its initial state
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
+            if ( this.dialogType == 'transaction' ){
+                this.dialogBody.mappedCategory = this.dialogBody.originalCategoryName
+                this.dialogBody.date = this.item.date
+            }
+            if ( this.dialogType == 'category' ){
+                this.dialogBody.categoryName = this.item.categoryName
+                this.dialogBody.monthly_limit = this.item.monthly_limit
+            }
+            this.formSubmittable = false
+        },
+        isFormSubmittable(){
+            // first evaluate for change
+            if(this.dialogType == 'transaction'){
+                if ( this.dialogBody.mappedCategory !== this.dialogBody.originalCategoryName 
+                    || this.dialogBody.date !== this.item.date) {
+                    this.formSubmittable = true;
+                }
+                if (this.dialogBody.mappedCategory == this.dialogBody.originalCategoryName 
+                    && this.dialogBody.date == this.item.date){
+                        this.formSubmittable = false;
+                    }
+                }
+
+            if (this.dialogType == 'category'){
+                if (this.dialogBody.categoryName !== this.item.categoryName
+                || this.dialogBody.monthly_limit !== this.item.monthly_limit){
+                    this.formSubmittable = true;
+                }
+                if (this.dialogBody.categoryName == this.item.categoryName
+                && this.dialogBody.monthly_limit == this.item.monthly_limit){
+                    this.formSubmittable = false;
+                }
+            }
+
+
+            return this.formSubmittable
         }
     },
     created() {
         this.initialData = JSON.parse(JSON.stringify(this.dialogBody));
         console.log('created child component dialog', this.initialData)
+    },
+    watch: {
+        "dialogBody.mappedCategory": function (){
+            this.isFormSubmittable()
+        }
     }
   }
 </script>
