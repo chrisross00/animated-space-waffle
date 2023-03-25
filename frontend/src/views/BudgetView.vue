@@ -8,7 +8,7 @@
             : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over"  
         }}
       </h4>
-      <p><em>expected balance by end of month based on current budget</em></p>
+      <p><em>expected end of month balance –– based on current budget</em></p>
       <h4>
         {{ 
           formatDollar(monthStats(groupedTransactions).totalSpend) + " spent this month"
@@ -403,22 +403,7 @@
         }
         return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
-      saveTransactionChanges() { // think the .then() method in OnSubmit handles this now ... consider deleting
-        // this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id] // Clsoe the window by passing the txn_id back to transactionClickers 
-
-        //   // after the API call is done... this code should go after the update transaction response comes back
-        //   console.log('category', e)
-        //   if(!this.transactionClickers[e.transaction_id]){
-        //     this.transactionClickers[e.transaction_id] = true
-        //   } else{
-        //     this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
-        //   }
-        //   this.transactionDetails = e
-        //   return this.transactionClickers[e.transaction_id];
-      },
-
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
-          // console.log('buildEditCategoryDialog', this.groupedTransactions[category]._id)
         this.clicker = !this.clicker;
 
         if(!this.categoryClickers[category]){
@@ -426,8 +411,8 @@
           } else{
             this.categoryClickers[category] = !this.categoryClickers[category]
           }
-          // this.transactionDetails = e
           // // Set up the client-side tracking for what to display at the category level
+          // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
           let isOriginalCategoryNameSet = false;
           this.dialogBody.currentCategoryDetails = {
             _id: this.dialogBody._id = this.groupedTransactions[category]._id,
@@ -441,12 +426,8 @@
             console.log('if statement')
             this.dialogBody.currentCategoryDetails.originalCategoryName = this.groupedTransactions[category].categoryName
           } 
-          // console.log('this.dialogBody.currentCategoryDetails.originalCategoryName', this.dialogBody.currentCategoryDetails.originalCategoryName)
-          
-          // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
           console.log('buildEditCategoryDialog', this.categoryClickers[category])
           return this.categoryClickers[category.categoryName];
-        // return this.clicker;
       },
       buildEditTransactionDialog(e){ // Should this live on DialogComponent?
           console.log('buildEditTransactionDialog', e)
@@ -525,20 +506,14 @@
         return progressRatio// something category
       },
       groupTransactions (){
-        console.log('this.groupTransactions.length!: ', this.groupedTransactions)
-        // this.groupedTransactions = {}
         // Use the transaction.mappedCategory to push to the groupedTransactions array
         this.transactions.forEach((transaction) => {
-          // console.log('starting foreach...') 
           const category = transaction.mappedCategory;
           if (!this.groupedTransactions[category]) {
             this.groupedTransactions[category] = []; 
             this.groupedTransactionsVisible[category] = false; 
           }
-          // need logic here to check to see if a transaction already exists 
-          // const transaction_exists = transactions.some(transaction => transaction.transaction_id === transaction_id_to_check);
-
-          this.groupedTransactions[category].push(transaction);
+          if (!transaction.request_id) this.groupedTransactions[category].push(transaction); // only push if it's not a summary transaction
         });
       },
       onFormReset (){
@@ -547,9 +522,6 @@
         this.dialogBody.showOnBudgetPage = this.dialogBody.currentCategoryDetails.showOnBudgetPage
       },
       onSubmit(e) { 
-        // can we merge saveTransactionChanges into this? 
-        // if e.dialogType == 'category' 
-        // if e.dialogType == 'transaction'
         let d = {}
 
         if (e.dialogType == 'transaction') {
