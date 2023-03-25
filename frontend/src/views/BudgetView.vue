@@ -1,9 +1,19 @@
 <template>
   <div>
     <div class="page-padder p-3">
-      <h3>
-        Monthly Budgets
-      </h3>
+      <h4>
+        {{ 
+          monthStats(groupedTransactions).monthlySum > 0 
+            ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget" 
+            : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over"  
+        }}
+      </h4>
+      <p><em>expected balance by end of month based on current budget</em></p>
+      <h4>
+        {{ 
+          formatDollar(monthStats(groupedTransactions).totalSpend) + " spent this month"
+        }}
+      </h4>
     </div>
 
     <!-- Button Container -->
@@ -26,9 +36,9 @@
                 <div class="budget-container header">
                   <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
                   <q-item-label class="budget-container total">
-                  {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(0) + " spent") 
-                                                      : (budgetRemaining(category) > 0 ? "$" + budgetRemaining(category).toFixed(0) + " left" 
-                                                                                        : "$" + Math.abs(budgetRemaining(category).toFixed(0)) + " over" ) 
+                  {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
+                                                      : (budgetRemaining(category) > 0 ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
+                                                                                        : formatDollar(Math.abs(budgetRemaining(category).toFixed(0))) + " over" ) 
                                                       }}
                                                       <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
 
@@ -39,9 +49,9 @@
                 </div>
 
                 <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
-                  {{ isNaN(categorySum(category)) ? "N/A" : "$" + categorySum(category).toFixed(this.decimalPlaces) }} 
+                  {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }} 
                   {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
-                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of $" + this.groupedTransactions[category].monthly_limit }}
+                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                 </q-item-label>
               </q-item-section>
 
@@ -77,7 +87,7 @@
                       <q-item-label caption lines="2">{{ item.date }}</q-item-label>
                     </q-item-section>
                     <q-item-section side top>
-                      {{ isNaN(item.amount) ? "N/A" : "$" + item.amount.toFixed(2) }}                    
+                      {{ isNaN(item.amount) ? "N/A" : formatTransactionDollar(item.amount.toFixed(2)) }}                    
                     </q-item-section>
                     <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
                       <DialogComponent :dialogType="'transaction'" :item="item" 
@@ -350,8 +360,49 @@
           return Number.isNaN(sum) ? NaN : sum;
         };
       },
+      monthStats() {
+        return (groupedTransactions) => {
+          let monthlySum = 0;
+          let totalSpend = 0;
+          for (const category in groupedTransactions) {
+            if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {
+              if(this.categorySum(category)!==0){
+                monthlySum += this.categorySum(category)
+              }
+              if(this.categorySum(category) > 0){
+                totalSpend += this.categorySum(category)
+              }
+            }
+          }
+          monthlySum=monthlySum.toFixed(2),
+          totalSpend=totalSpend.toFixed(2)
+
+          let monthStats = {
+            monthlySum,
+            totalSpend,
+          }
+
+          return monthStats
+        }
+      },
     },
     methods: {
+      formatDollar(value) {
+        let val = (value/1).toFixed(2).replace('.', '.');
+        let prefix = '';
+        if (value < 0) {
+          prefix = ''; // change to `prefix = '-'` for negative income values
+        }
+        return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      },
+      formatTransactionDollar(value){
+        let val = (value/1).toFixed(2).replace('.', '.');
+        let prefix = '-';
+        if (value < 0) {
+          prefix = ''; // change to `prefix = '-'` for negative income values
+        }
+        return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      },
       saveTransactionChanges() { // think the .then() method in OnSubmit handles this now ... consider deleting
         // this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id] // Clsoe the window by passing the txn_id back to transactionClickers 
 
