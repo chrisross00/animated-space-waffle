@@ -31,6 +31,7 @@ async function getAccountData () {
 }
 
 async function plaidTransactionsSync (access_token, cursor=null){
+  // console.log('access_token and cursor = ', access_token, cursor)
   try {
     // console.log('plaidTransactionsSync() Messages:\n     Access Token:', access_token, '\n     Cursor:', cursor, '\n');
     const response = await plaidClient.transactionsSync({

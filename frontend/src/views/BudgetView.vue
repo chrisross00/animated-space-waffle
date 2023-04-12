@@ -4,22 +4,27 @@
       <q-card class="my-card">
         <q-card-section horizontal>
           <q-card-section class="q-pt-xs">
-            <div class="text-overline">Today</div>
-            <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ 
-              monthStats(groupedTransactions).monthlySum > 0 
-                ? formatDollar(monthStats(groupedTransactions).monthlySum) + " over budget." 
-                : formatDollar((monthStats(groupedTransactions).monthlySum)) + " left over."  
-              }}
-              </div>
-            <p>This is what you can spend before breaking even for the month. It's your end of month balance if you were to stop spending in all categories now.</p>
-          </q-card-section>
-        </q-card-section>
-        <q-card-section>
+            <div class="text-overline">Actuals</div>
           <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ formatDollar(monthStats(groupedTransactions).totalSpend) + " spent."}}
+            {{ formatDollar(this.monthlyStats.totalSpend) + " spent (so far)."}}
           </div>
           <p>Your month to date total for all spending.</p>
+          </q-card-section>
+        </q-card-section>
+
+
+        <q-card-section horizontal>
+          <q-card-section>
+            <div class="text-h5 q-mt-sm q-mb-xs">
+              {{ 
+                this.monthlyStats.monthlySum > 0
+                ? formatDollar(this.monthlyStats.monthlySum) + " over budget." 
+                : formatDollar(this.monthlyStats.monthlySum) + " left over."  
+              }}
+            </div>
+            <p>Net Cash Flow (actual). This is your ending balance if this is the last day of the month.</p>
+            
+          </q-card-section>
         </q-card-section>
       </q-card>
 
@@ -30,30 +35,23 @@
             <div class="text-overline">Projections</div>
             <div class="text-h5 q-mt-sm q-mb-xs">
               {{ 
-                monthStats(groupedTransactions).projectedSum > 0 
-                ? formatDollar(monthStats(groupedTransactions).projectedSum) + " over budget." 
-                : formatDollar((monthStats(groupedTransactions).projectedSum)) + " left over."  
+                this.monthlyStats.projectedSum > 0 
+                ? formatDollar(this.monthlyStats.projectedSum) + " over budget." 
+                : formatDollar((this.monthlyStats.projectedSum)) + " left over."  
               }}
               </div>
-            <p>End of month balance if you finish spending in all categories as planned.</p>
+            <p>Net Cash Flow (projected). Your end of month balance after all expenses have been paid.</p>
           </q-card-section>
           </q-card-section>
           
         <q-card-section horizontal>
-        <q-card-section>
-          <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ formatDollar(monthStats(groupedTransactions).remainingBudgetedSpending) }} budget remaining.
-          </div>
-          <p>The money you've budgeted but have yet to spend.</p>
-        </q-card-section>
-          <q-card-section class="col-5 flex flex-center">
-            <q-img
-              class="rounded-borders"
-              src="https://cdn.quasar.dev/img/parallax2.jpg"
-            />
+          <q-card-section>
+            <div class="text-h5 q-mt-sm q-mb-xs">
+              {{ formatDollar(this.monthlyStats.budgetRemaining) }} expenses remaining.
+            </div>
+            <p>The total of your expenses that haven't hit their monthly limits yet.</p>
           </q-card-section>
         </q-card-section>
-        
       </q-card>
     </div>
 
@@ -378,6 +376,7 @@
         pagination: {
           rowsPerPage: 30 // current rows per page being displayed
         },
+        monthlyStats:{}
       };
     },
     computed: {
@@ -412,36 +411,46 @@
           let monthlySum = 0; // sum of all categories
           let totalSpend = 0; // sum of only spending, not income
           let projectedSum = 0; // sum of spending + 
-          let remainingBudgetedSpending = 0;
+          let budgetRemaining = 0;
+          let totalExp = 0;
           for (const category in groupedTransactions) {
+            if(this.groupedTransactions[category].type == 'expense'){
+              console.log('category.type', this.groupedTransactions[category].type)
+              totalExp += this.categorySum(category)
+            }
+            if (this.isBudgetRemaining(category) == true) { // what to do with budget remaining when it's huge positive (lots of income) and when 
+              projectedSum += (Number(this.groupedTransactions[category].monthly_limit))
+              if (this.groupedTransactions[category].monthly_limit >= this.categorySum(category)){
+                if (groupedTransactions[category].type == 'expense') budgetRemaining += this.budgetRemaining(category)
+              }
+              
+            }
+            if (this.isBudgetRemaining(category) == false && category !== 'Payment'){
+              projectedSum += this.categorySum(category)
+            }
+            
             if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {
               // if (category == 'Income') {
-              //   remainingBudgetedSpending += (this.budgetRemaining(category))
+              //   budgetRemaining += (this.budgetRemaining(category))
               // }
-              if(this.categorySum(category)!==0){
+              if(groupedTransactions[category].type == 'expense' || groupedTransactions[category].type == 'income'){
                 monthlySum += this.categorySum(category)
               }
-              if(this.categorySum(category) > 0){
+              if(groupedTransactions[category].type == 'expense'){
                 totalSpend += this.categorySum(category)
               } 
-              if (this.isBudgetRemaining(category) == true) {
-                projectedSum += (Number(this.groupedTransactions[category].monthly_limit))
-                remainingBudgetedSpending += this.budgetRemaining(category)
-              }
-              if (this.isBudgetRemaining(category) == false ){
-                projectedSum += this.categorySum(category)
-              }
 
             }
           }
+          console.log('totalExp', totalExp)
           monthlySum=monthlySum.toFixed(2),
           totalSpend=totalSpend.toFixed(2)
-          console.log('remainingBudgetedSpending', remainingBudgetedSpending)
           let monthStats = {
             monthlySum,
             totalSpend,
             projectedSum,
-            remainingBudgetedSpending,
+            budgetRemaining,
+            totalExp
           }
 
           return monthStats
@@ -556,7 +565,6 @@
       getProgressColor(category) {
         let budgetRemaining = this.isBudgetRemaining(category)
         let progressRatio = this.groupedTransactions[category].progressRatio
-
         
         return budgetRemaining == true 
                 ? (progressRatio >= 1 
@@ -564,7 +572,7 @@
                     : (progressRatio < 1 && progressRatio > 0.9 
                         ? "warning" 
                         : "secondary"))
-                : "negative"
+                : this.groupedTransactions[category].type == 'income' ? "positive" : "negative"
       },
       getProgressRatio (category) {
         let progressRatio;
@@ -602,6 +610,7 @@
           }
         }
         if (e.dialogType == 'category'){
+          console.log('category update, typeof(monthly_limit)=' ,typeof(e.monthly_limit))
           d = {
           '_id': e._id,
           'updateType': e.dialogType,
@@ -651,21 +660,23 @@
     watch: {
       'selectedDate.display': function(newVal){//, oldVal) {
         this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
+        this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
       
       // category watchers
       // What if all of this is in one object
       'updatedCategory': function(t) {
-        console.log('updatedCategory, this.groupedTransactions[Slush]', this.groupedTransactions['Slush'])
+        // console.log('updatedCategory, this.groupedTransactions[Slush]', this.groupedTransactions['Slush'])
         this.groupedTransactions[t.originalCategoryName].categoryName = t.categoryNameBEResponse
         this.groupedTransactions[t.originalCategoryName].monthly_limit = t.monthlyLimitBEResponse
         this.groupedTransactions[t.originalCategoryName].showOnBudgetPage = t.showOnBudgetPageBEResponse
+        this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
       'updatedTransaction' : function(t) {
-        console.log('updatedTransaction watcher: trying to find transaction first ...', t)
+        // console.log('updatedTransaction watcher: trying to find transaction first ...', t)
         this.groupedTransactions[t.originalCategoryName].filter(transaction => {
           if (transaction.transaction_id == t.transaction_id) {
-            console.log('transaction match!', transaction.transaction_id, 'vs.', t.transaction_id)
+            // console.log('transaction match!', transaction.transaction_id, 'vs.', t.transaction_id)
             transaction.mappedCategory = t.mappedCategory
             const index = this.groupedTransactions[t.originalCategoryName].indexOf(transaction)
             if (index !== -1) {
@@ -715,9 +726,11 @@
             this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
             this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
             this.groupedTransactions[category.category].originalName = category.category 
+            this.groupedTransactions[category.category].type = category.type 
           }
         });
         this.months = this.buildDateList(this.transactions).reverse()
+        this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
         
       } catch (error) {
         console.error(error);
