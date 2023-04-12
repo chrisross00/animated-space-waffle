@@ -44,7 +44,7 @@ router.get('/getnew' , async (req, res) => {
   
       while (hasMore) { // hasMore is a value set by the Plaid transactionsSync API to handle pagination. When false, you have the final next_cursor
         const newTxns = await plaidTransactionsSync(token, next_cursor); // Pass the `token` and `next_cursor` values to the plaidTransactionsSync() method
-        // console.log('newTxns', newTxns)
+        console.log('newTxns', newTxns)
         // Handle newTxns to end now or continue with flow
         if (typeof(newTxns) === 'string'){ // if newTxns is a string, then plaidTransactionsSync returned no new transactions
           hasMore = false;
