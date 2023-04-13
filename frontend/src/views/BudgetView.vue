@@ -605,6 +605,7 @@
             'updateType': e.dialogType,
             'mappedCategory': e.mappedCategory,
             'date': e.date,
+            'note':e.note,
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
           }
@@ -632,6 +633,7 @@
         })
         .then(response => response.json())
         .then(data => {
+          // console.log('post-api response', data)
           // TODO: Need to add logic to check the response - should only update client props if success
           // for now, they'll revert when you refresh
 
@@ -672,21 +674,24 @@
         this.groupedTransactions[t.originalCategoryName].showOnBudgetPage = t.showOnBudgetPageBEResponse
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
-      'updatedTransaction' : function(t) {
+      'updatedTransaction' : function(t) { // updates go here if you want client to auto update
         // console.log('updatedTransaction watcher: trying to find transaction first ...', t)
         this.groupedTransactions[t.originalCategoryName].filter(transaction => {
           if (transaction.transaction_id == t.transaction_id) {
             // console.log('transaction match!', transaction.transaction_id, 'vs.', t.transaction_id)
             transaction.mappedCategory = t.mappedCategory
+            transaction.date = t.date
+            transaction.note = t.note
             const index = this.groupedTransactions[t.originalCategoryName].indexOf(transaction)
             if (index !== -1) {
-
-            // 3/13: Currently working... leaving off, need to make sure to see if can insert with respect to date, because txns end up on bottom from the push method
-              // Remove transaction from its current category
-              this.groupedTransactions[t.originalCategoryName].splice(index, 1)
-              // Add transaction to the new category
-              this.groupedTransactions[transaction.mappedCategory].push(transaction)
-              console.log('index is !== -1!')
+              if (transaction.mappedCategory !== t.originalCategoryName){
+              // 3/13: Currently working... leaving off, need to make sure to see if can insert with respect to date, because txns end up on bottom from the push method
+                // Remove transaction from its current category
+                this.groupedTransactions[t.originalCategoryName].splice(index, 1)
+                // Add transaction to the new category
+                this.groupedTransactions[transaction.mappedCategory].push(transaction)
+                console.log('index is !== -1!')
+              }
             }
           }
         })

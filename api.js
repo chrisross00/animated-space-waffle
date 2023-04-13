@@ -201,13 +201,15 @@ router.post('/testCategoryUpdate', function(req, res){
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
       transaction_id: req.body.transaction_id,
-      originalCategoryName: req.body.originalCategoryName
+      originalCategoryName: req.body.originalCategoryName,
+      note: req.body.note ? req.body.note : '',
     }
     const filter = { transaction_id: req.body.transaction_id };
     const update = {
       $set: {
         mappedCategory: req.body.mappedCategory,
-        date: req.body.date
+        date: req.body.date,
+        note: req.body.note
       }
     };
     updateData('Plaid-Transactions', filter, update)
