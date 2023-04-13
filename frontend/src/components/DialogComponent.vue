@@ -24,25 +24,34 @@
 
             <!-- Q-Form -->
                 <div class="text-p">{{dialogBody.name}}</div>
-                <q-input
-                type="date"
-                filled
-                v-model="this.dialogBody.date"
-                lazy-rules
-                label="Date"
-                class="q-field--with-bottom"
-                @change="isFormSubmittable()"
-                />
+                    <q-input
+                        type="date"
+                        filled
+                        v-model="this.dialogBody.date"
+                        lazy-rules
+                        label="Date"
+                        class="q-field--with-bottom"
+                        @change="isFormSubmittable()"
+                        />
 
-                <q-select
-                    filled
-                    v-model="this.dialogBody.mappedCategory"
-                    label="Category Name"
-                    :options="dropDownOptions"
-                    class="q-field--with-bottom"
-                    @change="isFormSubmittable()"
-                    @touchmove.stop.prevent
-                    />
+                    <q-select
+                        filled
+                        v-model="this.dialogBody.mappedCategory"
+                        label="Category Name"
+                        :options="dropDownOptions"
+                        class="q-field--with-bottom"
+                        @change="isFormSubmittable()"
+                        @touchmove.stop.prevent
+                        />
+                    <q-input
+                        type="text"
+                        filled
+                        v-model="this.dialogBody.note"
+                        lazy-rules
+                        label="Note"
+                        class="q-field--with-bottom"
+                        @change="isFormSubmittable()"
+                        />
                 <div class="button-container">
                     <div>
                         <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
@@ -125,7 +134,7 @@ input .select{
         }
       },
       data(){
-        console.log('beginning of data log: ', this.item)
+        // console.log('beginning of data log: ', this.item)
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},
@@ -140,6 +149,7 @@ input .select{
                 mappedCategory: this.item.mappedCategory ? this.item.mappedCategory : '',
                 categoryName: this.item.categoryName ? this.item.categoryName : '',
                 originalCategoryName: this.item.categoryName ? this.item.categoryName : this.item.mappedCategory,
+                note: this.item.note ? this.item.note : '',
                 dialogType: this.dialogType
             },
             formSubmittable:false,
@@ -152,8 +162,8 @@ computed: {
         // let dropDown = this.dropDown
         const options = this.dropDown.map(item => item.category);
 
-        console.log('dropDownOptions =',this.dropDown)
-        console.log('options =',options)
+        // console.log('dropDownOptions =',this.dropDown)
+        // console.log('options =',options)
         options.sort()
         return options
     }
@@ -164,12 +174,12 @@ computed: {
         },
         updateTransaction() {
             this.editedTransaction = {...this.dialogBody}
-            console.log('updateTransaction: edited Transaction: ', this.editedTransaction)
+            // console.log('updateTransaction: edited Transaction: ', this.editedTransaction)
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
             this.editedCategory = {...this.dialogBody, '_id': this.item._id}
-            console.log('updateCategory: edited Category: ', this.editedCategory)
+            // console.log('updateCategory: edited Category: ', this.editedCategory)
             this.$emit('update-category', this.editedCategory)
         },
         buildEditCategoryDialog() {
@@ -192,11 +202,13 @@ computed: {
             // first evaluate for change
             if(this.dialogType == 'transaction'){
                 if ( this.dialogBody.mappedCategory !== this.dialogBody.originalCategoryName 
-                    || this.dialogBody.date !== this.item.date) {
+                    || this.dialogBody.date !== this.item.date
+                    || this.dialogBody.note !== this.item.note) {
                     this.formSubmittable = true;
                 }
                 if (this.dialogBody.mappedCategory == this.dialogBody.originalCategoryName 
-                    && this.dialogBody.date == this.item.date){
+                    && this.dialogBody.date == this.item.date
+                    && this.dialogBody.note == this.item.note){
                         this.formSubmittable = false;
                     }
                 }
@@ -218,7 +230,7 @@ computed: {
     },
     created() {
         this.initialData = JSON.parse(JSON.stringify(this.dialogBody));
-        console.log('created child component dialog', this.initialData)
+        // console.log('created child component dialog', this.initialData)
     },
     watch: {
         "dialogBody.mappedCategory": function (){
