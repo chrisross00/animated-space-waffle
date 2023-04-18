@@ -119,10 +119,10 @@
 
                 <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                     <q-item-section>
-                      <q-item-label lines="1">{{item.name}}</q-item-label>
+                      <q-item-label lines="1">{{item.name == 'Venmo' ? item.name + (item.note ?  ': '+ item.note : '') : item.name }}</q-item-label>
                       <q-item-label caption lines="2">{{ item.date }}</q-item-label>
                     </q-item-section>
-                    <div>
+                    <div class="transaction-decoration">
                       <q-item-section side top>
                         {{ isNaN(item.amount) ? "N/A" : formatTransactionDollar(item.amount.toFixed(2)) }}                    
                       </q-item-section>
@@ -178,6 +178,11 @@
 .budget-container .header {
   display: flex;
   justify-content: space-between;
+}
+
+.transaction-decoration {
+  float: right;
+
 }
 
 .budget-container .total {
