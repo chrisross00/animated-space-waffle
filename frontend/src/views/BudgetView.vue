@@ -12,7 +12,6 @@
           </q-card-section>
         </q-card-section>
 
-
         <q-card-section horizontal>
           <q-card-section>
             <div class="text-h5 q-mt-sm q-mb-xs">
@@ -84,7 +83,7 @@
                   </q-item-label>
                 </div>
                 <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
-                  <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getProgressColor(category)" size="md"/> 
+                  <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getCategoryProgressColor(category)" size="md"/> 
                 </div>
 
                 <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
@@ -123,9 +122,14 @@
                       <q-item-label lines="1">{{item.name}}</q-item-label>
                       <q-item-label caption lines="2">{{ item.date }}</q-item-label>
                     </q-item-section>
-                    <q-item-section side top>
-                      {{ isNaN(item.amount) ? "N/A" : formatTransactionDollar(item.amount.toFixed(2)) }}                    
-                    </q-item-section>
+                    <div>
+                      <q-item-section side top>
+                        {{ isNaN(item.amount) ? "N/A" : formatTransactionDollar(item.amount.toFixed(2)) }}                    
+                      </q-item-section>
+                      <q-item-section side bottom v-if="item.excludeFromTotal">
+                        <q-badge label="excluded" />
+                      </q-item-section>
+                    </div>
                     <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
                       <DialogComponent :dialogType="'transaction'" :item="item" 
                       :dropDown="this.categoryMonthlyLimits" 
@@ -401,7 +405,18 @@
           );
           let sum = 0;
           for (const transaction of filtered) {
-            sum += parseFloat(transaction.amount);
+            // if transaction.excludeFromTotal is true, exclude from total
+            if (transaction.excludeFromTotal === true) {
+              continue;
+            }
+            // if transaction.amount is a number, add to total
+            if (typeof transaction.amount === 'number') {
+              sum += parseFloat(transaction.amount);
+            }
+            // if transaction.amount is a string, convert to number
+            else if (typeof transaction.amount ==='string') {
+              sum += parseFloat(transaction.amount.replace(/,/g, ''));
+            }
           }
           return Number.isNaN(sum) ? NaN : sum;
         };
@@ -562,7 +577,7 @@
         }
         return isRemaining
       },
-      getProgressColor(category) {
+      getCategoryProgressColor(category) {
         let budgetRemaining = this.isBudgetRemaining(category)
         let progressRatio = this.groupedTransactions[category].progressRatio
         
@@ -608,6 +623,7 @@
             'note':e.note,
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
+            'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
           }
         }
         if (e.dialogType == 'category'){
@@ -621,7 +637,8 @@
           'originalCategoryName': this.dialogBody.currentCategoryDetails.originalCategoryName ? this.dialogBody.currentCategoryDetails.originalCategoryName : '',
           }
         }
-        console.log('onsubmit hit! ', d)
+        console.log('onsubmit hit! ', d) // if you're adding new props to a category or transaction, you'll also need to update below: 
+        // ctrl + f "if you want client to auto update"
         // TODO: Need to add logic to check the difference from original values before sending post request
 
         fetch("/api/testCategoryUpdate", {
@@ -635,8 +652,6 @@
         .then(data => {
           // console.log('post-api response', data)
           // TODO: Need to add logic to check the response - should only update client props if success
-          // for now, they'll revert when you refresh
-
           d.updateType == 'category' ? this.updatedCategory = {...data} : this.updatedTransaction = {...data}
         })
         .then(
@@ -678,10 +693,11 @@
         // console.log('updatedTransaction watcher: trying to find transaction first ...', t)
         this.groupedTransactions[t.originalCategoryName].filter(transaction => {
           if (transaction.transaction_id == t.transaction_id) {
-            // console.log('transaction match!', transaction.transaction_id, 'vs.', t.transaction_id)
+            // updates go here if you want client to auto update
             transaction.mappedCategory = t.mappedCategory
             transaction.date = t.date
             transaction.note = t.note
+            transaction.excludeFromTotal = t.excludeFromTotal
             const index = this.groupedTransactions[t.originalCategoryName].indexOf(transaction)
             if (index !== -1) {
               if (transaction.mappedCategory !== t.originalCategoryName){
@@ -695,6 +711,7 @@
             }
           }
         })
+        this.monthlyStats = this.monthStats(this.groupedTransactions)
       },
       // don't want to do this for now... because then how do you show it again, blah blah blah
       // 'updatedShowOnBudgetPage': function(t) {

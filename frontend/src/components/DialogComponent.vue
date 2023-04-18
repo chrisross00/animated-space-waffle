@@ -40,7 +40,6 @@
                         label="Category Name"
                         :options="dropDownOptions"
                         class="q-field--with-bottom"
-                        @change="isFormSubmittable()"
                         @touchmove.stop.prevent
                         />
                     <q-input
@@ -52,6 +51,13 @@
                         class="q-field--with-bottom"
                         @change="isFormSubmittable()"
                         />
+
+                    <q-toggle 
+                        color="primary" 
+                        label="Exclude from Total"   
+                        v-model="this.dialogBody.excludeFromTotal" 
+                        @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"/>
+
                 <div class="button-container">
                     <div>
                         <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
@@ -150,8 +156,10 @@ input .select{
                 categoryName: this.item.categoryName ? this.item.categoryName : '',
                 originalCategoryName: this.item.categoryName ? this.item.categoryName : this.item.mappedCategory,
                 note: this.item.note ? this.item.note : '',
+                excludeFromTotal: this.item.excludeFromTotal ? this.item.excludeFromTotal : false,
                 dialogType: this.dialogType
             },
+            originalDialogBody: {},
             formSubmittable:false,
             initialData: null
         };
@@ -186,51 +194,45 @@ computed: {
 
         },
         resetData(){
-            // reset the dialogBody to its initial state
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
-            if ( this.dialogType == 'transaction' ){
-                this.dialogBody.mappedCategory = this.dialogBody.originalCategoryName
-                this.dialogBody.date = this.item.date
-            }
-            if ( this.dialogType == 'category' ){
-                this.dialogBody.categoryName = this.item.categoryName
-                this.dialogBody.monthly_limit = this.item.monthly_limit
-            }
             this.formSubmittable = false
         },
         isFormSubmittable(){
+            console.log('excludeFromTotal, ', this.dialogBody.excludeFromTotal, this.originalDialogBody.excludeFromTotal )
             // first evaluate for change
             if(this.dialogType == 'transaction'){
-                if ( this.dialogBody.mappedCategory !== this.dialogBody.originalCategoryName 
-                    || this.dialogBody.date !== this.item.date
-                    || this.dialogBody.note !== this.item.note) {
-                    this.formSubmittable = true;
+                if(
+                    this.dialogBody.date !== this.originalDialogBody.date ||
+                    this.dialogBody.mappedCategory !== this.originalDialogBody.mappedCategory || 
+                    this.dialogBody.note !== this.originalDialogBody.note ||
+                    this.dialogBody.excludeFromTotal !== this.originalDialogBody.excludeFromTotal 
+                ){
+                    this.formSubmittable = true
                 }
-                if (this.dialogBody.mappedCategory == this.dialogBody.originalCategoryName 
-                    && this.dialogBody.date == this.item.date
-                    && this.dialogBody.note == this.item.note){
-                        this.formSubmittable = false;
-                    }
-                }
-
-            if (this.dialogType == 'category'){
-                if (this.dialogBody.categoryName !== this.item.categoryName
-                || this.dialogBody.monthly_limit !== this.item.monthly_limit){
-                    this.formSubmittable = true;
-                }
-                if (this.dialogBody.categoryName == this.item.categoryName
-                && this.dialogBody.monthly_limit == this.item.monthly_limit){
-                    this.formSubmittable = false;
+                else{
+                    this.formSubmittable = false
                 }
             }
 
-
+            if (this.dialogType == 'category'){
+                if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
+                || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit){
+                    this.formSubmittable = true;
+                }
+                else{
+                    this.formSubmittable = false;
+                }
+            }
             return this.formSubmittable
         }
     },
+    mounted(){
+        this.originalDialogBody = Object.assign({}, this.dialogBody);
+        console.log('mounted(): ', )
+    },
     created() {
         this.initialData = JSON.parse(JSON.stringify(this.dialogBody));
-        // console.log('created child component dialog', this.initialData)
+        console.log('created child component dialog', this.originalDialogBody)
     },
     watch: {
         "dialogBody.mappedCategory": function (){
