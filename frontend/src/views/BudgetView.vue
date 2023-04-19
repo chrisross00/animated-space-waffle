@@ -1,4 +1,14 @@
 <template>
+
+<div class="overlay" :class="{ 'is-visible': isLoading }">
+  <div class="spinner-container">
+    <q-spinner
+      color="primary"
+      size="3em"
+      :thickness="10"
+    />
+  </div>
+</div>
   <div>
     <div class="q-pa-md-page-padder p-3">
       <q-card class="my-card">
@@ -124,7 +134,7 @@
                     </q-item-section>
                     <div class="transaction-decoration">
                       <q-item-section side top>
-                        {{ isNaN(item.amount) ? "N/A" : formatTransactionDollar(item.amount.toFixed(2)) }}                    
+                        {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}                    
                       </q-item-section>
                       <q-item-section side bottom v-if="item.excludeFromTotal">
                         <q-badge label="excluded" />
@@ -158,6 +168,34 @@
 </template>
 
 <style>
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.75s ease-out, visibility 0.75s ease-out;
+}
+
+/* Overlay visible state */
+.overlay.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Spinner container styles */
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .my-card {
   width: 100%;
@@ -357,6 +395,7 @@
         actual: dayjs(currentDate)
       }
       return {   
+        isLoading: true,
         selectedDate, 
         currentDate,
         clicker: ref(false),
@@ -478,20 +517,13 @@
       },
     },
     methods: {
-      formatDollar(value) {
+      formatDollar(value, Prefix = null) {
         let val = (value/1).toFixed(2).replace('.', '.');
-        let prefix = '';
+        let prefix = Prefix == null ? '' : Prefix;
         if (value < 0) {
           prefix = ''; // change to `prefix = '-'` for negative income values
         }
-        return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      },
-      formatTransactionDollar(value){
-        let val = (value/1).toFixed(2).replace('.', '.');
-        let prefix = '-';
-        if (value < 0) {
-          prefix = ''; // change to `prefix = '-'` for negative income values
-        }
+        if (isNaN(val)) val = 0;
         return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
@@ -760,7 +792,7 @@
         });
         this.months = this.buildDateList(this.transactions).reverse()
         this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
-        
+        this.isLoading = false
       } catch (error) {
         console.error(error);
       }
