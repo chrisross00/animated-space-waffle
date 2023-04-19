@@ -7,7 +7,7 @@ const { MongoClient } = require('mongodb');
 async function connectToDb() {
   const client = new MongoClient(process.env.DB_URI);
   await client.connect();
-  console.log('DB: setting up new database connection...')
+  console.log('  DB: setting up new database connection...')
   return client //.db(process.env.DB_NAME);
 }
   
@@ -25,7 +25,7 @@ async function insertData(collectionName, data) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by insertData().")
+      console.log("  DB: database connection closed by insertData().")
     }
   }
   console.log('closing insertData()')
@@ -44,7 +44,7 @@ async function findData(collectionName) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by findData()")
+      console.log("  DB: database connection closed by findData()")
     }
   }
 }
@@ -68,7 +68,7 @@ async function findFilterData(collectionName, filter) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by findFilterData().")
+      console.log("  DB: database connection closed by findFilterData().")
     }
   }
 }
@@ -88,7 +88,7 @@ async function findUnmappedData(collectionName) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed.")
+      console.log("  DB: database connection closed.")
     }
   }
 }
@@ -106,7 +106,7 @@ async function updateData(collectionName, filter, update, options = null) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by findUnmappedData().")
+      console.log("  DB: database connection closed by findUnmappedData().")
     }
   }
 }
@@ -150,7 +150,7 @@ async function deduplicateData(collectionName) { // this only works for Transact
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by deduplicateData().")
+      console.log("  DB: database connection closed by deduplicateData().")
     }
   }
 }
@@ -176,7 +176,7 @@ async function deleteRemovedData(collectionName, filter) { // for when Plaid rem
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by deleteRemovedData().")
+      console.log("  DB: database connection closed by deleteRemovedData().")
     }
   }
 }
@@ -221,7 +221,7 @@ async function cleanPendingTransactions(collectionName) {
   } finally {
     if (client) {
       await client.close();
-      console.log("DB: database connection closed by cleanPendingTransactions().")
+      console.log("  DB: database connection closed by cleanPendingTransactions().")
     }
   }
 }

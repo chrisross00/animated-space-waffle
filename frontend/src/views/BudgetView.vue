@@ -727,6 +727,9 @@
     // request json Transaction data from the server
     async mounted() {
       try {
+        // Check to see if there are new transactions and update the db
+        await fetch('/api/getnew');
+
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
@@ -740,14 +743,13 @@
         this.groupTransactions();
         
         // Get the monthly_limits from each category and match to the groupedTransactions
-        // IMPORTANT!!! groupedTransactions has a few things added to it, which are usually accessed as this.groupedTransactions[category].parameterOfChoice
         this.categoryMonthlyLimits.forEach(category => {
         // console.log('categoryMonthlyLimits.forEach: category =, ', category)
           if(this.groupedTransactions[category.category]){
 
         // ADD PROPS TO groupedTransactions
-        // This implementation allows you to set and get things like this.groupedTransactions[category].monthly_limit, rather than pushing props as arrays along with the txns (push({key:value}))
-        // Let's you treat groupedTransactions object as a cross section of category and transaction data
+        // This implementation allows you to set and get things like this.groupedTransactions[category].parameterOfChoice, rather than pushing props as arrays along with the txns (push({key:value}))
+        // Lets you treat groupedTransactions object as a cross-section of category and transaction data
             this.groupedTransactions[category.category]._id= category._id
             this.groupedTransactions[category.category].categoryName = category.category 
             this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
