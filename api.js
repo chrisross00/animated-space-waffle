@@ -20,8 +20,9 @@ router.get('/', (req, res) => {
 // Endpoint to retrieve all transactions from the database
 router.get('/find', async (req, res) => {
   try {
-    // console.log('BE message: starting the Find flow...')
+    console.log('/find: searching Plaid-Transactions...')
     const transactions = await findData('Plaid-Transactions');
+    console.log('/find: done searching Plaid-Transactions...')
     res.send(transactions);
   } catch (err) {
       console.error(err);
@@ -32,6 +33,7 @@ router.get('/find', async (req, res) => {
 
 router.get('/getnew' , async (req, res) => {
   try { // Get Account data to set up `tokens` and `next_cursors` for API calls. 
+    console.log('/getnew: checking for new transactions...');
     const responses = await getAccountData()
     const updatedResponses = [];
     
@@ -44,7 +46,7 @@ router.get('/getnew' , async (req, res) => {
   
       while (hasMore) { // hasMore is a value set by the Plaid transactionsSync API to handle pagination. When false, you have the final next_cursor
         const newTxns = await plaidTransactionsSync(token, next_cursor); // Pass the `token` and `next_cursor` values to the plaidTransactionsSync() method
-        console.log('newTxns', newTxns)
+        console.log('  plaidTransactionsSync:', newTxns)
         // Handle newTxns to end now or continue with flow
         if (typeof(newTxns) === 'string'){ // if newTxns is a string, then plaidTransactionsSync returned no new transactions
           hasMore = false;
@@ -114,8 +116,8 @@ router.get('/getnew' , async (req, res) => {
       message: 'New transactions found and mapped, no updates made to database.'
     
     }
-  
-  console.log('Done and sending response to client')
+   
+    console.log('/getnew: done checking for new transactions...');
   res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
   
   } catch (err) {
@@ -138,8 +140,9 @@ router.post('/dedupe', async (req,res) => {
 
 router.get('/getcategories', async (req, res)=>{
   try {
-    // console.log('get categories hit and starting')
+    console.log('/getcategories: getting categories...')
     const categories = await findData('categories');
+    console.log('/getcategories: done getting categories...')
     res.send(categories)
   } catch (err){
     console.error(err);
