@@ -15,9 +15,9 @@
       </q-toolbar>
 
       <q-tabs align="left">
-        <q-route-tab to="/api" label="Toolbox" />
-        <q-route-tab to="/api/find" label="View Budget" />
-        <q-route-tab to="/#" label="Nothing" />
+        <q-route-tab to="/" label="View Budget" />
+        <q-route-tab to="/api" label="API Directory" />
+        <q-route-tab to="/profile" label="Profile" />
       </q-tabs>
     </q-header>
 

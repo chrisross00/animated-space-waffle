@@ -1,4 +1,4 @@
-import HomeView from './views/HomeView.vue'
+// import HomeView from './views/HomeView.vue'
 import ApiDr from './views/ApiDir.vue'
 import BudgetView from './views/BudgetView.vue'
 import TestView from './views/TestView.vue'
@@ -7,22 +7,23 @@ import GetNew from './views/GetNew.vue'
 import GetCategories from './views/GetCategories.vue'
 import MapUnmapped from './views/MapUnmapped.vue'
 import CleanPending from './views/CleanPending.vue'
+import ProfileView from './views/ProfileView.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'HomeView',
-    component: HomeView
-  },
   {
     path: '/api/',
     name: 'ApiDr',
     component: ApiDr
   },
   {
-    path: '/api/find',
+    path: '/',
     name: 'BudgetView',
     component: BudgetView
+  },
+  {
+    path: '/profile',
+    name: 'ProfileView',
+    component: ProfileView
   },
   {
     path: '/api/test',
@@ -53,7 +54,7 @@ const routes = [
     path: '/api/cleanPendingTransactions',
     name: 'CleanPending',
     component: CleanPending
-  }
+  },
 ]
 
 export default routes

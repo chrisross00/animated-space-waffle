@@ -142,7 +142,7 @@ async function deduplicateData(collectionName) { // this only works for Transact
       totalDocs++;
     }
 
-  // console.log("Database.js Message: ran deduplicateData() successfully")
+  console.log("Database.js Message: ran deduplicateData() successfully")
     return;
 
   } catch (err) {
