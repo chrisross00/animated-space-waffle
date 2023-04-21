@@ -5,6 +5,7 @@ import routes from './routes'
 import { Quasar } from 'quasar'
 import quasarUserOptions from './quasar-user-options'
 
+
 const router = VueRouter.createRouter({
   history: VueRouter.createWebHistory(),
   routes,
