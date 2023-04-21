@@ -110,12 +110,12 @@ router.get('/getnew' , async (req, res) => {
       
     }
   });
-  
-  let resObj = {
-      transactions: mappedTxns,
-      message: 'New transactions found and mapped, no updates made to database.'
+  // 4/18: pretty sure this can go away
+  // let resObj = {
+  //     transactions: mappedTxns,
+  //     message: 'New transactions found and mapped, no updates made to database.'
     
-    }
+  //   }
    
     console.log('/getnew: done checking for new transactions...');
   res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
