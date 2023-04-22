@@ -1,15 +1,15 @@
 <template>
 
-<div class="overlay" :class="{ 'is-visible': isLoading }">
-  <div class="spinner-container">
-    <q-spinner
-      color="primary"
-      size="3em"
-      :thickness="10"
-    />
-  </div>
-</div>
-  <div>
+  <div v-show="isLoggedIn">
+    <div class="overlay" :class="{ 'is-visible': isLoading }">
+      <div class="spinner-container">
+        <q-spinner
+          color="primary"
+          size="3em"
+          :thickness="10"
+        />
+      </div>
+    </div>
     <div class="q-pa-md-page-padder p-3">
       <q-card class="my-card">
         <q-card-section horizontal>
@@ -164,6 +164,12 @@
           :pagination="pagination"
         />
     </div>
+  </div>
+
+  <div v-show="!isLoggedIn">
+    <!-- link to /profile -->
+    
+    You need to login <a href="/profile">here</a>
   </div>
 </template>
 
@@ -362,6 +368,8 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
+  import store from '../store'
+
 // import e from 'express';
 
   dayjs().format()
@@ -395,6 +403,7 @@
         actual: dayjs(currentDate)
       }
       return {   
+        isLoggedIn: false,
         isLoading: true,
         selectedDate, 
         currentDate,
@@ -759,9 +768,17 @@
     // request json Transaction data from the server
     async mounted() {
       try {
-        // Check to see if there are new transactions and update the db
-        await fetch('/api/getnew');
+        if(store.state.session){
+          const firebaseSessionUser = await store.dispatch('fetchUserData').then(console.log('fetchUserData is done!', store.state))
+          this.isLoggedIn = true;
+          console.log('session ID', store.state.session.sessionId)
+          console.log('firebaseSessionUser user ID', firebaseSessionUser.uid)
 
+        // 4/21 confirmed we get the user id and it's only stored in the client; each refresh we will get it again
+        // next step is to use the user id to get user specific data
+          
+        // Check to see if there are new transactions and update the db
+        // await fetch('/api/getnew');
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
@@ -793,6 +810,11 @@
         this.months = this.buildDateList(this.transactions).reverse()
         this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
         this.isLoading = false
+        }
+        if(!store.state.session){
+          this.isLoggedIn = false;
+          console.log('user state is not available')
+        }
       } catch (error) {
         console.error(error);
       }

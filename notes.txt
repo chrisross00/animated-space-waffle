@@ -1,0 +1,11 @@
+get new will need to be updated to add the uid to new transactions
+
+need to backload all transactions with uid
+
+then need to use uid to get transactions
+
+also need to do update refresh logic
+- it's getting slow, kinda painful to reload everything just because you're hitting the page again
+- basically I need to implement it as 
+	- on first load, pull new transactions
+	- after, during session, only pull new transactions on pull down to refresh

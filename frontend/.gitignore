@@ -2,6 +2,7 @@
 node_modules
 /dist
 PickerComponent.vue
+notes.txt
 
 
 # local env files
