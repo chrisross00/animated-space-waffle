@@ -1,5 +1,6 @@
-<template>
+<style src="../styles/BudgetView.css"></style>
 
+<template>
   <div v-show="isLoggedIn">
     <div class="overlay" :class="{ 'is-visible': isLoading }">
       <div class="spinner-container">
@@ -173,193 +174,6 @@
   </div>
 </template>
 
-<style>
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.75s ease-out, visibility 0.75s ease-out;
-}
-
-/* Overlay visible state */
-.overlay.is-visible {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Spinner container styles */
-.spinner-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.my-card {
-  width: 100%;
-  max-width: 400px;
-  margin: 1rem;
-}
-
-.budget-container .pending {
-  font-style: italic;
-  color: rgba(0, 0, 0, 0.54);
-  
-}
-.budget-container .progress .q-mt-sm {
-    margin-top: 0.3rem;
-    margin-bottom: 0.23rem;
-}
-
-.budget-container .header {
-  display: flex;
-  justify-content: space-between;
-}
-
-.transaction-decoration {
-  float: right;
-
-}
-
-.budget-container .total {
-  font-size: 14px;
-  margin-top: 0px !important;
-  color: rgba(0, 0, 0, 0.54);
-}
-
-.budget-container .dialog {
-  color: red;
-}
-
-.all-transactions-table {
-  min-width: 350px;
-  max-width: 600px;
-}
-
-@media (max-width: 600px) {
-  .all-transactions-table {
-    max-width: 400px;
-  }
-}
-
-.dialog-body-form {
-  margin: 16px;
-  text-align: center;
-}
-
-/* .q-dialog__backdrop {
-  background: none;
-} */
-
-.q-dialog__content {
-  background-color: #f1f1f1 !important; /* replace with your desired color */
-}
-
-.dialog .titlebar {
-  box-shadow: 0 1px 5px rgb(0 0 0 / 20%), 0 2px 2px rgb(0 0 0 / 14%), 0 3px 1px -2px rgb(0 0 0 / 12%);
-}
-
-.dialog .button-container {
-  display:flex;
-  justify-content: space-between;
-}
-
-.icon-hover:hover {
-  color: #424242;
-  font-size: 20px;
-}
-
-
-  .active {
-    background-color: #f0f0f0;
-  }
-  .categories {
-    /* display: flex; */
-    flex-direction: column;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    max-width: 900px; /* set max width to limit the number of boxes */
-    margin: 0 auto; /* center the boxes horizontally */
-    border-radius: 10px; /* round the corners of the container */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* add a subtle drop shadow */
-  }
-
-  .category {
-    max-height: 200px;
-    overflow: hidden;
-    border: 1px solid black;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    width: calc(66.33% - 20px);
-    margin-bottom: 20px;
-    background-color: #fff;
-  }
-
-  .category table tbody {
-    overflow-y: auto;
-  }
-  .category-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    padding: 12px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
-    transition: background-color 0.2s ease-in-out;
-  }
-
-  .category-row:hover {
-    background-color: #e0e0e0;
-  }
-
-
-  .category-transactions {
-    padding-top: 8px;
-  }
-
-  .category-transactions table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  .transaction-table {
-    position: sticky;
-    top: 0;
-    overflow-y: auto;
-    max-height: calc(100% - 40px);
-  }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-  }
-
-  th,
-  td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-
-  th {
-    background-color: #f2f2f2;
-    position: sticky;
-    top: 0;
-  }
-  .text-p{
-    padding-top: 0px;
-  }
-</style>
 
 <script>
   import {ref} from 'vue'
@@ -771,14 +585,14 @@
         if(store.state.session){
           const firebaseSessionUser = await store.dispatch('fetchUserData').then(console.log('fetchUserData is done!', store.state))
           this.isLoggedIn = true;
-          console.log('session ID', store.state.session.sessionId)
+          console.log('document ID', store.state.session.documentId)
           console.log('firebaseSessionUser user ID', firebaseSessionUser.uid)
 
         // 4/21 confirmed we get the user id and it's only stored in the client; each refresh we will get it again
         // next step is to use the user id to get user specific data
           
         // Check to see if there are new transactions and update the db
-        // await fetch('/api/getnew');
+        await fetch('/api/getnew');
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
@@ -796,9 +610,12 @@
         // console.log('categoryMonthlyLimits.forEach: category =, ', category)
           if(this.groupedTransactions[category.category]){
 
-        // ADD PROPS TO groupedTransactions
-        // This implementation allows you to set and get things like this.groupedTransactions[category].parameterOfChoice, rather than pushing props as arrays along with the txns (push({key:value}))
-        // Lets you treat groupedTransactions object as a cross-section of category and transaction data
+        /*\
+        ADD PROPS TO groupedTransactions:
+          - This implementation allows you to get and set things as: this.groupedTransactions[category].parameterOfChoice, 
+          rather than pushing props as arrays along with the txns (push({key:value}))
+          - Lets you treat groupedTransactions object as a cross-section of category and transaction data
+        */ 
             this.groupedTransactions[category.category]._id= category._id
             this.groupedTransactions[category.category].categoryName = category.category 
             this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
