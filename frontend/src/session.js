@@ -2,12 +2,12 @@ import { firestore } from '@/firebase';
 
 export default {
   state: {
-    sessionId: null,
+    documentId: null,
     userData: null,
   },
   mutations: {
-    setSessionId(state, sessionId) {
-      state.sessionId = sessionId;
+    setDocumentId(state, documentId) {
+      state.documentId = documentId;
     },
     setUserData(state, userData) {
       state.userData = userData;
@@ -16,7 +16,7 @@ export default {
   actions: {
     async fetchUserData({ state, commit }) {
       try {
-        const snapshot = await firestore.collection('sessions').doc(state.sessionId).get();
+        const snapshot = await firestore.collection('sessions').doc(state.documentId).get();
         if (snapshot.exists()) {
           const userData = snapshot.data();
           commit('setUserData', userData);

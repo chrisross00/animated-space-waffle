@@ -14,7 +14,7 @@
       <p>Name: {{ user.displayName }}</p>
       <p>Email: {{ user.email }}</p>
       <p>Photo: <img :src="user.photoURL" alt="User photo"></p>
-      <p>Session Id: {{ session ? session.sessionId : '' }}</p>
+      <p>Session Id: {{ session ? session.documentId : '' }}</p>
     </div>
 
   </div>
@@ -51,7 +51,7 @@ export default {
         this.user = result.user
         
         const sessionData = {
-          sessionId: docId.id
+          documentId: docId.id
         }
         store.commit('setSession', sessionData)
         this.session = await store.state.session
@@ -64,7 +64,7 @@ export default {
     async signOut() {
       try {
         // update the collection('sessions') with the endAt timestamp
-        await firestore.collection('sessions').doc(this.session.sessionId).update({
+        await firestore.collection('sessions').doc(this.session.documentId).update({
           endAt: Date.now().toString()
         })
         auth.signOut()
