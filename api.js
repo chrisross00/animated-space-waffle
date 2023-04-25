@@ -2,13 +2,15 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData , insertData, deduplicateData, updateData, findUnmappedData, deleteRemovedData, findFilterData, cleanPendingTransactions } = require('./db/database');
+const { findData , insertData, deduplicateData, updateData, findUnmappedData, deleteRemovedData, findFilterData, cleanPendingTransactions, findUserData } = require('./db/database');
 const { plaidTransactionsSync, getAccountData } = require('./utils/plaidTools');
 const { migrateData } = require('./utils/migrateData');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const path = require('path');
 const cors = require('cors');
 const ObjectID = require('mongodb').ObjectId;
+const admin = require('firebase-admin');
+const http = require('http')
 
 router.use(cors());
 router.use(bodyParser.json());
@@ -19,111 +21,11 @@ router.get('/', (req, res) => {
 
 // Endpoint to retrieve all transactions from the database
 router.get('/find', async (req, res) => {
-  try {
-    console.log('/find: searching Plaid-Transactions...')
-    const transactions = await findData('Plaid-Transactions');
-    console.log('/find: done searching Plaid-Transactions...')
-    res.send(transactions);
-  } catch (err) {
-      console.error(err);
-      res.status(500).send('Error getting transactions');
-  }
-  // console.log('BE message: done')
+  getAllTransactions(req, res);
 });
 
 router.get('/getnew' , async (req, res) => {
-  try { // Get Account data to set up `tokens` and `next_cursors` for API calls. 
-    console.log('/getnew: checking for new transactions...');
-    const responses = await getAccountData()
-    const updatedResponses = [];
-    
-    // For each account, use the `next_cursor` prop to get the latest transactions
-    for (let i = 0; i < responses.length; i++) { 
-      let token = responses[i].token;
-      let next_cursor = responses[i].next_cursor; 
-      let hasMore = true;
-      const updatedTxns = [];
-  
-      while (hasMore) { // hasMore is a value set by the Plaid transactionsSync API to handle pagination. When false, you have the final next_cursor
-        const newTxns = await plaidTransactionsSync(token, next_cursor); // Pass the `token` and `next_cursor` values to the plaidTransactionsSync() method
-        console.log('  plaidTransactionsSync:', newTxns)
-        // Handle newTxns to end now or continue with flow
-        if (typeof(newTxns) === 'string'){ // if newTxns is a string, then plaidTransactionsSync returned no new transactions
-          hasMore = false;
-          responses[i].newTxns = false
-          break;
-        }
-        responses[i].newTxns = true;
-        const additionalData = { // want to know account, and what order each object was made
-          account: responses[i].account,
-          createdDate: Date.now(),
-          lastcursor: next_cursor, // testing setting lastcursor with "newTxns"
-        }; 
-        const updatedTxn = { ...newTxns, ...additionalData };
-        next_cursor = updatedTxn.next_cursor;
-        updatedTxns.push(updatedTxn);
-        hasMore = updatedTxn.has_more;
-      }
-    
-      updatedResponses.push(...updatedTxns); // Append the updated transactions to the updatedResponses array
-      responses[i].next_cursor = next_cursor; // i'm not sure you need this; Update the cursor value in the responses array
-    } // end of for loop
-  
-    // TODO DELETE THIS
-   // transactions.push(...updatedResponses); // Append the updatedResponses array to the responses array
-
-// Need to categorize transactions before inserting to 'Plaid-Transactions'
-  const categories = await findData('categories');
-  const ruleList = await getMappingRuleList(categories);
-  const mappedTxns = await mapTransactions(updatedResponses, ruleList); // insert this to 79 below
-  // console.log('mapped Transactions = ', mappedTxns)
-  // UPDATE TRANSACTIONS
-  if (mappedTxns.length > 0) {
-    await insertData('Plaid-Transactions', mappedTxns)
-  }
-  // console.log('done inserting data... checking accounts Logic...', element.next_cursor && element.token && element.newTxns === true)
-
-  // REMOVE TRANSACTIONS
-  let filter = { $or: [] };
-  updatedResponses.forEach(block => {
-    if(block.removed && block.removed.length > 0) {
-      filter.$or.push(...block.removed);
-    }
-  });
-  if ( filter.$or.length > 0 ) {
-    const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
-    console.log('deletedPendingResponse', deletedPendingResponse);
-  }
-  
-    // UPDATE ACCOUNT TOKENS AND CURSORS - update next_cursor on each account level with the latest next_cursor value for next time
-  responses.forEach(element => {  
-    const key = `Accounts.${element.account}.token`;
-    let updateObject = { $set: {} };
-    let filter = { [key]: element.token };
-
-    // if you're looking at `responses` and you have an account summary object, not a transaction, and it has new Txns
-    if(element.next_cursor && element.token && element.newTxns === true){ 
-      updateObject.$set[`Accounts.${element.account}.next_cursor`] = element.next_cursor;
-      
-      // UPDATE ACCOUNT WITH NEXT_CURSOR
-      updateData('Plaid-Accounts', filter, updateObject); 
-      
-    }
-  });
-  // 4/18: pretty sure this can go away
-  // let resObj = {
-  //     transactions: mappedTxns,
-  //     message: 'New transactions found and mapped, no updates made to database.'
-    
-  //   }
-   
-    console.log('/getnew: done checking for new transactions...');
-  res.send(mappedTxns); // send responses (all transactions) back to the UI at GetNew.vue
-  
-  } catch (err) {
-      // console.log('error in /getnew', err);
-  } // end of try
-  // Transform the data into a new format for the app
+  getNewPlaidTransactions(req, res);
 });
 
 router.post('/dedupe', async (req,res) => {
@@ -141,7 +43,7 @@ router.post('/dedupe', async (req,res) => {
 router.get('/getcategories', async (req, res)=>{
   try {
     console.log('/getcategories: getting categories...')
-    const categories = await findData('categories');
+    const categories = await findData('Basil-Categories');
     console.log('/getcategories: done getting categories...')
     res.send(categories)
   } catch (err){
@@ -163,6 +65,44 @@ router.get('/test', async (req, res) => {
   }
 })
 
+router.get('/getNewAuth', async (req, res) => {
+  try {
+    console.log('/getNewAuth starting...');
+    
+    // Verify the Firebase ID token
+    const header = req.headers.authorization;
+    if (header && header.startsWith('Bearer ')) {
+      const idToken = header.split('Bearer ')[1];
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      if(decodedToken.user_id){
+        try {
+          console.log('   beginning IdToken Verification...');
+          const userId = decodedToken.user_id;
+  
+          await getNewPlaidTransactions(userId);
+          const transactions = await getAllUserTransactions(userId);
+                  
+          // Send a response back to the client
+          console.log('/getNewAuth complete, sending status 200 and returning transactions...');
+          res.status(200).json({ message: 'Authorization successful', transactions: transactions });
+          return transactions;
+        } catch (error) {
+          // Handle invalid ID token
+          console.error('Error verifying ID token:', error);
+          res.status(401).json({ message: 'Authorization failed' });
+        }
+      }
+    } else {
+      // Handle missing or malformed Authorization header
+      console.error('Missing or malformed Authorization header');
+      res.status(400).json({ message: 'Bad request' });
+    }
+  } catch (error) {
+    console.error('Error processing request:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.get('/cleanPendingTransactions', async (req, res) => {
 
   try {
@@ -174,7 +114,7 @@ router.get('/cleanPendingTransactions', async (req, res) => {
   }
 })
 
-router.post('/testCategoryUpdate', function(req, res){
+router.post('/categoryUpdate', function(req, res){
   const updateType = req.body.updateType;
   // if updateType == 'transaction' ...
   // if updateType == 'category' ...
@@ -195,7 +135,7 @@ router.post('/testCategoryUpdate', function(req, res){
         // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
       }
     };
-    updateData('categories', filter, update)
+    updateData('Basil-Categories', filter, update)
   }
 
   // Call updateData function to update Mongo Db
@@ -221,7 +161,7 @@ router.post('/testCategoryUpdate', function(req, res){
   }
 
   const resObj = {
-    message: 'Hello from api.js POST /testCategoryUpdate endpoint... your data has now come full circle:',
+    message: 'Hello from api.js POST /categoryUpdate endpoint... your data has now come full circle:',
     ...d
   }
 
@@ -232,7 +172,7 @@ router.get('/mapunmapped', async (req, res) => {
   // console.log('API.js message: hit the /test endpoint')
   try {
     const unmappedTransactions = await findUnmappedData('Plaid-Transactions');
-    const categories = await findData('categories');
+    const categories = await findData('Basil-Categories');
     const ruleList = await getMappingRuleList(categories);
     const mappedTxns = await mapTransactions(unmappedTransactions, ruleList); // insert this to 79 below
 
@@ -254,27 +194,123 @@ router.get('/mapunmapped', async (req, res) => {
   }
 })
 
-// Endpoint to insert a transaction into the database
-router.post('/insert', async (req, res) => {
-  try {
-    const { transaction } = req.body;
-    const result = await insertData(transaction);
-    res.status(201).send(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({error: 'Error inserting transaction'});
-  }
-});
+async function getNewPlaidTransactions(uid) {
+  const userId = uid? uid : null;
+  try { 
+    console.log('     /getnew: checking for new transactions for userId...', userId);
+    const responses = await getAccountData(userId);
+    console.log(`accounts received for userId: ${userId} \n, ${responses}`);
+    const updatedResponses = [];
+    
+    for (const response of responses) {
+      let token = response.token;
+      let next_cursor = response.next_cursor;
+      let hasMore = true;
+      // console.log(`response.token and response.next_cursor: ${response.token} \n, ${response.next_cursor}`);
+        const updatedTxns = [];
+        
+        while (hasMore) {
+          const newTxns = await plaidTransactionsSync(token, next_cursor, userId);
+          // console.log(' api.js: plaidTransactionsSync : \n', newTxns, '\nnewTxns end');
+          if (typeof newTxns === 'string') {
+            hasMore = false;
+            response.newTxns = false;
+            break;
+          }
 
-// Endpoint to migrate data from Google Sheets to MongoDB
-router.get('/migrate', async (req, res) => {
-  try {
-    await migrateData();
-    res.send('Data migration successful');
+          response.newTxns = true;
+          const additionalData = {
+            account: response.account,
+            createdDate: Date.now(),
+            lastcursor: next_cursor,
+            userId,
+          };
+          const updatedTxn = { ...newTxns, ...additionalData };
+          next_cursor = updatedTxn.next_cursor;
+          updatedTxns.push(updatedTxn);
+          hasMore = updatedTxn.has_more;
+        }
+
+        updatedResponses.push(...updatedTxns);
+        response.prev_cursor = response.next_cursor;
+        response.next_cursor = next_cursor;
+
+        if (response.next_cursor && response.token && response.newTxns === true) {
+          await updateAccounts(response, userId);
+        }
+      }
+      console.log('getting user data.... userId = ', userId);
+    const categories = await findUserData('Basil-Categories', userId); 
+    const ruleList = await getMappingRuleList(categories);
+    const mappedTxns = await mapTransactions(updatedResponses, ruleList);
+
+    if (mappedTxns.length > 0) {
+      await insertData('Plaid-Transactions', mappedTxns);
+    }
+
+    let filter = { $or: [] };
+    updatedResponses.forEach((block) => {
+      if (block.removed && block.removed.length > 0) {
+        filter.$or.push(...block.removed); // add user id here? not sure if it needs to be added to match or not
+      }
+    });
+
+    if (filter.$or.length > 0) {
+      const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
+      console.log('deletedPendingResponse', deletedPendingResponse);
+    }
+
+    console.log('/getnew: done checking for new Plaid transactions...');
+    return;
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Error migrating data');
+      console.log('error in /getnew', err);
+  } 
+}
+
+async function getAllTransactions() {
+  try {
+    console.log('getAllTransactions(): searching Plaid-Transactions...')
+    const transactions = await findData('Plaid-Transactions');
+    console.log('getAllTransactions(): done searching Plaid-Transactions...')
+    return transactions;
+  } catch (err) {
+      console.error(err);
+      // res.status(500).send('Error getting transactions');
   }
-});
+  // console.log('BE message: done')
+}
+
+async function getAllUserTransactions(uid) {
+  const userId = uid? uid : null;
+  if(userId){
+    try {
+      console.log('getAllUserTransactions(): searching Plaid-Transactions for userId...', userId)
+      const transactions = await findUserData('Plaid-Transactions', userId);
+      console.log('getAllUserTransactions(): done searching Plaid-Transactions...')
+      return transactions;
+    } catch (err) {
+        console.error(err);
+        // res.status(500).send('Error getting transactions');
+    }
+  } else {
+    console.log('getAllUserTransactions(): no userId provided')
+  }
+}
+
+async function updateAccounts(response, userId){
+  const key = `Accounts.${response.account}.token`;
+  const filter = { 
+    [key]: response.token, 
+    userId: userId
+  };
+  const updateObject = {
+    $set: {
+      [`Accounts.${response.account}.next_cursor`]: response.next_cursor,
+      [`Accounts.${response.account}.prev_cursor`]: response.prev_cursor,
+    },
+  };
+  await updateData('Plaid-Accounts', filter, updateObject);
+  return;
+}
 
 module.exports = router;

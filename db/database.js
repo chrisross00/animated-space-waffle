@@ -15,20 +15,24 @@ async function insertData(collectionName, data) {
   let client;
   try {
     client = await connectToDb();
-    console.log('database.js/insertdata() data=', data.length)
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
-    await collection.insertMany(data);
-    console.log(`Database.js Message: Inserted data and closing.`);
+
+    const dataWithInsertDate = data.map(item => {
+      return { ...item, insertDate: new Date.now() };
+    });
+
+    await collection.insertMany(dataWithInsertDate);
+
+    console.log(`  DB: Inserted data and closing.`);
   } catch (err) {
-    console.error(err);
+    console.error('  DB: ',err);
   } finally {
     if (client) {
       await client.close();
       console.log("  DB: database connection closed by insertData().")
     }
   }
-  console.log('closing insertData()')
 }
 
 async function findData(collectionName) {
@@ -38,6 +42,25 @@ async function findData(collectionName) {
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
     const result = await collection.find().sort({date: -1}).toArray();
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("  DB: database connection closed by findData()")
+    }
+  }
+}
+
+async function findUserData(collectionName, uid) {
+  let client;
+  try { // add toArray() override parameter in the future
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    const collection = db.collection(collectionName);
+    const query = { userId: uid };
+    const result = await collection.find(query).sort({date: -1}).toArray();
     return result;
   } catch (err) {
     console.error(err);
@@ -235,6 +258,7 @@ async function cleanPendingTransactions(collectionName) {
     findUnmappedData,
     deleteRemovedData,
     findFilterData,
-    cleanPendingTransactions
+    cleanPendingTransactions,
+    findUserData
   };
   

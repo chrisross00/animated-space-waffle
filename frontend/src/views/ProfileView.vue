@@ -62,19 +62,21 @@ export default {
     },
     // sign out should log out the user using firebase.auth().signOut() and clear the store state
     async signOut() {
-      try {
-        // update the collection('sessions') with the endAt timestamp
-        await firestore.collection('sessions').doc(this.session.documentId).update({
-          endAt: Date.now().toString()
-        })
-        auth.signOut()
-        .then(this.userData = null)
-        .then(store.commit('clearState'))
-    window.location.reload();
-    // this.$router.push({ name: 'Profile' });
-      } catch (error) {
-        console.log(error)
+      if(this.session.documentId){
+        try {
+          // update the collection('sessions') with the endAt timestamp
+          await firestore.collection('sessions').doc(this.session.documentId).update({
+            endAt: Date.now().toString()
+          })
+        } catch (error) {
+          console.log(error)
+          }
       }
+      auth.signOut()
+      .then(this.userData = null)
+      .then(store.commit('clearState'))
+      window.location.reload();
+      // this.$router.push({ name: 'Profile' });
     }
 
   },
