@@ -1,10 +1,6 @@
-// Import the functions you need from the SDKs you need
-// import { initializeApp } from "firebase/compat/no-app";
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
-// require('dotenv').config()
-
 // import 'firebase/GoogleAuthProvider'
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -28,6 +24,36 @@ console.log(app)
 export const auth = app.auth()
 export const firestore = firebase.firestore()
 export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
-
 // export const SetPersistence = auth.Auth.setPersistence();
 // export const browserSessionPersistence = firebase.auth().browserSessionPersistence;
+
+async function getAuthHeaders() {
+  const user = auth.currentUser;
+  if (user) {
+    const idToken = await user.getIdToken();
+    return {
+      Authorization: `Bearer ${idToken}`,
+    };
+  } else {
+    return null;
+  }
+}
+
+export async function fetchTransactions() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/getNewAuth', { headers });
+    if (response.ok) {
+      const transactions = response.json();
+      return transactions;
+    } else {
+      // Handle errors
+      console.error(`Request failed with status ${response.status}`);
+    }
+  } else {
+    // User is not signed in
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
+// export async function updateCategories() {} later...

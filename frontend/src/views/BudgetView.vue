@@ -183,6 +183,7 @@
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
   import store from '../store'
+  import { fetchTransactions } from '@/firebase';
 
 // import e from 'express';
 
@@ -501,7 +502,7 @@
         // ctrl + f "if you want client to auto update"
         // TODO: Need to add logic to check the difference from original values before sending post request
 
-        fetch("/api/testCategoryUpdate", {
+        fetch("/api/categoryUpdate", {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -539,9 +540,7 @@
         this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
-      
       // category watchers
-      // What if all of this is in one object
       'updatedCategory': function(t) {
         // console.log('updatedCategory, this.groupedTransactions[Slush]', this.groupedTransactions['Slush'])
         this.groupedTransactions[t.originalCategoryName].categoryName = t.categoryNameBEResponse
@@ -549,11 +548,9 @@
         this.groupedTransactions[t.originalCategoryName].showOnBudgetPage = t.showOnBudgetPageBEResponse
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
-      'updatedTransaction' : function(t) { // updates go here if you want client to auto update
-        // console.log('updatedTransaction watcher: trying to find transaction first ...', t)
+      'updatedTransaction' : function(t) { // updates go here if you want client to auto-update w.o refresh
         this.groupedTransactions[t.originalCategoryName].filter(transaction => {
           if (transaction.transaction_id == t.transaction_id) {
-            // updates go here if you want client to auto update
             transaction.mappedCategory = t.mappedCategory
             transaction.date = t.date
             transaction.note = t.note
@@ -561,10 +558,7 @@
             const index = this.groupedTransactions[t.originalCategoryName].indexOf(transaction)
             if (index !== -1) {
               if (transaction.mappedCategory !== t.originalCategoryName){
-              // 3/13: Currently working... leaving off, need to make sure to see if can insert with respect to date, because txns end up on bottom from the push method
-                // Remove transaction from its current category
                 this.groupedTransactions[t.originalCategoryName].splice(index, 1)
-                // Add transaction to the new category
                 this.groupedTransactions[transaction.mappedCategory].push(transaction)
                 console.log('index is !== -1!')
               }
@@ -583,24 +577,26 @@
     async mounted() {
       try {
         if(store.state.session){
-          const firebaseSessionUser = await store.dispatch('fetchUserData').then(console.log('fetchUserData is done!', store.state))
+          // const firebaseSessionUser = await store.dispatch('fetchUserData').then(console.log('fetchUserData is done!', store.state))
+
+          // change firebaseSessionUser to use the method in firebase.js
+          const transactions = await fetchTransactions()
+          console.log('budgetview: transactions', transactions.transactions)
+          const response = transactions.transactions
           this.isLoggedIn = true;
           console.log('document ID', store.state.session.documentId)
-          console.log('firebaseSessionUser user ID', firebaseSessionUser.uid)
+          console.log('firebaseSessionUser user ID', response)
 
-        // 4/21 confirmed we get the user id and it's only stored in the client; each refresh we will get it again
-        // next step is to use the user id to get user specific data
-          
         // Check to see if there are new transactions and update the db
-        await fetch('/api/getnew');
+        // await fetch('/api/getnew');
         // Get category monthlyLimit info
         const categoryResponse = await fetch('/api/getcategories');
         const categoryData = await categoryResponse.json();
         this.categoryMonthlyLimits.push(...categoryData) //
 
         // Get txn info
-        const response = await fetch("/api/find");
-        const data = await response.json(); // extract JSON data from response
+        // const response = await fetch("/api/find");
+        const data = response //await response.json(); // extract JSON data from response
         this.transactions = data;
         // console.log("Haven't called groupTransactions yet, this.groupedTransactions = ", this.groupedTransactions)
         this.groupTransactions();

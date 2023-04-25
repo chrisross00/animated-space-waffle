@@ -3,3 +3,5 @@ settings.json
 .env
 config.js
 data
+renameCollection.js
+notes.txt

@@ -1,6 +1,7 @@
 import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
-import { firestore } from '@/firebase';
+// import { firestore } from '@/firebase';
+// import { auth } from '@/firebase'
 
 const store = createStore({
     state: {
@@ -23,16 +24,6 @@ const store = createStore({
         }
     },
     actions: {
-        async fetchUserData({state}){
-        try {
-            const userData = await firestore.collection('sessions').doc(state.session.documentId).get();
-            // console.log('fetchUserData ', userData.data());
-            // store.commit('setUser', userData.data()) // is this necessary? Do I actually want it in the store? Or can i just keep it in session and if I lose it, use the documentId to get it again?
-            return userData.data();
-        } catch (error) {
-            console.log(error);
-        }
-        }
     }
 });
 

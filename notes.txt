@@ -1,11 +1,54 @@
-get new will need to be updated to add the uid to new transactions
+Budgetview ultimately wants  const transactions = await fetchTransactions()
 
-need to backload all transactions with uid
+so fetchTransactions needs to return all the txns
 
-then need to use uid to get transactions
+!! api.js needs to use two things !!
+- getNewPlaidTransactions
+	- get new gets all the new plaid transactions and adds them to the db, returns nothing
+- getAllTransactions
+	- gets everything and returns the transactions to the client
+- need to add storage somewhere so you don't constantly have to hit the firebase api and get the tokenid just to do a db action, right? like do i want to do this when I add a new transaction?
 
-also need to do update refresh logic
-- it's getting slow, kinda painful to reload everything just because you're hitting the page again
-- basically I need to implement it as 
-	- on first load, pull new transactions
-	- after, during session, only pull new transactions on pull down to refresh
+//
+	Method Level Changes:
+//\
+
+getNewPlaidTransactions is busted as fuck rn, its not saving the transactions to mongo db, but it updates the cursor
+- updates to make while fixing:
+	- add userId to each transaction (done, updated plaidTransactionsSync to do this)
+	- add insertDate to each (done, updated insertData)
+- Note: may have just broken because I ran it with a res.send() out of place
+
+
+accountUpdate
+- move to its own transaction (done)
+- add prev_cursor to the account update (around line 260) (done)
+
+getAccountData():
+- needs to use user id (done)
+
+getAllTransactions:
+- update to use userId (done, implemented getAllUserTransactions())
+
+
+update categories to include user data (done)
+- api.js line 241 needs to use findUserData (done)
+	- categories need to be set up in mongodb to have a userId on each (done)
+- categories created in app will need to add the user id to them before adding to the db 
+
+
+last actual next_cursor (before replacing and testing)
+CAESJk9qTjVlQkFuNWVTMTFlZTRRempPZjdnM1BFYm9FOFRQN2tMRHhwGgYI+siaogYiBgj6yJqiBioGCPrImqIG
+
+
+plaidTransactionsSync()
+- add user ID to each transaction in the newTxns array (done)
+- verify the transactions returned to api.js include userid (done)
+
+Lst for 4/24: 
+added this code and it fixed it; returning newTxns before broke everything because api.js was missing the added, modified, removed blocks. After fixing this, all the new transactions flowed into the app and everything works like normal again. New transactions have also have the userID and insertdate!
+
+const newTxns = data.added.map(txn => ({ ...txn, userId }));
+data.added = newTxns	
+- Next,  let's also move the api.js Plaid methods to the utils.plaidTools.js file -- this is more relevant
+- also need to decide on what to do with the store
