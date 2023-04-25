@@ -1,5 +1,6 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require( 'plaid');
-const { findData, findUserData } = require('../db/database');
+const { findUserData } = require('../db/database');
+const { getMappingRuleList, mapTransactions } = require('./categoryMapping')
 
 
 // maybe put this in an internal function to initialize the client object
@@ -61,7 +62,115 @@ async function plaidTransactionsSync (access_token, cursor=null, uid){
       // console.log('error with plaidTransactionsSync, `err.response.data`: ', err.response.data)
     }
 }
-  module.exports = {
-    plaidTransactionsSync,
-    getAccountData
+
+async function getNewPlaidTransactions(uid) {
+  const userId = uid? uid : null;
+  try { 
+    console.log('     /getnew: checking for new transactions for userId...', userId);
+    const responses = await getAccountData(userId);
+    console.log(`accounts received for userId: ${userId} \n, ${responses}`);
+    const updatedResponses = [];
+    
+    for (const response of responses) {
+      let token = response.token;
+      let next_cursor = response.next_cursor;
+      let hasMore = true;
+      // console.log(`response.token and response.next_cursor: ${response.token} \n, ${response.next_cursor}`);
+        const updatedTxns = [];
+        
+        while (hasMore) {
+          const newTxns = await plaidTransactionsSync(token, next_cursor, userId);
+          // console.log(' api.js: plaidTransactionsSync : \n', newTxns, '\nnewTxns end');
+          if (typeof newTxns === 'string') {
+            hasMore = false;
+            response.newTxns = false;
+            break;
+          }
+
+          response.newTxns = true;
+          const additionalData = {
+            account: response.account,
+            createdDate: Date.now(),
+            lastcursor: next_cursor,
+            userId,
+          };
+          const updatedTxn = { ...newTxns, ...additionalData };
+          next_cursor = updatedTxn.next_cursor;
+          updatedTxns.push(updatedTxn);
+          hasMore = updatedTxn.has_more;
+        }
+
+        updatedResponses.push(...updatedTxns);
+        response.prev_cursor = response.next_cursor;
+        response.next_cursor = next_cursor;
+
+        if (response.next_cursor && response.token && response.newTxns === true) {
+          await updatePlaidAccounts(response, userId);
+        }
+      }
+      console.log('getting user data.... userId = ', userId);
+      const categories = await findUserData('Basil-Categories', userId); 
+      console.log('getting mapping rule list.... categories = ', categories);
+    const ruleList = await getMappingRuleList(categories);
+    const mappedTxns = await mapTransactions(updatedResponses, ruleList);
+
+    if (mappedTxns.length > 0) {
+      await insertData('Plaid-Transactions', mappedTxns);
+    }
+
+    let filter = { $or: [] };
+    updatedResponses.forEach((block) => {
+      if (block.removed && block.removed.length > 0) {
+        filter.$or.push(...block.removed); // add user id here? not sure if it needs to be added to match or not
+      }
+    });
+
+    if (filter.$or.length > 0) {
+      const deletedPendingResponse = await deleteRemovedData('Plaid-Transactions', filter);
+      console.log('deletedPendingResponse', deletedPendingResponse);
+    }
+
+    console.log('/getnew: done checking for new Plaid transactions...');
+    return;
+  } catch (err) {
+      console.log('error in /getnew', err);
+  } 
+}
+
+async function getAllUserTransactions(uid) {
+  const userId = uid? uid : null;
+  if(userId){
+    try {
+      const transactions = await findUserData('Plaid-Transactions', userId);
+      return transactions;
+    } catch (err) {
+        console.error(err);
+        // res.status(500).send('Error getting transactions');
+    }
+  } else {
+    console.log('getAllUserTransactions(): no userId provided')
+  }
+}
+
+async function updatePlaidAccounts(response, userId){
+  const key = `Accounts.${response.account}.token`;
+  const filter = { 
+    [key]: response.token, 
+    userId: userId
+  };
+  const updateObject = {
+    $set: {
+      [`Accounts.${response.account}.next_cursor`]: response.next_cursor,
+      [`Accounts.${response.account}.prev_cursor`]: response.prev_cursor,
+    },
+  };
+  await updateData('Plaid-Accounts', filter, updateObject);
+  return;
+}
+
+module.exports = {
+  plaidTransactionsSync,
+  getAccountData,
+  getNewPlaidTransactions,
+  getAllUserTransactions
 }
