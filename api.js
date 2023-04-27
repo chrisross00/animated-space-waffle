@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData , insertData, deduplicateData, updateData, findUnmappedData, deleteRemovedData, findFilterData, cleanPendingTransactions, findUserData } = require('./db/database');
+const { findData, deduplicateData, updateData, findUnmappedData, cleanPendingTransactions, findUserData, insertData } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const path = require('path');
@@ -103,8 +103,26 @@ router.get('/getNewAuth', async (req, res) => {
   }
 });
 
-router.get('/cleanPendingTransactions', async (req, res) => {
+// Requires the ID token from the Authorization header, which you can easily create using firebase.js/getAuthHeaders() on the client side
+router.get('/getOrAddUser', async (req, res) => {
+  console.log('/getOrAddUser starting...');
+  try {
+    const decodedToken = await validateIdToken(req)
+    console.log('decodedToken: ', decodedToken)
+    if(decodedToken){
+      const user = await getOrAddUser(decodedToken)
+      console.log('received user from getOrAddUser() method', user)
+      res.status(200).json(user);
+      return user
+    } else {
+      console.log('Missing or malformed Authorization header');
+    }
+  } catch (error) {
+    console.log(error)
+  }
+});
 
+router.get('/cleanPendingTransactions', async (req, res) => {
   try {
     const transactions = await cleanPendingTransactions('Plaid-Transactions');
     res.send(transactions);
@@ -202,6 +220,38 @@ async function validateIdToken(req) {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     return decodedToken;
   }
+}
+
+async function getOrAddUser(decodedToken) {
+  console.log('getOrAddUser function called and starting...:', decodedToken.uid)
+  const user = await findUserData('Basil-Users', decodedToken.uid);
+  if (user.length == 0) {
+    const newUser = {
+      userId: decodedToken.uid,
+      email: decodedToken.email,
+      name: decodedToken.name,
+      picture: decodedToken.picture,
+      firebase: decodedToken.firebase,
+    }
+    console.log('User added to database:', newUser)
+    await insertData('Basil-Users', newUser);
+    console.log('sending newly created client-side user:', clientSideUser)
+    const clientSideUser = createClientSideUser(newUser[0])
+    return clientSideUser
+  } else {
+    console.log('User found:', user[0])
+    const clientSideUser = createClientSideUser(user[0])
+    console.log('sending client-side user:', clientSideUser)
+    return clientSideUser;
+  }
+}
+
+function createClientSideUser(user) {
+  return {
+    email: user.email,
+    name: user.name,
+    picture: user.picture
+  };
 }
 
 module.exports = router;

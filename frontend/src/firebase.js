@@ -1,6 +1,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
+import { getAuth } from '@firebase/auth'
 // import 'firebase/GoogleAuthProvider'
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -17,28 +18,31 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
-console.log(app)
-
 
 // Export the Firebase authentication and Firestore objects
 export const auth = app.auth()
 export const firestore = firebase.firestore()
 export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
-// export const SetPersistence = auth.Auth.setPersistence();
-// export const browserSessionPersistence = firebase.auth().browserSessionPersistence;
 
 async function getAuthHeaders() {
-  const user = auth.currentUser;
-  if (user) {
-    const idToken = await user.getIdToken();
-    return {
-      Authorization: `Bearer ${idToken}`,
-    };
-  } else {
-    return null;
-  }
-}
+  const authInstance = getAuth();
 
+  return new Promise((resolve, reject) => {
+    const unsubscribe = authInstance.onAuthStateChanged(async (user) => {
+      unsubscribe(); // Remove the listener after it's called once.
+      
+      if (user) {
+        console.log('getAuthHeaders', user);
+        const idToken = await user.getIdToken();
+        resolve({
+          Authorization: `Bearer ${idToken}`,
+        });
+      } else {
+        resolve(null);
+      }
+    }, reject);
+  });
+}
 export async function fetchTransactions() {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -46,6 +50,25 @@ export async function fetchTransactions() {
     if (response.ok) {
       const transactions = response.json();
       return transactions;
+    } else {
+      // Handle errors
+      console.error(`Request failed with status ${response.status}`);
+    }
+  } else {
+    // User is not signed in
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
+export async function getOrAddUser() {
+  console.log("getOrAddUser(): current auth is", auth)
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/getOrAddUser', { headers });
+    const data = await response.json();
+    if (response.ok) {
+      const user = data
+      return user;
     } else {
       // Handle errors
       console.error(`Request failed with status ${response.status}`);

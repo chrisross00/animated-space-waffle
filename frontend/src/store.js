@@ -18,9 +18,21 @@ const store = createStore({
         clearState(state) {
           state.user = null;
           state.session = null;
+          state.lastPlaidFetch = null;
+          state.transactions = [];
+          state.categories = [];
         },
         setSession(state, session) {
             state.session = session;
+        },
+        setLastPlaidFetch(state, timestamp) {
+            state.lastPlaidFetch = timestamp;
+        },
+        setTransactions(state, transactions) {
+            state.transactions = transactions;
+        },
+        setCategories(state, categories) {
+            state.categories = categories;
         }
     },
     actions: {

@@ -1,16 +1,9 @@
 <style src="../styles/BudgetView.css"></style>
 
 <template>
-  <div v-show="isLoggedIn">
-    <div class="overlay" :class="{ 'is-visible': isLoading }">
-      <div class="spinner-container">
-        <q-spinner
-          color="primary"
-          size="3em"
-          :thickness="10"
-        />
-      </div>
-    </div>
+  
+<div v-show="isLoggedIn">
+  <SpinnerComponent :isLoading="isLoading" />
     <div class="q-pa-md-page-padder p-3">
       <q-card class="my-card">
         <q-card-section horizontal>
@@ -166,7 +159,7 @@
         />
     </div>
   </div>
-
+  
   <div v-show="!isLoggedIn">
     <!-- link to /profile -->
     
@@ -182,6 +175,7 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
+  import SpinnerComponent from '../components/SpinnerComponent.vue'
   import store from '../store'
   import { fetchTransactions } from '@/firebase';
 
@@ -209,7 +203,8 @@
   ]
   export default {
     components: {
-      DialogComponent
+      DialogComponent,
+      SpinnerComponent
     },
     data() {
       const currentDate = dayjs();
@@ -573,58 +568,78 @@
       //   // this.groupedTransactions[t].showOnBudgetPage = t
       // },
     },
-    // request json Transaction data from the server
     async mounted() {
+      this.isLoading = true;
+      this.isLoggedIn = store.state.session ? store.state.session.isSessionActive ? true : false : false;
+      console.log("store.state.session = ", store.state.session)
       try {
-        if(store.state.session){
-          // const firebaseSessionUser = await store.dispatch('fetchUserData').then(console.log('fetchUserData is done!', store.state))
+        if(store.state.session?.isSessionActive){
+          const now = Date.now();
+          const lastFetch = store.state.lastPlaidFetch;
+          const fetchInterval = 1000 * 60 * 1; // 10 minutes in milliseconds, adjust as needed
 
-          // change firebaseSessionUser to use the method in firebase.js
-          const transactions = await fetchTransactions()
-          console.log('budgetview: transactions', transactions.transactions)
-          const response = transactions.transactions
-          this.isLoggedIn = true;
-          console.log('document ID', store.state.session.documentId)
-          console.log('firebaseSessionUser user ID', response)
+          if (!lastFetch || now - lastFetch > fetchInterval) {
+            const transactions = await fetchTransactions()
+            this.transactions = transactions.transactions;
 
-        // Check to see if there are new transactions and update the db
-        // await fetch('/api/getnew');
-        // Get category monthlyLimit info
-        const categoryResponse = await fetch('/api/getcategories');
-        const categoryData = await categoryResponse.json();
-        this.categoryMonthlyLimits.push(...categoryData) //
+            // Get category monthlyLimit info
+            const categoryResponse = await fetch('/api/getcategories');
+            
+            const categoryData = await categoryResponse.json();
+            this.categoryMonthlyLimits.push(...categoryData) //
 
-        // Get txn info
-        // const response = await fetch("/api/find");
-        const data = response //await response.json(); // extract JSON data from response
-        this.transactions = data;
-        // console.log("Haven't called groupTransactions yet, this.groupedTransactions = ", this.groupedTransactions)
-        this.groupTransactions();
-        
-        // Get the monthly_limits from each category and match to the groupedTransactions
-        this.categoryMonthlyLimits.forEach(category => {
-        // console.log('categoryMonthlyLimits.forEach: category =, ', category)
-          if(this.groupedTransactions[category.category]){
+            this.groupTransactions();
+            
+            // Get the monthly_limits from each category and match to the groupedTransactions
+            this.categoryMonthlyLimits.forEach(category => {
+            // console.log('categoryMonthlyLimits.forEach: category =, ', category)
+              if(this.groupedTransactions[category.category]){
 
-        /*\
-        ADD PROPS TO groupedTransactions:
-          - This implementation allows you to get and set things as: this.groupedTransactions[category].parameterOfChoice, 
-          rather than pushing props as arrays along with the txns (push({key:value}))
-          - Lets you treat groupedTransactions object as a cross-section of category and transaction data
-        */ 
-            this.groupedTransactions[category.category]._id= category._id
-            this.groupedTransactions[category.category].categoryName = category.category 
-            this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
-            this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
-            this.groupedTransactions[category.category].originalName = category.category 
-            this.groupedTransactions[category.category].type = category.type 
+            /*\
+            ADD PROPS TO groupedTransactions:
+              - This implementation allows you to get and set things as: this.groupedTransactions[category].parameterOfChoice, 
+              rather than pushing props as arrays along with the txns (push({key:value}))
+              - Lets you treat groupedTransactions object as a cross-section of category and transaction data
+            */ 
+                this.groupedTransactions[category.category]._id= category._id
+                this.groupedTransactions[category.category].categoryName = category.category 
+                this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
+                this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
+                this.groupedTransactions[category.category].originalName = category.category 
+                this.groupedTransactions[category.category].type = category.type 
+              }
+            });
+            this.months = this.buildDateList(this.transactions).reverse()
+            this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
+            this.isLoading = false
+            store.commit("setLastPlaidFetch", now);
+            store.commit("setTransactions", this.transactions);
+            store.commit("setCategories", categoryData);
           }
-        });
-        this.months = this.buildDateList(this.transactions).reverse()
-        this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
-        this.isLoading = false
+          else {
+            console.log('budgetview: last fetch was too recent, not fetching again')
+
+            this.transactions = store.state.transactions
+            this.categoryMonthlyLimits.push(...store.state.categories)
+            this.groupTransactions();
+            
+            // Get the monthly_limits from each category and match to the groupedTransactions
+            this.categoryMonthlyLimits.forEach(category => {
+              if(this.groupedTransactions[category.category]){
+                this.groupedTransactions[category.category]._id= category._id
+                this.groupedTransactions[category.category].categoryName = category.category 
+                this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
+                this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
+                this.groupedTransactions[category.category].originalName = category.category 
+                this.groupedTransactions[category.category].type = category.type 
+              }
+            });
+            this.months = this.buildDateList(this.transactions).reverse()
+            this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
+            this.isLoading = false
+          }
         }
-        if(!store.state.session){
+        else if(!store.state.session?.isSessionActive){
           this.isLoggedIn = false;
           console.log('user state is not available')
         }

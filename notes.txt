@@ -50,5 +50,10 @@ added this code and it fixed it; returning newTxns before broke everything becau
 
 const newTxns = data.added.map(txn => ({ ...txn, userId }));
 data.added = newTxns	
-- Next,  let's also move the api.js Plaid methods to the utils.plaidTools.js file -- this is more relevant
-- also need to decide on what to do with the store
+- Next,  let's also move the api.js Plaid methods to the utils.plaidTools.js file -- this is more relevant (done)
+- also need to decide on what to do with the store (done)
+
+Last for 4/27:
+- Need to update the update category/transaction flows
+- Backdate all transactions again
+- Add/manage institution flow
