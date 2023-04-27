@@ -5,13 +5,23 @@
       <q-card-section horizontal>
         <q-card-section class="q-pt-xs">
           <div class="text-overline">Profile</div>
-    <div v-if="session !== null">
-          <p>Name: {{ user.name }}</p>
-          <p>Email: {{ user.email }}</p>
-          <p>Photo: <img :src="user.picture" alt="User photo"></p>
-          <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
-          <p>Session docID: {{ session ? session.docId : '' }}</p>
-      </div>
+            <div v-if="session !== null">
+              <div class="userDetails">
+                <p>Name: {{ user.name }}</p>
+                <p>Email: {{ user.email }}</p>
+                <p>Photo: <img :src="user.picture" alt="User photo"></p>
+                <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
+                <p>Session docID: {{ session ? session.docId : '' }}</p>
+              </div>
+              <div class="connectedAccounts">
+                Institutions
+              </div>
+              <div class="addAccount">
+                Add a new account
+                <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
+                <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+              </div>
+          </div>
           <button v-show="!user" @click="signInWithGoogle">Sign in with Google</button>
           <button v-show="user" @click="signOut">Sign Out</button>
         </q-card-section>
@@ -24,20 +34,32 @@
 import { auth, GoogleAuthProvider, firestore, getOrAddUser,  } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import SpinnerComponent from '../components/SpinnerComponent.vue'
+import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import store from '../store'
+
 
 export default {
   components: {
-    SpinnerComponent
+    SpinnerComponent,
+    PlaidLinkHandler
 },
   data() {
     return {
       user: store.state.user ? store.state.user : null,
       session: store.state.session ? store.state.session : null,
-      isLoading: false
+      isLoading: false,
+      showPlaidLink: false
     }
   },
   methods: {
+    handleAddNewAccountClick() {
+      this.showPlaidLink = true;
+    },
+    handlePlaidSuccess(publicToken, metadata) {
+      console.log('Public token:', publicToken);
+      console.log('Metadata:', metadata);
+      this.showPlaidLink = false;
+    },
     async signInWithGoogle() {
       this.isLoading = true;
       try {

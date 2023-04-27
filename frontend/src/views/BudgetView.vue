@@ -31,7 +31,6 @@
         </q-card-section>
       </q-card>
 
-
       <q-card class="my-card">
         <q-card-section horizontal>
           <q-card-section class="q-pt-xs">

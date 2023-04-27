@@ -132,6 +132,19 @@ router.get('/cleanPendingTransactions', async (req, res) => {
   }
 })
 
+router.get('/create_link_token', async (req, res) => {
+  console.log('/api/create_link_token starting...');
+  const tokenResponse = await client.linkTokenCreate({
+    user: { client_user_id: req.sessionID },
+    client_name: "Plaid's Tiny Quickstart",
+    language: "en",
+    products: ["auth"],
+    country_codes: ["US"],
+    redirect_uri: process.env.PLAID_SANDBOX_REDIRECT_URI,
+  });
+  res.json(tokenResponse.data);
+})
+
 router.post('/categoryUpdate', function(req, res){
   const updateType = req.body.updateType;
   // if updateType == 'transaction' ...
