@@ -1,5 +1,5 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require( 'plaid');
-const { findUserData } = require('../db/database');
+const { findUserData , updateData, insertData, deleteRemovedData } = require('../db/database');
 const { getMappingRuleList, mapTransactions } = require('./categoryMapping')
 
 
@@ -51,6 +51,7 @@ async function plaidTransactionsSync (access_token, cursor=null, uid){
     data.added = newTxns
 
     if (data.added.length === 0 && data.modified.length === 0 && data.removed.length === 0) {
+      console.log(newTxns, "\nplaidTransactionsSync(): All transactions up to date for this account")
       let data = "All transactions up to date for this account"
       return data;
     } else {
@@ -110,7 +111,7 @@ async function getNewPlaidTransactions(uid) {
       }
       console.log('getting user data.... userId = ', userId);
       const categories = await findUserData('Basil-Categories', userId); 
-      console.log('getting mapping rule list.... categories = ', categories);
+      // console.log('getting mapping rule list.... categories = ', categories);
     const ruleList = await getMappingRuleList(categories);
     const mappedTxns = await mapTransactions(updatedResponses, ruleList);
 

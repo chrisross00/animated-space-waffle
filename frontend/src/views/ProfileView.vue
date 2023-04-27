@@ -1,68 +1,94 @@
 <template>
-    <div class="q-pa-md-page-padder p-3">
+  <div class="q-pa-md-page-padder p-3">
+    <SpinnerComponent :isLoading="isLoading"/>
     <q-card class="my-card">
       <q-card-section horizontal>
         <q-card-section class="q-pt-xs">
           <div class="text-overline">Profile</div>
+    <div v-if="session !== null">
+          <p>Name: {{ user.name }}</p>
+          <p>Email: {{ user.email }}</p>
+          <p>Photo: <img :src="user.picture" alt="User photo"></p>
+          <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
+          <p>Session docID: {{ session ? session.docId : '' }}</p>
+      </div>
           <button v-show="!user" @click="signInWithGoogle">Sign in with Google</button>
           <button v-show="user" @click="signOut">Sign Out</button>
         </q-card-section>
       </q-card-section>
     </q-card>
-    <div v-if="user">
-      <p>ID: {{ user.uid }}</p>
-      <p>Name: {{ user.displayName }}</p>
-      <p>Email: {{ user.email }}</p>
-      <p>Photo: <img :src="user.photoURL" alt="User photo"></p>
-      <p>Session Id: {{ session ? session.documentId : '' }}</p>
-    </div>
-
-  </div>
+   </div>
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser,  } from '@/firebase'
+import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
+import SpinnerComponent from '../components/SpinnerComponent.vue'
 import store from '../store'
 
 export default {
+  components: {
+    SpinnerComponent
+},
   data() {
     return {
-      user: null,
-      session: store.state.session ? store.state.session : null
+      user: store.state.user ? store.state.user : null,
+      session: store.state.session ? store.state.session : null,
+      isLoading: false
     }
   },
   methods: {
     async signInWithGoogle() {
-      try {        
+      this.isLoading = true;
+      try {
+        // try to set Persistence
+        try {
+          await setPersistence(auth, browserSessionPersistence);
+        } catch (error) {
+          console.log('Error setting persistence', error)
+        }
+
         const result = await auth.signInWithPopup(GoogleAuthProvider)
         const { user } = result
         
         // store the userData to firebase.firestore()
-        const userData = {
-          uid: user.uid,
-          refreshToken: user.refreshToken,
-          email: user.email,
-          createdAt: user.metadata.createdAt,
+        try {
+          const userData = {
+            uid: user.uid,
+            refreshToken: user.refreshToken,
+            email: user.email,
+            createdAt: user.metadata.createdAt,
+          }
+          const docId = await firestore.collection('sessions').add(userData)
+          console.log('Session data successfully saved to firestore!', docId.id)
+
+          // after the session is saved to firestore, store the user in the store
+          const sessionData = {
+            docId: docId.id,
+            isSessionActive: true,
+          }
+          store.commit('setSession', sessionData)    
+        } catch (error) {
+          console.log('Error saving session data to firestore!', error)
         }
-        
-        const docId = await firestore.collection('sessions').add(userData)
-        console.log('Session data successfully saved!', docId.id)
-        
-        this.user = result.user
-        
-        const sessionData = {
-          documentId: docId.id
+          
+        // check if user exists in mongodb. If it does add it to the store
+        try {
+          const response = await getOrAddUser()
+          this.user = response
+          store.commit('setUser', this.user)
+        } catch (error) {
+          console.log(error)
         }
-        store.commit('setSession', sessionData)
         this.session = await store.state.session
-        console.log('auth object', auth)
+        this.isLoading = false;
       } catch (error) {
         console.log(error)
       }
     },
     // sign out should log out the user using firebase.auth().signOut() and clear the store state
     async signOut() {
-      if(this.session.documentId){
+      if(this.session.docId){
         try {
           // update the collection('sessions') with the endAt timestamp
           await firestore.collection('sessions').doc(this.session.documentId).update({
@@ -81,10 +107,26 @@ export default {
 
   },
   async mounted() {
+    const auth1 = getAuth()
     try {
-    // Check if the user is already signed in
-    this.user = auth.currentUser
-    console.log('mounted, current user is', this.user)
+      this.user = store.state.user
+      auth.onAuthStateChanged(async (user) => {
+        if (user) {
+          console.log("User signed in:", user);
+          console.log('mounting, auth1.currentUser', auth1.currentUser)
+
+        // Your logic to handle the signed-in user
+        const response = await getOrAddUser();
+        this.user = response;
+        console.log("this.user", this.user);
+
+        // Update the Vuex store
+        store.commit("setUser", this.user);
+      } else {
+        console.log("User signed out");
+        return;
+      }
+    });
     } catch (err) {
       // console.log('external catch', err);
     }

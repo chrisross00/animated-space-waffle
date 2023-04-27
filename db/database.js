@@ -18,11 +18,23 @@ async function insertData(collectionName, data) {
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
 
-    const dataWithInsertDate = data.map(item => {
-      return { ...item, insertDate: new Date.now() };
-    });
-
-    await collection.insertMany(dataWithInsertDate);
+    // if data is an array, insert each item in the array
+    if (Array.isArray(data)){
+      const dataWithInsertDate = data.map(item => {
+        return { ...item, insertDate: Date.now() };
+      });
+      await collection.insertMany(dataWithInsertDate);
+      return;
+    // else, if its an object (a user account), insert just the object
+    } else if (typeof data === 'object') {
+      data.insertDate = Date.now();
+      await collection.insertOne(data);
+      return;
+    } else {
+      // handle the case where data is neither an array nor an object
+      console.error('Invalid data type');
+      return;
+    }
 
     console.log(`  DB: Inserted data and closing.`);
   } catch (err) {
