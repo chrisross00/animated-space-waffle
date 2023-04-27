@@ -4,8 +4,8 @@ require('dotenv').config()
 const express = require('express')
 const port = process.env.PORT
 const router = require("./api")
+const plaidApiRouter = require("./plaid-api");
 const path = require('path')
-// const { connectToDb } = require('./db/database');
 const app = express()
 const cors = require('cors');
 
@@ -24,7 +24,7 @@ admin.initializeApp(firebaseConfig)
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'frontend/dist')))
 app.use("/api", router);
-
+app.use("/plaid-api", plaidApiRouter);
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
