@@ -5,10 +5,10 @@ const router = express.Router();
 const { findData, deduplicateData, updateData, findUnmappedData, cleanPendingTransactions, findUserData, insertData } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
+const {validateIdToken} = require('./utils/authentication');
 const path = require('path');
 const cors = require('cors');
 const ObjectID = require('mongodb').ObjectId;
-const admin = require('firebase-admin');
 
 router.use(cors());
 router.use(bodyParser.json());
@@ -132,19 +132,6 @@ router.get('/cleanPendingTransactions', async (req, res) => {
   }
 })
 
-router.get('/create_link_token', async (req, res) => {
-  console.log('/api/create_link_token starting...');
-  const tokenResponse = await client.linkTokenCreate({
-    user: { client_user_id: req.sessionID },
-    client_name: "Plaid's Tiny Quickstart",
-    language: "en",
-    products: ["auth"],
-    country_codes: ["US"],
-    redirect_uri: process.env.PLAID_SANDBOX_REDIRECT_URI,
-  });
-  res.json(tokenResponse.data);
-})
-
 router.post('/categoryUpdate', function(req, res){
   const updateType = req.body.updateType;
   // if updateType == 'transaction' ...
@@ -224,16 +211,6 @@ router.get('/mapunmapped', async (req, res) => {
     console.log(err)
   }
 })
-
-async function validateIdToken(req) {
-  // Verify the Firebase ID token
-  const header = req.headers.authorization;
-  if (header && header.startsWith('Bearer ')) {
-    const idToken = header.split('Bearer ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    return decodedToken;
-  }
-}
 
 async function getOrAddUser(decodedToken) {
   console.log('getOrAddUser function called and starting...:', decodedToken.uid)
