@@ -29,7 +29,7 @@ export default {
       this.linkHandler = window.Plaid.create({
         token: linkToken,
         onSuccess: async (publicToken, metadata) => {
-          const response = await getOrAddUserAccount(publicToken)
+          const response = await getOrAddUserAccount(publicToken, metadata)
           if (response.ok) {
             console.log("Public token exchanged successfully.");
           } else {
