@@ -79,7 +79,7 @@ export async function getOrAddUser() {
   }
 }
 
-export async function getOrAddUserAccount(publicToken) {
+export async function getOrAddUserAccount(publicToken, metadata) {
   
   console.log("getOrAddUserAccount(): current auth is", auth)
   console.log("getOrAddUserAccount(): current publicToken is", publicToken)
@@ -90,7 +90,8 @@ export async function getOrAddUserAccount(publicToken) {
       method: 'POST',
       headers: headers, 
       body: JSON.stringify({ 
-      public_token: publicToken 
+      public_token: publicToken,
+      metadata: metadata
     })});
     const data = await response.json();
     if (response.ok) {

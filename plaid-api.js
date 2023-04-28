@@ -37,40 +37,59 @@ router.get("/create_link_token", async (req, res, next) => {
 
 router.post("/exchange_public_token", async (req, res, next) => {
 
-  // get the user ID from the session
+  // get the user ID from the Firebase session
   console.log('/exchange_public_token starting...');
   const decodedToken = await validateIdToken(req)
   if(decodedToken.user_id){
       console.log('exchange_public_token: got the user ID', decodedToken.user_id)
       console.log('by the way, req.body = ', req)
   }
-  // get the access_token 
-  try {
-    const exchangeResponse = await client.itemPublicTokenExchange({
-      public_token: req.body.public_token,
-    });
-    console.log('/exchange_public_token, exchangeResponse.data.access_token', exchangeResponse.data.access_token)
-    console.log('/exchange_public_token, exchangeResponse.data', exchangeResponse.data)
-    console.log('/exchange_public_token, decodedToken.user_id', decodedToken.user_id)
-  } catch (error) {
-    console.log(error,'\nerror getting exchangeResponse')
-  }
 
-  // send exchangeResponse.data.access_token to mongodb
+  
+  // send exchangeResponse.data.access_token to Mongodb
+  // check if the user exists in the database first; only create an access_token if the user doesn't exist
   try {
     const user = await findUserData('Plaid-Accounts', decodedToken.user_id)
-
-    // determine if this is an update or an insert
     if(user.length>0){
-      //user exists
       console.log('user exists, need to now checkif the institution exists in the accounts object', user)
+      return;
     } else {
       console.log('user does not exist, need to insert the user and institution data into the database')
+      let exchangeResponse;
+
+      try {
+        exchangeResponse = await client.itemPublicTokenExchange({
+          public_token: req.body.public_token,
+        });
+      } catch (error) {
+        console.log(error,'\nerror getting exchangeResponse')
+      }
+
+      try {
+        console.log('inserting new user and institution data into the database')
+        const exchangeResponseData = exchangeResponse.data;
+        const institutionName = req.body.metadata.institution.name;
+        const userId = decodedToken.user_id;
+        const earliestDate = '2022-07-29';
+        const updateObject = {
+          Accounts: {
+            [institutionName]: {
+              token: exchangeResponseData.access_token,
+              next_cursor: '',
+              earliestDate: earliestDate,
+            }
+          },
+          userId: userId,
+        };
+        await insertData('Plaid-Accounts', updateObject);
+        return;
+      } catch (error) {
+        console.log(error)
+      }
     }
   } catch (error) {
     console.log(error)
   }
-  
   res.json(true);
 });
 
