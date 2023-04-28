@@ -24,19 +24,19 @@ async function insertData(collectionName, data) {
         return { ...item, insertDate: Date.now() };
       });
       await collection.insertMany(dataWithInsertDate);
+      console.log(`  DB: Inserted data and closing.`);
       return;
     // else, if its an object (a user account), insert just the object
     } else if (typeof data === 'object') {
       data.insertDate = Date.now();
       await collection.insertOne(data);
+      console.log(`  DB: Inserted data and closing.`);
       return;
     } else {
       // handle the case where data is neither an array nor an object
       console.error('Invalid data type');
       return;
     }
-
-    console.log(`  DB: Inserted data and closing.`);
   } catch (err) {
     console.error('  DB: ',err);
   } finally {

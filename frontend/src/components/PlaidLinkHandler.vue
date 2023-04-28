@@ -5,11 +5,13 @@
 </template>
 
 <script>
+import { getOrAddUserAccount }  from '@/firebase'
+
 export default {
   props: {},
   data() {
     return {
-      linkHandler: null,
+      linkHandler: null
     };
   },
   methods: {
@@ -21,17 +23,13 @@ export default {
     },
     async initializePlaid() {
       console.log('initializing plaid')
+      // call get Or Add User
+
       const linkToken = await this.createLinkToken();
       this.linkHandler = window.Plaid.create({
         token: linkToken,
         onSuccess: async (publicToken, metadata) => {
-          const response = await fetch('plaid-api/exchange_public_token',{
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ public_token: publicToken }),
-          });
+          const response = await getOrAddUserAccount(publicToken)
           if (response.ok) {
             console.log("Public token exchanged successfully.");
           } else {

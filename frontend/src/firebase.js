@@ -79,4 +79,31 @@ export async function getOrAddUser() {
   }
 }
 
+export async function getOrAddUserAccount(publicToken) {
+  
+  console.log("getOrAddUserAccount(): current auth is", auth)
+  console.log("getOrAddUserAccount(): current publicToken is", publicToken)
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/plaid-api/exchange_public_token', { 
+      method: 'POST',
+      headers: headers, 
+      body: JSON.stringify({ 
+      public_token: publicToken 
+    })});
+    const data = await response.json();
+    if (response.ok) {
+      const user = data
+      return user;
+    } else {
+      // Handle errors
+      console.error(`Request failed with status ${response.status}`);
+    }
+  } else {
+    // User is not signed in
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
 // export async function updateCategories() {} later...
