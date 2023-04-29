@@ -213,34 +213,56 @@ router.get('/mapunmapped', async (req, res) => {
 })
 
 async function getOrAddUser(decodedToken) {
+  let accounts;
   console.log('getOrAddUser function called and starting...:', decodedToken.uid)
-  const user = await findUserData('Basil-Users', decodedToken.uid);
-  if (user.length == 0) {
-    const newUser = {
-      userId: decodedToken.uid,
-      email: decodedToken.email,
-      name: decodedToken.name,
-      picture: decodedToken.picture,
-      firebase: decodedToken.firebase,
+  try {
+    const user = await findUserData('Basil-Users', decodedToken.uid);
+    if (user.length == 0) {
+      const newUser = {
+        userId: decodedToken.uid,
+        email: decodedToken.email,
+        name: decodedToken.name,
+        picture: decodedToken.picture,
+        firebase: decodedToken.firebase,
+      }
+      console.log('User added to database:', newUser)
+      await insertData('Basil-Users', newUser);
+      console.log('sending newly created client-side user:', clientSideUser)
+      const clientSideUser = createClientSideUser(newUser[0])
+      return clientSideUser
+    } else {
+      console.log('User found:', user[0])
+        try {
+          // call "Plaid-Accounts" with userId to get the user's accounts
+          accounts = await findUserData('Plaid-Accounts', user[0].userId);
+        } catch (error) {
+          console.log('Error getting user accounts:', error)
+        }
+        
+      const clientSideUser = createClientSideUser(user[0], accounts)
+      console.log('sending client-side user:', clientSideUser)
+      return clientSideUser;
     }
-    console.log('User added to database:', newUser)
-    await insertData('Basil-Users', newUser);
-    console.log('sending newly created client-side user:', clientSideUser)
-    const clientSideUser = createClientSideUser(newUser[0])
-    return clientSideUser
-  } else {
-    console.log('User found:', user[0])
-    const clientSideUser = createClientSideUser(user[0])
-    console.log('sending client-side user:', clientSideUser)
-    return clientSideUser;
+  } catch (error) {
+      console.log('getOrAddUser Error:', error)
   }
 }
 
-function createClientSideUser(user) {
+function createClientSideUser(user, accounts) {
+  console.log('createClientSideUser accounts: ', accounts[0].Accounts)
+  const bankAccounts = accounts[0].Accounts
+  console.log('createClientSideUser accounts: ', bankAccounts)
+  let bankNames;
+  if (bankAccounts){
+    bankNames = Object.keys(bankAccounts);
+  } else {
+    bankNames = [];
+  }
   return {
     email: user.email,
     name: user.name,
-    picture: user.picture
+    picture: user.picture,
+    accounts: bankNames
   };
 }
 

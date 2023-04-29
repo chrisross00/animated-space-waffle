@@ -1,33 +1,68 @@
 <template>
   <div class="q-pa-md-page-padder p-3">
     <SpinnerComponent :isLoading="isLoading"/>
+    <div v-if="session !== null">
     <q-card class="my-card">
       <q-card-section horizontal>
         <q-card-section class="q-pt-xs">
           <div class="text-overline">Profile</div>
-            <div v-if="session !== null">
               <div class="userDetails">
+                <p><img :src="user.picture" alt="User photo"></p>
                 <p>Name: {{ user.name }}</p>
                 <p>Email: {{ user.email }}</p>
-                <p>Photo: <img :src="user.picture" alt="User photo"></p>
-                <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
-                <p>Session docID: {{ session ? session.docId : '' }}</p>
+                <!-- <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
+                <p>Session docID: {{ session ? session.docId : '' }}</p> -->
               </div>
-              <div class="connectedAccounts">
-                Institutions
-              </div>
-              <div class="addAccount">
-                Add a new account
-                <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
-                <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
-              </div>
-          </div>
-          <button v-show="!user" @click="signInWithGoogle">Sign in with Google</button>
-          <button v-show="user" @click="signOut">Sign Out</button>
+              <q-btn v-show="user" @click="signOut">Sign Out</q-btn>
+              
         </q-card-section>
       </q-card-section>
     </q-card>
-   </div>
+    
+      <q-card class="my-card">
+        <q-card-section horizontal>
+          <q-card-section class="q-pt-xs">       
+            <div class="text-overline">Linked Accounts</div>
+            <div class="connectedAccounts">
+              <q-item v-for="account in user.accounts" :key="account.id">
+                <q-item-section>
+                  {{ account }}
+                </q-item-section>
+
+                <q-item-section side>
+                  <q-icon 
+                  style="font-size: 16px;"
+                  name="delete"
+                  class="icon-hover"
+                  clickable
+                  >
+                  </q-icon>
+                </q-item-section>
+
+              </q-item>
+            </div>
+            <div class="addAccount">
+              <div>
+                <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
+                <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card-section>
+      </q-card>
+    </div>
+
+      <div v-if="session == null">
+      <q-card class="my-card">
+        <q-card-section horizontal>
+          <q-card-section class="q-pt-xs">       
+            <q-btn v-show="!user" @click="signInWithGoogle">Sign in with Google</q-btn>
+            </q-card-section>
+          </q-card-section>
+        </q-card>
+      </div>
+        
+      </div>
 </template>
 
 <script>
