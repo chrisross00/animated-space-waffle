@@ -1,68 +1,96 @@
+<style>
+.icon-hover-neg:hover {
+  color: red;
+}
+.icon-hover-pos:hover {
+  color: green;
+}
+.my-card {
+  width: 100%;
+  min-width: 400px;
+  max-width: 400px;
+  margin: 1rem;
+}
+.connectedAccounts {
+  display: flex;
+  flex-direction: column;
+  width: calc(66.33% - 2px);
+}
+
+.q-item {
+  flex: 1;
+  margin: 10px;
+}
+
+</style>
+
 <template>
   <div class="q-pa-md-page-padder p-3">
     <SpinnerComponent :isLoading="isLoading"/>
     <div v-if="session !== null">
-    <q-card class="my-card">
-      <q-card-section horizontal>
-        <q-card-section class="q-pt-xs">
-          <div class="text-overline">Profile</div>
-              <div class="userDetails">
-                <p><img :src="user.picture" alt="User photo"></p>
-                <p>Name: {{ user.name }}</p>
-                <p>Email: {{ user.email }}</p>
-                <!-- <p>Session is active: {{ session ? session.isSessionActive : '' }}</p>
-                <p>Session docID: {{ session ? session.docId : '' }}</p> -->
-              </div>
-              <q-btn v-show="user" @click="signOut">Sign Out</q-btn>
-              
-        </q-card-section>
-      </q-card-section>
-    </q-card>
-    
-      <q-card class="my-card">
+      <q-card class="my-card ">
         <q-card-section horizontal>
-          <q-card-section class="q-pt-xs">       
-            <div class="text-overline">Linked Accounts</div>
-            <div class="connectedAccounts">
-              <q-item v-for="account in user.accounts" :key="account.id">
-                <q-item-section>
-                  {{ account }}
-                </q-item-section>
+          <q-card-section class="q-pt-xs">
+            <div class="text-overline">Profile</div>
+              <p><img :src="user.picture" alt="User photo"></p>
+              <p>Name: {{ user.name }}</p>
+              <p>Email: {{ user.email }}</p>
+            <q-btn v-show="user" @click="signOut">Sign Out</q-btn>
+          </q-card-section>
+        </q-card-section>
+      </q-card>
+      
+        <q-card class="my-card ">
+            <q-card-section class="q-pt-xs">       
+              <div class="text-overline">Linked Accounts</div>
+              <div class="connectedAccounts">
+                <q-item v-for="account in user.accounts" :key="account.id" 
+                        clickable v-ripple>
+                  <q-item-section>
+                    {{ account }}
+                  </q-item-section>
 
-                <q-item-section side>
-                  <q-icon 
-                  style="font-size: 16px;"
-                  name="delete"
-                  class="icon-hover"
-                  clickable
-                  >
-                  </q-icon>
-                </q-item-section>
+                  <q-item-section side>
+                    <template v-if="!preDelete[account]">
+                      <q-icon 
+                        key="account.id"
+                        style="font-size: 16px;"
+                        name="delete"
+                        class="icon-hover-neg"
+                        @click="preDeleteAccount(account)"
+                      />
+                    </template>
+                    <template v-else>
+                      <div style="display: flex;">
+                        <q-icon name="check" class="icon-hover-pos" style="font-size: 16px;" @click="deleteAccount(account)" />
+                        <q-icon name="close" class="icon-hover-neg" style="font-size: 16px;" @click="cancelPreDeleteAccount(account)" />
+                      </div>
+                    </template>
+                  </q-item-section>
 
-              </q-item>
-            </div>
-            <div class="addAccount">
-              <div>
-                <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
-                <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+                </q-item>
               </div>
-            </div>
+              <div class="addAccount">
+                <div>
+                  <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
+                  <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+                </div>
+              </div>
+            </q-card-section>
+        </q-card>
+    </div>
+
+    <div v-if="session == null">
+      <q-card class="my-card ">
+      <q-card-section horizontal>
+        <q-card-section class="q-pt-xs">       
+          <q-btn v-show="!user" @click="signInWithGoogle">Sign in with Google</q-btn>
           </q-card-section>
         </q-card-section>
       </q-card>
     </div>
-
-      <div v-if="session == null">
-      <q-card class="my-card">
-        <q-card-section horizontal>
-          <q-card-section class="q-pt-xs">       
-            <q-btn v-show="!user" @click="signInWithGoogle">Sign in with Google</q-btn>
-            </q-card-section>
-          </q-card-section>
-        </q-card>
-      </div>
-        
-      </div>
+      
+  </div>
 </template>
 
 <script>
@@ -83,10 +111,23 @@ export default {
       user: store.state.user ? store.state.user : null,
       session: store.state.session ? store.state.session : null,
       isLoading: false,
-      showPlaidLink: false
+      showPlaidLink: false,
+      preDelete: {}
     }
   },
   methods: {
+    preDeleteAccount(account){
+      // set preDelete to true
+    this.preDelete[account] = true;
+    },
+    cancelPreDeleteAccount(account) {
+      // account.preDelete = false;
+      this.preDelete[account] = false;
+    },
+    deleteAccount(account){
+      console.log('deleting account...', account);
+      this.cancelPreDeleteAccount(account)
+    },
     handleAddNewAccountClick() {
       this.showPlaidLink = true;
     },
