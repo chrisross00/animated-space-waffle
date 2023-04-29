@@ -5,7 +5,7 @@
 .icon-hover-pos:hover {
   color: green;
 }
-.my-card {
+.profile-card {
   width: 100%;
   min-width: 400px;
   max-width: 400px;
@@ -17,7 +17,7 @@
   width: calc(66.33% - 2px);
 }
 
-.q-item {
+.profile-card-item {
   flex: 1;
   margin: 10px;
 }
@@ -28,7 +28,7 @@
   <div class="q-pa-md-page-padder p-3">
     <SpinnerComponent :isLoading="isLoading"/>
     <div v-if="session !== null">
-      <q-card class="my-card ">
+      <q-card class="my-card profile-card ">
         <q-card-section horizontal>
           <q-card-section class="q-pt-xs">
             <div class="text-overline">Profile</div>
@@ -40,11 +40,11 @@
         </q-card-section>
       </q-card>
       
-        <q-card class="my-card ">
+        <q-card class="my-card profile-card ">
             <q-card-section class="q-pt-xs">       
               <div class="text-overline">Linked Accounts</div>
               <div class="connectedAccounts">
-                <q-item v-for="account in user.accounts" :key="account.id" 
+                <q-item class="profile-card-item" v-for="account in user.accounts" :key="account.id" 
                         clickable v-ripple>
                   <q-item-section>
                     {{ account }}
@@ -81,7 +81,7 @@
     </div>
 
     <div v-if="session == null">
-      <q-card class="my-card ">
+      <q-card class="my-card profile-card ">
       <q-card-section horizontal>
         <q-card-section class="q-pt-xs">       
           <q-btn v-show="!user" @click="signInWithGoogle">Sign in with Google</q-btn>
