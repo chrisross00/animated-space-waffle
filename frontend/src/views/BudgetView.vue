@@ -575,7 +575,7 @@
         if(store.state.session?.isSessionActive){
           const now = Date.now();
           const lastFetch = store.state.lastPlaidFetch;
-          const fetchInterval = 1000 * 60 * 1; // 10 minutes in milliseconds, adjust as needed
+          const fetchInterval = 1000 * 60 * 5; // 10 minutes in milliseconds, adjust as needed
 
           if (!lastFetch || now - lastFetch > fetchInterval) {
             const transactions = await fetchTransactions()
@@ -616,7 +616,10 @@
             store.commit("setCategories", categoryData);
           }
           else {
-            console.log('budgetview: last fetch was too recent, not fetching again')
+            const remainingTime = fetchInterval - (now - lastFetch);
+            const minutesRemaining = Math.floor(remainingTime / 60000);
+            const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
+            console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
 
             this.transactions = store.state.transactions
             this.categoryMonthlyLimits.push(...store.state.categories)
