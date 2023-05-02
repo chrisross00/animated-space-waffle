@@ -260,6 +260,66 @@ async function cleanPendingTransactions(collectionName) {
     }
   }
 }
+
+async function findSimilarTransactionGroupsByName(uid) {
+  let client;
+  try { 
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    const collection = db.collection('Plaid-Transactions');
+    
+    const pipeline = [
+        { $match: { userId: uid } },
+        { $limit: 1000 },
+        { $group: { _id: "$name", count: { $sum: 1 }, transactions: { $push: "$$ROOT" } } },
+        { $match: { count: { $gte: 2 } } }, // 3 or more transactions
+        { $sort: { count: -1 } }
+    ];
+    
+    const options = { allowDiskUse: true };
+    const cursor = collection.aggregate(pipeline, options);
+    const result = await cursor.toArray();
+    console.log(result);
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("  DB: database connection closed by findSimilarTransactionGroupsByName()")
+    }
+  }
+}
+
+async function findSimilarTransactionGroupsByCategory(uid) {
+  let client;
+  try { 
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME)
+    const collection = db.collection('Plaid-Transactions');
+    
+    const pipeline = [
+        { $match: { userId: uid } },
+        { $group: { _id: "$category", count: { $sum: 1 }, transactions: { $push: "$$ROOT" } } },
+        { $match: { count: { $gte: 3 } } },
+        { $sort: { count: -1 } }
+    ];
+    
+    const options = { allowDiskUse: true };
+    const cursor = collection.aggregate(pipeline, options);
+    const result = await cursor.toArray();
+    console.log(result);
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log("  DB: database connection closed by findSimilarTransactionGroupsByCategory()")
+    }
+  }
+}
+
   
   module.exports = {
     connectToDb,
@@ -271,6 +331,8 @@ async function cleanPendingTransactions(collectionName) {
     deleteRemovedData,
     findFilterData,
     cleanPendingTransactions,
-    findUserData
+    findUserData,
+    findSimilarTransactionGroupsByName,
+    findSimilarTransactionGroupsByCategory
   };
   

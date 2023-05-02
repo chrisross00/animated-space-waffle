@@ -43,7 +43,7 @@
         <q-card class="my-card profile-card ">
             <q-card-section class="q-pt-xs">       
               <div class="text-overline">Linked Accounts</div>
-              <div class="connectedAccounts">
+              <div class="connectedAccounts" v-if="user.accounts !== null">
                 <q-item class="profile-card-item" v-for="account in user.accounts" :key="account.id" 
                         clickable v-ripple>
                   <q-item-section>

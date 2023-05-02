@@ -29,10 +29,20 @@ async function getAccountData (uid) {
       }
     }
   } catch (error) {
-      console.log(error)
+    console.log(error)
   }
     return response;
 }
+  
+  async function getPlaidCategories() {
+    try {
+      const response = await plaidClient.categoriesGet({});
+      const categories = response.data.categories;
+      return categories
+    } catch (error) {
+      console.log('getPlaidCategories error:', error)
+    }
+  }
 
 async function plaidTransactionsSync (access_token, cursor=null, uid){
   const userId = uid.toString();
@@ -173,5 +183,6 @@ module.exports = {
   plaidTransactionsSync,
   getAccountData,
   getNewPlaidTransactions,
-  getAllUserTransactions
+  getAllUserTransactions,
+  getPlaidCategories
 }
