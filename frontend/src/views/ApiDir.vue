@@ -8,7 +8,7 @@
       <em>Select an endpoint below</em>
       <ul>
         <ol><a href="/api/find" rel="noopener">Find</a> - pull all transactions (don't go here, it will slow down your browser)</ol>
-        <ol><a href="/api/test" rel="noopener">Test</a> - a generic page to test end-to-end flow</ol>
+        <ol><a href="/api/test" rel="noopener">Test</a> - a generic page to test end-to-end flow; currently this page is testing a feature to pull back transaction groups by with the same name (POC to help with finding transactions to categorize)</ol>
         <ol><a href="/api/dedupe" rel="noopener">DeDupe</a>- run the transaction de-duplication sequence</ol>
         <ol><a href="/api/getnew" rel="noopener">Get New</a> - get new transactions from Plaid</ol>
         <ol><a href="/api/getcategories" rel="noopener">Get Categories</a> - Pull the current categories from MongoDb</ol>

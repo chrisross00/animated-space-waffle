@@ -2,24 +2,31 @@
   <div>
     {{ message }}
   </div>
+  
+  <div v-if="data">
+    <pre id="json">{{ data }}</pre>
+  </div>
 </template>
 
 <script>
+import { findSimilarTransactionGroups  } from '@/firebase'
 // replace this with something else
 // import axios from 'axios';
 
 export default {
   data() {
     return {
-      message: ''
+      message: '',
+      data: {}
     }
   },
   async mounted() {
     try {
-      // console.log("fetch start")
-      const response = await fetch("/api/test")
-      const data = await response.json();
+      const response = await findSimilarTransactionGroups()
+      const data = await response;
       this.message = data.message
+      this.data = data.data
+      document.getElementById("json").textContent = JSON.stringify(data, undefined, 2);
     } catch (err) {
       // console.log('external catch', err);
     }

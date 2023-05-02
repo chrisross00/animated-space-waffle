@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData, deduplicateData, updateData, findUnmappedData, cleanPendingTransactions, findUserData, insertData } = require('./db/database');
+const { findData, deduplicateData, updateData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -61,8 +61,13 @@ router.get('/getcategories', async (req, res)=>{
 router.get('/test', async (req, res) => {
 
   try {
+    const decodedToken = await validateIdToken(req)
+    const userId = decodedToken.user_id;
+    console.log('/test userId, ', userId)
+    const txns = await findSimilarTransactionGroupsByCategory(userId)
     const resObj = {
-      message: 'hello from api.js GET /test endpoint... this is a message from the server'
+      message: 'hello from api.js GET /test endpoint... this is a message from the server',
+      data: txns
     }
     res.send(resObj)
     
@@ -248,16 +253,10 @@ async function getOrAddUser(decodedToken) {
   }
 }
 
-function createClientSideUser(user, accounts) {
-  console.log('createClientSideUser accounts: ', accounts[0].Accounts)
-  const bankAccounts = accounts[0].Accounts
+function createClientSideUser(user, accounts=null) {
+  const bankAccounts = accounts?.[0]?.Accounts ?? null;
   console.log('createClientSideUser accounts: ', bankAccounts)
-  let bankNames;
-  if (bankAccounts){
-    bankNames = Object.keys(bankAccounts);
-  } else {
-    bankNames = [];
-  }
+  let bankNames = bankAccounts ? Object.keys(bankAccounts) : [];
   return {
     email: user.email,
     name: user.name,
