@@ -46,15 +46,16 @@ router.post('/dedupe', async (req,res) => {
   }
 })
 
-router.get('/getcategories', async (req, res)=>{
+router.get('/getcategories', async (req, res)=>{  
   try {
-    console.log('/getcategories: getting categories...')
-    const categories = await findData('Basil-Categories');
-    console.log('/getcategories: done getting categories...')
+    const decodedToken = await validateIdToken(req)
+    const userId = decodedToken.user_id;
+    console.log('/test userId, ', userId)
+    const categories = await findUserData('Basil-Categories', userId);
     res.send(categories)
-  } catch (err){
-    console.error(err);
-    res.status(500).send('Error getting categories');
+    
+  } catch (error) {
+    res.status(500).send('Error with /test endpiont');
   }
 })
 
@@ -137,12 +138,19 @@ router.get('/cleanPendingTransactions', async (req, res) => {
   }
 })
 
-router.post('/categoryUpdate', function(req, res){
+router.post('/handleDialogSubmit', async (req, res) => {
+  let uid;
+  try {
+    req.body = JSON.parse(req.body.dialogBody)
+    const decodedToken = await validateIdToken(req)
+    uid = decodedToken.user_id;
+  } catch (error) {
+    console.log('handleDialogSubmit error: ', error)
+  }
+
   const updateType = req.body.updateType;
-  // if updateType == 'transaction' ...
-  // if updateType == 'category' ...
   let d = {}
-  if (updateType == 'category') {
+  if (updateType == 'editCategory') { 
     d = {
       _id: req.body._id,
       categoryNameBEResponse: req.body.categoryName,
@@ -151,14 +159,14 @@ router.post('/categoryUpdate', function(req, res){
       originalCategoryName: req.body.originalCategoryName,
       updateType: req.body.updateType,
     }
-    const filter = { _id: new ObjectID(req.body._id) };
-    const update = {
-      $set: {
-        monthly_limit: req.body.monthly_limit,
-        // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
-      }
-    };
-    updateData('Basil-Categories', filter, update)
+      const filter = { _id: new ObjectID(req.body._id), userId: uid };
+      const update = {
+        $set: {
+          monthly_limit: req.body.monthly_limit,
+          // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
+        }
+      };
+      updateData('Basil-Categories', filter, update)
   }
 
   // Call updateData function to update Mongo Db
@@ -171,7 +179,7 @@ router.post('/categoryUpdate', function(req, res){
       note: req.body.note ? req.body.note : '',
       excludeFromTotal: req.body.excludeFromTotal? req.body.excludeFromTotal : false,
     }
-    const filter = { transaction_id: req.body.transaction_id };
+    const filter = { transaction_id: req.body.transaction_id, userId: uid };
     const update = {
       $set: {
         mappedCategory: req.body.mappedCategory,
@@ -183,11 +191,41 @@ router.post('/categoryUpdate', function(req, res){
     updateData('Plaid-Transactions', filter, update)
   }
 
-  const resObj = {
-    message: 'Hello from api.js POST /categoryUpdate endpoint... your data has now come full circle:',
-    ...d
+  if (updateType == 'addCategory') {
+    d = {
+      client_id: req.body.client_id,
+      categoryNameBEResponse: req.body.categoryName,
+      monthlyLimitBEResponse: req.body.monthly_limit,
+      showOnBudgetPageBEResponse: req.body.showOnBudgetPage,
+      updateType: req.body.updateType,
+      type: req.body.type,
+    }
+    const update = {
+      category: req.body.categoryName,
+      monthly_limit: req.body.monthly_limit,
+      annual_spend: "",
+      rules: {},
+      showOnBudgetPage: true,
+      type: req.body.type,
+      userId: uid,
+      client_id: req.body.client_id,
+    }
+
+    // note this should be asyncrhonous later but whatever
+    await insertData('Basil-Categories', update)
+    const categoriesWithAdded = await findUserData('Basil-Categories', uid);
+    categoriesWithAdded.forEach(category => {
+      if(category.client_id === d.client_id){
+        d._id = category._id
+      }
+    });
   }
 
+  const resObj = {
+    // message: 'Hello from api.js POST /handleDialogSubmit endpoint... your data has now come full circle:',
+    ...d
+  }
+  console.log("api is done handling dialog submit", resObj)
   res.send(resObj)
 })
 
@@ -202,7 +240,7 @@ router.get('/mapunmapped', async (req, res) => {
     if(mappedTxns.length > 0){
       mappedTxns.forEach(txn => {
         let updateObject = { $set: {} };
-        let filter = { ['transaction_id']: txn.transaction_id } 
+        let filter = { ['transaction_id']: txn.transaction_id }
         let options = {upsert: true} 
         updateObject.$set["mappedCategory"] = txn.mappedCategory;
         updateData('Plaid-Transactions', filter, updateObject, options);

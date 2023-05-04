@@ -33,7 +33,47 @@ const store = createStore({
         },
         setCategories(state, categories) {
             state.categories = categories;
-        }
+        },
+        updateTransaction(state, updatedTransaction) {
+            console.log('store.js.updateTransaction, ', updatedTransaction)
+            console.log('store.js.state.transactions, ', state.transactions)
+            for (let transaction of state.transactions) {
+                console.log('state.transactions.transaction_id', state.transactions.transaction_id)
+                if(transaction.transaction_id === updatedTransaction.transaction_id) {
+                    console.log('store.js.updatedTransaction() found a match!', transaction, updatedTransaction)
+                    transaction.mappedCategory = updatedTransaction.mappedCategory
+                    transaction.date = updatedTransaction.date
+                    transaction.note = updatedTransaction.note
+                    transaction.excludeFromTotal = updatedTransaction.excludeFromTotal
+                }
+            }
+        console.log('store.js updateTransaction done!', state.transactions)
+        },
+        updateCategory(state, updatedCategory) {
+            console.log('updateCategory store:', updatedCategory)
+            state.categories.forEach(category => {
+                if (category._id === updatedCategory._id) { // update this if you want multiple client-side updates (add then edit flow)
+                    category.category = updatedCategory.categoryNameBEResponse 
+                    category.monthly_limit = updatedCategory.monthlyLimitBEResponse 
+                    category.showOnBudgetPage = updatedCategory.showOnBudgetPageBEResponse 
+                }
+            });
+            console.log('store.js updateCategory done!', state.categories)
+        },
+        addCategory(state, newCategory) {
+            console.log('addCategory store:', newCategory)
+                const category = {
+                    _id: newCategory._id,
+                    category: newCategory.categoryNameBEResponse,
+                    monthly_limit: newCategory.monthlyLimitBEResponse,
+                    showOnBudgetPage:  newCategory.showOnBudgetPageBEResponse,
+                    type: newCategory.type,
+                }
+                
+                state.categories.push(category)
+                console.log('store.js addCategory done!', state.categories)
+            // this.categoryMonthlyLimits.push(categoryToAdd) // need to modify addedCategory first
+        },
     },
     actions: {
     }

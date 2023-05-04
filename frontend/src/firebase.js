@@ -60,6 +60,23 @@ export async function fetchTransactions() {
   }
 }
 
+export async function fetchCategories() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/getcategories', { headers });
+    if (response.ok) {
+      const categories = response.json();
+      return categories;
+    } else {
+      // Handle errors
+      console.error(`Request failed with status ${response.status}`);
+    }
+  } else {
+    // User is not signed in
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
 export async function getOrAddUser() {
   console.log("getOrAddUser(): current auth is", auth)
   const headers = await getAuthHeaders();
@@ -115,6 +132,29 @@ export async function findSimilarTransactionGroups() {
     if (response.ok) {
       console.log('data is', data);
       return data;
+    } else {
+      console.error(`Request failed with status ${response.status}`);
+    }
+  } else {
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
+export async function handleDialogSubmit(dialogBody) {
+  console.log("(): current auth is", auth)
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    console.log('firebase.handleDialogSubmit(): dialog body is', dialogBody);
+    const response = await fetch('/api/handleDialogSubmit', {  
+      method: 'POST',
+      headers: headers, 
+      body: JSON.stringify({dialogBody})
+    });
+    // const data = await response;
+    if (response.ok) {
+      // console.log('data is', data);
+      return response.json();
     } else {
       console.error(`Request failed with status ${response.status}`);
     }

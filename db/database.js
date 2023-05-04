@@ -298,12 +298,41 @@ async function findSimilarTransactionGroupsByCategory(uid) {
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection('Plaid-Transactions');
     
+    // get the transaction groups for the user
+    // const pipeline = [
+    //     { $match: { userId: uid } },
+    //     { $group: { _id: "$category", count: { $sum: 1 }, transactions: { 
+    //       $push: {
+    //         _id: "$_id",
+    //         name: "$name",
+    //         merchant_name: "$merchant_name",
+    //       }
+    //     } } },
+    //     { $match: { count: { $gte: 1 } } },
+    //     { $sort: { count: -1 } }
+    // ];
+
+    // 5/3, 8:30am: get all transaction groups in db for now (testing/researching for design)
     const pipeline = [
-        { $match: { userId: uid } },
-        { $group: { _id: "$category", count: { $sum: 1 }, transactions: { $push: "$$ROOT" } } },
-        { $match: { count: { $gte: 3 } } },
-        { $sort: { count: -1 } }
+      { $match: { _id: { $ne: null } } },
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+          names: {
+            $push: {
+              $cond: [
+                { $lte: ["$count", 3] },
+                "$name",
+                null
+              ]
+            }
+          }
+        }
+      },
+      { $sort: { count: -1 } }
     ];
+    
     
     const options = { allowDiskUse: true };
     const cursor = collection.aggregate(pipeline, options);
