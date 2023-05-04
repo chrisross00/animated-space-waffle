@@ -69,8 +69,8 @@
                 </div>
         </div>
 
-<!-- CATEGORY Body Form -->
-        <div v-if="dialogType=='category'" class="dialog-body-form">
+<!-- EDIT CATEGORY Body Form -->
+        <div v-if="dialogType=='editCategory'" class="dialog-body-form">
             <q-card-section>
                 <div class="text-h3">Edit Category: {{this.dialogBody.originalCategoryName}}</div>
             </q-card-section>
@@ -110,6 +110,55 @@
             </div>
             </div>
         </div>
+
+<!-- ADD CATEGORY Body Form -->
+        <div v-if="dialogType=='addCategory'" class="dialog-body-form">
+            <q-card-section>
+                <div class="text-h3">Add Category</div>
+            </q-card-section>
+
+            <!-- Q-Form -->
+            
+            <q-input
+            filled
+            v-model="this.dialogBody.categoryName"
+            label="Category Name"
+            lazy-rules
+            :rules="[ val => val && val.length > 0 || 'Please type something']"
+            @change="isFormSubmittable()"
+            />
+
+            <q-input
+            filled
+            type="number"
+            v-model="this.dialogBody.monthly_limit"
+            label="Monthly Limit"
+            lazy-rules
+            @change="isFormSubmittable()"
+            :rules="[
+                val => val !== null && val !== '' || 'Please enter a monthly limit',
+            ]"
+            />
+            <q-select
+                filled
+                v-model="this.dialogBody.type"
+                label="Category Type"
+                :options="type"
+                class="q-field--with-bottom"
+                @touchmove.stop.prevent
+                />
+            
+
+            <div class="button-container">
+            <div>
+                <q-btn @click="addCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
+                <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+            </div>
+            <div>
+                <q-btn label="Cancel" v-close-popup  color="accent"/>
+            </div>
+            </div>
+        </div>
     </q-card>
 </template>
 
@@ -132,7 +181,7 @@ input .select{
         },
         item: {
           type: Object,
-          required: true,
+          required: false,
         },
         dropDown: {
             type: Array,
@@ -144,19 +193,20 @@ input .select{
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},
+            type: ['Expense', 'Income'], 
             dialogBody:{
-                amount: this.item.amount ? this.item.amount : 0 ,
-                name: this.item.name ? this.item.name : '',
-                monthly_limit: this.item.monthly_limit ? this.item.monthly_limit : 0,
-                showOnBudgetPage: this.item.showOnBudgetPage ? this.item.showOnBudgetPage : true,
-                date: this.item.date ? this.item.date : '',
-                transaction_id: this.item.transaction_id ? this.item.transaction_id : '',
-                merchantName: this.item.merchant_name ? this.item.merchant_name : '',
-                mappedCategory: this.item.mappedCategory ? this.item.mappedCategory : '',
-                categoryName: this.item.categoryName ? this.item.categoryName : '',
-                originalCategoryName: this.item.categoryName ? this.item.categoryName : this.item.mappedCategory,
-                note: this.item.note ? this.item.note : '',
-                excludeFromTotal: this.item.excludeFromTotal ? this.item.excludeFromTotal : false,
+                amount: this.item?.amount ? this.item.amount : 0 ,
+                name: this.item?.name ? this.item.name : '',
+                monthly_limit: this.item?.monthly_limit ? this.item.monthly_limit : 0,
+                showOnBudgetPage: this.item?.showOnBudgetPage ? this.item.showOnBudgetPage : true,
+                date: this.item?.date ? this.item.date : '',
+                transaction_id: this.item?.transaction_id ? this.item.transaction_id : '',
+                merchantName: this.item?.merchant_name ? this.item.merchant_name : '',
+                mappedCategory: this.item?.mappedCategory ? this.item.mappedCategory : '',
+                categoryName: this.item?.categoryName ? this.item.categoryName : '',
+                originalCategoryName: this.item?.categoryName ? this.item.categoryName : this.item?.mappedCategory ? this.item.mappedCategory : '',
+                note: this.item?.note ? this.item.note : '',
+                excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},
@@ -186,9 +236,14 @@ computed: {
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
-            this.editedCategory = {...this.dialogBody, '_id': this.item._id}
-            // console.log('updateCategory: edited Category: ', this.editedCategory)
+            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type}
+            // console.log('update-category: edited Category: ', this.editedCategory)
             this.$emit('update-category', this.editedCategory)
+        },
+        addCategory() {
+            this.addedCategory = {...this.dialogBody}
+            console.log('add-Category: added Category: ', this.addedCategory)
+            this.$emit('add-category', this.addedCategory)
         },
         buildEditCategoryDialog() {
 
@@ -214,9 +269,18 @@ computed: {
                 }
             }
 
-            if (this.dialogType == 'category'){
+            if (this.dialogType == 'editCategory'){
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
                 || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit){
+                    this.formSubmittable = true;
+                }
+                else{
+                    this.formSubmittable = false;
+                }
+            }
+            if (this.dialogType == 'addCategory'){
+                if (this.dialogBody.categoryName !== ''
+                || this.dialogBody.monthly_limit !== null){
                     this.formSubmittable = true;
                 }
                 else{
@@ -228,7 +292,7 @@ computed: {
     },
     mounted(){
         this.originalDialogBody = Object.assign({}, this.dialogBody);
-        console.log('mounted(): ', )
+        console.log('mounted(): this.item ', this.item)
     },
     created() {
         this.initialData = JSON.parse(JSON.stringify(this.dialogBody));

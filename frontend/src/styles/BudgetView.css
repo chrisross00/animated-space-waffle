@@ -14,6 +14,11 @@
     visibility: hidden;
     transition: opacity 0.75s ease-out, visibility 0.75s ease-out;
   }
+
+  .table-wrapper {
+    position: relative;
+    margin-bottom: 80px; /* set a bottom margin of 80px */
+  }
   
   /* Overlay visible state */
   .overlay.is-visible {

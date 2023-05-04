@@ -1,168 +1,190 @@
 <style src="../styles/BudgetView.css"></style>
 
 <template>
-  
-<div v-show="isLoggedIn">
-  <SpinnerComponent :isLoading="isLoading" />
-    <div class="q-pa-md-page-padder p-3">
-      <q-card class="my-card">
-        <q-card-section horizontal>
-          <q-card-section class="q-pt-xs">
-            <div class="text-overline">Actuals</div>
-          <div class="text-h5 q-mt-sm q-mb-xs">
-            {{ formatDollar(this.monthlyStats.totalSpend) + " spent (so far)."}}
-          </div>
-          <p>Your month to date total for all spending.</p>
-          </q-card-section>
-        </q-card-section>
-
-        <q-card-section horizontal>
-          <q-card-section>
-            <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ 
-                this.monthlyStats.monthlySum > 0
-                ? formatDollar(this.monthlyStats.monthlySum) + " over budget." 
-                : formatDollar(this.monthlyStats.monthlySum) + " left over."  
-              }}
-            </div>
-            <p>Net Cash Flow (actual). This is your ending balance if this is the last day of the month.</p>
-            
-          </q-card-section>
-        </q-card-section>
-      </q-card>
-
-      <q-card class="my-card">
-        <q-card-section horizontal>
-          <q-card-section class="q-pt-xs">
-            <div class="text-overline">Projections</div>
-            <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ 
-                this.monthlyStats.projectedSum > 0 
-                ? formatDollar(this.monthlyStats.projectedSum) + " over budget." 
-                : formatDollar((this.monthlyStats.projectedSum)) + " left over."  
-              }}
-              </div>
-            <p>Net Cash Flow (projected). Your end of month balance after all expenses have been paid.</p>
-          </q-card-section>
-          </q-card-section>
-          
-        <q-card-section horizontal>
-          <q-card-section>
-            <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ formatDollar(this.monthlyStats.budgetRemaining) }} expenses remaining.
-            </div>
-            <p>The total of your expenses that haven't hit their monthly limits yet.</p>
-          </q-card-section>
-        </q-card-section>
-      </q-card>
-    </div>
-
-    <!-- Button Container -->
-    <div class="q-pa-md button-container">
-      <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
-      <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
-      <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
-    </div>
-
-    <!-- If show all is false -->    
-    <div class="q-pa-md" style="max-width: 900px">
-      <q-list bordered>
-        <div v-show="!showAll" class="categories">
-          <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
-
-            <!-- Make a category List Item -->
-            <q-item v-show="this.groupedTransactions[category].showOnBudgetPage" clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
-              <q-item-section>
-
-                <div class="budget-container header">
-                  <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
-                  <q-item-label class="budget-container total">
-                  {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
-                                                      : (isBudgetRemaining(category) ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
-                                                                                        : formatDollar(Math.abs(budgetRemaining(category).toFixed(0))) + " over" ) 
-                                                      }}
-                                                      <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
-
-                  </q-item-label>
-                </div>
-                <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
-                  <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getCategoryProgressColor(category)" size="md"/> 
-                </div>
-
-                <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
-                  {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }} 
-                  {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
-                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
-                </q-item-label>
-              </q-item-section>
-
-              <!-- Edit Pencil Icon -->
-              <q-item-section side>
-                <q-icon 
-                style="font-size: 16px;"
-                name="edit"
-                class="icon-hover"
-                clickable
-                @click.stop="buildEditCategoryDialog(category)">
-                
-                <!-- Start Making Dialog Box -->
-                      <!-- Dialog: Edit Category  -->
-                  <q-dialog v-model="categoryClickers[category]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
-                    <DialogComponent :dialogType="'category'" :item="this.dialogBody.currentCategoryDetails" @update-category="onSubmit"/>
-                  </q-dialog>
-                </q-icon>
-              </q-item-section>
-            </q-item>
-            
-          <!-- Make the nested rows grouped under each category List Item -->
-          <q-list>
-            <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
-              <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
-              <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
-
-                <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
-                    <q-item-section>
-                      <q-item-label lines="1">{{item.name == 'Venmo' ? item.name + (item.note ?  ': '+ item.note : '') : item.name }}</q-item-label>
-                      <q-item-label caption lines="2">{{ item.date }}</q-item-label>
-                    </q-item-section>
-                    <div class="transaction-decoration">
-                      <q-item-section side top>
-                        {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}                    
-                      </q-item-section>
-                      <q-item-section side bottom v-if="item.excludeFromTotal">
-                        <q-badge label="excluded" />
-                      </q-item-section>
-                    </div>
-                    <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
-                      <DialogComponent :dialogType="'transaction'" :item="item" 
-                      :dropDown="this.categoryMonthlyLimits" 
-                      @update-transaction="onSubmit"/>
-                    </q-dialog>
-                  </q-item>
-              </div>
-            </div>
-            </q-list>
-          </div>
-        </div>
-      </q-list>
-    </div>
-
-    <!-- If show all is true -->
-    <div v-show="showAll" class="q-pa-md all-transactions-table">
-        <q-table
-          title="All Transactions"
-          :rows="transactions"
-          :columns="columns"
-          row-key="transaction_id"
-          :pagination="pagination"
-        />
-    </div>
-  </div>
-  
-  <div v-show="!isLoggedIn">
-    <!-- link to /profile -->
+  <div class="table-wrapper">
     
-    You need to login <a href="/profile">here</a>
+  <div v-show="isLoggedIn">
+    <SpinnerComponent :isLoading="isLoading" />
+      <div class="q-pa-md-page-padder p-3">
+
+        <q-card class="my-card">
+          <q-card-section horizontal>
+            <q-card-section class="q-pt-xs">
+              <div class="text-overline">Actuals</div>
+            <div class="text-h5 q-mt-sm q-mb-xs">
+              {{ formatDollar(this.monthlyStats.totalSpend) + " spent (so far)."}}
+            </div>
+            <p>Your month to date total for all spending.</p>
+            </q-card-section>
+          </q-card-section>
+
+          <q-card-section horizontal>
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ 
+                  this.monthlyStats.monthlySum > 0
+                  ? formatDollar(this.monthlyStats.monthlySum) + " over budget." 
+                  : formatDollar(this.monthlyStats.monthlySum) + " left over."  
+                }}
+              </div>
+              <p>Net Cash Flow (actual). This is your ending balance if this is the last day of the month.</p>
+              
+            </q-card-section>
+          </q-card-section>
+        </q-card>
+
+        <q-card class="my-card">
+          <q-card-section horizontal>
+            <q-card-section class="q-pt-xs">
+              <div class="text-overline">Projections</div>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ 
+                  this.monthlyStats.projectedSum > 0 
+                  ? formatDollar(this.monthlyStats.projectedSum) + " over budget." 
+                  : formatDollar((this.monthlyStats.projectedSum)) + " left over."  
+                }}
+                </div>
+              <p>Net Cash Flow (projected). Your end of month balance after all expenses have been paid.</p>
+            </q-card-section>
+            </q-card-section>
+            
+          <q-card-section horizontal>
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ formatDollar(this.monthlyStats.budgetRemaining) }} expenses remaining.
+              </div>
+              <p>The total of your expenses that haven't hit their monthly limits yet.</p>
+            </q-card-section>
+          </q-card-section>
+        </q-card>
+      </div>
+
+      <!-- Button Container -->
+      <div class="q-pa-md button-container">
+        <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
+        <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
+        <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
+      </div>
+
+      <!-- If show all is false -->    
+      <div class="q-pa-md" style="max-width: 900px">
+        <q-list bordered>
+          <div v-show="!showAll" class="categories">
+            <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
+
+              <!-- Make a category List Item -->
+              <q-item v-show="this.groupedTransactions[category].showOnBudgetPage" clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
+                <q-item-section>
+
+                  <div class="budget-container header">
+                    <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
+                    <q-item-label class="budget-container total">
+                    {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
+                                                        : (isBudgetRemaining(category) ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
+                                                                                          : formatDollar(Math.abs(budgetRemaining(category).toFixed(0))) + " over" ) 
+                                                        }}
+                                                        <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
+
+                    </q-item-label>
+                  </div>
+                  <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
+                    <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getCategoryProgressColor(category)" size="md"/> 
+                  </div>
+
+                  <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
+                    {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }} 
+                    {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
+                        this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
+                  </q-item-label>
+                </q-item-section>
+
+                <!-- Edit Pencil Icon -->
+                <q-item-section side>
+                  <q-icon 
+                  style="font-size: 16px;"
+                  name="edit"
+                  class="icon-hover"
+                  clickable
+                  @click.stop="buildEditCategoryDialog(category)">
+                  
+                  <!-- Start Making Dialog Box -->
+                        <!-- Dialog: Edit Category  -->
+                    <q-dialog v-model="categoryClickers[category]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+                      <DialogComponent :dialogType="'editCategory'" :item="this.dialogBody.currentCategoryDetails" @update-category="onSubmit"/>
+                    </q-dialog>
+                  </q-icon>
+                </q-item-section>
+              </q-item>
+              
+            <!-- Make the nested rows grouped under each category List Item -->
+            <q-list>
+              <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
+                <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
+                <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
+
+                  <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
+                      <q-item-section>
+                        <q-item-label lines="1">{{item.name == 'Venmo' ? item.name + (item.note ?  ': '+ item.note : '') : item.name }}</q-item-label>
+                        <q-item-label caption lines="2">{{ item.date }}</q-item-label>
+                      </q-item-section>
+                      <div class="transaction-decoration">
+                        <q-item-section side top>
+                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}                    
+                        </q-item-section>
+                        <q-item-section side bottom v-if="item.excludeFromTotal">
+                          <q-badge label="excluded" />
+                        </q-item-section>
+                      </div>
+                      <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+                        <DialogComponent :dialogType="'transaction'" :item="item" 
+                        :dropDown="this.categoryMonthlyLimits" 
+                        @update-transaction="onSubmit"/>
+                      </q-dialog>
+                    </q-item>
+                </div>
+              </div>
+              </q-list>
+            </div>
+          </div>
+        </q-list>
+      </div>
+
+      <!-- If show all is true -->
+      <div v-show="showAll" class="q-pa-md all-transactions-table">
+          <q-table
+            title="All Transactions"
+            :rows="transactions"
+            :columns="columns"
+            row-key="transaction_id"
+            :pagination="pagination"
+          />
+      </div>
+    </div>
+    
+    <div v-show="!isLoggedIn">
+      <!-- link to /profile -->
+      
+      You need to login <a href="/profile">here</a>
+    </div>
+
+    <q-page-sticky class="floating-button" position="bottom-right" :offset="[25,25]">
+      <q-fab
+      v-model="fabRight"
+      vertical-actions-align="right"
+      color="primary"
+      glossy
+      icon="keyboard_arrow_up"
+      direction="up"
+      >
+      <q-fab-action label-position="right" color="primary" @click="addCategoryDialog" icon="add" label="Add Category" />
+      <q-fab-action label-position="right" color="secondary" @click="forceSync" icon="sync" label="Sync" />
+      <!-- <q-fab-action label-position="right" color="orange" @click="onClick" icon="airplay" label="Airplay" />
+      <q-fab-action label-position="right" color="accent" @click="onClick" icon="room" label="Map" />  -->
+    </q-fab>
+    <q-dialog v-model="newCategory" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+      <DialogComponent :dialogType="'addCategory'" @add-category="onSubmit"/>
+    </q-dialog>
+    </q-page-sticky>
   </div>
 </template>
 
@@ -176,7 +198,7 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SpinnerComponent from '../components/SpinnerComponent.vue'
   import store from '../store'
-  import { fetchTransactions } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories } from '@/firebase';
 
 // import e from 'express';
 
@@ -219,11 +241,15 @@
         clicker: ref(false),
         clicker2: ref(false),
         transactionClickers: {},
+        newCategory: false,
+        fabRight: false,
         categoryClickers: {},
         maximizedToggle: ref(true),
         transactionDetails: {},
         decimalPlaces: 0,
+        fetchInterval: 0,
         columns,
+        lastFetch: 0,
         tableHeaders: ["date", "name", "mappedCategory", "amount", "pending"],
         currentMonth: "",
         months: [], // array of month/year strings
@@ -234,9 +260,8 @@
         clickedCategories: [], // stores the clicked categories
         categoryMonthlyLimits: [],
         dialogBody:{},
-        updatedCategoryName:'',
-        updatedCategoryLimit:0,
         updatedShowOnBudgetPage: ref(true),
+        addedCategory: {},
         updatedCategory:{},
         updatedTransaction:{},
         pagination: {
@@ -250,11 +275,13 @@
         let selectedDate = this.selectedDate.actual;
         return function (groupedTransactions) {
           // console.log('this.selectedDate',selectedDate.year())
-          const filtered = groupedTransactions.filter(
-            (transaction) =>
-            dayjs(transaction.date).year() === selectedDate.year() &&
-            dayjs(transaction.date).month() === selectedDate.month()
-            );
+          const filtered = groupedTransactions.length === 0
+            ? []
+            : groupedTransactions.filter(
+                (transaction) =>
+                  dayjs(transaction.date).year() === selectedDate.year() &&
+                  dayjs(transaction.date).month() === selectedDate.month()
+              );
           // console.log('filteredTransactions', filtered)
           return filtered; 
         };
@@ -344,6 +371,16 @@
         if (isNaN(val)) val = 0;
         return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
+      addCategoryDialog(){
+        if(!this.newCategory){
+          this.newCategory = true
+          this.fabRight = true
+        } else{
+          this.newCategory = !this.newCategory;
+          this.fabRight = !this.fabRight;
+        }
+        return this.newCategory
+      },
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
         this.clicker = !this.clicker;
 
@@ -357,6 +394,7 @@
           let isOriginalCategoryNameSet = false;
           this.dialogBody.currentCategoryDetails = {
             _id: this.dialogBody._id = this.groupedTransactions[category]._id,
+            type: this.dialogBody.type = this.groupedTransactions[category].type,
             monthly_limit: this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit,
             categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
@@ -457,20 +495,82 @@
         return progressRatio// something category
       },
       groupTransactions (){
-        // Use the transaction.mappedCategory to push to the groupedTransactions array
+        // this function sets up the this.groupedTransactions object based on this.transactions and this.categoryMonthlyLimits
+        this.groupedTransactions = {};
+        // set up the groupedTransactions properties
+        this.categoryMonthlyLimits.forEach(category => {
+          if (!this.groupedTransactions[category.category]) {
+            this.groupedTransactions[category.category] = []; 
+          }
+          this.groupedTransactions[category.category]._id= category._id
+          this.groupedTransactions[category.category].categoryName = category.category 
+          this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
+          this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
+          this.groupedTransactions[category.category].originalName = category.category 
+          this.groupedTransactions[category.category].type = category.type 
+        });
+        
+        // for the transactions retrieved above, map them to the relevant groupedTransaction[category]
         this.transactions.forEach((transaction) => {
           const category = transaction.mappedCategory;
-          if (!this.groupedTransactions[category]) {
-            this.groupedTransactions[category] = []; 
-            this.groupedTransactionsVisible[category] = false; 
+          if (!transaction.request_id) {
+            if (!this.groupedTransactions) {
+              this.groupedTransactions = {};
+            }
+            if (!this.groupedTransactions[category]) {
+              this.groupedTransactions[category] = [];
+            }
+            this.groupedTransactions[category].push(transaction);
           }
-          if (!transaction.request_id) this.groupedTransactions[category].push(transaction); // only push if it's not a summary transaction
         });
+
+      },
+      async forceSync(){
+        this.resetLastFetch();
+        window.location.reload();
+      },
+      async resetLastFetch (){
+        const now = Date.now();
+        store.commit("setLastPlaidFetch", now - this.fetchInterval)
+      },
+      async buildPage (mode){
+        let txns, categoryResponse;
+        try {
+          if(mode == 'sync'){
+            // Get all user transactions and category monthlyLimit info
+            txns = await fetchTransactions()
+            this.transactions = txns.transactions;
+            categoryResponse = await fetchCategories();
+            this.categoryMonthlyLimits.push(...categoryResponse) //
+          } else if(mode == 'refresh'){
+              this.transactions = store.state.transactions
+              this.categoryMonthlyLimits.push(...store.state.categories)
+          } else if (mode == 'addCategory'){
+              this.transactions = store.state.transactions
+              this.categoryMonthlyLimits.push(this.addedCategory)
+          }
+          console.log('this.categoryMonthlyLimits', this.categoryMonthlyLimits)
+        } catch (error) {
+          console.log('error setting up transactions and categories: ' + error)
+        }
+        this.groupTransactions();
+        this.months = this.buildDateList(this.transactions).reverse()
+        this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
+        this.isLoading = false
+        
+        try {
+          if (mode == 'sync' || mode == 'addCategory'){
+            store.commit("setTransactions", this.transactions);
+            store.commit("setCategories", categoryResponse);
+          }
+        } catch (error) {
+            console.log('error committing transactions and categories to store:', error)
+        }
       },
       onSubmit(e) { 
         let d = {}
         if (e.dialogType == 'transaction') {
-          console.log('e.dialogtype == ', e)
+          console.log('onSubmit e.dialogtype == ', e)
           d = {
             'updateType': e.dialogType,
             'mappedCategory': e.mappedCategory,
@@ -481,37 +581,44 @@
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
           }
         }
-        if (e.dialogType == 'category'){
-          console.log('category update, typeof(monthly_limit)=' ,typeof(e.monthly_limit))
-          d = {
-          '_id': e._id,
+        // merge these
+        if (e.dialogType == 'addCategory' || e.dialogType == 'editCategory'){
+        d = {
           'updateType': e.dialogType,
           'categoryName': e.categoryName,
           'monthly_limit': e.monthly_limit,
-          'showOnBudgetPage': e.showOnBudgetPage,
-          'originalCategoryName': this.dialogBody.currentCategoryDetails.originalCategoryName ? this.dialogBody.currentCategoryDetails.originalCategoryName : '',
-          }
+          'type': e.type.toLowerCase(),
+          'showOnBudgetPage': true,
         }
-        console.log('onsubmit hit! ', d) // if you're adding new props to a category or transaction, you'll also need to update below: 
-        // ctrl + f "if you want client to auto update"
-        // TODO: Need to add logic to check the difference from original values before sending post request
+        if (e.dialogType == 'addCategory'){
+          const randomId = 'client_id_' + Math.random().toString(36).substring(2, 12);
+          console.log('addCategory, e =' , e)
+            d.client_id = randomId,
+            d.originalCategoryName = e.categoryName
+          }
+          if (e.dialogType == 'editCategory'){
+              d._id = e._id
+              d.originalCategoryName = this.dialogBody.currentCategoryDetails.originalCategoryName ? this.dialogBody.currentCategoryDetails.originalCategoryName : ''
+            }
+        }
 
-        fetch("/api/categoryUpdate", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(d)
-        })
-        .then(response => response.json())
+        handleDialogSubmit(JSON.stringify(d))
         .then(data => {
-          // console.log('post-api response', data)
-          // TODO: Need to add logic to check the response - should only update client props if success
-          d.updateType == 'category' ? this.updatedCategory = {...data} : this.updatedTransaction = {...data}
+          console.log('post request success; data: ', data)
+          console.log('post request success; d: ', d)
+          if(d.updateType == 'editCategory'){
+            this.updatedCategory = {...data} 
+            this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName]
+          }
+          if(d.updateType == 'transaction'){
+            this.updatedTransaction = {...data}
+            this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
+          }
+          if(d.updateType == 'addCategory'){
+            this.newCategory = false
+            this.addedCategory = {...data} 
+          }
         })
-        .then(
-          d.updateType == 'category' ? this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName] : this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id] // Clsoe the window by passing the txn_id back to transactionClickers 
-          )
         .catch(error => {
           console.log('Error:', error)
         })
@@ -519,135 +626,76 @@
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;
-
         if (this.clickedCategories.includes(category)) {
-          // remove category from clickedCategories if it's already clicked
           this.clickedCategories = this.clickedCategories.filter((c) => c !== category);
         } else {
-          // add category to clickedCategories if it's not already clicked
           this.clickedCategories.push(category) 
         }
       },
     },
-    watch: {
+    watch: { 
       'selectedDate.display': function(newVal){//, oldVal) {
         this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
       },
-      // category watchers
+      // category watchers - updates the client with response data so you don't have to hit db again
       'updatedCategory': function(t) {
-        // console.log('updatedCategory, this.groupedTransactions[Slush]', this.groupedTransactions['Slush'])
-        this.groupedTransactions[t.originalCategoryName].categoryName = t.categoryNameBEResponse
-        this.groupedTransactions[t.originalCategoryName].monthly_limit = t.monthlyLimitBEResponse
-        this.groupedTransactions[t.originalCategoryName].showOnBudgetPage = t.showOnBudgetPageBEResponse
+        store.commit("updateCategory", t)
+        this.groupTransactions();
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
+        // this.resetLastFetch();  
+      },
+      'addedCategory': function(t) {
+        store.commit('addCategory', t)
+        this.categoryMonthlyLimits = [];
+        this.categoryMonthlyLimits.push(...store.state.categories)
+        this.groupTransactions();
+        this.monthlyStats = this.monthStats(this.groupedTransactions); // abstract to a method setMonthlyStats
+        // this.resetLastFetch(); 
       },
       'updatedTransaction' : function(t) { // updates go here if you want client to auto-update w.o refresh
-        this.groupedTransactions[t.originalCategoryName].filter(transaction => {
-          if (transaction.transaction_id == t.transaction_id) {
-            transaction.mappedCategory = t.mappedCategory
-            transaction.date = t.date
-            transaction.note = t.note
-            transaction.excludeFromTotal = t.excludeFromTotal
-            const index = this.groupedTransactions[t.originalCategoryName].indexOf(transaction)
-            if (index !== -1) {
-              if (transaction.mappedCategory !== t.originalCategoryName){
-                this.groupedTransactions[t.originalCategoryName].splice(index, 1)
-                this.groupedTransactions[transaction.mappedCategory].push(transaction)
-                console.log('index is !== -1!')
-              }
-            }
-          }
-        })
+        store.commit('updateTransaction', t)
+        this.groupTransactions();
+        // this.resetLastFetch(); // alternative is to update the store
         this.monthlyStats = this.monthStats(this.groupedTransactions)
       },
-      // don't want to do this for now... because then how do you show it again, blah blah blah
-      // 'updatedShowOnBudgetPage': function(t) {
-      //   console.log('updatedShowOnBudgetPage watcher', t)
-      //   // this.groupedTransactions[t].showOnBudgetPage = t
-      // },
     },
     async mounted() {
       this.isLoading = true;
       this.isLoggedIn = store.state.session ? store.state.session.isSessionActive ? true : false : false;
-      console.log("store.state.session = ", store.state.session)
+      console.log("store.state.session = ", store.state.lastPlaidFetch)
       try {
-        if(store.state.session?.isSessionActive){
+        if(store.state.session?.isSessionActive) {
           const now = Date.now();
-          const lastFetch = store.state.lastPlaidFetch;
-          const fetchInterval = 1000 * 60 * 5; // 10 minutes in milliseconds, adjust as needed
-
-          if (!lastFetch || now - lastFetch > fetchInterval) {
-            const transactions = await fetchTransactions()
-            this.transactions = transactions.transactions;
-
-            // Get category monthlyLimit info
-            const categoryResponse = await fetch('/api/getcategories');
-            
-            const categoryData = await categoryResponse.json();
-            this.categoryMonthlyLimits.push(...categoryData) //
-
-            this.groupTransactions();
-            
-            // Get the monthly_limits from each category and match to the groupedTransactions
-            this.categoryMonthlyLimits.forEach(category => {
-            // console.log('categoryMonthlyLimits.forEach: category =, ', category)
-              if(this.groupedTransactions[category.category]){
-
-            /*\
-            ADD PROPS TO groupedTransactions:
-              - This implementation allows you to get and set things as: this.groupedTransactions[category].parameterOfChoice, 
-              rather than pushing props as arrays along with the txns (push({key:value}))
-              - Lets you treat groupedTransactions object as a cross-section of category and transaction data
-            */ 
-                this.groupedTransactions[category.category]._id= category._id
-                this.groupedTransactions[category.category].categoryName = category.category 
-                this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
-                this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
-                this.groupedTransactions[category.category].originalName = category.category 
-                this.groupedTransactions[category.category].type = category.type 
-              }
-            });
-            this.months = this.buildDateList(this.transactions).reverse()
-            this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
-            this.isLoading = false
+          this.lastFetch = store.state.lastPlaidFetch;
+          this.fetchInterval = 1000 * 60 * 10; // 10 minutes in milliseconds, adjust as needed
+          
+          if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
+            await this.buildPage('sync')
             store.commit("setLastPlaidFetch", now);
-            store.commit("setTransactions", this.transactions);
-            store.commit("setCategories", categoryData);
           }
           else {
-            const remainingTime = fetchInterval - (now - lastFetch);
+            const remainingTime = this.fetchInterval - (now - this.lastFetch);
             const minutesRemaining = Math.floor(remainingTime / 60000);
             const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
             console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
-
-            this.transactions = store.state.transactions
-            this.categoryMonthlyLimits.push(...store.state.categories)
-            this.groupTransactions();
             
-            // Get the monthly_limits from each category and match to the groupedTransactions
-            this.categoryMonthlyLimits.forEach(category => {
-              if(this.groupedTransactions[category.category]){
-                this.groupedTransactions[category.category]._id= category._id
-                this.groupedTransactions[category.category].categoryName = category.category 
-                this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
-                this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
-                this.groupedTransactions[category.category].originalName = category.category 
-                this.groupedTransactions[category.category].type = category.type 
-              }
-            });
-            this.months = this.buildDateList(this.transactions).reverse()
-            this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
-            this.isLoading = false
+            await this.buildPage('refresh')
           }
-        }
-        else if(!store.state.session?.isSessionActive){
-          this.isLoggedIn = false;
-          console.log('user state is not available')
-        }
+        } else if(!store.state.session?.isSessionActive){
+            this.isLoggedIn = false;
+            console.log('user state is not available')
+        } 
       } catch (error) {
         console.error(error);
+        this.resetLastFetch();
       }
+      console.log('mounted, this.groupedTransactions', this.groupedTransactions)
+      if(this.categoryMonthlyLimits?.length == 0 || this.transactions?.length == 0) {
+        console.log('onMounted if')
+          this.resetLastFetch();
+        }
+      console.log('this.categoryMonthlyLimits', this.categoryMonthlyLimits.length)
     },
   };
 </script>
