@@ -320,13 +320,8 @@ async function findSimilarTransactionGroupsByCategory(uid) {
           _id: "$category",
           count: { $sum: 1 },
           names: {
-            $push: {
-              $cond: [
-                { $lte: ["$count", 3] },
-                "$name",
-                null
-              ]
-            }
+            $push:
+                "$name"
           }
         }
       },

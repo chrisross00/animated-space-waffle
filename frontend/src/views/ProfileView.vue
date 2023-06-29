@@ -180,6 +180,7 @@ export default {
         }
         this.session = await store.state.session
         this.isLoading = false;
+        store.commit("setLastPlaidFetch", null) // set last plaid fetch to 0 since new login
       } catch (error) {
         console.log(error)
       }
@@ -197,8 +198,8 @@ export default {
           }
       }
       auth.signOut()
-      .then(this.userData = null)
       .then(store.commit('clearState'))
+      .then(this.userData = null)
       window.location.reload();
       // this.$router.push({ name: 'Profile' });
     }
@@ -212,14 +213,15 @@ export default {
         if (user) {
           console.log("User signed in:", user);
           console.log('mounting, auth1.currentUser', auth1.currentUser)
-
-        // Your logic to handle the signed-in user
-        const response = await getOrAddUser();
-        this.user = response;
-        console.log("this.user", this.user);
-
-        // Update the Vuex store
-        store.commit("setUser", this.user);
+          
+          // Your logic to handle the signed-in user
+          const response = await getOrAddUser();
+          this.user = response;
+          console.log("this.user", this.user);
+          console.log("store.state", store.state);
+          
+          // Update the Vuex store
+          store.commit("setUser", this.user);
       } else {
         console.log("User signed out");
         return;
