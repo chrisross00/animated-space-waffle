@@ -99,6 +99,7 @@ export async function getOrAddUser() {
 export async function getOrAddUserAccount(publicToken, metadata) {
   console.log("getOrAddUserAccount(): current auth is", auth)
   console.log("getOrAddUserAccount(): current publicToken is", publicToken)
+  console.log("getOrAddUserAccount(): current metadata is", metadata)
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';

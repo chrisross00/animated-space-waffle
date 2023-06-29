@@ -12,9 +12,9 @@
             <q-card-section class="q-pt-xs">
               <div class="text-overline">Actuals</div>
             <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ formatDollar(this.monthlyStats.totalSpend) + " spent (so far)."}}
+              {{ formatDollar(this.monthlyStats.absoluteSpend) + " spent (so far)."}}
             </div>
-            <p>Your month to date total for all spending.</p>
+            <p>Your month to date total for all spending, across all categories.</p>
             </q-card-section>
           </q-card-section>
 
@@ -29,6 +29,16 @@
               </div>
               <p>Net Cash Flow (actual). This is your ending balance if this is the last day of the month.</p>
               
+            </q-card-section>
+          </q-card-section>
+
+          <q-card-section horizontal v-if="this.monthlyStats.toSortSpending > 0">
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ 
+                  formatDollar(this.monthlyStats.toSortSpending) + " in unsorted transactions"
+                }}
+              </div>              
             </q-card-section>
           </q-card-section>
         </q-card>
@@ -312,12 +322,17 @@
       },
       monthStats() {
         return (groupedTransactions) => {
+          let absoluteSpend = 0; // sum of everything except payment category
           let monthlySum = 0; // sum of all categories
-          let totalSpend = 0; // sum of only spending, not income
+          let toSortSpending = 0; // sum of expenses + to sort
           let projectedSum = 0; // sum of spending + 
           let budgetRemaining = 0;
           let totalExp = 0;
           for (const category in groupedTransactions) {
+            if(category !== 'Payment' ){
+              console.log('absolute spend: category = ', category);
+              absoluteSpend += this.categorySum(category)
+            }
             if(this.groupedTransactions[category].type == 'expense'){
               console.log('category.type', this.groupedTransactions[category].type)
               totalExp += this.categorySum(category)
@@ -340,21 +355,21 @@
               if(groupedTransactions[category].type == 'expense' || groupedTransactions[category].type == 'income'){
                 monthlySum += this.categorySum(category)
               }
-              if(groupedTransactions[category].type == 'expense'){
-                totalSpend += this.categorySum(category)
+              if(category == 'To Sort' ){
+                toSortSpending += this.categorySum(category)
               } 
 
             }
           }
-          console.log('totalExp', totalExp)
           monthlySum=monthlySum.toFixed(2),
-          totalSpend=totalSpend.toFixed(2)
+          toSortSpending=toSortSpending.toFixed(2)
           let monthStats = {
             monthlySum,
-            totalSpend,
+            toSortSpending,
             projectedSum,
             budgetRemaining,
-            totalExp
+            totalExp,
+            absoluteSpend
           }
 
           return monthStats
@@ -402,14 +417,11 @@
           }
           isOriginalCategoryNameSet = true;
           if (!this.dialogBody.currentCategoryDetails.originalCategoryName){
-            console.log('if statement')
             this.dialogBody.currentCategoryDetails.originalCategoryName = this.groupedTransactions[category].categoryName
           } 
-          console.log('buildEditCategoryDialog', this.categoryClickers[category])
           return this.categoryClickers[category.categoryName];
       },
       buildEditTransactionDialog(e){ // Should this live on DialogComponent?
-          console.log('buildEditTransactionDialog', e)
           let isOriginalCategoryNameSet = false;
           this.dialogBody.currentTransactionDetails = {
             originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentTransactionDetails.originalCategoryName : this.groupedTransactions[e.mappedCategory].originalName
@@ -428,7 +440,6 @@
       },
       buildDateList(transactions) {
         try {
-          console.log('buildDateList starting')
           const dates = transactions.map(transaction => dayjs(transaction.date));
           const minDate = dayjs.min(dates).$d
           const maxDate = dayjs.max(dates).$d
@@ -438,16 +449,13 @@
           while (currentDate.isSameOrBefore(maxDate)) {
             dateList.push(currentDate.format('MMMM YYYY'));
             currentDate = currentDate.add(1, 'month').startOf('month');
-            // console.log('currentDate =', currentDate)
           }
-          // console.log('dateList=', dateList)
           return dateList;
         } catch (err) {
             console.log("error trying to buildDateList...", err)
         }
       },
       budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
-        // console.log('budget Remaining running...')
         let diff = 0
         const monthlyLimit = this.groupedTransactions[category].monthly_limit
         const categorySpend = this.categorySum(category).valueOf()
@@ -549,7 +557,6 @@
               this.transactions = store.state.transactions
               this.categoryMonthlyLimits.push(this.addedCategory)
           }
-          console.log('this.categoryMonthlyLimits', this.categoryMonthlyLimits)
         } catch (error) {
           console.log('error setting up transactions and categories: ' + error)
         }
@@ -570,7 +577,6 @@
       onSubmit(e) { 
         let d = {}
         if (e.dialogType == 'transaction') {
-          console.log('onSubmit e.dialogtype == ', e)
           d = {
             'updateType': e.dialogType,
             'mappedCategory': e.mappedCategory,
@@ -592,7 +598,6 @@
         }
         if (e.dialogType == 'addCategory'){
           const randomId = 'client_id_' + Math.random().toString(36).substring(2, 12);
-          console.log('addCategory, e =' , e)
             d.client_id = randomId,
             d.originalCategoryName = e.categoryName
           }
@@ -604,8 +609,6 @@
 
         handleDialogSubmit(JSON.stringify(d))
         .then(data => {
-          console.log('post request success; data: ', data)
-          console.log('post request success; d: ', d)
           if(d.updateType == 'editCategory'){
             this.updatedCategory = {...data} 
             this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName]
@@ -663,13 +666,11 @@
     async mounted() {
       this.isLoading = true;
       this.isLoggedIn = store.state.session ? store.state.session.isSessionActive ? true : false : false;
-      console.log("store.state.session = ", store.state.lastPlaidFetch)
       try {
         if(store.state.session?.isSessionActive) {
           const now = Date.now();
           this.lastFetch = store.state.lastPlaidFetch;
-          this.fetchInterval = 1000 * 60 * 10; // 10 minutes in milliseconds, adjust as needed
-          
+          this.fetchInterval = 1000 * 60 * 10; // 10 minutes in milliseconds, adjust as needed          
           if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
             await this.buildPage('sync')
             store.commit("setLastPlaidFetch", now);
@@ -678,19 +679,17 @@
             const remainingTime = this.fetchInterval - (now - this.lastFetch);
             const minutesRemaining = Math.floor(remainingTime / 60000);
             const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
-            console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
+            // console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
             
             await this.buildPage('refresh')
           }
         } else if(!store.state.session?.isSessionActive){
             this.isLoggedIn = false;
-            console.log('user state is not available')
         } 
       } catch (error) {
         console.error(error);
         this.resetLastFetch();
       }
-      console.log('mounted, this.groupedTransactions', this.groupedTransactions)
       if(this.categoryMonthlyLimits?.length == 0 || this.transactions?.length == 0) {
         console.log('onMounted if')
           this.resetLastFetch();
