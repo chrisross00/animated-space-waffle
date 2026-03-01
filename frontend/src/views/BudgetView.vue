@@ -70,15 +70,15 @@
       </div>
 
       <!-- Button Container -->
-      <div class="q-pa-md button-container" style="max-width: 900px; margin: 0 auto;">
+      <div class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
         <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
         <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
       </div>
 
       <!-- If show all is false -->    
-      <div class="q-pa-md" style="max-width: 900px; margin: 0 auto;">
-        <q-list bordered>
+      <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+        <q-list>
           <div v-show="!showAll" class="categories">
             <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
 

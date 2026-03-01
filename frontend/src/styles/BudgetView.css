@@ -74,12 +74,16 @@
   
   .all-transactions-table {
     width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   .bulk-bar {
     width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
   }
 
   .bulk-bar__select {
@@ -123,10 +127,10 @@
       flex-direction: column;
       flex-wrap: wrap;
       justify-content: space-between;
-      max-width: 900px; /* set max width to limit the number of boxes */
+      max-width: 800px; /* set max width to limit the number of boxes */
       margin: 0 auto; /* center the boxes horizontally */
       border-radius: 10px; /* round the corners of the container */
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* add a subtle drop shadow */
+      box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
     }
   
     .category {
