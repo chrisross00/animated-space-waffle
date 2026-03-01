@@ -1,5 +1,10 @@
 require('dotenv').config()
 
+// Node.js 24 + Windows: c-ares (used for DNS SRV lookups by the MongoDB driver)
+// prefers TCP for SRV queries, but home routers typically only accept DNS over UDP.
+// Using public DNS servers that support both UDP and TCP resolves this.
+require('dns').setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+
 // Main Express app
 const express = require('express')
 const helmet = require('helmet')
