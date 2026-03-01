@@ -251,7 +251,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
     const categoryChanged = req.body.mappedCategory && req.body.originalCategoryName &&
                             req.body.mappedCategory !== req.body.originalCategoryName;
     const notToSort = req.body.mappedCategory !== 'To Sort';
-    if (categoryChanged && notToSort) {
+    if (categoryChanged && notToSort && req.body.createRule) {
       const catFilter = { category: req.body.mappedCategory, userId: uid };
       if (req.body.merchantName) {
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });

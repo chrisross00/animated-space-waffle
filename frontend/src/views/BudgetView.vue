@@ -584,6 +584,7 @@
             'note':e.note,
             'name': e.name,
             'merchantName': e.merchantName,
+            'createRule': e.createRule ? true : false,
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
