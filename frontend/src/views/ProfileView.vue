@@ -196,7 +196,7 @@ export default {
       if(this.session.docId){
         try {
           // update the collection('sessions') with the endAt timestamp
-          await firestore.collection('sessions').doc(this.session.documentId).update({
+          await firestore.collection('sessions').doc(this.session.docId).update({
             endAt: Date.now().toString()
           })
         } catch (error) {
