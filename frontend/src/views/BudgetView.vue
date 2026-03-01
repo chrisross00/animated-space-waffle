@@ -77,7 +77,7 @@
       </div>
 
       <!-- If show all is false -->    
-      <div class="q-pa-md" style="max-width: 900px">
+      <div class="q-pa-md" style="max-width: 900px; margin: 0 auto;">
         <q-list bordered>
           <div v-show="!showAll" class="categories">
             <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
@@ -161,13 +161,43 @@
 
       <!-- If show all is true -->
       <div v-show="showAll" class="q-pa-md all-transactions-table">
-          <q-table
-            title="All Transactions"
-            :rows="transactions"
-            :columns="columns"
-            row-key="transaction_id"
-            :pagination="pagination"
+
+        <!-- Bulk action bar — visible when rows are selected -->
+        <div v-if="selectedRows.length > 0" class="row items-center q-gutter-sm q-mb-sm">
+          <span class="text-body2">{{ selectedRows.length }} selected</span>
+          <q-select
+            v-model="bulkCategory"
+            :options="categoryMonthlyLimits.map(c => c.category).sort()"
+            label="Move to category"
+            dense
+            outlined
+            style="min-width: 200px"
+            @touchmove.stop.prevent
           />
+          <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+          <q-btn flat label="Clear" @click="selectedRows = []" />
+        </div>
+
+        <q-table
+          title="All Transactions"
+          :rows="transactions"
+          :columns="columns"
+          row-key="transaction_id"
+          :pagination="pagination"
+          selection="multiple"
+          v-model:selected="selectedRows"
+          @row-click="openTableDialog"
+        />
+
+        <q-dialog v-model="tableDialogOpen" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+          <DialogComponent
+            v-if="tableDialogTransaction"
+            :dialogType="'transaction'"
+            :item="tableDialogTransaction"
+            :dropDown="categoryMonthlyLimits"
+            @update-transaction="onSubmit"
+          />
+        </q-dialog>
       </div>
     </div>
     
@@ -208,7 +238,7 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SpinnerComponent from '../components/SpinnerComponent.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize } from '@/firebase';
 
 // import e from 'express';
 
@@ -277,7 +307,11 @@
         pagination: {
           rowsPerPage: 30 // current rows per page being displayed
         },
-        monthlyStats:{}
+        monthlyStats:{},
+        selectedRows: [],
+        bulkCategory: null,
+        tableDialogOpen: false,
+        tableDialogTransaction: null,
       };
     },
     computed: {
@@ -620,6 +654,7 @@
           if(d.updateType == 'transaction'){
             this.updatedTransaction = {...data}
             this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
+            this.tableDialogOpen = false
           }
           if(d.updateType == 'addCategory'){
             this.newCategory = false
@@ -633,6 +668,34 @@
           this.isLoading = false;
         })
       }, 
+      openTableDialog(evt, row) {
+        this.dialogBody.currentTransactionDetails = {
+          originalCategoryName: row.mappedCategory || ''
+        };
+        this.tableDialogTransaction = row;
+        this.tableDialogOpen = true;
+      },
+      async applyBulkCategory() {
+        if (!this.bulkCategory || !this.selectedRows.length) return;
+        this.isLoading = true;
+        const ids = this.selectedRows.map(r => r.transaction_id);
+        try {
+          await bulkCategorize(ids, this.bulkCategory);
+          this.selectedRows.forEach(row => {
+            const txn = this.transactions.find(t => t.transaction_id === row.transaction_id);
+            if (txn) txn.mappedCategory = this.bulkCategory;
+          });
+          store.commit('setTransactions', this.transactions);
+          this.groupTransactions();
+          this.monthlyStats = this.monthStats(this.groupedTransactions);
+          this.selectedRows = [];
+          this.bulkCategory = null;
+        } catch (err) {
+          console.error('Bulk categorize error:', err);
+        } finally {
+          this.isLoading = false;
+        }
+      },
       toggleCategory(category) {
         this.groupedTransactionsVisible[category] =
           !this.groupedTransactionsVisible[category] || false;
