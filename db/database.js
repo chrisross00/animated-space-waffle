@@ -128,6 +128,25 @@ async function findUnmappedData(collectionName) {
   }
 }
 
+async function updateManyData(collectionName, filter, update) {
+  let client;
+  try {
+    client = await connectToDb();
+    const db = client.db(process.env.DB_NAME);
+    const collection = db.collection(collectionName);
+    const result = await collection.updateMany(filter, update);
+    console.log(`  DB: updateMany matched ${result.matchedCount}, modified ${result.modifiedCount}`);
+    return result;
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (client) {
+      await client.close();
+      console.log('  DB: database connection closed by updateManyData().');
+    }
+  }
+}
+
 async function updateData(collectionName, filter, update, options = null) {
   let client;
   try {
@@ -350,6 +369,7 @@ async function findSimilarTransactionGroupsByCategory(uid) {
     insertData,
     findData,
     updateData,
+    updateManyData,
     deduplicateData,
     findUnmappedData,
     deleteRemovedData,
