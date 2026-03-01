@@ -129,6 +129,23 @@ async function getNewPlaidTransactions(uid) {
       await insertData('Plaid-Transactions', mappedTxns);
     }
 
+    // Handle modified transactions — update mutable fields without touching mappedCategory
+    const modifiedTxns = updatedResponses.flatMap(r => r.modified || []);
+    for (const txn of modifiedTxns) {
+      await updateData('Plaid-Transactions',
+        { transaction_id: txn.transaction_id, userId },
+        { $set: {
+          amount: txn.amount,
+          date: txn.date,
+          name: txn.name,
+          merchant_name: txn.merchant_name,
+          pending: txn.pending,
+          category: txn.category,
+          personal_finance_category: txn.personal_finance_category,
+        }}
+      );
+    }
+
     let filter = { $or: [] };
     updatedResponses.forEach((block) => {
       if (block.removed && block.removed.length > 0) {
