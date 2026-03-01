@@ -24,15 +24,20 @@ const client = new PlaidApi(config);
 
 router.get("/create_link_token", async (req, res, next) => {
     console.log('/create_link_token starting...');
-    const tokenResponse = await client.linkTokenCreate({
-      user: { client_user_id: "user-" + Math.floor(Math.random() * 10000) },
-      client_name: "Your App Name",
-      language: "en",
-      products: ["auth"],
-    country_codes: ["US"],
-  });
-  console.log('tokenResponse.data', tokenResponse)
-  res.json(tokenResponse.data);
+    try {
+      const tokenResponse = await client.linkTokenCreate({
+        user: { client_user_id: "user-" + Math.floor(Math.random() * 10000) },
+        client_name: "Your App Name",
+        language: "en",
+        products: ["auth"],
+        country_codes: ["US"],
+      });
+      console.log('tokenResponse.data', tokenResponse)
+      res.json(tokenResponse.data);
+    } catch (error) {
+      console.error('/create_link_token error:', error.message);
+      res.status(500).json({ message: 'Failed to create link token' });
+    }
 });
 
 router.post("/exchange_public_token", async (req, res, next) => {
