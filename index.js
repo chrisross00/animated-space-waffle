@@ -19,7 +19,21 @@ admin.initializeApp({
   appId: process.env.VUE_APP_FIREBASE_APP_ID,
 });
 
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "cdn.plaid.com"],
+      styleSrc:    ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
+      fontSrc:     ["'self'", "fonts.gstatic.com"],
+      imgSrc:      ["'self'", "data:", "https:"],
+      connectSrc:  ["'self'",
+                    "https://*.googleapis.com",
+                    "https://*.firebaseapp.com",
+                    "wss://*.firebaseio.com"],
+    },
+  },
+}))
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
