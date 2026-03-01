@@ -444,6 +444,7 @@
             monthly_limit: this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit,
             categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
+            plaid_pfc: this.groupedTransactions[category].plaid_pfc || [],
             originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentCategoryDetails.originalCategoryName : this.groupedTransactions[category].originalName
           }
           isOriginalCategoryNameSet = true;
@@ -542,11 +543,12 @@
             this.groupedTransactions[category.category] = []; 
           }
           this.groupedTransactions[category.category]._id= category._id
-          this.groupedTransactions[category.category].categoryName = category.category 
-          this.groupedTransactions[category.category].monthly_limit = category.monthly_limit 
-          this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage 
-          this.groupedTransactions[category.category].originalName = category.category 
-          this.groupedTransactions[category.category].type = category.type 
+          this.groupedTransactions[category.category].categoryName = category.category
+          this.groupedTransactions[category.category].monthly_limit = category.monthly_limit
+          this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage
+          this.groupedTransactions[category.category].originalName = category.category
+          this.groupedTransactions[category.category].type = category.type
+          this.groupedTransactions[category.category].plaid_pfc = category.plaid_pfc || []
         });
         
         // for the transactions retrieved above, map them to the relevant groupedTransaction[category]
@@ -629,6 +631,7 @@
           'monthly_limit': e.monthly_limit,
           'type': e.type.toLowerCase(),
           'showOnBudgetPage': true,
+          'plaid_pfc': e.plaid_pfc || [],
         }
         if (e.dialogType == 'addCategory'){
           const randomId = 'client_id_' + Math.random().toString(36).substring(2, 12);

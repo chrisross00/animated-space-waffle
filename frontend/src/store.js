@@ -51,25 +51,38 @@ const store = createStore({
         },
         updateCategory(state, updatedCategory) {
             console.log('updateCategory store:', updatedCategory)
+            const newPfc = updatedCategory.plaid_pfcBEResponse || [];
             state.categories.forEach(category => {
-                if (category._id === updatedCategory._id) { // update this if you want multiple client-side updates (add then edit flow)
-                    category.category = updatedCategory.categoryNameBEResponse 
-                    category.monthly_limit = updatedCategory.monthlyLimitBEResponse 
-                    category.showOnBudgetPage = updatedCategory.showOnBudgetPageBEResponse 
+                if (category._id === updatedCategory._id) {
+                    category.category = updatedCategory.categoryNameBEResponse
+                    category.monthly_limit = updatedCategory.monthlyLimitBEResponse
+                    category.showOnBudgetPage = updatedCategory.showOnBudgetPageBEResponse
+                    category.plaid_pfc = newPfc
+                } else if (newPfc.length > 0) {
+                    // Mirror backend dedup: remove any PFC values now claimed by this category
+                    category.plaid_pfc = (category.plaid_pfc || []).filter(p => !newPfc.includes(p));
                 }
             });
             console.log('store.js updateCategory done!', state.categories)
         },
         addCategory(state, newCategory) {
             console.log('addCategory store:', newCategory)
+                const newPfc = newCategory.plaid_pfcBEResponse || [];
+                // Mirror backend dedup: remove claimed PFC values from existing categories
+                if (newPfc.length > 0) {
+                    state.categories.forEach(category => {
+                        category.plaid_pfc = (category.plaid_pfc || []).filter(p => !newPfc.includes(p));
+                    });
+                }
                 const category = {
                     _id: newCategory._id,
                     category: newCategory.categoryNameBEResponse,
                     monthly_limit: newCategory.monthlyLimitBEResponse,
-                    showOnBudgetPage:  newCategory.showOnBudgetPageBEResponse,
+                    showOnBudgetPage: newCategory.showOnBudgetPageBEResponse,
                     type: newCategory.type,
+                    plaid_pfc: newPfc,
                 }
-                
+
                 state.categories.push(category)
                 console.log('store.js addCategory done!', state.categories)
             // this.categoryMonthlyLimits.push(categoryToAdd) // need to modify addedCategory first
