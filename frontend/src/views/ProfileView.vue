@@ -27,7 +27,7 @@
 <template>
   <div class="q-pa-md-page-padder p-3">
     <SpinnerComponent :isLoading="isLoading"/>
-    <div v-if="session !== null">
+    <div v-if="session !== null && user">
       <q-card class="my-card profile-card ">
         <q-card-section horizontal>
           <q-card-section class="q-pt-xs">
@@ -80,7 +80,7 @@
         </q-card>
     </div>
 
-    <div v-if="session == null">
+    <div v-if="session == null || !user">
       <q-card class="my-card profile-card ">
       <q-card-section horizontal>
         <q-card-section class="q-pt-xs">       

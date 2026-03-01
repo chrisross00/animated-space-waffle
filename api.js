@@ -270,8 +270,8 @@ async function getOrAddUser(decodedToken) {
       }
       console.log('User added to database:', newUser)
       await insertData('Basil-Users', newUser);
+      const clientSideUser = createClientSideUser(newUser)
       console.log('sending newly created client-side user:', clientSideUser)
-      const clientSideUser = createClientSideUser(newUser[0])
       return clientSideUser
     } else {
       console.log('User found:', user[0])
