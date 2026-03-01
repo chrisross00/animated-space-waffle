@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/**/*.{vue,js}"
   },
   "dependencies": {
     "@quasar/extras": "^1.0.0",
-    "core-js": "^3.8.3",
     "dayjs": "^1.11.7",
     "firebase": "^12.10.0",
     "moment": "^2.29.4",
@@ -20,45 +20,17 @@
     "vuex-persistedstate": "^4.1.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.16",
-    "@babel/eslint-parser": "^7.12.16",
-    "@vue/cli-plugin-babel": "~5.0.0",
-    "@vue/cli-plugin-eslint": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
+    "@quasar/vite-plugin": "^1.10.0",
+    "@vitejs/plugin-vue": "^5.2.4",
     "eslint": "^7.32.0",
     "eslint-plugin-vue": "^8.0.3",
-    "sass": "1.32.12",
-    "sass-loader": "^12.0.0",
-    "vue-cli-plugin-quasar": "~5.0.1"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/vue3-essential",
-      "eslint:recommended"
-    ],
-    "parserOptions": {
-      "parser": "@babel/eslint-parser"
-    },
-    "rules": {}
+    "sass": "^1.97.3",
+    "vite": "^5.4.21"
   },
   "browserslist": [
     "> 1%",
     "last 2 versions",
     "not dead",
-    "not ie 11",
-    "defaults",
-    "last 10 Chrome versions",
-    "last 10 Firefox versions",
-    "last 4 Edge versions",
-    "last 7 Safari versions",
-    "last 8 Android versions",
-    "last 8 ChromeAndroid versions",
-    "last 8 FirefoxAndroid versions",
-    "last 10 iOS versions",
-    "last 5 Opera versions"
+    "not ie 11"
   ]
 }
