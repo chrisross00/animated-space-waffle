@@ -78,8 +78,8 @@
       </q-list>
     </q-drawer>
 
-    <q-page-container  class="flex flex-center page-container"> 
-          <router-view></router-view>
+    <q-page-container>
+      <router-view></router-view>
     </q-page-container>
     
   </q-layout>
@@ -89,6 +89,8 @@
 .button-container {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* .page-container {

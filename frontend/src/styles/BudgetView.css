@@ -17,7 +17,10 @@
 
   .table-wrapper {
     position: relative;
-    margin-bottom: 80px; /* set a bottom margin of 80px */
+    margin-bottom: 80px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
   }
   
   /* Overlay visible state */
@@ -70,9 +73,18 @@
   }
   
   .all-transactions-table {
-    max-width: 900px;
-    margin: 0 auto;
+    width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .bulk-bar {
+    width: 100%;
+  }
+
+  .bulk-bar__select {
+    flex: 1 1 150px;
+    min-width: 0;
   }
   
   .dialog-body-form {

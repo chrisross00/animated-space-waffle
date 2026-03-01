@@ -70,7 +70,7 @@
       </div>
 
       <!-- Button Container -->
-      <div class="q-pa-md button-container">
+      <div class="q-pa-md button-container" style="max-width: 900px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
         <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
         <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
@@ -162,23 +162,25 @@
       <!-- If show all is true -->
       <div v-show="showAll" class="q-pa-md all-transactions-table">
 
-        <!-- Bulk action bar — always visible in Show All view to prevent layout shift -->
-        <div class="row items-center q-gutter-sm q-mb-sm">
-          <span class="text-body2" :class="{ 'text-grey-5': selectedRows.length === 0 }">
-            {{ selectedRows.length > 0 ? `${selectedRows.length} selected` : '0 selected' }}
-          </span>
-          <q-select
-            v-model="bulkCategory"
-            :options="categoryMonthlyLimits.map(c => c.category).sort()"
-            label="Move to category"
-            dense
-            outlined
-            style="min-width: 200px"
-            :disable="selectedRows.length === 0"
-            @touchmove.stop.prevent
-          />
-          <q-btn color="primary" label="Apply" :disable="!bulkCategory || selectedRows.length === 0" @click="applyBulkCategory" />
-          <q-btn flat label="Clear" :disable="selectedRows.length === 0" @click="selectedRows = []" />
+        <!-- Bulk action bar -->
+        <div class="bulk-bar q-mb-sm">
+          <div class="row items-center q-gutter-sm">
+            <span class="text-body2" :class="{ 'text-grey-5': selectedRows.length === 0 }">
+              {{ selectedRows.length > 0 ? `${selectedRows.length} selected` : '0 selected' }}
+            </span>
+            <q-select
+              v-model="bulkCategory"
+              :options="categoryMonthlyLimits.map(c => c.category).sort()"
+              label="Move to category"
+              dense
+              outlined
+              class="bulk-bar__select"
+              :disable="selectedRows.length === 0"
+              @touchmove.stop.prevent
+            />
+            <q-btn color="primary" label="Apply" :disable="!bulkCategory || selectedRows.length === 0" @click="applyBulkCategory" />
+            <q-btn flat label="Clear" :disable="selectedRows.length === 0" @click="selectedRows = []" />
+          </div>
         </div>
 
         <q-table
@@ -251,18 +253,10 @@
   dayjs.extend(customParseFormat);
 
   const columns = [
-  {
-    name: 'date',
-    required: true,
-    label: 'Date',
-    align: 'left',
-    field: row => row.date,
-    format: val => `${val}`,
-    sortable: true //"date", "name", "mappedCategory", "amount", "pending"
-  },
-  { name: 'amount', label: 'Amount', field: 'amount'  ,format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true},
+  { name: 'amount', label: 'Amount', field: 'amount', format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true },
   { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
   { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
+  { name: 'date', label: 'Date', align: 'left', field: row => row.date, format: val => `${val}`, sortable: true },
   { name: 'pending', label: 'Pending', field: 'pending' },
   ]
   export default {
