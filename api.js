@@ -320,6 +320,21 @@ router.post('/handleDialogSubmit', async (req, res) => {
   res.send(resObj)
 })
 
+router.post('/bulkCategorize', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.user_id;
+    const { transaction_ids, mappedCategory } = req.body;
+    await updateManyData('Plaid-Transactions',
+      { transaction_id: { $in: transaction_ids }, userId: uid },
+      { $set: { mappedCategory } }
+    );
+    res.json({ updated: transaction_ids.length, mappedCategory });
+  } catch (error) {
+    res.status(500).send('Error bulk categorizing transactions');
+  }
+});
+
 router.get('/mapunmapped', async (req, res) => {
   // console.log('API.js message: hit the /test endpoint')
   try {

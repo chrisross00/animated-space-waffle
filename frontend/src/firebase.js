@@ -181,4 +181,18 @@ export async function removeAccount(institution) {
   }
 }
 
+export async function bulkCategorize(transaction_ids, mappedCategory) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/bulkCategorize', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ transaction_ids, mappedCategory }),
+    });
+    if (response.ok) return response.json();
+    else console.error(`bulkCategorize failed with status ${response.status}`);
+  }
+}
+
 // export async function updateCategories() {} later...
