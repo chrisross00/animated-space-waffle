@@ -13,20 +13,21 @@ async function getMappingRuleList(dbCategories = null) {
 async function mapTransactions(transactions, rulesArray) {
   const ruleList = rulesArray;
 
-  // BUILD SPECIFIC RULE LISTS
+  // BUILD SPECIFIC RULE LISTS (normalized to lowercase for case-insensitive matching)
   let nameList = [];
   let cat2List = [];
   ruleList.forEach(rule => {
-    if (rule.rules.name) nameList.push(...rule.rules.name);
+    if (rule.rules.name) nameList.push(...rule.rules.name.map(n => n.toLowerCase()));
     if (rule.rules.category1) cat2List.push(...rule.rules.category1);
   });
 
-  // RULE: exact transaction name match (highest priority — user-defined)
+  // RULE: exact transaction name match (highest priority — user-defined, case-insensitive)
   for (let i = 0; i < nameList.length; i++) {
     transactions.forEach(transaction => {
-      if (!transaction.mappedCategory && transaction.name === nameList[i]) {
+      const txnName = transaction.name?.toLowerCase();
+      if (!transaction.mappedCategory && txnName === nameList[i]) {
         ruleList.forEach(rule => {
-          if (rule.rules.name && rule.rules.name.includes(nameList[i])) {
+          if (rule.rules.name && rule.rules.name.map(n => n.toLowerCase()).includes(nameList[i])) {
             transaction.mappedCategory = rule.category;
           }
         });
@@ -54,7 +55,8 @@ async function mapTransactions(transactions, rulesArray) {
         if (!transaction.mappedCategory && rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)) {
           transaction.mappedCategory = rule.category;
         }
-        if (!transaction.mappedCategory && rule.rules.merchant_name && rule.rules.merchant_name.includes(transaction.merchant_name)) {
+        if (!transaction.mappedCategory && rule.rules.merchant_name && transaction.merchant_name &&
+            rule.rules.merchant_name.map(m => m.toLowerCase()).includes(transaction.merchant_name.toLowerCase())) {
           transaction.mappedCategory = rule.category;
         }
         if (!transaction.mappedCategory && rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)) {
