@@ -15,6 +15,7 @@
         <ol><a href="/api/mapunmapped" rel="noopener">Map Unmapped Categories</a> - find the transactions that don't have mapped categories and map them. Made for an ad hoc data fix.</ol>
         <ol><a href="/api/cleanPendingTransactions" rel="noopener">Clean Pending Transactions</a> - finds pending transactions that weren't cleared, and clears them if they should be cleared (i.e.: the posted transaction exists).</ol>
         <ol><a href="/api/seedcategories" rel="noopener">Seed Categories</a> - seeds a default set of categories for your account. No-ops if categories already exist.</ol>
+        <ol><a href="/api/addplaidpfc" rel="noopener">Add Plaid PFC Mappings</a> - backfills Plaid personal_finance_category mappings onto existing categories. Safe to run on already-seeded categories.</ol>
       </ul>
     </div>
   </template>

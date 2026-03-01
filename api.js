@@ -59,19 +59,20 @@ router.get('/getcategories', async (req, res)=>{
   }
 })
 
+const DEFAULT_CATEGORIES = [
+  { category: 'Income',         type: 'income',   monthly_limit: 0, plaid_pfc: ['INCOME', 'TRANSFER_IN'] },
+  { category: 'Housing',        type: 'expense',  monthly_limit: 0, plaid_pfc: ['HOME_IMPROVEMENT'] },
+  { category: 'Food & Dining',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['FOOD_AND_DRINK'] },
+  { category: 'Transportation', type: 'expense',  monthly_limit: 0, plaid_pfc: ['TRANSPORTATION'] },
+  { category: 'Entertainment',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['ENTERTAINMENT', 'TRAVEL'] },
+  { category: 'Shopping',       type: 'expense',  monthly_limit: 0, plaid_pfc: ['GENERAL_MERCHANDISE'] },
+  { category: 'Health',         type: 'expense',  monthly_limit: 0, plaid_pfc: ['MEDICAL', 'PERSONAL_CARE'] },
+  { category: 'Utilities',      type: 'expense',  monthly_limit: 0, plaid_pfc: ['RENT_AND_UTILITIES'] },
+  { category: 'To Sort',        type: 'expense',  monthly_limit: 0, plaid_pfc: [] },
+  { category: 'Payment',        type: 'payment',  monthly_limit: 0, plaid_pfc: ['TRANSFER_OUT', 'LOAN_PAYMENTS', 'BANK_FEES'] },
+];
+
 router.get('/seedcategories', async (req, res) => {
-  const DEFAULT_CATEGORIES = [
-    { category: 'Income',         type: 'income',   monthly_limit: 0 },
-    { category: 'Housing',        type: 'expense',  monthly_limit: 0 },
-    { category: 'Food & Dining',  type: 'expense',  monthly_limit: 0 },
-    { category: 'Transportation', type: 'expense',  monthly_limit: 0 },
-    { category: 'Entertainment',  type: 'expense',  monthly_limit: 0 },
-    { category: 'Shopping',       type: 'expense',  monthly_limit: 0 },
-    { category: 'Health',         type: 'expense',  monthly_limit: 0 },
-    { category: 'Utilities',      type: 'expense',  monthly_limit: 0 },
-    { category: 'To Sort',        type: 'expense',  monthly_limit: 0 },
-    { category: 'Payment',        type: 'payment',  monthly_limit: 0 },
-  ];
   try {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.user_id;
@@ -90,6 +91,27 @@ router.get('/seedcategories', async (req, res) => {
     res.send(`Seeded ${toInsert.length} categories.`);
   } catch (error) {
     res.status(500).send('Error seeding categories: ' + error);
+  }
+});
+
+router.get('/addplaidpfc', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    const categories = await findUserData('Basil-Categories', userId);
+    const pfcByName = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.category, c.plaid_pfc]));
+    let updated = 0;
+    for (const cat of categories) {
+      if (!cat.plaid_pfc && pfcByName[cat.category] !== undefined) {
+        const filter = { _id: new ObjectID(cat._id), userId };
+        const update = { $set: { plaid_pfc: pfcByName[cat.category] } };
+        await updateData('Basil-Categories', filter, update);
+        updated++;
+      }
+    }
+    res.send(`Added PFC mappings to ${updated} categories.`);
+  } catch (error) {
+    res.status(500).send('Error adding PFC mappings: ' + error);
   }
 });
 
