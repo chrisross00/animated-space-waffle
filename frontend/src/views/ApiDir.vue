@@ -1,49 +1,109 @@
 <template>
-    <div class="page-padder p-3">
-      <h1>{{ msg }}</h1>
-      <h2>
-        Welcome to the API directory
-      </h2>
-      <p>AKA: the toolbox. The links below take you to various tools to manage your Plaid data. You shouldn't really need to run these, and this page is here mostly for completion's sake.</p>
-      <em>Select an endpoint below</em>
-      <ul>
-        <ol><a href="/api/find" rel="noopener">Find</a> - pull all transactions (don't go here, it will slow down your browser)</ol>
-        <ol><a href="/api/test" rel="noopener">Test</a> - a generic page to test end-to-end flow; currently this page is testing a feature to pull back transaction groups by with the same name (POC to help with finding transactions to categorize)</ol>
-        <ol><a href="/api/dedupe" rel="noopener">DeDupe</a>- run the transaction de-duplication sequence</ol>
-        <ol><a href="/api/getnew" rel="noopener">Get New</a> - get new transactions from Plaid</ol>
-        <ol><a href="/api/getcategories" rel="noopener">Get Categories</a> - Pull the current categories from MongoDb</ol>
-        <ol><a href="/api/mapunmapped" rel="noopener">Map Unmapped Categories</a> - find the transactions that don't have mapped categories and map them. Made for an ad hoc data fix.</ol>
-        <ol><a href="/api/cleanPendingTransactions" rel="noopener">Clean Pending Transactions</a> - finds pending transactions that weren't cleared, and clears them if they should be cleared (i.e.: the posted transaction exists).</ol>
-        <ol><a href="/api/seedcategories" rel="noopener">Seed Categories</a> - seeds a default set of categories for your account. No-ops if categories already exist.</ol>
-        <ol><a href="/api/addplaidpfc" rel="noopener">Add Plaid PFC Mappings</a> - backfills Plaid personal_finance_category mappings onto existing categories. Safe to run on already-seeded categories.</ol>
-      </ul>
+  <div class="page-padder p-3">
+    <h1>API Toolbox</h1>
+    <p>Admin tools for managing your Plaid data. Each button runs the operation and shows the result below.</p>
+
+    <div class="tool-list">
+      <div v-for="tool in tools" :key="tool.key" class="tool-row">
+        <q-btn
+          :label="tool.label"
+          color="primary"
+          :loading="loading[tool.key]"
+          @click="run(tool)"
+          class="q-mr-md"
+        />
+        <span class="tool-desc">{{ tool.description }}</span>
+        <div v-if="results[tool.key]" class="tool-result">{{ results[tool.key] }}</div>
+      </div>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    name: 'ApiDir',
-    props: {
-      msg: String
-    }
-  }
-  </script>
-  
-  <!-- Add "scoped" attribute to limit CSS to this component only -->
-  <style scoped>
-  h3 {
-    margin: 40px 0 0;
-  }
-  ul {
-    list-style-type: none;
-    padding: 0;
-  }
-  li {
-    display: inline-block;
-    margin: 0 10px;
-  }
-  a {
-    color: #42b983;
-  }
-  </style>
-  
+  </div>
+</template>
+
+<script>
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped } from '../firebase';
+
+const TOOLS = [
+  {
+    key: 'addplaidpfc',
+    label: 'Add Plaid PFC Mappings',
+    description: 'Backfills Plaid personal_finance_category mappings onto your existing categories.',
+    fn: addPlaidPfc,
+  },
+  {
+    key: 'seedcategories',
+    label: 'Seed Categories',
+    description: 'Creates a default set of categories. No-ops if categories already exist.',
+    fn: seedCategories,
+  },
+  {
+    key: 'mapunmapped',
+    label: 'Map Unmapped Transactions',
+    description: 'Re-runs categorization rules against any transactions that are missing a category.',
+    fn: mapUnmapped,
+  },
+  {
+    key: 'dedupe',
+    label: 'De-duplicate Transactions',
+    description: 'Removes duplicate transactions from your account.',
+    fn: dedupe,
+  },
+  {
+    key: 'cleanpending',
+    label: 'Clean Pending Transactions',
+    description: 'Removes pending transactions that have since posted.',
+    fn: cleanPending,
+  },
+];
+
+export default {
+  name: 'ApiDir',
+  data() {
+    return {
+      tools: TOOLS,
+      loading: {},
+      results: {},
+    };
+  },
+  methods: {
+    async run(tool) {
+      this.loading[tool.key] = true;
+      this.results[tool.key] = null;
+      try {
+        const result = await tool.fn();
+        this.results[tool.key] = result ?? 'Done.';
+      } catch (err) {
+        this.results[tool.key] = `Error: ${err.message}`;
+      } finally {
+        this.loading[tool.key] = false;
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+.tool-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tool-desc {
+  color: #666;
+  font-size: 0.9em;
+}
+.tool-result {
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: monospace;
+}
+</style>

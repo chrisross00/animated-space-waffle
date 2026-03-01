@@ -181,6 +181,43 @@ export async function removeAccount(institution) {
   }
 }
 
+export async function addPlaidPfc() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/addplaidpfc', { headers });
+    if (response.ok) return response.text();
+    else console.error(`addPlaidPfc failed with status ${response.status}`);
+  }
+}
+
+export async function dedupe() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/dedupe', { method: 'POST', headers });
+    if (response.ok) return response.text();
+    else console.error(`dedupe failed with status ${response.status}`);
+  }
+}
+
+export async function seedCategories() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/seedcategories', { headers });
+    if (response.ok) return response.text();
+    else console.error(`seedCategories failed with status ${response.status}`);
+  }
+}
+
+export async function cleanPending() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/cleanPendingTransactions', { headers });
+    if (response.ok) return response.text();
+    else console.error(`cleanPending failed with status ${response.status}`);
+  }
+}
+
 export async function mapUnmapped() {
   const headers = await getAuthHeaders();
   if (headers) {

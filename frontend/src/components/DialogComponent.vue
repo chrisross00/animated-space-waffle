@@ -107,6 +107,22 @@
 
             <q-toggle color="primary" :disable="true" label="Show on View Budgets screen" v-model="this.dialogBody.showOnBudgetPage" />
 
+            <q-select
+                filled
+                v-model="this.dialogBody.plaid_pfc"
+                label="Auto-map Plaid transaction types"
+                :options="plaidPfcOptions"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                multiple
+                use-chips
+                hint="Transactions Plaid labels with these types will be automatically assigned to this category."
+                class="q-field--with-bottom q-mt-sm"
+                @update:model-value="isFormSubmittable()"
+            />
+
             <div class="button-container">
             <div>
                 <q-btn @click="updateCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
@@ -125,7 +141,7 @@
             </q-card-section>
 
             <!-- Q-Form -->
-            
+
             <q-input
             filled
             v-model="this.dialogBody.categoryName"
@@ -154,7 +170,21 @@
                 class="q-field--with-bottom"
                 @touchmove.stop.prevent
                 />
-            
+
+            <q-select
+                filled
+                v-model="this.dialogBody.plaid_pfc"
+                label="Auto-map Plaid transaction types"
+                :options="plaidPfcOptions"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+                multiple
+                use-chips
+                hint="Transactions Plaid labels with these types will be automatically assigned to this category."
+                class="q-field--with-bottom q-mt-sm"
+            />
 
             <div class="button-container">
             <div>
@@ -179,6 +209,26 @@ input .select{
 
 <script>
   import {ref} from 'vue'
+
+  const PLAID_PFC_OPTIONS = [
+    { label: 'Income',                   value: 'INCOME' },
+    { label: 'Transfer In',              value: 'TRANSFER_IN' },
+    { label: 'Transfer Out',             value: 'TRANSFER_OUT' },
+    { label: 'Loan Payments',            value: 'LOAN_PAYMENTS' },
+    { label: 'Bank Fees',                value: 'BANK_FEES' },
+    { label: 'Food & Drink',             value: 'FOOD_AND_DRINK' },
+    { label: 'General Merchandise',      value: 'GENERAL_MERCHANDISE' },
+    { label: 'Home Improvement',         value: 'HOME_IMPROVEMENT' },
+    { label: 'Medical',                  value: 'MEDICAL' },
+    { label: 'Personal Care',            value: 'PERSONAL_CARE' },
+    { label: 'General Services',         value: 'GENERAL_SERVICES' },
+    { label: 'Government & Non-profit',  value: 'GOVERNMENT_AND_NON_PROFIT' },
+    { label: 'Entertainment',            value: 'ENTERTAINMENT' },
+    { label: 'Travel',                   value: 'TRAVEL' },
+    { label: 'Transportation',           value: 'TRANSPORTATION' },
+    { label: 'Rent & Utilities',         value: 'RENT_AND_UTILITIES' },
+  ];
+
   export default {
       name: 'DialogComponent',
       props: {
@@ -200,7 +250,8 @@ input .select{
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},
-            type: ['Expense', 'Income'], 
+            type: ['Expense', 'Income'],
+            plaidPfcOptions: PLAID_PFC_OPTIONS,
             dialogBody:{
                 amount: this.item?.amount ? this.item.amount : 0 ,
                 name: this.item?.name ? this.item.name : '',
@@ -214,6 +265,7 @@ input .select{
                 originalCategoryName: this.item?.categoryName ? this.item.categoryName : this.item?.mappedCategory ? this.item.mappedCategory : '',
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
+                plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
                 createRule: false,
                 dialogType: this.dialogType
             },
@@ -279,7 +331,8 @@ computed: {
 
             if (this.dialogType == 'editCategory'){
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
-                || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit){
+                || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit
+                || JSON.stringify(this.dialogBody.plaid_pfc) !== JSON.stringify(this.originalDialogBody.plaid_pfc)){
                     this.formSubmittable = true;
                 }
                 else{
@@ -308,6 +361,9 @@ computed: {
     },
     watch: {
         "dialogBody.mappedCategory": function (){
+            this.isFormSubmittable()
+        },
+        "dialogBody.plaid_pfc": function (){
             this.isFormSubmittable()
         }
     }
