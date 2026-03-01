@@ -36,9 +36,9 @@ router.get('/getnew' , async (req, res) => {
 
 router.post('/dedupe', async (req,res) => {
   try {
-    // console.log('BE Message: starting de-dupe transaction flow...')
-    await deduplicateData('Plaid-Transactions');
-    // console.log('BE Message: de-duplication complete');
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    await deduplicateData('Plaid-Transactions', userId);
     res.send('De-duplication complete');
   } catch (err) {
       console.error(err);
@@ -186,11 +186,12 @@ router.get('/getOrAddUser', async (req, res) => {
 
 router.get('/cleanPendingTransactions', async (req, res) => {
   try {
-    const transactions = await cleanPendingTransactions('Plaid-Transactions');
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    const transactions = await cleanPendingTransactions('Plaid-Transactions', userId);
     res.send(transactions);
-    
   } catch (error) {
-    res.status(500).send('Error with /test endpiont');
+    res.status(500).send('Error cleaning pending transactions');
   }
 })
 
