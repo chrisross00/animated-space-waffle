@@ -207,7 +207,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
 
   const updateType = req.body.updateType;
   let d = {}
-  if (updateType == 'editCategory') { 
+  if (updateType == 'editCategory') {
+    const plaid_pfc = req.body.plaid_pfc || [];
     d = {
       _id: req.body._id,
       categoryNameBEResponse: req.body.categoryName,
@@ -215,15 +216,24 @@ router.post('/handleDialogSubmit', async (req, res) => {
       showOnBudgetPageBEResponse: req.body.showOnBudgetPage,
       originalCategoryName: req.body.originalCategoryName,
       updateType: req.body.updateType,
+      plaid_pfcBEResponse: plaid_pfc,
     }
-      const filter = { _id: new ObjectID(req.body._id), userId: uid };
-      const update = {
-        $set: {
-          monthly_limit: req.body.monthly_limit,
-          // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
-        }
-      };
-      updateData('Basil-Categories', filter, update)
+    // Remove each selected PFC value from any other category so it only maps to one place
+    if (plaid_pfc.length > 0) {
+      await updateManyData('Basil-Categories',
+        { userId: uid, _id: { $ne: new ObjectID(req.body._id) } },
+        { $pull: { plaid_pfc: { $in: plaid_pfc } } }
+      );
+    }
+    const filter = { _id: new ObjectID(req.body._id), userId: uid };
+    const update = {
+      $set: {
+        monthly_limit: req.body.monthly_limit,
+        plaid_pfc,
+        // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
+      }
+    };
+    await updateData('Basil-Categories', filter, update)
   }
 
   // Call updateData function to update Mongo Db
@@ -284,6 +294,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
   }
 
   if (updateType == 'addCategory') {
+    const plaid_pfc = req.body.plaid_pfc || [];
     d = {
       client_id: req.body.client_id,
       categoryNameBEResponse: req.body.categoryName,
@@ -291,19 +302,27 @@ router.post('/handleDialogSubmit', async (req, res) => {
       showOnBudgetPageBEResponse: req.body.showOnBudgetPage,
       updateType: req.body.updateType,
       type: req.body.type,
+      plaid_pfcBEResponse: plaid_pfc,
+    }
+    // Remove each selected PFC value from any other category so it only maps to one place
+    if (plaid_pfc.length > 0) {
+      await updateManyData('Basil-Categories',
+        { userId: uid },
+        { $pull: { plaid_pfc: { $in: plaid_pfc } } }
+      );
     }
     const update = {
       category: req.body.categoryName,
       monthly_limit: req.body.monthly_limit,
       annual_spend: "",
       rules: {},
+      plaid_pfc,
       showOnBudgetPage: true,
       type: req.body.type,
       userId: uid,
       client_id: req.body.client_id,
     }
 
-    // note this should be asyncrhonous later but whatever
     await insertData('Basil-Categories', update)
     const categoriesWithAdded = await findUserData('Basil-Categories', uid);
     categoriesWithAdded.forEach(category => {
