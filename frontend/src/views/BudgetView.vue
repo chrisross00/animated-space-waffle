@@ -610,10 +610,11 @@
             }
         }
 
+        this.isLoading = true;
         handleDialogSubmit(JSON.stringify(d))
         .then(data => {
           if(d.updateType == 'editCategory'){
-            this.updatedCategory = {...data} 
+            this.updatedCategory = {...data}
             this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName]
           }
           if(d.updateType == 'transaction'){
@@ -622,11 +623,14 @@
           }
           if(d.updateType == 'addCategory'){
             this.newCategory = false
-            this.addedCategory = {...data} 
+            this.addedCategory = {...data}
           }
         })
         .catch(error => {
           console.log('Error:', error)
+        })
+        .finally(() => {
+          this.isLoading = false;
         })
       }, 
       toggleCategory(category) {
