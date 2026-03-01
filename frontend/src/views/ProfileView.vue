@@ -189,6 +189,7 @@ export default {
         store.commit("setLastPlaidFetch", null) // set last plaid fetch to 0 since new login
       } catch (error) {
         console.log(error)
+        this.isLoading = false;
       }
     },
     // sign out should log out the user using firebase.auth().signOut() and clear the store state

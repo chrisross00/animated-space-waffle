@@ -1,369 +1,151 @@
 const { MongoClient } = require('mongodb');
-// const dbUri = process.env.DB_URI
-// const dbName = process.env.DB_NAME
 
+// Singleton client — MongoClient manages an internal connection pool.
+// Never close this; it lives for the lifetime of the process.
+let _client = null;
 
-// Connect to Mongo
 async function connectToDb() {
-  const client = new MongoClient(process.env.DB_URI);
-  await client.connect();
-  console.log('  DB: setting up new database connection...')
-  return client //.db(process.env.DB_NAME);
+  if (!_client) {
+    _client = new MongoClient(process.env.DB_URI);
+    await _client.connect();
+    console.log('DB: connected (pool ready)');
+  }
+  return _client;
 }
-  
-async function insertData(collectionName, data) {
-  let client;
-  try {
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
 
-    // if data is an array, insert each item in the array
-    if (Array.isArray(data)){
-      const dataWithInsertDate = data.map(item => {
-        return { ...item, insertDate: Date.now() };
-      });
-      await collection.insertMany(dataWithInsertDate);
-      console.log(`  DB: Inserted data and closing.`);
-      return;
-    // else, if its an object (a user account), insert just the object
-    } else if (typeof data === 'object') {
-      data.insertDate = Date.now();
-      await collection.insertOne(data);
-      console.log(`  DB: Inserted data and closing.`);
-      return;
-    } else {
-      // handle the case where data is neither an array nor an object
-      console.error('Invalid data type');
-      return;
-    }
-  } catch (err) {
-    console.error('  DB: ',err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by insertData().")
-    }
+function getDb() {
+  if (!_client) throw new Error('DB not connected — call connectToDb() first');
+  return _client.db(process.env.DB_NAME);
+}
+
+async function insertData(collectionName, data) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const collection = db.collection(collectionName);
+  if (Array.isArray(data)) {
+    const dataWithInsertDate = data.map(item => ({ ...item, insertDate: Date.now() }));
+    await collection.insertMany(dataWithInsertDate);
+  } else if (typeof data === 'object') {
+    data.insertDate = Date.now();
+    await collection.insertOne(data);
+  } else {
+    console.error('DB: invalid data type passed to insertData');
   }
 }
 
 async function findData(collectionName) {
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    const result = await collection.find().sort({date: -1}).toArray();
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findData()")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection(collectionName).find().sort({ date: -1 }).toArray();
 }
 
 async function findUserData(collectionName, uid) {
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    const query = { userId: uid };
-    const result = await collection.find(query).sort({date: -1}).toArray();
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findData()")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection(collectionName).find({ userId: uid }).sort({ date: -1 }).toArray();
 }
 
 async function findFilterData(collectionName, filter) {
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    let foundResults = []
-    for (const element of filter) {
-      let findFilter = { ['transaction_id']: element.transaction_id, ['pending']: true }
-      const result = await collection.find(findFilter).sort({date: -1}).toArray();
-      foundResults.push(...result)
-      // console.log('DB - found filtered item: ', JSON.stringify(result))
-    }
-    return foundResults;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findFilterData().")
-    }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const collection = db.collection(collectionName);
+  const results = [];
+  for (const element of filter) {
+    const result = await collection
+      .find({ transaction_id: element.transaction_id, pending: true })
+      .sort({ date: -1 })
+      .toArray();
+    results.push(...result);
   }
+  return results;
 }
 
 async function findUnmappedData(collectionName, userId) {
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    const query = userId
-      ? { userId, mappedCategory: { $exists: false } }
-      : { mappedCategory: { $exists: false } };
-    const result = await collection.find(query).toArray();
-    // console.log(`Found data: ${JSON.stringify(result)}`);
-    // console.log('BE message: findData got a response from MongoDb, sending back up to API')
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed.")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const query = userId
+    ? { userId, mappedCategory: { $exists: false } }
+    : { mappedCategory: { $exists: false } };
+  return db.collection(collectionName).find(query).toArray();
 }
 
 async function updateManyData(collectionName, filter, update) {
-  let client;
-  try {
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME);
-    const collection = db.collection(collectionName);
-    const result = await collection.updateMany(filter, update);
-    console.log(`  DB: updateMany matched ${result.matchedCount}, modified ${result.modifiedCount}`);
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log('  DB: database connection closed by updateManyData().');
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const result = await db.collection(collectionName).updateMany(filter, update);
+  console.log(`DB: updateMany matched ${result.matchedCount}, modified ${result.modifiedCount}`);
+  return result;
 }
 
 async function updateData(collectionName, filter, update, options = null) {
-  let client;
-  try {
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    await collection.updateOne(filter, update, options);
-    console.log(`Updated data: ${JSON.stringify(update)}`);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findUnmappedData().")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  await db.collection(collectionName).updateOne(filter, update, options);
 }
 
-async function deduplicateData(collectionName, userId) { // this only works for Transactions collection right now
-  let client;
-  try {
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-
-    const matchStage = userId ? { $match: { userId } } : { $match: {} };
-
-    // Group documents by the "Transaction ID" field and count the number of occurrences
-    const result = await collection.aggregate([
-      matchStage,
-      {
-        $group: {
-          _id: { transaction_id: "$transaction_id" },
-          count: { $sum: 1 },
-          docs: { $push: "$_id" }
-        }
-      },
-    // Find groups with more than one occurrence
-      { $match: { count: { $gt: 1 } } },
-    // Sort the results by count in descending order
-      { $sort: { count: -1 } }
-    ]).toArray(); // Use toArray() to convert the cursor to an array
-
-  // Iterate through each group of duplicate documents
-    let totalDocs = 0
-    for (const docGroup of result) {
-    // Remove all but the first occurrence of the document
-      const deleteResult = await collection.deleteMany({ _id: { $in: docGroup.docs.slice(1) } });
-    // console.log(deleteResult.deletedCount + ' documents deleted');
-      totalDocs++;
-    }
-
-  console.log("Database.js Message: ran deduplicateData() successfully")
-    return;
-
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by deduplicateData().")
-    }
+async function deduplicateData(collectionName, userId) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const collection = db.collection(collectionName);
+  const matchStage = userId ? { $match: { userId } } : { $match: {} };
+  const result = await collection.aggregate([
+    matchStage,
+    { $group: { _id: { transaction_id: '$transaction_id' }, count: { $sum: 1 }, docs: { $push: '$_id' } } },
+    { $match: { count: { $gt: 1 } } },
+    { $sort: { count: -1 } },
+  ]).toArray();
+  for (const docGroup of result) {
+    await collection.deleteMany({ _id: { $in: docGroup.docs.slice(1) } });
   }
+  console.log('DB: deduplicateData() complete');
 }
 
-async function deleteRemovedData(collectionName, filter) { // for when Plaid removedTransactions array is not empty
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
-    const result = await collection.deleteMany(filter)
-
-
-    // for (const element of filter) {
-    //   let deleteFilter = { ['transaction_id']: element.transaction_id, ['pending']: true }
-    //   const result = await collection.find(deleteFilter).sort({date: -1}).toArray();
-    //   console.log('DB - found filtered item: ', result)
-    // }
-    
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by deleteRemovedData().")
-    }
-  }
+async function deleteRemovedData(collectionName, filter) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection(collectionName).deleteMany(filter);
 }
 
 async function cleanPendingTransactions(collectionName, userId) {
-  console.log('cleaning pending transactions')
-  let client;
-  try { // add toArray() override parameter in the future
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection(collectionName);
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const collection = db.collection(collectionName);
+  const findFilter = userId ? { pending: true, userId } : { pending: true };
+  const allPending = await collection.find(findFilter).toArray();
+  if (allPending.length === 0) return { deletedCount: 0 };
 
-    // get the transaction_ids from the db where pending = true
-    let allPendingTransactions = []
-    let findFilter = userId ? { pending: true, userId } : { pending: true };
-    const allPendingResults = await collection.find(findFilter).toArray();
-    allPendingTransactions.push(...allPendingResults)
-    
-    let allPendingTransactionIds = {
-        $or: allPendingTransactions.map(transaction => {
-          return {
-            $and: [
-              { pending_transaction_id: transaction.transaction_id },
-              { pending: false }
-            ]
-          };
-        })
-      };
-      
-    const keeperTransactions = await collection.find(allPendingTransactionIds).toArray();
-    const transactionIdsToRemove = new Set(keeperTransactions.map(t => t.pending_transaction_id));
-    const deleterFilter = {
-      transaction_id: { $in: [...transactionIdsToRemove] }
-    };
-    const result = await collection.deleteMany(deleterFilter)
-    console.log('final transactions to delete', result)
-
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by cleanPendingTransactions().")
-    }
-  }
+  const orClauses = allPending.map(t => ({
+    $and: [{ pending_transaction_id: t.transaction_id }, { pending: false }],
+  }));
+  const keepers = await collection.find({ $or: orClauses }).toArray();
+  const idsToRemove = [...new Set(keepers.map(t => t.pending_transaction_id))];
+  return collection.deleteMany({ transaction_id: { $in: idsToRemove } });
 }
 
 async function findSimilarTransactionGroupsByName(uid) {
-  let client;
-  try { 
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection('Plaid-Transactions');
-    
-    const pipeline = [
-        { $match: { userId: uid } },
-        { $limit: 1000 },
-        { $group: { _id: "$name", count: { $sum: 1 }, transactions: { $push: "$$ROOT" } } },
-        { $match: { count: { $gte: 2 } } }, // 3 or more transactions
-        { $sort: { count: -1 } }
-    ];
-    
-    const options = { allowDiskUse: true };
-    const cursor = collection.aggregate(pipeline, options);
-    const result = await cursor.toArray();
-    console.log(result);
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findSimilarTransactionGroupsByName()")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const pipeline = [
+    { $match: { userId: uid } },
+    { $limit: 1000 },
+    { $group: { _id: '$name', count: { $sum: 1 }, transactions: { $push: '$$ROOT' } } },
+    { $match: { count: { $gte: 2 } } },
+    { $sort: { count: -1 } },
+  ];
+  return db.collection('Plaid-Transactions').aggregate(pipeline, { allowDiskUse: true }).toArray();
 }
 
 async function findSimilarTransactionGroupsByCategory(uid) {
-  let client;
-  try { 
-    client = await connectToDb();
-    const db = client.db(process.env.DB_NAME)
-    const collection = db.collection('Plaid-Transactions');
-    
-    const pipeline = [
-      { $match: { userId: uid } },
-      {
-        $group: {
-          _id: "$category",
-          count: { $sum: 1 },
-          names: { $push: "$name" }
-        }
-      },
-      { $sort: { count: -1 } }
-    ];
-    
-    
-    const options = { allowDiskUse: true };
-    const cursor = collection.aggregate(pipeline, options);
-    const result = await cursor.toArray();
-    console.log(result);
-    return result;
-  } catch (err) {
-    console.error(err);
-  } finally {
-    if (client) {
-      await client.close();
-      console.log("  DB: database connection closed by findSimilarTransactionGroupsByCategory()")
-    }
-  }
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const pipeline = [
+    { $match: { userId: uid } },
+    { $group: { _id: '$category', count: { $sum: 1 }, names: { $push: '$name' } } },
+    { $sort: { count: -1 } },
+  ];
+  return db.collection('Plaid-Transactions').aggregate(pipeline, { allowDiskUse: true }).toArray();
 }
 
-  
-  module.exports = {
-    connectToDb,
-    insertData,
-    findData,
-    updateData,
-    updateManyData,
-    deduplicateData,
-    findUnmappedData,
-    deleteRemovedData,
-    findFilterData,
-    cleanPendingTransactions,
-    findUserData,
-    findSimilarTransactionGroupsByName,
-    findSimilarTransactionGroupsByCategory
-  };
-  
+module.exports = {
+  connectToDb,
+  insertData,
+  findData,
+  updateData,
+  updateManyData,
+  deduplicateData,
+  findUnmappedData,
+  deleteRemovedData,
+  findFilterData,
+  cleanPendingTransactions,
+  findUserData,
+  findSimilarTransactionGroupsByName,
+  findSimilarTransactionGroupsByCategory,
+};
