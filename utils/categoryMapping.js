@@ -1,123 +1,97 @@
-async function getMappingRuleList (dbCategories=null) {
-    // build rule lists based on rules listed on each Category; spread the associated category to the 
-        let ruleList = []
-        const categories = dbCategories;
-        categories.forEach((e) => {
-            const parentCategory = {category: e.category}
-            const rule = { 
-                ...parentCategory,
-                rules: e.rules,
-            }
-            // console.log('rule object no logic', rule);
-            ruleList.push(rule)
+async function getMappingRuleList(dbCategories = null) {
+  const ruleList = [];
+  dbCategories.forEach(e => {
+    ruleList.push({
+      category: e.category,
+      rules: e.rules,
+      plaid_pfc: e.plaid_pfc || [],
+    });
+  });
+  return ruleList;
+}
+
+async function mapTransactions(transactionArray, rulesArray) {
+  let transactions = [];
+  const ruleList = rulesArray;
+
+  transactionArray.forEach(block => {
+    if (block.added) transactions.push(...block.added);
+  });
+
+  // BUILD SPECIFIC RULE LISTS
+  let nameList = [];
+  let cat2List = [];
+  ruleList.forEach(rule => {
+    if (rule.rules.name) nameList.push(...rule.rules.name);
+    if (rule.rules.category1) cat2List.push(...rule.rules.category1);
+  });
+
+  // RULE: exact transaction name match (highest priority — user-defined)
+  for (let i = 0; i < nameList.length; i++) {
+    transactions.forEach(transaction => {
+      if (!transaction.mappedCategory && transaction.name === nameList[i]) {
+        ruleList.forEach(rule => {
+          if (rule.rules.name && rule.rules.name.includes(nameList[i])) {
+            transaction.mappedCategory = rule.category;
+          }
         });
-    return ruleList;
+      }
+    });
   }
-  
-async function mapTransactions (transactionArray, rulesArray) {
-/**
- *  // NAME FILTER -- duplicate block for new filter
- 
-    This uses two filters as an alternative to loops. This method is useful because looping through the rules array creates limitations around category order, and makes it hard to integrate rule exceptions
 
-    Function structure
+  // RULE: Plaid category[1]
+  for (let i = 0; i < cat2List.length; i++) {
+    transactions.forEach(transaction => {
+      if (!transaction.mappedCategory && transaction.category?.[1] === cat2List[i]) {
+        ruleList.forEach(rule => {
+          if (rule.rules.category1 && rule.rules.category1.includes(cat2List[i])) {
+            transaction.mappedCategory = rule.category;
+          }
+        });
+      }
+    });
+  }
 
-    PART I: BUILD SPECIFIC RULES
-    PART II: SPECIFIC RULES - for loop based on txn attribute for higher prioritization and more specific mapping
-    PART III: GENERAL RULES - pure filter function for general categorization based
-
-* TO DO: explore adding all items into one list or object with the type as a key associated with each array. and consolidating the for loop blocks
-* TODO: could add a call to get rules if it's null...
-
-*/
-    let transactions = []
-    const ruleList = rulesArray;
-
-    // this is the problem spot
-    // its setting transactions = array passed in, but then pushes the transactions onto itself. 
-    transactionArray.filter(block => {
-        if(block.added) transactions.push(...block.added) 
-        // transactions.push(block)
-    })
-    // console.log('Top of mapTransactions, transactions = ')
-
-    // Function beginning messages
-    // console.log(JSON.stringify(ruleList),'\n\nRules List')
-    // console.log('\n// Beginning of mapping work... //\n')
-
-    // BUILD SPECIFIC RULES: 
-    let nameList = []
-    let cat2List = []
-    // Prop-based rule lists use the value associated with a specific parameter from the ruleList array
-    ruleList.filter(rule => {
-        if(rule.rules.name) nameList.push(...rule.rules.name) // this whole block is mostly needed because some name map to arrays and some map to values
-        if(rule.rules.category1) cat2List.push(...rule.rules.category1)
-    })
-    // CAT RULE: Names
-    for (i=0; i<nameList.length;i++){
-        transactions.filter(transaction => {
-            if (!transaction.mappedCategory) {
-                if (transaction.name && transaction.name == nameList[i]) {
-                    ruleList.filter(rule => {
-                        if(rule.rules.name && rule.rules.name.includes(nameList[i])){
-                            transaction.mappedCategory = rule.category
-                        }
-                    })
-                } 
-            }
-        })
-    }
-
-    // CAT RULE: Plaid Category 2
-    for (i=0; i<cat2List.length;i++){
-        transactions.filter(transaction => {
-            if (!transaction.mappedCategory) {
-                if (transaction.category?.[1] && transaction.category[1] == cat2List[i]) {
-                    ruleList.filter(rule => {
-                        if(rule.rules.category1 && rule.rules.category1.includes(cat2List[i])){
-                            transaction.mappedCategory = rule.category
-                        }
-                    })
-                } 
-            }
-        })
-    }
-
-    // GENERAL CAT RULES: No for targeted-list for loops
-    transactions.filter(transaction => {
-        if (!transaction.mappedCategory) {
-            ruleList.filter(rule => {
-                if(!transaction.mappedCategory && rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)){
-                    transaction.mappedCategory = rule.category
-                    console.log('mapped type rule', transaction.mappedCategory)
-                }
-
-                if(!transaction.mappedCategory && rule.rules.merchant_name && rule.rules.merchant_name.includes(transaction.merchant_name)){
-                    transaction.mappedCategory = rule.category
-                    console.log('mapped merchant_name rule', transaction.mappedCategory)
-                }
-                if(!transaction.mappedCategory && rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)){
-                    transaction.mappedCategory = rule.category
-                    console.log('mapped accountName rule', transaction.mappedCategory)
-                }
-                if(!transaction.mappedCategory && rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])){
-                    transaction.mappedCategory = rule.category
-                    console.log('mapped category 0 rule', transaction.mappedCategory)
-                }
-            }) 
+  // RULE: transaction_type, merchant_name, accountName, category[0]
+  transactions.forEach(transaction => {
+    if (!transaction.mappedCategory) {
+      ruleList.forEach(rule => {
+        if (!transaction.mappedCategory && rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)) {
+          transaction.mappedCategory = rule.category;
         }
-    })
-    // last catch... if still not mapped to anything, map to 'To Sort'
-    transactions.filter(transaction => {
-        if(!transaction.mappedCategory){
-            transaction.mappedCategory = "To Sort"
+        if (!transaction.mappedCategory && rule.rules.merchant_name && rule.rules.merchant_name.includes(transaction.merchant_name)) {
+          transaction.mappedCategory = rule.category;
         }
-    })
+        if (!transaction.mappedCategory && rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)) {
+          transaction.mappedCategory = rule.category;
+        }
+        if (!transaction.mappedCategory && rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])) {
+          transaction.mappedCategory = rule.category;
+        }
+      });
+    }
+  });
 
-    return transactions
+  // RULE: Plaid personal_finance_category (good default, lower priority than custom rules)
+  transactions.forEach(transaction => {
+    if (!transaction.mappedCategory && transaction.personal_finance_category?.primary) {
+      const pfc = transaction.personal_finance_category.primary;
+      ruleList.forEach(rule => {
+        if (!transaction.mappedCategory && rule.plaid_pfc && rule.plaid_pfc.includes(pfc)) {
+          transaction.mappedCategory = rule.category;
+        }
+      });
+    }
+  });
+
+  // FALLBACK: To Sort
+  transactions.forEach(transaction => {
+    if (!transaction.mappedCategory) {
+      transaction.mappedCategory = 'To Sort';
+    }
+  });
+
+  return transactions;
 }
 
-module.exports = {
-    mapTransactions,
-    getMappingRuleList,
-}
+module.exports = { mapTransactions, getMappingRuleList };
