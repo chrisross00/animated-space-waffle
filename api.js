@@ -245,6 +245,17 @@ router.post('/handleDialogSubmit', async (req, res) => {
       }
     };
     updateData('Plaid-Transactions', filter, update)
+
+    // Auto-learn: if the category changed and we have a transaction name, add it as a name rule
+    const categoryChanged = req.body.mappedCategory && req.body.originalCategoryName &&
+                            req.body.mappedCategory !== req.body.originalCategoryName;
+    const notToSort = req.body.mappedCategory !== 'To Sort';
+    if (categoryChanged && notToSort && req.body.name) {
+      const catFilter = { category: req.body.mappedCategory, userId: uid };
+      const catUpdate = { $addToSet: { 'rules.name': req.body.name } };
+      updateData('Basil-Categories', catFilter, catUpdate);
+      console.log(`Auto-learn: added "${req.body.name}" to rules for "${req.body.mappedCategory}"`);
+    }
   }
 
   if (updateType == 'addCategory') {
