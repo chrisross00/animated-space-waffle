@@ -21,7 +21,16 @@ const firebaseConfig = {
 const admin = require('firebase-admin');
 admin.initializeApp(firebaseConfig)
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow same-origin requests (no origin) and localhost dev server
+    if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 app.use(express.static(path.join(__dirname, 'frontend/dist')))
 app.use("/api", router);
 app.use("/plaid-api", plaidApiRouter);

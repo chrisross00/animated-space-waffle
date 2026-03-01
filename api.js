@@ -2,32 +2,17 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
 const path = require('path');
-const cors = require('cors');
 const ObjectID = require('mongodb').ObjectId;
 
-router.use(cors());
 router.use(bodyParser.json());
 
 router.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'))
-});
-
-// Endpoint to retrieve all transactions from the database
-router.get('/find', async (req, res) => {
-  try {
-    const resObj = {
-      message: 'hello from api.js GET /test endpoint... this endpoint has been temporarily disabled'
-    }
-    res.send(resObj)
-    
-  } catch (error) {
-    res.status(500).send('Error with /test endpiont');
-  }
 });
 
 router.get('/getnew' , async (req, res) => {
@@ -114,24 +99,6 @@ router.get('/addplaidpfc', async (req, res) => {
     res.status(500).send('Error adding PFC mappings: ' + error);
   }
 });
-
-router.get('/test', async (req, res) => {
-
-  try {
-    const decodedToken = await validateIdToken(req)
-    const userId = decodedToken.uid;
-    console.log('/test userId, ', userId)
-    const txns = await findSimilarTransactionGroupsByCategory(userId)
-    const resObj = {
-      message: 'hello from api.js GET /test endpoint... this is a message from the server',
-      data: txns
-    }
-    res.send(resObj)
-    
-  } catch (error) {
-    res.status(500).send('Error with /test endpiont');
-  }
-})
 
 router.get('/getNewAuth', async (req, res) => {
   console.log('/getNewAuth starting...');

@@ -322,31 +322,13 @@ async function findSimilarTransactionGroupsByCategory(uid) {
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection('Plaid-Transactions');
     
-    // get the transaction groups for the user
-    // const pipeline = [
-    //     { $match: { userId: uid } },
-    //     { $group: { _id: "$category", count: { $sum: 1 }, transactions: { 
-    //       $push: {
-    //         _id: "$_id",
-    //         name: "$name",
-    //         merchant_name: "$merchant_name",
-    //       }
-    //     } } },
-    //     { $match: { count: { $gte: 1 } } },
-    //     { $sort: { count: -1 } }
-    // ];
-
-    // 5/3, 8:30am: get all transaction groups in db for now (testing/researching for design)
     const pipeline = [
-      { $match: { _id: { $ne: null } } },
+      { $match: { userId: uid } },
       {
         $group: {
           _id: "$category",
           count: { $sum: 1 },
-          names: {
-            $push:
-                "$name"
-          }
+          names: { $push: "$name" }
         }
       },
       { $sort: { count: -1 } }
