@@ -6,7 +6,7 @@ const { getMappingRuleList, mapTransactions } = require('./categoryMapping')
 // maybe put this in an internal function to initialize the client object
 
 const configuration = new Configuration({
-  basePath: PlaidEnvironments.development,
+  basePath: PlaidEnvironments[process.env.PLAID_ENV],
   baseOptions: {
     headers: {
       'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
