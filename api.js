@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData, deduplicateData, updateData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
+const { findData, deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -254,12 +254,18 @@ router.post('/handleDialogSubmit', async (req, res) => {
     if (categoryChanged && notToSort) {
       const catFilter = { category: req.body.mappedCategory, userId: uid };
       if (req.body.merchantName) {
-        const catUpdate = { $addToSet: { 'rules.merchant_name': req.body.merchantName } };
-        updateData('Basil-Categories', catFilter, catUpdate);
+        await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });
+        await updateManyData('Plaid-Transactions',
+          { userId: uid, mappedCategory: 'To Sort', merchant_name: req.body.merchantName },
+          { $set: { mappedCategory: req.body.mappedCategory } }
+        );
         console.log(`Auto-learn: added merchant_name "${req.body.merchantName}" to rules for "${req.body.mappedCategory}"`);
       } else if (req.body.name) {
-        const catUpdate = { $addToSet: { 'rules.name': req.body.name } };
-        updateData('Basil-Categories', catFilter, catUpdate);
+        await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.name': req.body.name } });
+        await updateManyData('Plaid-Transactions',
+          { userId: uid, mappedCategory: 'To Sort', name: req.body.name },
+          { $set: { mappedCategory: req.body.mappedCategory } }
+        );
         console.log(`Auto-learn: added name "${req.body.name}" to rules for "${req.body.mappedCategory}"`);
       }
     }
