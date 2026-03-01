@@ -244,29 +244,40 @@ router.post('/handleDialogSubmit', async (req, res) => {
         excludeFromTotal: req.body.excludeFromTotal
       }
     };
-    updateData('Plaid-Transactions', filter, update)
+    await updateData('Plaid-Transactions', filter, update);
 
-    // Auto-learn: if the category changed, add a rule so future transactions auto-map
-    // Prefer merchant_name (consistent across transactions) over name (often unique per transaction)
+    // Auto-learn: if user opted in, save rule and re-categorize all matching transactions
     const categoryChanged = req.body.mappedCategory && req.body.originalCategoryName &&
                             req.body.mappedCategory !== req.body.originalCategoryName;
     const notToSort = req.body.mappedCategory !== 'To Sort';
     if (categoryChanged && notToSort && req.body.createRule) {
       const catFilter = { category: req.body.mappedCategory, userId: uid };
       if (req.body.merchantName) {
+        // Clear this merchant_name from all categories so the rule only lives in one place
+        await updateManyData('Basil-Categories',
+          { userId: uid, 'rules.merchant_name': req.body.merchantName },
+          { $pull: { 'rules.merchant_name': req.body.merchantName } }
+        );
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });
+        // Move ALL matching transactions, not just To Sort (they may already be in a wrong category)
         await updateManyData('Plaid-Transactions',
-          { userId: uid, mappedCategory: 'To Sort', merchant_name: req.body.merchantName },
+          { userId: uid, merchant_name: req.body.merchantName },
           { $set: { mappedCategory: req.body.mappedCategory } }
         );
-        console.log(`Auto-learn: added merchant_name "${req.body.merchantName}" to rules for "${req.body.mappedCategory}"`);
+        console.log(`Auto-learn: set merchant_name "${req.body.merchantName}" -> "${req.body.mappedCategory}"`);
       } else if (req.body.name) {
+        // Clear this name from all categories so the rule only lives in one place
+        await updateManyData('Basil-Categories',
+          { userId: uid, 'rules.name': req.body.name },
+          { $pull: { 'rules.name': req.body.name } }
+        );
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.name': req.body.name } });
+        // Move ALL matching transactions, not just To Sort
         await updateManyData('Plaid-Transactions',
-          { userId: uid, mappedCategory: 'To Sort', name: req.body.name },
+          { userId: uid, name: req.body.name },
           { $set: { mappedCategory: req.body.mappedCategory } }
         );
-        console.log(`Auto-learn: added name "${req.body.name}" to rules for "${req.body.mappedCategory}"`);
+        console.log(`Auto-learn: set name "${req.body.name}" -> "${req.body.mappedCategory}"`);
       }
     }
   }
