@@ -48,7 +48,7 @@ export async function fetchTransactions() {
   if (headers) {
     const response = await fetch('/api/getNewAuth', { headers });
     if (response.ok) {
-      const transactions = response.json();
+      const transactions = await response.json();
       return transactions;
     } else {
       // Handle errors
@@ -65,7 +65,7 @@ export async function fetchCategories() {
   if (headers) {
     const response = await fetch('/api/getcategories', { headers });
     if (response.ok) {
-      const categories = response.json();
+      const categories = await response.json();
       return categories;
     } else {
       // Handle errors

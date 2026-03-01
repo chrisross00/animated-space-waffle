@@ -37,7 +37,7 @@ router.get('/getnew' , async (req, res) => {
 router.post('/dedupe', async (req,res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     await deduplicateData('Plaid-Transactions', userId);
     res.send('De-duplication complete');
   } catch (err) {
@@ -49,7 +49,7 @@ router.post('/dedupe', async (req,res) => {
 router.get('/getcategories', async (req, res)=>{  
   try {
     const decodedToken = await validateIdToken(req)
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     console.log('/test userId, ', userId)
     const categories = await findUserData('Basil-Categories', userId);
     res.send(categories)
@@ -75,7 +75,7 @@ const DEFAULT_CATEGORIES = [
 router.get('/seedcategories', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const existing = await findUserData('Basil-Categories', userId);
     if (existing.length > 0) {
       return res.send(`User already has ${existing.length} categories. Skipping.`);
@@ -97,7 +97,7 @@ router.get('/seedcategories', async (req, res) => {
 router.get('/addplaidpfc', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const categories = await findUserData('Basil-Categories', userId);
     const pfcByName = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.category, c.plaid_pfc]));
     let updated = 0;
@@ -119,7 +119,7 @@ router.get('/test', async (req, res) => {
 
   try {
     const decodedToken = await validateIdToken(req)
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     console.log('/test userId, ', userId)
     const txns = await findSimilarTransactionGroupsByCategory(userId)
     const resObj = {
@@ -137,10 +137,10 @@ router.get('/getNewAuth', async (req, res) => {
   console.log('/getNewAuth starting...');
   try {
     const decodedToken = await validateIdToken(req)
-    if(decodedToken.user_id){
+    if(decodedToken.uid){
       try {
         console.log('   beginning IdToken Verification...');
-        const userId = decodedToken.user_id;
+        const userId = decodedToken.uid;
 
         await getNewPlaidTransactions(userId);
         const transactions = await getAllUserTransactions(userId);
@@ -187,7 +187,7 @@ router.get('/getOrAddUser', async (req, res) => {
 router.get('/cleanPendingTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const transactions = await cleanPendingTransactions('Plaid-Transactions', userId);
     res.send(transactions);
   } catch (error) {
@@ -200,14 +200,15 @@ router.post('/handleDialogSubmit', async (req, res) => {
   try {
     req.body = JSON.parse(req.body.dialogBody)
     const decodedToken = await validateIdToken(req)
-    uid = decodedToken.user_id;
+    uid = decodedToken.uid;
   } catch (error) {
     console.log('handleDialogSubmit error: ', error)
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   const updateType = req.body.updateType;
   let d = {}
-  if (updateType == 'editCategory') {
+  if (updateType ==='editCategory') {
     const plaid_pfc = req.body.plaid_pfc || [];
     d = {
       _id: req.body._id,
@@ -237,7 +238,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
   }
 
   // Call updateData function to update Mongo Db
-  if (updateType == 'transaction'){
+  if (updateType ==='transaction'){
     d = { 
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
@@ -293,7 +294,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
   }
 
-  if (updateType == 'addCategory') {
+  if (updateType ==='addCategory') {
     const plaid_pfc = req.body.plaid_pfc || [];
     d = {
       client_id: req.body.client_id,
@@ -343,7 +344,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
 router.post('/bulkCategorize', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.user_id;
+    const uid = decodedToken.uid;
     const { transaction_ids, mappedCategory } = req.body;
     await updateManyData('Plaid-Transactions',
       { transaction_id: { $in: transaction_ids }, userId: uid },
@@ -358,21 +359,19 @@ router.post('/bulkCategorize', async (req, res) => {
 router.get('/mapunmapped', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const unmappedTransactions = await findUnmappedData('Plaid-Transactions', userId);
     const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
     const mappedTxns = await mapTransactions(unmappedTransactions, ruleList);
 
     if(mappedTxns.length > 0){
-      mappedTxns.forEach(txn => {
-        let updateObject = { $set: {} };
-        let filter = { ['transaction_id']: txn.transaction_id }
-        let options = {upsert: true} 
-        updateObject.$set["mappedCategory"] = txn.mappedCategory;
-        updateData('Plaid-Transactions', filter, updateObject, options);
-        console.log(txn._id, txn.mappedCategory)
-      });
+      await Promise.all(mappedTxns.map(txn => {
+        const filter = { transaction_id: txn.transaction_id };
+        const updateObject = { $set: { mappedCategory: txn.mappedCategory } };
+        console.log(txn._id, txn.mappedCategory);
+        return updateData('Plaid-Transactions', filter, updateObject, { upsert: true });
+      }));
     }
     // finish
     res.send(mappedTxns)
@@ -387,7 +386,7 @@ async function getOrAddUser(decodedToken) {
   console.log('getOrAddUser function called and starting...:', decodedToken.uid)
   try {
     const user = await findUserData('Basil-Users', decodedToken.uid);
-    if (user.length == 0) {
+    if (user.length === 0) {
       const newUser = {
         userId: decodedToken.uid,
         email: decodedToken.email,

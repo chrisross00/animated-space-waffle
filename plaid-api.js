@@ -25,8 +25,9 @@ const client = new PlaidApi(config);
 router.get("/create_link_token", async (req, res, next) => {
     console.log('/create_link_token starting...');
     try {
+      const decodedToken = await validateIdToken(req);
       const tokenResponse = await client.linkTokenCreate({
-        user: { client_user_id: "user-" + Math.floor(Math.random() * 10000) },
+        user: { client_user_id: decodedToken.uid },
         client_name: "Your App Name",
         language: "en",
         products: ["auth", "transactions"],
@@ -45,16 +46,15 @@ router.post("/exchange_public_token", async (req, res, next) => {
   // get the user ID from the Firebase session
   console.log('/exchange_public_token starting...');
   const decodedToken = await validateIdToken(req)
-  if(decodedToken.user_id){
-      console.log('exchange_public_token: got the user ID', decodedToken.user_id)
-      console.log('by the way, req.body = ', req)
+  if(decodedToken.uid){
+      console.log('exchange_public_token: got the user ID', decodedToken.uid)
   }
 
   
   // send exchangeResponse.data.access_token to Mongodb
   // check if the user exists in the database first; only create an access_token if the user doesn't exist
   try {
-    const user = await findUserData('Plaid-Accounts', decodedToken.user_id)
+    const user = await findUserData('Plaid-Accounts', decodedToken.uid)
     if(user.length>0){
       console.log('user exists, need to now checkif the institution exists in the accounts object', req.body.metadata.institution.name)
       const accounts = user[0].Accounts;
@@ -91,7 +91,7 @@ async function addInstitution(req, decodedToken, type='new'){
     console.log('inserting institution data into the database')
     const exchangeResponseData = exchangeResponse.data;
     const institutionName = req.body.metadata.institution.name;
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const earliestDate = '2022-07-29';
     const updateObject = {
       Accounts: {
@@ -103,7 +103,7 @@ async function addInstitution(req, decodedToken, type='new'){
       },
       userId: userId,
     };
-    if (type == 'addToExisting'){
+    if (type === 'addToExisting'){
       const filter = { 
         userId: userId
       };
@@ -129,7 +129,7 @@ async function addInstitution(req, decodedToken, type='new'){
 router.post("/remove_account", async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.user_id;
+    const userId = decodedToken.uid;
     const { institution } = req.body;
     const filter = { userId };
     const update = { $unset: { [`Accounts.${institution}`]: '' } };
@@ -139,20 +139,6 @@ router.post("/remove_account", async (req, res) => {
     console.error('/remove_account error:', error);
     res.status(500).json({ message: 'Failed to remove account' });
   }
-});
-
-router.get("/data", async (req, res, next) => {
-  const access_token = req.session.access_token;
-  const balanceResponse = await client.accountsBalanceGet({ access_token });
-  res.json({
-    Balance: balanceResponse.data,
-  });
-});
-
-router.get("/is_account_connected", async (req, res, next) => {
-  return req.session.access_token
-    ? res.json({ status: true })
-    : res.json({ status: false });
 });
 
 module.exports = router;
