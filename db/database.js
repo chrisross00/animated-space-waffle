@@ -108,13 +108,16 @@ async function findFilterData(collectionName, filter) {
   }
 }
 
-async function findUnmappedData(collectionName) {
+async function findUnmappedData(collectionName, userId) {
   let client;
   try { // add toArray() override parameter in the future
     client = await connectToDb();
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
-    const result = await collection.find({ "mappedCategory" : { "$exists" : false } }).toArray();
+    const query = userId
+      ? { userId, mappedCategory: { $exists: false } }
+      : { mappedCategory: { $exists: false } };
+    const result = await collection.find(query).toArray();
     // console.log(`Found data: ${JSON.stringify(result)}`);
     // console.log('BE message: findData got a response from MongoDb, sending back up to API')
     return result;

@@ -120,10 +120,10 @@ async function getNewPlaidTransactions(uid) {
         }
       }
       console.log('getting user data.... userId = ', userId);
-      const categories = await findUserData('Basil-Categories', userId); 
-      // console.log('getting mapping rule list.... categories = ', categories);
+      const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
-    const mappedTxns = await mapTransactions(updatedResponses, ruleList);
+    const addedTxns = updatedResponses.flatMap(r => r.added || []);
+    const mappedTxns = await mapTransactions(addedTxns, ruleList);
 
     if (mappedTxns.length > 0) {
       await insertData('Plaid-Transactions', mappedTxns);
