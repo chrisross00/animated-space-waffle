@@ -6,8 +6,9 @@ let _client = null;
 
 async function connectToDb() {
   if (!_client) {
-    _client = new MongoClient(process.env.DB_URI);
-    await _client.connect();
+    const client = new MongoClient(process.env.DB_URI);
+    await client.connect(); // assign only after successful connect so failures allow retry
+    _client = client;
     console.log('DB: connected (pool ready)');
   }
   return _client;
