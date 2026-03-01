@@ -168,15 +168,18 @@ async function updateData(collectionName, filter, update, options = null) {
   }
 }
 
-async function deduplicateData(collectionName) { // this only works for Transactions collection right now
+async function deduplicateData(collectionName, userId) { // this only works for Transactions collection right now
   let client;
   try {
     client = await connectToDb();
     const db = client.db(process.env.DB_NAME)
     const collection = db.collection(collectionName);
 
+    const matchStage = userId ? { $match: { userId } } : { $match: {} };
+
     // Group documents by the "Transaction ID" field and count the number of occurrences
     const result = await collection.aggregate([
+      matchStage,
       {
         $group: {
           _id: { transaction_id: "$transaction_id" },
@@ -238,18 +241,17 @@ async function deleteRemovedData(collectionName, filter) { // for when Plaid rem
   }
 }
 
-async function cleanPendingTransactions(collectionName) {
+async function cleanPendingTransactions(collectionName, userId) {
   console.log('cleaning pending transactions')
   let client;
   try { // add toArray() override parameter in the future
     client = await connectToDb();
     const db = client.db(process.env.DB_NAME)
-    // const collection = db.collection('Plaid-Transactions');
     const collection = db.collection(collectionName);
 
     // get the transaction_ids from the db where pending = true
     let allPendingTransactions = []
-    let findFilter = {['pending']: true}
+    let findFilter = userId ? { pending: true, userId } : { pending: true };
     const allPendingResults = await collection.find(findFilter).toArray();
     allPendingTransactions.push(...allPendingResults)
     

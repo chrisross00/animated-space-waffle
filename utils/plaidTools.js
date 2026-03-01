@@ -149,7 +149,9 @@ async function getNewPlaidTransactions(uid) {
     let filter = { $or: [] };
     updatedResponses.forEach((block) => {
       if (block.removed && block.removed.length > 0) {
-        filter.$or.push(...block.removed); // add user id here? not sure if it needs to be added to match or not
+        block.removed.forEach(r => {
+          filter.$or.push({ transaction_id: r.transaction_id, userId });
+        });
       }
     });
 
