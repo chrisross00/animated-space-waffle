@@ -52,11 +52,18 @@
                         @change="isFormSubmittable()"
                         />
 
-                    <q-toggle 
-                        color="primary" 
-                        label="Exclude from Total"   
-                        v-model="this.dialogBody.excludeFromTotal" 
+                    <q-toggle
+                        color="primary"
+                        label="Exclude from Total"
+                        v-model="this.dialogBody.excludeFromTotal"
                         @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"/>
+
+                    <q-toggle
+                        v-if="this.dialogBody.merchantName || this.dialogBody.name"
+                        color="secondary"
+                        v-model="this.dialogBody.createRule"
+                        :label="'Remember category for ' + (this.dialogBody.merchantName || this.dialogBody.name)"
+                    />
 
                 <div class="button-container">
                     <div>
@@ -207,6 +214,7 @@ input .select{
                 originalCategoryName: this.item?.categoryName ? this.item.categoryName : this.item?.mappedCategory ? this.item.mappedCategory : '',
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
+                createRule: false,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},
