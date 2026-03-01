@@ -162,9 +162,11 @@
       <!-- If show all is true -->
       <div v-show="showAll" class="q-pa-md all-transactions-table">
 
-        <!-- Bulk action bar — visible when rows are selected -->
-        <div v-if="selectedRows.length > 0" class="row items-center q-gutter-sm q-mb-sm">
-          <span class="text-body2">{{ selectedRows.length }} selected</span>
+        <!-- Bulk action bar — always visible in Show All view to prevent layout shift -->
+        <div class="row items-center q-gutter-sm q-mb-sm">
+          <span class="text-body2" :class="{ 'text-grey-5': selectedRows.length === 0 }">
+            {{ selectedRows.length > 0 ? `${selectedRows.length} selected` : '0 selected' }}
+          </span>
           <q-select
             v-model="bulkCategory"
             :options="categoryMonthlyLimits.map(c => c.category).sort()"
@@ -172,10 +174,11 @@
             dense
             outlined
             style="min-width: 200px"
+            :disable="selectedRows.length === 0"
             @touchmove.stop.prevent
           />
-          <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-          <q-btn flat label="Clear" @click="selectedRows = []" />
+          <q-btn color="primary" label="Apply" :disable="!bulkCategory || selectedRows.length === 0" @click="applyBulkCategory" />
+          <q-btn flat label="Clear" :disable="selectedRows.length === 0" @click="selectedRows = []" />
         </div>
 
         <q-table
