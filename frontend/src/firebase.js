@@ -181,6 +181,17 @@ export async function removeAccount(institution) {
   }
 }
 
+export async function mapUnmapped() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/mapunmapped', { headers });
+    if (response.ok) return response.json();
+    else console.error(`mapUnmapped failed with status ${response.status}`);
+  } else {
+    console.log('headers are null, therefore user is not logged in');
+  }
+}
+
 export async function bulkCategorize(transaction_ids, mappedCategory) {
   const headers = await getAuthHeaders();
   if (headers) {

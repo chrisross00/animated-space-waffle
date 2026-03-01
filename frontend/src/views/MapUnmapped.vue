@@ -5,9 +5,8 @@
   </template>
   
   <script>
-  // replace this with something else
-  // import axios from 'axios';
-  
+  import { mapUnmapped } from '../firebase';
+
   export default {
     data() {
       return {
@@ -16,12 +15,10 @@
     },
     async mounted() {
       try {
-        // console.log("fetch start")
-        const response = await fetch("/api/mapunmapped")
-        const data = await response.json();
-        this.message = data.length > 0 ? data : 'No unmapped transactions found'
+        const data = await mapUnmapped();
+        this.message = data && data.length > 0 ? data : 'No unmapped transactions found';
       } catch (err) {
-        // console.log('external catch', err);
+        console.error('mapUnmapped error:', err);
       }
     }
   }
