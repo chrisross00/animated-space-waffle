@@ -110,33 +110,13 @@ export async function getOrAddUserAccount(publicToken, metadata) {
       public_token: publicToken,
       metadata: metadata
     })});
-    const data = await response.json();
     if (response.ok) {
-      const user = data
-      return user;
+      return response.json();
     } else {
-      // Handle errors
       console.error(`Request failed with status ${response.status}`);
     }
   } else {
     // User is not signed in
-    console.log('headers are null, therefore user is not logged in');
-  }
-}
-
-export async function findSimilarTransactionGroups() {
-  console.log("(): current auth is", auth)
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const response = await fetch('/api/test', { headers });
-    const data = await response.json();
-    if (response.ok) {
-      console.log('data is', data);
-      return data;
-    } else {
-      console.error(`Request failed with status ${response.status}`);
-    }
-  } else {
     console.log('headers are null, therefore user is not logged in');
   }
 }

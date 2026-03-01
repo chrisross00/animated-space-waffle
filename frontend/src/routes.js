@@ -1,7 +1,5 @@
-// import HomeView from './views/HomeView.vue'
 import ApiDr from './views/ApiDir.vue'
 import BudgetView from './views/BudgetView.vue'
-import TestView from './views/TestView.vue'
 import DeDupeView from './views/DeDupeView.vue'
 import GetNew from './views/GetNew.vue'
 import GetCategories from './views/GetCategories.vue'
@@ -24,11 +22,6 @@ const routes = [
     path: '/profile',
     name: 'ProfileView',
     component: ProfileView
-  },
-  {
-    path: '/api/test',
-    name: 'TestView',
-    component: TestView
   },
   {
     path: '/api/dedupe',
