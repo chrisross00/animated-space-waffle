@@ -29,7 +29,7 @@ router.get("/create_link_token", async (req, res, next) => {
         user: { client_user_id: "user-" + Math.floor(Math.random() * 10000) },
         client_name: "Your App Name",
         language: "en",
-        products: ["auth"],
+        products: ["auth", "transactions"],
         country_codes: ["US"],
       });
       console.log('tokenResponse.data', tokenResponse)
@@ -125,6 +125,21 @@ async function addInstitution(req, decodedToken, type='new'){
     console.log(error)
   }
 }
+
+router.post("/remove_account", async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    const { institution } = req.body;
+    const filter = { userId };
+    const update = { $unset: { [`Accounts.${institution}`]: '' } };
+    await updateData('Plaid-Accounts', filter, update);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('/remove_account error:', error);
+    res.status(500).json({ message: 'Failed to remove account' });
+  }
+});
 
 router.get("/data", async (req, res, next) => {
   const access_token = req.session.access_token;

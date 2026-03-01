@@ -59,6 +59,40 @@ router.get('/getcategories', async (req, res)=>{
   }
 })
 
+router.get('/seedcategories', async (req, res) => {
+  const DEFAULT_CATEGORIES = [
+    { category: 'Income',         type: 'income',   monthly_limit: 0 },
+    { category: 'Housing',        type: 'expense',  monthly_limit: 0 },
+    { category: 'Food & Dining',  type: 'expense',  monthly_limit: 0 },
+    { category: 'Transportation', type: 'expense',  monthly_limit: 0 },
+    { category: 'Entertainment',  type: 'expense',  monthly_limit: 0 },
+    { category: 'Shopping',       type: 'expense',  monthly_limit: 0 },
+    { category: 'Health',         type: 'expense',  monthly_limit: 0 },
+    { category: 'Utilities',      type: 'expense',  monthly_limit: 0 },
+    { category: 'To Sort',        type: 'expense',  monthly_limit: 0 },
+    { category: 'Payment',        type: 'payment',  monthly_limit: 0 },
+  ];
+  try {
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    const existing = await findUserData('Basil-Categories', userId);
+    if (existing.length > 0) {
+      return res.send(`User already has ${existing.length} categories. Skipping.`);
+    }
+    const toInsert = DEFAULT_CATEGORIES.map(cat => ({
+      ...cat,
+      annual_spend: '',
+      rules: {},
+      showOnBudgetPage: true,
+      userId,
+    }));
+    await insertData('Basil-Categories', toInsert);
+    res.send(`Seeded ${toInsert.length} categories.`);
+  } catch (error) {
+    res.status(500).send('Error seeding categories: ' + error);
+  }
+});
+
 router.get('/test', async (req, res) => {
 
   try {

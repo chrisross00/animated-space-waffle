@@ -57,13 +57,13 @@
                         style="font-size: 16px;"
                         name="delete"
                         class="icon-hover-neg"
-                        @click="preDeleteAccount(account)"
+                        @click.stop="preDeleteAccount(account)"
                       />
                     </template>
                     <template v-else>
                       <div style="display: flex;">
-                        <q-icon name="check" class="icon-hover-pos" style="font-size: 16px;" @click="deleteAccount(account)" />
-                        <q-icon name="close" class="icon-hover-neg" style="font-size: 16px;" @click="cancelPreDeleteAccount(account)" />
+                        <q-icon name="check" class="icon-hover-pos" style="font-size: 16px;" @click.stop="deleteAccount(account)" />
+                        <q-icon name="close" class="icon-hover-neg" style="font-size: 16px;" @click.stop="cancelPreDeleteAccount(account)" />
                       </div>
                     </template>
                   </q-item-section>
@@ -94,7 +94,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser,  } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import SpinnerComponent from '../components/SpinnerComponent.vue'
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
@@ -124,9 +124,15 @@ export default {
       // account.preDelete = false;
       this.preDelete[account] = false;
     },
-    deleteAccount(account){
-      console.log('deleting account...', account);
-      this.cancelPreDeleteAccount(account)
+    async deleteAccount(account) {
+      try {
+        await removeAccount(account);
+        this.user = { ...this.user, accounts: this.user.accounts.filter(a => a !== account) };
+        store.commit('setUser', this.user);
+      } catch (error) {
+        console.error('deleteAccount error:', error);
+      }
+      this.cancelPreDeleteAccount(account);
     },
     handleAddNewAccountClick() {
       this.showPlaidLink = true;

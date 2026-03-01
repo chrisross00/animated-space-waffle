@@ -164,4 +164,21 @@ export async function handleDialogSubmit(dialogBody) {
   }
 }
 
+export async function removeAccount(institution) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/plaid-api/remove_account', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ institution }),
+    });
+    if (response.ok) {
+      return response.json();
+    } else {
+      console.error(`removeAccount failed with status ${response.status}`);
+    }
+  }
+}
+
 // export async function updateCategories() {} later...
