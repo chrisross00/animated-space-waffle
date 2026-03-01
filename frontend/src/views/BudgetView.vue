@@ -676,9 +676,9 @@
             store.commit("setLastPlaidFetch", now);
           }
           else {
-            const remainingTime = this.fetchInterval - (now - this.lastFetch);
-            const minutesRemaining = Math.floor(remainingTime / 60000);
-            const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
+            // const remainingTime = this.fetchInterval - (now - this.lastFetch);
+            // const minutesRemaining = Math.floor(remainingTime / 60000);
+            // const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
             // console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
             
             await this.buildPage('refresh')
@@ -689,6 +689,7 @@
       } catch (error) {
         console.error(error);
         this.resetLastFetch();
+        this.isLoading = false;
       }
       if(this.categoryMonthlyLimits?.length == 0 || this.transactions?.length == 0) {
         console.log('onMounted if')
