@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findData, deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findSimilarTransactionGroupsByName, findSimilarTransactionGroupsByCategory } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -336,12 +336,13 @@ router.post('/bulkCategorize', async (req, res) => {
 });
 
 router.get('/mapunmapped', async (req, res) => {
-  // console.log('API.js message: hit the /test endpoint')
   try {
-    const unmappedTransactions = await findUnmappedData('Plaid-Transactions');
-    const categories = await findData('Basil-Categories');
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.user_id;
+    const unmappedTransactions = await findUnmappedData('Plaid-Transactions', userId);
+    const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
-    const mappedTxns = await mapTransactions(unmappedTransactions, ruleList); // insert this to 79 below
+    const mappedTxns = await mapTransactions(unmappedTransactions, ruleList);
 
     if(mappedTxns.length > 0){
       mappedTxns.forEach(txn => {

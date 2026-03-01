@@ -10,13 +10,8 @@ async function getMappingRuleList(dbCategories = null) {
   return ruleList;
 }
 
-async function mapTransactions(transactionArray, rulesArray) {
-  let transactions = [];
+async function mapTransactions(transactions, rulesArray) {
   const ruleList = rulesArray;
-
-  transactionArray.forEach(block => {
-    if (block.added) transactions.push(...block.added);
-  });
 
   // BUILD SPECIFIC RULE LISTS
   let nameList = [];
