@@ -583,6 +583,7 @@
             'date': e.date,
             'note':e.note,
             'name': e.name,
+            'merchantName': e.merchantName,
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false

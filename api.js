@@ -246,15 +246,22 @@ router.post('/handleDialogSubmit', async (req, res) => {
     };
     updateData('Plaid-Transactions', filter, update)
 
-    // Auto-learn: if the category changed and we have a transaction name, add it as a name rule
+    // Auto-learn: if the category changed, add a rule so future transactions auto-map
+    // Prefer merchant_name (consistent across transactions) over name (often unique per transaction)
     const categoryChanged = req.body.mappedCategory && req.body.originalCategoryName &&
                             req.body.mappedCategory !== req.body.originalCategoryName;
     const notToSort = req.body.mappedCategory !== 'To Sort';
-    if (categoryChanged && notToSort && req.body.name) {
+    if (categoryChanged && notToSort) {
       const catFilter = { category: req.body.mappedCategory, userId: uid };
-      const catUpdate = { $addToSet: { 'rules.name': req.body.name } };
-      updateData('Basil-Categories', catFilter, catUpdate);
-      console.log(`Auto-learn: added "${req.body.name}" to rules for "${req.body.mappedCategory}"`);
+      if (req.body.merchantName) {
+        const catUpdate = { $addToSet: { 'rules.merchant_name': req.body.merchantName } };
+        updateData('Basil-Categories', catFilter, catUpdate);
+        console.log(`Auto-learn: added merchant_name "${req.body.merchantName}" to rules for "${req.body.mappedCategory}"`);
+      } else if (req.body.name) {
+        const catUpdate = { $addToSet: { 'rules.name': req.body.name } };
+        updateData('Basil-Categories', catFilter, catUpdate);
+        console.log(`Auto-learn: added name "${req.body.name}" to rules for "${req.body.mappedCategory}"`);
+      }
     }
   }
 
