@@ -1,6 +1,17 @@
 <template>
   <div class="q-pa-md">
-    <div class="row items-center q-gutter-md q-mb-md">
+    <div class="row items-center q-gutter-md q-mb-md wrap">
+      <q-btn-toggle
+        v-model="activeChart"
+        :options="[
+          { label: 'Spending', value: 'spending' },
+          { label: 'Cash Flow', value: 'cashflow' },
+          { label: 'Cumulative', value: 'cumulative' },
+        ]"
+        dense
+        unelevated
+        toggle-color="primary"
+      />
       <span class="text-body2 text-grey-7">Months:</span>
       <q-btn-toggle
         v-model="monthCount"
@@ -9,12 +20,14 @@
         unelevated
         toggle-color="primary"
       />
-      <q-toggle v-model="showIncome" label="Income" dense />
-      <q-toggle v-model="showPayments" label="Payments" dense />
+      <template v-if="activeChart === 'spending'">
+        <q-toggle v-model="showIncome" label="Income" dense />
+        <q-toggle v-model="showPayments" label="Payments" dense />
+      </template>
     </div>
 
-    <div v-if="hasData">
-      <v-chart :option="chartOption" autoresize style="height: 420px" />
+    <div v-if="activeChartHasData">
+      <v-chart :option="activeChartOption" autoresize style="height: 420px" />
     </div>
     <div v-else class="text-grey-6 text-center q-mt-xl">
       No transaction data available for this range.
@@ -25,13 +38,13 @@
 <script>
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
-import { BarChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
 import store from '../store'
 
-use([BarChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
+use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
 
 export default {
   name: 'TrendsView',
@@ -39,6 +52,7 @@ export default {
 
   data() {
     return {
+      activeChart: 'spending',
       monthCount: 6,
       showIncome: false,
       showPayments: false,
@@ -64,7 +78,27 @@ export default {
       });
     },
 
-    chartOption() {
+    // Shared base: net (income - expenses) per month, used by cashflow + cumulative
+    monthlyNet() {
+      const transactions = store.state.transactions || [];
+      const months = this.monthList;
+      const categories = store.state.categories || [];
+      const incomeNames = new Set(categories.filter(c => c.type === 'income').map(c => c.category));
+      const expenseNames = new Set(categories.filter(c => c.type === 'expense').map(c => c.category));
+
+      return months.map(m => {
+        let income = 0, expenses = 0;
+        for (const txn of transactions) {
+          if (txn.excludeFromTotal) continue;
+          if (dayjs(txn.date).format('MMM YYYY') !== m) continue;
+          if (incomeNames.has(txn.mappedCategory)) income += Math.abs(txn.amount);
+          else if (expenseNames.has(txn.mappedCategory)) expenses += Math.abs(txn.amount);
+        }
+        return Math.round((income - expenses) * 100) / 100;
+      });
+    },
+
+    spendingChartOption() {
       const transactions = store.state.transactions || [];
       const months = this.monthList;
 
@@ -109,16 +143,99 @@ export default {
         legend: { type: 'scroll', bottom: 0 },
         grid: { left: '3%', right: '4%', top: '3%', bottom: '60px', containLabel: true },
         xAxis: { type: 'category', data: months },
-        yAxis: {
-          type: 'value',
-          axisLabel: { formatter: val => '$' + val },
-        },
+        yAxis: { type: 'value', axisLabel: { formatter: val => '$' + val } },
         series,
       };
     },
 
-    hasData() {
-      return this.chartOption.series.length > 0;
+    cashFlowChartOption() {
+      const months = this.monthList;
+      const netValues = this.monthlyNet;
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          formatter: (params) => {
+            const val = params[0].value;
+            const sign = val >= 0 ? '+' : '';
+            return `<strong>${params[0].axisValue}</strong><br/>Net: ${sign}$${val.toFixed(2)}`;
+          },
+        },
+        grid: { left: '3%', right: '4%', top: '3%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: months },
+        yAxis: { type: 'value', axisLabel: { formatter: val => '$' + val } },
+        series: [{
+          type: 'bar',
+          data: netValues,
+          itemStyle: { color: (params) => params.value >= 0 ? '#3ba272' : '#ee6666' },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: '#aaa', type: 'dashed' },
+            data: [{ yAxis: 0 }],
+            label: { show: false },
+          },
+        }],
+      };
+    },
+
+    cumulativeChartOption() {
+      const months = this.monthList;
+      const netValues = this.monthlyNet;
+      let running = 0;
+      const cumulativeValues = netValues.map(v => {
+        running += v;
+        return Math.round(running * 100) / 100;
+      });
+      const min = Math.min(...cumulativeValues, 0);
+      const max = Math.max(...cumulativeValues, 0);
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params) => {
+            const val = params[0].value;
+            const sign = val >= 0 ? '+' : '';
+            return `<strong>${params[0].axisValue}</strong><br/>Cumulative: ${sign}$${val.toFixed(2)}`;
+          },
+        },
+        visualMap: [{
+          show: false,
+          type: 'continuous',
+          seriesIndex: 0,
+          min,
+          max,
+          inRange: { color: min < 0 ? ['#ee6666', '#aaaaaa', '#3ba272'] : ['#3ba272'] },
+        }],
+        grid: { left: '3%', right: '4%', top: '3%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', data: months },
+        yAxis: { type: 'value', axisLabel: { formatter: val => '$' + val } },
+        series: [{
+          type: 'line',
+          data: cumulativeValues,
+          smooth: true,
+          areaStyle: { opacity: 0.15 },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: '#aaa', type: 'dashed' },
+            data: [{ yAxis: 0 }],
+            label: { show: false },
+          },
+        }],
+      };
+    },
+
+    activeChartOption() {
+      if (this.activeChart === 'cashflow') return this.cashFlowChartOption;
+      if (this.activeChart === 'cumulative') return this.cumulativeChartOption;
+      return this.spendingChartOption;
+    },
+
+    activeChartHasData() {
+      if (this.activeChart === 'spending') return this.spendingChartOption.series.length > 0;
+      return this.monthlyNet.some(v => v !== 0);
     },
   },
 };
