@@ -7,6 +7,7 @@
           { label: 'Spending', value: 'spending' },
           { label: 'Cash Flow', value: 'cashflow' },
           { label: 'Cumulative', value: 'cumulative' },
+          { label: 'Savings', value: 'savings' },
         ]"
         dense
         unelevated
@@ -29,6 +30,9 @@
 
     <div v-if="activeChartHasData">
       <v-chart :option="activeChartOption" autoresize style="height: 420px" />
+    </div>
+    <div v-else-if="activeChart === 'savings'" class="text-grey-6 text-center q-mt-xl">
+      No savings data yet. Create a category with type <strong>Savings</strong> and assign transactions to it.
     </div>
     <div v-else class="text-grey-6 text-center q-mt-xl">
       No transaction data available for this range.
@@ -227,14 +231,79 @@ export default {
       };
     },
 
+    savingsChartOption() {
+      const transactions = store.state.transactions || [];
+      const months = this.monthList;
+      const categories = store.state.categories || [];
+      const savingsNames = new Set(categories.filter(c => c.type === 'savings').map(c => c.category));
+      const incomeNames = new Set(categories.filter(c => c.type === 'income').map(c => c.category));
+
+      const savingsData = [];
+      const rateData = [];
+
+      for (const m of months) {
+        let savings = 0, income = 0;
+        for (const txn of transactions) {
+          if (txn.excludeFromTotal) continue;
+          if (dayjs(txn.date).format('MMM YYYY') !== m) continue;
+          if (savingsNames.has(txn.mappedCategory)) savings += Math.abs(txn.amount);
+          if (incomeNames.has(txn.mappedCategory)) income += Math.abs(txn.amount);
+        }
+        savingsData.push(Math.round(savings * 100) / 100);
+        rateData.push(income > 0 ? Math.round((savings / income) * 1000) / 10 : 0);
+      }
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' },
+          formatter: (params) => {
+            let html = `<strong>${params[0].axisValue}</strong><br/>`;
+            params.forEach(p => {
+              if (p.seriesName === 'Saved') html += `${p.marker}Saved: $${Number(p.value).toFixed(2)}<br/>`;
+              else html += `${p.marker}Rate: ${p.value}%<br/>`;
+            });
+            return html;
+          },
+        },
+        legend: { data: ['Saved', 'Rate'], bottom: 0 },
+        grid: { left: '3%', right: '8%', top: '5%', bottom: '50px', containLabel: true },
+        xAxis: { type: 'category', data: months },
+        yAxis: [
+          { type: 'value', axisLabel: { formatter: val => '$' + val } },
+          { type: 'value', min: 0, max: 100, axisLabel: { formatter: val => val + '%' } },
+        ],
+        series: [
+          {
+            name: 'Saved',
+            type: 'bar',
+            yAxisIndex: 0,
+            data: savingsData,
+            itemStyle: { color: '#3ba272' },
+          },
+          {
+            name: 'Rate',
+            type: 'line',
+            yAxisIndex: 1,
+            data: rateData,
+            smooth: true,
+            lineStyle: { color: '#5470c6' },
+            itemStyle: { color: '#5470c6' },
+          },
+        ],
+      };
+    },
+
     activeChartOption() {
       if (this.activeChart === 'cashflow') return this.cashFlowChartOption;
       if (this.activeChart === 'cumulative') return this.cumulativeChartOption;
+      if (this.activeChart === 'savings') return this.savingsChartOption;
       return this.spendingChartOption;
     },
 
     activeChartHasData() {
       if (this.activeChart === 'spending') return this.spendingChartOption.series.length > 0;
+      if (this.activeChart === 'savings') return this.savingsChartOption.series[0].data.some(v => v > 0);
       return this.monthlyNet.some(v => v !== 0);
     },
   },
