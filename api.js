@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -319,6 +319,17 @@ router.post('/handleDialogSubmit', async (req, res) => {
   console.log("api is done handling dialog submit", resObj)
   res.send(resObj)
 })
+
+router.get('/merchantStats', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const merchants = await findMerchantsWithStats(decodedToken.uid);
+    res.json(merchants);
+  } catch (error) {
+    console.error('/merchantStats error:', error);
+    res.status(500).json({ message: 'Failed to fetch merchant stats' });
+  }
+});
 
 router.get('/merchants', async (req, res) => {
   try {

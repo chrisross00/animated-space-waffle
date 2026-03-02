@@ -160,6 +160,22 @@ transactions.
 
 ---
 
+### Iteration 3.5 — Multi-select in Merchant Browser (maybe)
+In the Merchant Browser, let the user check multiple rows and assign them all to
+the same category in one Apply. Useful for e.g. "Uber + Lyft + Waymo → Transportation"
+without doing it row by row.
+
+**Why not "Apply All":** Each Apply intentionally shows immediate feedback (Current
+column updates) before moving on — collapsing that into one button removes the safety
+net for a retroactive operation. Multi-select to a single category is the right
+middle ground.
+
+**Implementation:** add `selection="multiple"` + `v-model:selected` to the q-table
+(same pattern as BudgetView bulk categorize), a category picker + "Apply to selected"
+button above the table, enabled only when ≥1 row is checked.
+
+---
+
 ### Iteration 4 — Bulk rule creation from transaction table (future)
 In the "Show all" table view, select multiple rows → "Create rule for selected"
 action alongside existing "Move to category". Lower priority since Iterations 2

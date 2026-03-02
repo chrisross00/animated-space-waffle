@@ -207,6 +207,15 @@ export async function mapUnmapped() {
   }
 }
 
+export async function fetchMerchantStats() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/merchantStats', { headers });
+    if (response.ok) return response.json();
+    else Notify.create({ type: 'negative', message: `Failed to fetch merchant stats (${response.status})` });
+  }
+}
+
 export async function fetchMerchants() {
   const headers = await getAuthHeaders();
   if (headers) {
