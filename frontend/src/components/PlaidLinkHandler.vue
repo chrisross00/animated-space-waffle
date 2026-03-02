@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { getOrAddUserAccount }  from '@/firebase'
+import { getOrAddUserAccount, getAuthHeaders }  from '@/firebase'
 
 export default {
   props: {},
@@ -16,7 +16,8 @@ export default {
   },
   methods: {
     async createLinkToken() {
-      const res = await fetch("/plaid-api/create_link_token");
+      const headers = await getAuthHeaders();
+      const res = await fetch("/plaid-api/create_link_token", { headers });
       const data = await res.json();
       const linkToken = data.link_token;
       return linkToken;

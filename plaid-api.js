@@ -61,16 +61,16 @@ router.post("/exchange_public_token", async (req, res, next) => {
       const institution = req.body.metadata.institution.name;
       if (accounts.hasOwnProperty(institution)) {
       console.log(`The institution '${institution}' exists in the accounts object. Return now and do not update the account, or you will invalidate the token`);
-      return;
+      return res.json({ alreadyLinked: true });
       } else {
       console.log(`The institution '${institution}' does not exist in the accounts object.`);
         // new function
-        addInstitution(req, decodedToken, 'addToExisting')
+        await addInstitution(req, decodedToken, 'addToExisting')
       }
     } else {
       console.log('user does not exist, need to insert the user and institution data into the database')
       // new function
-      addInstitution(req, decodedToken)
+      await addInstitution(req, decodedToken)
     }
   } catch (error) {
     console.log(error)

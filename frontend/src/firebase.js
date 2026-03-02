@@ -2,6 +2,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import { getAuth } from '@firebase/auth'
+import { Notify } from 'quasar'
 // import 'firebase/GoogleAuthProvider'
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -24,7 +25,7 @@ export const auth = app.auth()
 export const firestore = firebase.firestore()
 export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
 
-async function getAuthHeaders() {
+export async function getAuthHeaders() {
   const authInstance = getAuth();
 
   return new Promise((resolve, reject) => {
@@ -51,8 +52,7 @@ export async function fetchTransactions() {
       const transactions = await response.json();
       return transactions;
     } else {
-      // Handle errors
-      console.error(`Request failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to fetch transactions (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -68,8 +68,7 @@ export async function fetchCategories() {
       const categories = await response.json();
       return categories;
     } else {
-      // Handle errors
-      console.error(`Request failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to fetch categories (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -87,8 +86,7 @@ export async function getOrAddUser() {
       const user = data
       return user;
     } else {
-      // Handle errors
-      console.error(`Request failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to load user (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -113,7 +111,7 @@ export async function getOrAddUserAccount(publicToken, metadata) {
     if (response.ok) {
       return response.json();
     } else {
-      console.error(`Request failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to link account (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -137,7 +135,7 @@ export async function handleDialogSubmit(dialogBody) {
       // console.log('data is', data);
       return response.json();
     } else {
-      console.error(`Request failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to save changes (${response.status})` });
     }
   } else {
     console.log('headers are null, therefore user is not logged in');
@@ -156,7 +154,7 @@ export async function removeAccount(institution) {
     if (response.ok) {
       return response.json();
     } else {
-      console.error(`removeAccount failed with status ${response.status}`);
+      Notify.create({ type: 'negative', message: `Failed to remove account (${response.status})` });
     }
   }
 }
@@ -166,7 +164,7 @@ export async function addPlaidPfc() {
   if (headers) {
     const response = await fetch('/api/addplaidpfc', { headers });
     if (response.ok) return response.text();
-    else console.error(`addPlaidPfc failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Failed to add Plaid PFC (${response.status})` });
   }
 }
 
@@ -176,7 +174,7 @@ export async function dedupe() {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/dedupe', { method: 'POST', headers });
     if (response.ok) return response.text();
-    else console.error(`dedupe failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Dedupe failed (${response.status})` });
   }
 }
 
@@ -185,7 +183,7 @@ export async function seedCategories() {
   if (headers) {
     const response = await fetch('/api/seedcategories', { headers });
     if (response.ok) return response.text();
-    else console.error(`seedCategories failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Failed to seed categories (${response.status})` });
   }
 }
 
@@ -194,7 +192,7 @@ export async function cleanPending() {
   if (headers) {
     const response = await fetch('/api/cleanPendingTransactions', { headers });
     if (response.ok) return response.text();
-    else console.error(`cleanPending failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Failed to clean pending transactions (${response.status})` });
   }
 }
 
@@ -203,7 +201,7 @@ export async function mapUnmapped() {
   if (headers) {
     const response = await fetch('/api/mapunmapped', { headers });
     if (response.ok) return response.json();
-    else console.error(`mapUnmapped failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Failed to map unmapped transactions (${response.status})` });
   } else {
     console.log('headers are null, therefore user is not logged in');
   }
@@ -219,7 +217,7 @@ export async function bulkCategorize(transaction_ids, mappedCategory) {
       body: JSON.stringify({ transaction_ids, mappedCategory }),
     });
     if (response.ok) return response.json();
-    else console.error(`bulkCategorize failed with status ${response.status}`);
+    else Notify.create({ type: 'negative', message: `Bulk categorize failed (${response.status})` });
   }
 }
 

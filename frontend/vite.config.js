@@ -6,7 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [
     vue({ template: { transformAssetUrls } }),
-    quasar({ sassVariables: fileURLToPath(new URL('./src/styles/quasar.variables.sass', import.meta.url)) }),
+    quasar({ sassVariables: fileURLToPath(new URL('./src/styles/quasar.variables.sass', import.meta.url)), plugins: ['Notify'] }),
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
