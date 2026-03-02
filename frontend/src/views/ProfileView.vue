@@ -94,7 +94,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetchTransactions } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import SpinnerComponent from '../components/SpinnerComponent.vue'
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
@@ -137,9 +137,24 @@ export default {
     handleAddNewAccountClick() {
       this.showPlaidLink = true;
     },
-    handlePlaidSuccess(publicToken, metadata) {
-      console.log('Public token:', publicToken);
-      console.log('Metadata:', metadata);
+    async handlePlaidSuccess() {
+      this.isLoading = true;
+      try {
+        const response = await getOrAddUser();
+        this.user = response;
+        store.commit('setUser', this.user);
+      } catch (error) {
+        console.error('handlePlaidSuccess: getOrAddUser error:', error);
+      }
+      try {
+        const result = await fetchTransactions();
+        if (result?.transactions) {
+          store.commit('setTransactions', result.transactions);
+        }
+      } catch (error) {
+        console.error('handlePlaidSuccess: fetchTransactions error:', error);
+      }
+      this.isLoading = false;
       this.showPlaidLink = false;
     },
     async signInWithGoogle() {

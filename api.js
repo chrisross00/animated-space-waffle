@@ -15,9 +15,6 @@ router.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'))
 });
 
-router.get('/getnew' , async (req, res) => {
-  getNewPlaidTransactions(req, res);
-});
 
 router.post('/dedupe', async (req,res) => {
   try {
