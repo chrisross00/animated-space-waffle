@@ -11,10 +11,12 @@
   "dependencies": {
     "@quasar/extras": "^1.0.0",
     "dayjs": "^1.11.7",
+    "echarts": "^6.0.0",
     "firebase": "^12.10.0",
     "moment": "^2.29.4",
     "quasar": "^2.0.0",
     "vue": "^3.2.13",
+    "vue-echarts": "^8.0.1",
     "vue-router": "^4.1.6",
     "vuex": "^4.1.0",
     "vuex-persistedstate": "^4.1.0"
