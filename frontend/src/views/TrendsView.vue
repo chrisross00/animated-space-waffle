@@ -12,6 +12,7 @@
         unelevated
         toggle-color="primary"
       />
+
       <span class="text-body2 text-grey-7">Months:</span>
       <q-btn-toggle
         v-model="monthCount"
@@ -78,7 +79,6 @@ export default {
       });
     },
 
-    // Shared base: net (income - expenses) per month, used by cashflow + cumulative
     monthlyNet() {
       const transactions = store.state.transactions || [];
       const months = this.monthList;

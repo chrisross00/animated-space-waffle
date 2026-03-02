@@ -191,6 +191,111 @@ and 3 cover the top-down use case better.
 - [ ] **Recurring transaction detection** — flag transactions that appear every month.
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
 
+---
+
+## Plan: Cashflow & Budget Visualizations (next after trend chart)
+
+### Viz 1 — Monthly net cash flow bar chart (no new infrastructure)
+Income minus expenses per month as a positive/negative bar chart. Negative months
+red, positive months green. Immediately answers "did I come out ahead?"
+
+- Lives on the existing Trends page as a second chart / tab toggle
+- All data already in store — income categories (`type: 'income'`) minus expense
+  categories (`type: 'expense'`)
+- X-axis: months; Y-axis: net $ amount; zero line prominent
+
+### Viz 2 — Budget vs actual per category (cut — redundant with BudgetView cards)
+Horizontal bar chart for the selected month. Each category shows actual spend as a
+filled bar against the `monthly_limit` as a target line/marker. Over-budget bars
+turn red. Good single-month diagnostic.
+
+- Also fits on Trends page (or BudgetView as a chart toggle)
+- Data: `store.state.categories` for limits + existing spend aggregation logic
+
+### Viz 3 — Cumulative net cash flow / waterfall (no new infrastructure)
+Running sum of monthly net cash flow over time. Shows drift — are you accumulating
+surplus or falling behind month by month?
+
+- Line chart, x-axis = months, y-axis = cumulative net from start of visible range
+- Starts at $0 and moves up/down based on each month's net
+
+### Viz 4 — Savings rate (needs new category type)
+Savings % = savings / income. Requires adding `type: 'savings'` to the category
+schema alongside existing `income / expense / payment`.
+
+**Schema change:** `Basil-Categories` documents get a new allowed `type` value:
+`'savings'`. No migration needed — existing docs are unaffected. UI change: add
+'Savings' to the type dropdown in the Add/Edit Category dialog.
+
+**Once in place:** savings rate chart is trivial — same aggregation as net cash flow
+but isolating the savings category. Also enables a stacked income breakdown:
+income → savings + expenses + leftover.
+
+**Decision needed:** do you have transfers to savings accounts or investment
+contributions in your transactions that you'd want to tag this way?
+
+---
+
+## Plan: Spending Trend Chart ✓ DONE
+
+**Goal:** Month-over-month bar or line chart showing spend per category so the user
+can spot patterns — "Food has crept up 3 months in a row", "Entertainment spike in
+December", etc.
+
+### Data
+All the data is already client-side in `store.state.transactions`. No new backend
+endpoint needed — aggregate in a computed property.
+
+**Shape needed:**
+```js
+// series: one entry per category
+// x-axis: months (last N months, oldest → newest)
+// y-axis: total spend
+[
+  { category: 'Food & Dining', data: [320, 410, 380, 455] },
+  { category: 'Transport',     data: [80,  95,  70,  110] },
+  ...
+]
+// months axis: ['Nov 2025', 'Dec 2025', 'Jan 2026', 'Feb 2026']
+```
+
+### Tech
+Quasar ships ECharts via `@quasar/quasar-app-extension-qcalendar` — but simpler to
+use `vue-echarts` + `echarts` directly (already a common Quasar + ECharts pattern).
+
+**Packages to add (frontend):**
+```
+npm install echarts vue-echarts
+```
+
+Register globally in `main.js` or locally in the component.
+
+### UX
+- New **"Trends"** tab / route (`/trends`) — keeps BudgetView uncluttered
+- Controls: number of months to show (3 / 6 / 12, default 6), toggle to
+  include/exclude income and payment categories
+- Chart type: stacked bar by default (easy to see total + per-category breakdown);
+  optionally toggle to grouped or line
+- Only show categories that have at least one transaction in the visible range
+  (hide zeroed-out categories to reduce noise)
+
+### Key files
+| File | Change |
+|------|--------|
+| `frontend/src/views/TrendsView.vue` | New file — chart + controls |
+| `frontend/src/routes.js` | Add `/trends` route |
+| `frontend/src/App.vue` | Add "Trends" nav tab |
+| `frontend/package.json` | Add `echarts` + `vue-echarts` |
+
+### Computed logic (inside TrendsView)
+1. Build list of last N months from today backwards
+2. For each month × category, sum `amount` of non-excluded transactions
+3. Filter out categories with all-zero data in the range
+4. Feed into ECharts `series` array
+
+### No backend changes needed
+All aggregation is client-side from the already-loaded transaction store.
+
 ## Recent history (for context)
 - Fixed Plaid post-link flow: auth header on create_link_token, await addInstitution,
   handlePlaidSuccess now refreshes accounts + syncs transactions
