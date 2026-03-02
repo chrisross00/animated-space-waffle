@@ -181,14 +181,56 @@
             <q-btn color="primary" label="Apply" :disable="!bulkCategory || selectedRows.length === 0" @click="applyBulkCategory" />
             <q-btn flat label="Clear" :disable="selectedRows.length === 0" @click="selectedRows = []" />
           </div>
+          <div v-if="selectedRows.length > 0 && bulkCategory" class="text-caption text-grey-7 q-mt-xs">
+            This will move {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to <strong>{{ bulkCategory }}</strong>. No rule is created — other transactions from the same merchant are not affected.
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="row items-center q-gutter-sm q-mb-sm">
+          <q-input
+            v-model="tableSearch"
+            dense
+            outlined
+            placeholder="Search name or merchant"
+            clearable
+            style="flex: 1; min-width: 150px"
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+          <q-input
+            v-model="amountMin"
+            dense
+            outlined
+            type="number"
+            placeholder="Min $"
+            style="width: 90px"
+          />
+          <q-input
+            v-model="amountMax"
+            dense
+            outlined
+            type="number"
+            placeholder="Max $"
+            style="width: 90px"
+          />
+          <q-btn
+            flat
+            label="Clear"
+            :disable="!tableSearch && amountMin === null && amountMax === null"
+            @click="tableSearch = ''; amountMin = null; amountMax = null"
+          />
         </div>
 
         <q-table
           title="All Transactions"
-          :rows="transactions"
+          :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
           :pagination="pagination"
+          :filter="tableSearch"
           selection="multiple"
           v-model:selected="selectedRows"
           @row-click="openTableDialog"
@@ -309,9 +351,26 @@
         bulkCategory: null,
         tableDialogOpen: false,
         tableDialogTransaction: null,
+        tableSearch: '',
+        amountMin: null,
+        amountMax: null,
       };
     },
     computed: {
+      tableTransactions() {
+        const { actual } = this.selectedDate;
+        let rows = this.transactions.filter(t =>
+          dayjs(t.date).year() === actual.year() &&
+          dayjs(t.date).month() === actual.month()
+        );
+        if (this.amountMin !== null && this.amountMin !== '') {
+          rows = rows.filter(t => Math.abs(t.amount) >= Number(this.amountMin));
+        }
+        if (this.amountMax !== null && this.amountMax !== '') {
+          rows = rows.filter(t => Math.abs(t.amount) <= Number(this.amountMax));
+        }
+        return rows;
+      },
       filteredTransactions: function() {
         let selectedDate = this.selectedDate.actual;
         return function (groupedTransactions) {
