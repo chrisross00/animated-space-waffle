@@ -16,6 +16,7 @@
 
       <q-tabs align="left">
         <q-route-tab to="/" label="View Budget" />
+        <q-route-tab to="/trends" label="Trends" />
         <q-route-tab to="/merchants" label="Merchants" />
         <q-route-tab to="/api" label="API Directory" />
         <q-route-tab to="/profile" label="Profile" />
