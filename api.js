@@ -320,6 +320,24 @@ router.post('/handleDialogSubmit', async (req, res) => {
   res.send(resObj)
 })
 
+router.post('/deleteRule', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { categoryId, ruleType, ruleValue } = req.body;
+    const allowed = ['merchant_name', 'name', 'transaction_type', 'category0', 'category1'];
+    if (!allowed.includes(ruleType)) {
+      return res.status(400).json({ message: 'Invalid ruleType' });
+    }
+    const filter = { _id: new ObjectID(categoryId), userId: uid };
+    await updateData('Basil-Categories', filter, { $pull: { [`rules.${ruleType}`]: ruleValue } });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/deleteRule error:', error);
+    res.status(500).json({ message: 'Failed to delete rule' });
+  }
+});
+
 router.post('/bulkCategorize', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);

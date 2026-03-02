@@ -243,7 +243,7 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SpinnerComponent from '../components/SpinnerComponent.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule } from '@/firebase';
 
 // import e from 'express';
 
@@ -445,6 +445,7 @@
             categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
             plaid_pfc: this.groupedTransactions[category].plaid_pfc || [],
+            rules: this.groupedTransactions[category].rules || {},
             originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentCategoryDetails.originalCategoryName : this.groupedTransactions[category].originalName
           }
           isOriginalCategoryNameSet = true;
@@ -549,6 +550,7 @@
           this.groupedTransactions[category.category].originalName = category.category
           this.groupedTransactions[category.category].type = category.type
           this.groupedTransactions[category.category].plaid_pfc = category.plaid_pfc || []
+          this.groupedTransactions[category.category].rules = category.rules || {}
         });
         
         // for the transactions retrieved above, map them to the relevant groupedTransaction[category]
@@ -646,10 +648,16 @@
 
         this.isLoading = true;
         handleDialogSubmit(JSON.stringify(d))
-        .then(data => {
+        .then(async data => {
           if(d.updateType == 'editCategory'){
             this.updatedCategory = {...data}
             this.categoryClickers[d.originalCategoryName] = !this.categoryClickers[d.originalCategoryName]
+            if (e.pendingRuleRemovals?.length) {
+              for (const { ruleType, ruleValue } of e.pendingRuleRemovals) {
+                await deleteRule(e._id, ruleType, ruleValue);
+                store.commit('updateCategoryRules', { categoryId: e._id, ruleType, ruleValue });
+              }
+            }
           }
           if(d.updateType == 'transaction'){
             this.updatedTransaction = {...data}

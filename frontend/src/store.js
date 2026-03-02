@@ -73,6 +73,12 @@ const store = createStore({
             }
             console.log('store.js updateCategory done!', state.categories)
         },
+        updateCategoryRules(state, { categoryId, ruleType, ruleValue }) {
+            const cat = state.categories.find(c => c._id === categoryId);
+            if (cat && cat.rules && cat.rules[ruleType]) {
+                cat.rules[ruleType] = cat.rules[ruleType].filter(v => v !== ruleValue);
+            }
+        },
         addCategory(state, newCategory) {
             console.log('addCategory store:', newCategory)
                 const newPfc = newCategory.plaid_pfcBEResponse || [];

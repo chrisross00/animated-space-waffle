@@ -67,12 +67,60 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 ### Medium priority
 - [ ] **Transaction search/filter** — search by name/merchant, filter by date range
       or amount range.
-- [ ] **Rules management UI** — view and delete saved auto-learn rules without having
-      to re-edit a transaction.
+- [ ] **Rules management UI** — see plan below (IN PROGRESS).
 - [ ] **Spending trend chart** — month-over-month spending by category (Quasar has
       ECharts integration).
-- [ ] **Fix PlaidLinkHandler app name** — "Your App Name" is hardcoded on line 31 of
-      PlaidLinkHandler.vue.
+- [x] Fix PlaidLinkHandler app name (now "Basil Budgeting")
+
+---
+
+## Plan: Rules Management UI
+
+### Goal
+Let the user see and delete auto-learn rules from the **Edit Category dialog**,
+without having to re-edit a transaction.
+
+### What rules look like in MongoDB
+Each category doc has a `rules` object. Only `merchant_name` and `name` are created
+by auto-learn (the others are legacy). UI should show only those two.
+```json
+{ "rules": { "merchant_name": ["Uber"], "name": ["Specific Txn Name"] } }
+```
+
+### Architecture decision
+Rules display lives inside the **existing Edit Category dialog** (DialogComponent).
+The dialog already knows the category. Rules are shown as deletable chips.
+Deletion does NOT retroactively re-categorize existing transactions — only future
+syncs are affected (consistent with how rule creation works).
+
+### Data flow
+1. `BudgetView.groupTransactions()` — add `rules` to each category's entry
+2. `BudgetView.buildEditCategoryDialog()` — pass `rules` in `currentCategoryDetails`
+3. `DialogComponent` — show `merchant_name` and `name` rules as chips with × buttons;
+   clicking × emits `delete-rule` with `{ ruleType, ruleValue }`
+4. `BudgetView` handles `@delete-rule` → calls `deleteRule()` from firebase →
+   on success, mutates `dialogBody.currentCategoryDetails.rules` in place so the
+   dialog re-renders without closing, then commits `updateCategoryRules` to store
+5. `store.js` — new `updateCategoryRules` mutation: `{ categoryId, ruleType, ruleValue }`
+   does a `$pull`-equivalent on `state.categories`
+
+### Changes required
+
+| File | Change |
+|------|--------|
+| `api.js` | New `POST /api/deleteRule` — validates auth, `$pull` rule value from category |
+| `firebase.js` | New `deleteRule(categoryId, ruleType, ruleValue)` |
+| `BudgetView.vue` | Pass `rules` through `groupTransactions` + `buildEditCategoryDialog`; handle `@delete-rule` |
+| `DialogComponent.vue` | Add rules chips section in `editCategory` form; emit `delete-rule` |
+| `store.js` | New `updateCategoryRules` mutation |
+
+### Key constraint
+`DialogComponent.data()` is only evaluated once on mount, so `dialogBody` won't
+react to prop changes. The rules section must read from `item.rules` (the prop)
+directly, not from `dialogBody`, so Vue's reactivity keeps it live as the parent
+mutates `currentCategoryDetails.rules`.
+
+---
 
 ### Larger features
 - [ ] **Onboarding wizard** — connect account → seed categories → set budgets in one
