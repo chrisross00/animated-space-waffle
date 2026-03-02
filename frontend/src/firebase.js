@@ -207,6 +207,29 @@ export async function mapUnmapped() {
   }
 }
 
+export async function fetchMerchants() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/merchants', { headers });
+    if (response.ok) return response.json();
+    else Notify.create({ type: 'negative', message: `Failed to fetch merchants (${response.status})` });
+  }
+}
+
+export async function saveRule(categoryId, categoryName, ruleType, ruleValue) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/saveRule', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ categoryId, categoryName, ruleType, ruleValue }),
+    });
+    if (response.ok) return response.json();
+    else Notify.create({ type: 'negative', message: `Failed to save rule (${response.status})` });
+  }
+}
+
 export async function deleteRule(categoryId, ruleType, ruleValue) {
   const headers = await getAuthHeaders();
   if (headers) {
