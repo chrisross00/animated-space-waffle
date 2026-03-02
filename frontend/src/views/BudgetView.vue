@@ -5,65 +5,60 @@
     
   <div v-show="isLoggedIn">
     <SpinnerComponent :isLoading="isLoading" />
-      <div class="q-pa-md-page-padder p-3">
-
+      <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card">
           <q-card-section horizontal>
             <q-card-section class="q-pt-xs">
               <div class="text-overline">Actuals</div>
-            <div class="text-h5 q-mt-sm q-mb-xs">
-              {{ formatDollar(this.monthlyStats.absoluteSpend) + " spent (so far)."}}
-            </div>
-            <p>Your month to date total for all spending, across all categories.</p>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ formatDollar(this.monthlyStats.expenseSpend) }} spent this month
+              </div>
+              <p>Across all your expense categories.</p>
             </q-card-section>
           </q-card-section>
 
           <q-card-section horizontal>
             <q-card-section>
               <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ 
-                  this.monthlyStats.monthlySum > 0
-                  ? formatDollar(this.monthlyStats.monthlySum) + " over budget." 
-                  : formatDollar(this.monthlyStats.monthlySum) + " left over."  
+                {{ formatDollar(this.monthlyStats.incomeAmount) }} earned this month
+              </div>
+              <p>Across all your income categories.</p>
+            </q-card-section>
+          </q-card-section>
+
+          <q-card-section horizontal>
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{
+                  this.monthlyStats.netPosition >= 0
+                  ? formatDollar(this.monthlyStats.netPosition) + " ahead"
+                  : formatDollar(Math.abs(this.monthlyStats.netPosition)) + " over budget"
                 }}
               </div>
-              <p>Net Cash Flow (actual). This is your ending balance if this is the last day of the month.</p>
-              
+              <p>The difference between what you earned and spent.</p>
             </q-card-section>
           </q-card-section>
 
           <q-card-section horizontal v-if="this.monthlyStats.toSortSpending > 0">
             <q-card-section>
               <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ 
-                  formatDollar(this.monthlyStats.toSortSpending) + " in unsorted transactions"
-                }}
-              </div>              
+                {{ formatDollar(this.monthlyStats.toSortSpending) }} in unsorted transactions.
+              </div>
             </q-card-section>
           </q-card-section>
         </q-card>
-
+        </div>
+        <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card">
-          <q-card-section horizontal>
+          <q-card-section horizontal v-if="this.monthlyStats.budgetRemaining > 0">
             <q-card-section class="q-pt-xs">
               <div class="text-overline">Projections</div>
               <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ 
-                  this.monthlyStats.projectedSum > 0 
-                  ? formatDollar(this.monthlyStats.projectedSum) + " over budget." 
-                  : formatDollar((this.monthlyStats.projectedSum)) + " left over."  
-                }}
-                </div>
-              <p>Net Cash Flow (projected). Your end of month balance after all expenses have been paid.</p>
-            </q-card-section>
-            </q-card-section>
-            
-          <q-card-section horizontal>
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.budgetRemaining) }} expenses remaining.
+                {{ formatDollar(this.monthlyStats.budgetRemaining) }} left in your budgets
               </div>
-              <p>The total of your expenses that haven't hit their monthly limits yet.</p>
+              <p>How much more you can spend before hitting your category limits</p>
             </q-card-section>
           </q-card-section>
 
@@ -71,16 +66,19 @@
             v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0">
             <q-card-section>
               <div class="text-h5 q-mt-sm q-mb-xs">
-                ~{{ formatDollar(forecastedEndOfMonth.projectedTotal) }} projected spend
+                ~{{ formatDollar(forecastedEndOfMonth.expectedRemaining) }} still expected this month
               </div>
-              <p>
-                {{ forecastedEndOfMonth.remainingRecurringCount }}
-                recurring transaction{{ forecastedEndOfMonth.remainingRecurringCount !== 1 ? 's' : '' }}
-                still expected this month.
+              <p v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
+                {{ forecastedEndOfMonth.remainingMerchantNames[0] }} hasn't posted yet
+              </p>
+              <p v-else>
+                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants haven't posted yet
               </p>
             </q-card-section>
           </q-card-section>
         </q-card>
+        </div>
+        </div>
       </div>
 
       <!-- Button Container -->
@@ -511,78 +509,75 @@
             .map(t => t.merchant_name || t.name)
         );
         // Sum expected remaining from recurring merchants not yet seen
-        let expectedRemaining = 0, remainingRecurringCount = 0;
+        let expectedRemaining = 0;
+        const remainingMerchantNames = [];
         for (const key of recurring) {
           if (!appearedThisMonth.has(key)) {
             expectedRemaining += merchantAvg[key];
-            remainingRecurringCount++;
+            remainingMerchantNames.push(key);
           }
         }
-        // Current actual expense spend this month
-        const expenseNames = new Set(categories.filter(c => c.type === 'expense').map(c => c.category));
-        const currentSpend = allTxns
-          .filter(t => dayjs(t.date).format('YYYY-MM') === currentMonth && expenseNames.has(t.mappedCategory))
-          .reduce((s, t) => s + Math.abs(t.amount), 0);
         return {
-          currentSpend: Math.round(currentSpend),
           expectedRemaining: Math.round(expectedRemaining),
-          projectedTotal: Math.round(currentSpend + expectedRemaining),
-          remainingRecurringCount,
+          remainingRecurringCount: remainingMerchantNames.length,
+          remainingMerchantNames,
         };
       },
-      monthStats() {
+monthStats() {
         return (groupedTransactions) => {
-          let absoluteSpend = 0; // sum of everything except payment category
           let monthlySum = 0; // sum of all categories
-          let toSortSpending = 0; // sum of expenses + to sort
-          let projectedSum = 0; // sum of spending + 
+          let toSortSpending = 0; // sum of to sort category
+          let projectedSum = 0; // budget-based end-of-month projection
           let budgetRemaining = 0;
           let totalExp = 0;
+          let absoluteSpend = 0;
+          let expenseSpend = 0; // expense-type categories only, positive
+          let incomeAmount = 0; // income-type categories only, positive
           for (const category in groupedTransactions) {
             if(category !== 'Payment' ){
-              console.log('absolute spend: category = ', category);
               absoluteSpend += this.categorySum(category)
             }
-            if(this.groupedTransactions[category].type == 'expense'){
-              console.log('category.type', this.groupedTransactions[category].type)
-              totalExp += this.categorySum(category)
+            const catSum = this.categorySum(category);
+            if (!isNaN(catSum)) {
+              if (this.groupedTransactions[category].type === 'expense') {
+                expenseSpend += Math.abs(catSum);
+                totalExp += catSum;
+              }
+              if (this.groupedTransactions[category].type === 'income') {
+                incomeAmount += Math.abs(catSum);
+              }
             }
-            if (this.isBudgetRemaining(category) == true) { // what to do with budget remaining when it's huge positive (lots of income) and when 
+            if (this.isBudgetRemaining(category) == true) {
               projectedSum += (Number(this.groupedTransactions[category].monthly_limit))
               if (this.groupedTransactions[category].monthly_limit >= this.categorySum(category)){
                 if (groupedTransactions[category].type == 'expense') budgetRemaining += this.budgetRemaining(category)
               }
-              
             }
             if (this.isBudgetRemaining(category) == false && category !== 'Payment'){
               projectedSum += this.categorySum(category)
             }
-            
             if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {
-              // if (category == 'Income') {
-              //   budgetRemaining += (this.budgetRemaining(category))
-              // }
               if(groupedTransactions[category].type == 'expense' || groupedTransactions[category].type == 'income'){
                 monthlySum += this.categorySum(category)
               }
               if(category == 'To Sort' ){
                 toSortSpending += this.categorySum(category)
-              } 
-
+              }
             }
           }
           monthlySum=monthlySum.toFixed(2),
           toSortSpending=toSortSpending.toFixed(2)
-          let monthStats = {
+          return {
             monthlySum,
             toSortSpending,
             projectedSum,
             budgetRemaining,
             totalExp,
-            absoluteSpend
+            absoluteSpend,
+            expenseSpend,
+            incomeAmount,
+            netPosition: incomeAmount - expenseSpend,
           }
-
-          return monthStats
         }
       },
     },
