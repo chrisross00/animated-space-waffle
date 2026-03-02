@@ -57,7 +57,7 @@ const TOOLS = [
   {
     key: 'addtesttransactions',
     label: 'Add Test Transactions',
-    description: 'Inserts 12 realistic synthetic transactions dated today (groceries, transport, income, etc.) — no existing data needed.',
+    description: 'Inserts 14 realistic synthetic transactions dated today (groceries, transport, income, etc.) — no existing data needed.',
     fn: addTestTransactions,
   },
   {
