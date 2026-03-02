@@ -7,7 +7,7 @@
       <div v-for="tool in tools" :key="tool.key" class="tool-row">
         <q-btn
           :label="tool.label"
-          color="primary"
+          :color="tool.dangerous ? 'negative' : 'primary'"
           :loading="loading[tool.key]"
           @click="run(tool)"
           class="q-mr-md"
@@ -20,7 +20,8 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, nukeTransactions, nukeAllData, addTestTransactions } from '../firebase';
+import store from '../store';
 
 const TOOLS = [
   {
@@ -53,6 +54,35 @@ const TOOLS = [
     description: 'Removes pending transactions that have since posted.',
     fn: cleanPending,
   },
+  {
+    key: 'addtesttransactions',
+    label: 'Add Test Transactions',
+    description: 'Inserts 12 realistic synthetic transactions dated today (groceries, transport, income, etc.) — no existing data needed.',
+    fn: addTestTransactions,
+  },
+  {
+    key: 'nuketransactions',
+    label: 'Nuke Transactions',
+    description: 'Permanently deletes ALL of your transactions. Irreversible.',
+    fn: nukeTransactions,
+    dangerous: true,
+    confirm: 'This will permanently delete all of your transactions. Are you sure?',
+    postRun() { store.commit('setTransactions', []); },
+  },
+  {
+    key: 'nukealldata',
+    label: 'Nuke All Data',
+    description: 'Permanently deletes ALL transactions, categories, and linked accounts. Irreversible.',
+    fn: nukeAllData,
+    dangerous: true,
+    confirm: 'This will permanently delete all transactions, categories, and linked accounts. Are you sure?',
+    postRun() {
+      store.commit('setTransactions', []);
+      store.commit('setCategories', []);
+      const u = store.state.user;
+      if (u) store.commit('setUser', { ...u, accounts: [] });
+    },
+  },
 ];
 
 export default {
@@ -65,12 +95,17 @@ export default {
     };
   },
   methods: {
-    async run(tool) {
+    run(tool) {
+      if (tool.confirm && !window.confirm(tool.confirm)) return;
+      this.executeRun(tool);
+    },
+    async executeRun(tool) {
       this.loading[tool.key] = true;
       this.results[tool.key] = null;
       try {
         const result = await tool.fn();
         this.results[tool.key] = result ?? 'Done.';
+        if (tool.postRun) tool.postRun();
       } catch (err) {
         this.results[tool.key] = `Error: ${err.message}`;
       } finally {

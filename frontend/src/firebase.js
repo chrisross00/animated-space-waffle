@@ -267,4 +267,46 @@ export async function bulkCategorize(transaction_ids, mappedCategory) {
   }
 }
 
+export async function nukeTransactions() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/nukeTransactions', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Deleted ${data.deletedCount} transaction${data.deletedCount !== 1 ? 's' : ''}.`;
+    } else {
+      Notify.create({ type: 'negative', message: `Nuke failed (${response.status})` });
+    }
+  }
+}
+
+export async function nukeAllData() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/nukeAllData', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts.`;
+    } else {
+      Notify.create({ type: 'negative', message: `Nuke failed (${response.status})` });
+    }
+  }
+}
+
+export async function addTestTransactions() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/addTestTransactions', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Inserted ${data.inserted} test transactions dated today.`;
+    } else {
+      Notify.create({ type: 'negative', message: `Failed to add test transactions (${response.status})` });
+    }
+  }
+}
+
 // export async function updateCategories() {} later...

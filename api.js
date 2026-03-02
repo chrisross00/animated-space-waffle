@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -479,5 +479,76 @@ function createClientSideUser(user, accounts=null) {
     accounts: bankNames
   };
 }
+
+router.post('/nukeTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const result = await deleteRemovedData('Plaid-Transactions', { userId: uid });
+    res.json({ deletedCount: result.deletedCount });
+  } catch (error) {
+    console.error('/nukeTransactions error:', error);
+    res.status(500).json({ message: 'Failed to delete transactions' });
+  }
+});
+
+router.post('/nukeAllData', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const [txnResult, catResult, accResult] = await Promise.all([
+      deleteRemovedData('Plaid-Transactions', { userId: uid }),
+      deleteRemovedData('Basil-Categories', { userId: uid }),
+      deleteRemovedData('Plaid-Accounts', { userId: uid }),
+    ]);
+    res.json({
+      transactions: txnResult.deletedCount,
+      categories: catResult.deletedCount,
+      accounts: accResult.deletedCount,
+    });
+  } catch (error) {
+    console.error('/nukeAllData error:', error);
+    res.status(500).json({ message: 'Failed to delete user data' });
+  }
+});
+
+const SYNTHETIC_TRANSACTIONS = [
+  { name: 'Whole Foods Market',    merchant_name: 'Whole Foods Market',    amount:    87.43, personal_finance_category: { primary: 'FOOD_AND_DRINK' } },
+  { name: 'Starbucks',             merchant_name: 'Starbucks',             amount:     6.50, personal_finance_category: { primary: 'FOOD_AND_DRINK' } },
+  { name: 'Chipotle Mexican Grill',merchant_name: 'Chipotle Mexican Grill',amount:    12.75, personal_finance_category: { primary: 'FOOD_AND_DRINK' } },
+  { name: 'Shell',                 merchant_name: 'Shell',                 amount:    45.00, personal_finance_category: { primary: 'TRANSPORTATION' } },
+  { name: 'Uber',                  merchant_name: 'Uber',                  amount:    18.50, personal_finance_category: { primary: 'TRANSPORTATION' } },
+  { name: 'Amazon.com',            merchant_name: 'Amazon',                amount:    34.99, personal_finance_category: { primary: 'GENERAL_MERCHANDISE' } },
+  { name: 'Target',                merchant_name: 'Target',                amount:    67.23, personal_finance_category: { primary: 'GENERAL_MERCHANDISE' } },
+  { name: 'Netflix',               merchant_name: 'Netflix',               amount:    15.99, personal_finance_category: { primary: 'ENTERTAINMENT' } },
+  { name: 'AT&T',                  merchant_name: 'AT&T',                  amount:    89.00, personal_finance_category: { primary: 'RENT_AND_UTILITIES' } },
+  { name: 'CVS Pharmacy',          merchant_name: 'CVS',                   amount:    23.47, personal_finance_category: { primary: 'PERSONAL_CARE' } },
+  { name: 'Planet Fitness',        merchant_name: 'Planet Fitness',        amount:    24.99, personal_finance_category: { primary: 'PERSONAL_CARE' } },
+  { name: 'Direct Deposit',        merchant_name: null,                    amount: -2500.00, personal_finance_category: { primary: 'INCOME' } },
+];
+
+router.post('/addTestTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const today = new Date().toISOString().slice(0, 10);
+    const ts = Date.now();
+    const categories = await findUserData('Basil-Categories', uid);
+    const ruleList = await getMappingRuleList(categories);
+    const txns = SYNTHETIC_TRANSACTIONS.map((t, i) => ({
+      ...t,
+      transaction_id: `synthetic-${ts}-${i}`,
+      date: today,
+      pending: false,
+      userId: uid,
+    }));
+    const mapped = await mapTransactions(txns, ruleList);
+    await insertData('Plaid-Transactions', mapped);
+    res.json({ inserted: mapped.length });
+  } catch (error) {
+    console.error('/addTestTransactions error:', error);
+    res.status(500).json({ message: 'Failed to add test transactions' });
+  }
+});
 
 module.exports = router;

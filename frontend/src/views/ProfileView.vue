@@ -235,15 +235,23 @@ export default {
         if (user) {
           console.log("User signed in:", user);
           console.log('mounting, auth1.currentUser', auth1.currentUser)
-          
+
           // Your logic to handle the signed-in user
           const response = await getOrAddUser();
           this.user = response;
           console.log("this.user", this.user);
           console.log("store.state", store.state);
-          
+
           // Update the Vuex store
           store.commit("setUser", this.user);
+
+          // Restore session display if it was cleared (e.g. after a data nuke)
+          // Firebase confirms the user is authenticated, so session should be truthy
+          if (!this.session) {
+            const stored = store.state.session;
+            this.session = stored || { isSessionActive: true };
+            if (!stored) store.commit('setSession', this.session);
+          }
       } else {
         console.log("User signed out");
         return;

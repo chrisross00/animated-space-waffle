@@ -131,6 +131,15 @@ async function findMerchantsWithStats(userId) {
   }));
 }
 
+async function findRecentTransactions(userId, limit = 20) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Plaid-Transactions')
+    .find({ userId })
+    .sort({ date: -1 })
+    .limit(limit)
+    .toArray();
+}
+
 async function findDistinctMerchants(userId) {
   const db = (await connectToDb()).db(process.env.DB_NAME);
   const results = await db.collection('Plaid-Transactions').distinct('merchant_name', {
@@ -167,6 +176,7 @@ module.exports = {
   insertData,
   findDistinctMerchants,
   findMerchantsWithStats,
+  findRecentTransactions,
   findData,
   updateData,
   updateManyData,
