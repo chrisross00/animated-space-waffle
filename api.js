@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -319,6 +319,49 @@ router.post('/handleDialogSubmit', async (req, res) => {
   console.log("api is done handling dialog submit", resObj)
   res.send(resObj)
 })
+
+router.get('/merchants', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const merchants = await findDistinctMerchants(decodedToken.uid);
+    res.json(merchants);
+  } catch (error) {
+    console.error('/merchants error:', error);
+    res.status(500).json({ message: 'Failed to fetch merchants' });
+  }
+});
+
+router.post('/saveRule', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { categoryId, categoryName, ruleType, ruleValue } = req.body;
+    const allowed = ['merchant_name', 'name'];
+    if (!allowed.includes(ruleType)) {
+      return res.status(400).json({ message: 'Invalid ruleType' });
+    }
+    // Clear this rule value from any other category so it only lives in one place
+    await updateManyData('Basil-Categories',
+      { userId: uid, [`rules.${ruleType}`]: ruleValue },
+      { $pull: { [`rules.${ruleType}`]: ruleValue } }
+    );
+    // Add to the target category
+    await updateData('Basil-Categories',
+      { _id: new ObjectID(categoryId), userId: uid },
+      { $addToSet: { [`rules.${ruleType}`]: ruleValue } }
+    );
+    // Re-categorize all matching transactions
+    const txnFilter = ruleType === 'merchant_name'
+      ? { userId: uid, merchant_name: ruleValue }
+      : { userId: uid, name: ruleValue };
+    await updateManyData('Plaid-Transactions', txnFilter, { $set: { mappedCategory: categoryName } });
+    console.log(`saveRule: ${ruleType} "${ruleValue}" -> "${categoryName}"`);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/saveRule error:', error);
+    res.status(500).json({ message: 'Failed to save rule' });
+  }
+});
 
 router.post('/deleteRule', async (req, res) => {
   try {

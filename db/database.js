@@ -113,6 +113,15 @@ async function cleanPendingTransactions(collectionName, userId) {
   return collection.deleteMany({ transaction_id: { $in: idsToRemove } });
 }
 
+async function findDistinctMerchants(userId) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const results = await db.collection('Plaid-Transactions').distinct('merchant_name', {
+    userId,
+    merchant_name: { $exists: true, $ne: null },
+  });
+  return results.sort();
+}
+
 async function findSimilarTransactionGroupsByName(uid) {
   const db = (await connectToDb()).db(process.env.DB_NAME);
   const pipeline = [
@@ -138,6 +147,7 @@ async function findSimilarTransactionGroupsByCategory(uid) {
 module.exports = {
   connectToDb,
   insertData,
+  findDistinctMerchants,
   findData,
   updateData,
   updateManyData,

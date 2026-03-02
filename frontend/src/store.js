@@ -79,6 +79,16 @@ const store = createStore({
                 cat.rules[ruleType] = cat.rules[ruleType].filter(v => v !== ruleValue);
             }
         },
+        addCategoryRule(state, { categoryId, ruleType, ruleValue }) {
+            const cat = state.categories.find(c => c._id === categoryId);
+            if (cat) {
+                if (!cat.rules) cat.rules = {};
+                if (!cat.rules[ruleType]) cat.rules[ruleType] = [];
+                if (!cat.rules[ruleType].includes(ruleValue)) {
+                    cat.rules[ruleType].push(ruleValue);
+                }
+            }
+        },
         addCategory(state, newCategory) {
             console.log('addCategory store:', newCategory)
                 const newPfc = newCategory.plaid_pfcBEResponse || [];

@@ -243,7 +243,7 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SpinnerComponent from '../components/SpinnerComponent.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
 
 // import e from 'express';
 
@@ -437,6 +437,13 @@
           }
           // // Set up the client-side tracking for what to display at the category level
           // Important: whatever props you want to build the popup; example: `this.dialogBody.foobar = 'bootylicious' `
+          const merchantRuleMap = {};
+          this.categoryMonthlyLimits.forEach(cat => {
+            (cat.rules?.merchant_name || []).forEach(merchant => {
+              merchantRuleMap[merchant] = cat.category;
+            });
+          });
+
           let isOriginalCategoryNameSet = false;
           this.dialogBody.currentCategoryDetails = {
             _id: this.dialogBody._id = this.groupedTransactions[category]._id,
@@ -446,12 +453,18 @@
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
             plaid_pfc: this.groupedTransactions[category].plaid_pfc || [],
             rules: this.groupedTransactions[category].rules || {},
+            merchants: [],
+            merchantRuleMap,
             originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentCategoryDetails.originalCategoryName : this.groupedTransactions[category].originalName
           }
           isOriginalCategoryNameSet = true;
           if (!this.dialogBody.currentCategoryDetails.originalCategoryName){
             this.dialogBody.currentCategoryDetails.originalCategoryName = this.groupedTransactions[category].categoryName
-          } 
+          }
+          // Fetch merchants lazily so the dropdown is ready when the user needs it
+          fetchMerchants().then(list => {
+            if (list) this.dialogBody.currentCategoryDetails.merchants = list;
+          });
           return this.categoryClickers[category.categoryName];
       },
       buildEditTransactionDialog(e){ // Should this live on DialogComponent?
@@ -656,6 +669,12 @@
               for (const { ruleType, ruleValue } of e.pendingRuleRemovals) {
                 await deleteRule(e._id, ruleType, ruleValue);
                 store.commit('updateCategoryRules', { categoryId: e._id, ruleType, ruleValue });
+              }
+            }
+            if (e.pendingRuleAdditions?.length) {
+              for (const { ruleType, ruleValue } of e.pendingRuleAdditions) {
+                await saveRule(e._id, data.categoryNameBEResponse, ruleType, ruleValue);
+                store.commit('addCategoryRule', { categoryId: e._id, ruleType, ruleValue });
               }
             }
           }

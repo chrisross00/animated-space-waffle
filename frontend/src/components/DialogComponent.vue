@@ -143,7 +143,55 @@
                 </div>
             </div>
 
-            <div class="button-container">
+            <div class="q-mt-md">
+                <div class="text-caption text-grey-7 q-mb-xs">Add merchant rule</div>
+                <div class="row items-center q-gutter-sm">
+                    <q-select
+                        v-model="newRuleValue"
+                        :options="filteredMerchants"
+                        option-value="value"
+                        option-label="value"
+                        emit-value
+                        map-options
+                        label="Search merchants..."
+                        dense
+                        outlined
+                        use-input
+                        hide-selected
+                        fill-input
+                        input-debounce="0"
+                        @filter="filterMerchants"
+                        @touchmove.stop.prevent
+                        class="col"
+                    >
+                        <template #option="scope">
+                            <q-item v-bind="scope.itemProps">
+                                <q-item-section>
+                                    <q-item-label>{{ scope.opt.value }}</q-item-label>
+                                    <q-item-label v-if="scope.opt.conflict" caption class="text-orange-8">currently: {{ scope.opt.conflict }}</q-item-label>
+                                </q-item-section>
+                            </q-item>
+                        </template>
+                    </q-select>
+                    <q-btn dense flat icon="add" color="primary" :disable="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
+                </div>
+                <div v-if="conflictingCategory" class="text-caption text-orange-8 q-mt-xs">
+                    "{{ newRuleValue }}" is currently assigned to <strong>{{ conflictingCategory }}</strong>. Adding it here will move it and re-categorize all matching transactions.
+                </div>
+                <div v-if="pendingRuleAdditions.length" class="q-mt-xs">
+                    <q-chip
+                        v-for="r in pendingRuleAdditions"
+                        :key="r.ruleValue"
+                        removable
+                        color="primary"
+                        text-color="white"
+                        @remove="removePendingAddition(r.ruleValue)"
+                    >{{ r.ruleValue }}</q-chip>
+                    <div class="text-caption text-grey-6 q-mt-xs">These rules will be saved on Submit and applied to all existing and future transactions.</div>
+                </div>
+            </div>
+
+            <div class="button-container q-mt-lg">
             <div>
                 <q-btn @click="updateCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
                 <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
@@ -293,6 +341,9 @@ input .select{
             formSubmittable:false,
             initialData: null,
             pendingRuleRemovals: [],
+            pendingRuleAdditions: [],
+            newRuleValue: null,
+            filteredMerchants: [],
         };
       },
       
@@ -306,6 +357,20 @@ computed: {
     isPendingRemoval() {
         return (ruleType, ruleValue) =>
             this.pendingRuleRemovals.some(r => r.ruleType === ruleType && r.ruleValue === ruleValue);
+    },
+    isAlreadyRuled() {
+        return (ruleValue) => {
+            const existing = this.item?.rules?.merchant_name || [];
+            const pending = this.pendingRuleAdditions.map(r => r.ruleValue);
+            return existing.includes(ruleValue) || pending.includes(ruleValue);
+        };
+    },
+    conflictingCategory() {
+        if (!this.newRuleValue) return null;
+        const merchantRuleMap = this.item?.merchantRuleMap || {};
+        const currentName = this.dialogBody.originalCategoryName || this.dialogBody.categoryName;
+        const assignedTo = merchantRuleMap[this.newRuleValue];
+        return (assignedTo && assignedTo !== currentName) ? assignedTo : null;
     },
     dropDownOptions() {
         // let dropDown = this.dropDown
@@ -327,7 +392,7 @@ computed: {
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
-            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type, pendingRuleRemovals: [...this.pendingRuleRemovals]}
+            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type, pendingRuleRemovals: [...this.pendingRuleRemovals], pendingRuleAdditions: [...this.pendingRuleAdditions]}
             this.$emit('update-category', this.editedCategory)
         },
         stageRuleRemoval(ruleType, ruleValue) {
@@ -338,6 +403,32 @@ computed: {
                 this.pendingRuleRemovals.push({ ruleType, ruleValue });
             }
             this.isFormSubmittable();
+        },
+        addPendingRule() {
+            if (!this.newRuleValue || this.isAlreadyRuled(this.newRuleValue)) return;
+            this.pendingRuleAdditions.push({ ruleType: 'merchant_name', ruleValue: this.newRuleValue });
+            this.newRuleValue = null;
+            this.isFormSubmittable();
+        },
+        removePendingAddition(ruleValue) {
+            this.pendingRuleAdditions = this.pendingRuleAdditions.filter(r => r.ruleValue !== ruleValue);
+            this.isFormSubmittable();
+        },
+        filterMerchants(val, update) {
+            const merchants = this.item?.merchants || [];
+            const merchantRuleMap = this.item?.merchantRuleMap || {};
+            const currentName = this.dialogBody.originalCategoryName || this.dialogBody.categoryName;
+            update(() => {
+                const needle = val.toLowerCase();
+                const filtered = needle
+                    ? merchants.filter(m => m.toLowerCase().includes(needle))
+                    : merchants;
+                this.filteredMerchants = filtered.map(m => {
+                    const assignedTo = merchantRuleMap[m];
+                    const conflict = (assignedTo && assignedTo !== currentName) ? assignedTo : null;
+                    return { value: m, conflict };
+                });
+            });
         },
         addCategory() {
             this.addedCategory = {...this.dialogBody}
@@ -350,6 +441,8 @@ computed: {
         resetData(){
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
             this.pendingRuleRemovals = [];
+            this.pendingRuleAdditions = [];
+            this.newRuleValue = null;
             this.formSubmittable = false
         },
         isFormSubmittable(){
@@ -373,7 +466,8 @@ computed: {
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
                 || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit
                 || JSON.stringify(this.dialogBody.plaid_pfc) !== JSON.stringify(this.originalDialogBody.plaid_pfc)
-                || this.pendingRuleRemovals.length > 0){
+                || this.pendingRuleRemovals.length > 0
+                || this.pendingRuleAdditions.length > 0){
                     this.formSubmittable = true;
                 }
                 else{
