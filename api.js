@@ -195,10 +195,17 @@ router.post('/handleDialogSubmit', async (req, res) => {
       $set: {
         monthly_limit: req.body.monthly_limit,
         plaid_pfc,
-        // category: req.body.categoryName // for now, only allowing monthly_limit changes through, name changes require mapping changes
+        category: req.body.categoryName,
       }
     };
-    await updateData('Basil-Categories', filter, update)
+    await updateData('Basil-Categories', filter, update);
+    // If the name changed, rename mappedCategory on all matching transactions
+    if (req.body.categoryName !== req.body.originalCategoryName) {
+      await updateManyData('Plaid-Transactions',
+        { userId: uid, mappedCategory: req.body.originalCategoryName },
+        { $set: { mappedCategory: req.body.categoryName } }
+      );
+    }
   }
 
   // Call updateData function to update Mongo Db
