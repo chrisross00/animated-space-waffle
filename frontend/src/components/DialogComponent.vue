@@ -318,7 +318,7 @@ input .select{
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},
-            type: ['Expense', 'Income'],
+            type: ['Expense', 'Income', 'Savings'],
             plaidPfcOptions: PLAID_PFC_OPTIONS,
             dialogBody:{
                 amount: this.item?.amount ? this.item.amount : 0 ,
