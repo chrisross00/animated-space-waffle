@@ -739,7 +739,9 @@
           }
           if(d.updateType == 'transaction'){
             this.updatedTransaction = {...data}
-            this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
+            if (this.transactionClickers[e.transaction_id]) {
+              this.transactionClickers[e.transaction_id] = false
+            }
             this.tableDialogOpen = false
           }
           if(d.updateType == 'addCategory'){

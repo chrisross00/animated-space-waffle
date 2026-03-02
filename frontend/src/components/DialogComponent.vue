@@ -64,6 +64,9 @@
                         v-model="this.dialogBody.createRule"
                         :label="'Remember category for ' + (this.dialogBody.merchantName || this.dialogBody.name)"
                     />
+                    <div v-if="this.dialogBody.createRule" class="text-caption text-grey-7 q-mt-xs q-ml-sm">
+                        All existing transactions from <strong>{{ this.dialogBody.merchantName || this.dialogBody.name }}</strong> will be moved to <strong>{{ this.dialogBody.mappedCategory }}</strong>, and future ones will be assigned automatically.
+                    </div>
 
                 <div class="button-container">
                     <div>
