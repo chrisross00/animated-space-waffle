@@ -28,16 +28,25 @@
             </q-card-section>
           </q-card-section>
 
+          <q-card-section horizontal v-if="this.monthlyStats.savingsAmount > 0">
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                {{ formatDollar(this.monthlyStats.savingsAmount) }} saved this month.
+              </div>
+              <p>Moved to savings or investments.</p>
+            </q-card-section>
+          </q-card-section>
+
           <q-card-section horizontal>
             <q-card-section>
               <div class="text-h5 q-mt-sm q-mb-xs">
                 {{
                   this.monthlyStats.netPosition >= 0
-                  ? formatDollar(this.monthlyStats.netPosition) + " ahead"
-                  : formatDollar(Math.abs(this.monthlyStats.netPosition)) + " over budget"
+                  ? formatDollar(this.monthlyStats.netPosition) + " free cash flow."
+                  : formatDollar(Math.abs(this.monthlyStats.netPosition)) + " over budget."
                 }}
               </div>
-              <p>The difference between what you earned and spent.</p>
+              <p>Income minus spending and savings.</p>
             </q-card-section>
           </q-card-section>
 
@@ -112,12 +121,7 @@
                       </q-icon>
                     </q-item-label>
                     <q-item-label class="budget-container total">
-                    {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
-                                                        : (isBudgetRemaining(category) ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
-                                                                                          : formatDollar(Math.abs(budgetRemaining(category).toFixed(0))) + " over" ) 
-                                                        }}
-                                                        <!-- need to know if budgetRemaining(category) is > 0 to say "over or left" -->
-
+                      {{ categoryAmountLabel(category) }}
                     </q-item-label>
                   </div>
                   <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
@@ -533,6 +537,7 @@ monthStats() {
           let absoluteSpend = 0;
           let expenseSpend = 0; // expense-type categories only, positive
           let incomeAmount = 0; // income-type categories only, positive
+          let savingsAmount = 0; // savings-type categories only, positive
           for (const category in groupedTransactions) {
             if(category !== 'Payment' ){
               absoluteSpend += this.categorySum(category)
@@ -545,6 +550,9 @@ monthStats() {
               }
               if (this.groupedTransactions[category].type === 'income') {
                 incomeAmount += Math.abs(catSum);
+              }
+              if (this.groupedTransactions[category].type === 'savings') {
+                savingsAmount += Math.abs(catSum);
               }
             }
             if (this.isBudgetRemaining(category) == true) {
@@ -576,12 +584,38 @@ monthStats() {
             absoluteSpend,
             expenseSpend,
             incomeAmount,
-            netPosition: incomeAmount - expenseSpend,
+            savingsAmount,
+            netPosition: incomeAmount - expenseSpend - savingsAmount,
           }
         }
       },
     },
     methods: {
+      categoryAmountLabel(category) {
+        const type = this.groupedTransactions[category].type;
+        const sum = this.categorySum(category);
+        const limit = this.groupedTransactions[category].monthly_limit;
+        if (type === 'income') {
+          if (isNaN(sum)) return 'N/A';
+          const received = Math.abs(sum);
+          if (!limit || limit === 0) return this.formatDollar(received.toFixed(0)) + ' received';
+          const stillExpected = limit - received;
+          return stillExpected > 0
+            ? this.formatDollar(stillExpected.toFixed(0)) + ' expected'
+            : this.formatDollar(received.toFixed(0)) + ' received';
+        }
+        if (type === 'savings') {
+          if (isNaN(sum)) return 'N/A';
+          return this.formatDollar(Math.abs(sum).toFixed(0)) + ' saved';
+        }
+        // expense / payment / other
+        if (isNaN(this.budgetRemaining(category))) {
+          return isNaN(sum) ? 'N/A' : this.formatDollar(sum.toFixed(0)) + ' spent';
+        }
+        return this.isBudgetRemaining(category)
+          ? this.formatDollar(this.budgetRemaining(category).toFixed(0)) + ' left'
+          : this.formatDollar(Math.abs(this.budgetRemaining(category).toFixed(0))) + ' over';
+      },
       formatDollar(value, Prefix = null) {
         let val = (value/1).toFixed(2).replace('.', '.');
         let prefix = Prefix == null ? '' : Prefix;
@@ -715,7 +749,7 @@ monthStats() {
         const monthlyLimit = Number(this.groupedTransactions[category].monthly_limit)
         const categorySpend = this.categorySum(category).valueOf()
         if(!isNaN(monthlyLimit) && monthlyLimit != 0){
-          progressRatio = categorySpend / monthlyLimit
+          progressRatio = Math.abs(categorySpend) / monthlyLimit
         } else {
           progressRatio = 0
         }
