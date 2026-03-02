@@ -66,6 +66,20 @@
               <p>The total of your expenses that haven't hit their monthly limits yet.</p>
             </q-card-section>
           </q-card-section>
+
+          <q-card-section horizontal
+            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0">
+            <q-card-section>
+              <div class="text-h5 q-mt-sm q-mb-xs">
+                ~{{ formatDollar(forecastedEndOfMonth.projectedTotal) }} projected spend
+              </div>
+              <p>
+                {{ forecastedEndOfMonth.remainingRecurringCount }}
+                recurring transaction{{ forecastedEndOfMonth.remainingRecurringCount !== 1 ? 's' : '' }}
+                still expected this month.
+              </p>
+            </q-card-section>
+          </q-card-section>
         </q-card>
       </div>
 
@@ -87,7 +101,18 @@
                 <q-item-section>
 
                   <div class="budget-container header">
-                    <q-item-label>{{this.groupedTransactions[category].categoryName}}</q-item-label>
+                    <q-item-label>
+                      {{this.groupedTransactions[category].categoryName}}
+                      <q-icon
+                        v-if="recurringByCategory[this.groupedTransactions[category].categoryName]"
+                        name="autorenew"
+                        size="xs"
+                        color="grey-6"
+                        style="vertical-align: middle; margin-left: 4px;"
+                      >
+                        <q-tooltip>Contains recurring transactions</q-tooltip>
+                      </q-icon>
+                    </q-item-label>
                     <q-item-label class="budget-container total">
                     {{ isNaN(budgetRemaining(category)) ? (isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(0)) + " spent") 
                                                         : (isBudgetRemaining(category) ? formatDollar(budgetRemaining(category).toFixed(0)) + " left" 
@@ -420,6 +445,89 @@
             }
           }
           return Number.isNaN(sum) ? NaN : sum;
+        };
+      },
+      recurringMerchants() {
+        const allTxns = (store.state.transactions || []).filter(t => !t.pending);
+        const now = dayjs();
+        const lastThree = [
+          now.subtract(1, 'month').format('YYYY-MM'),
+          now.subtract(2, 'month').format('YYYY-MM'),
+          now.subtract(3, 'month').format('YYYY-MM'),
+        ];
+        const merchantMonths = {};
+        for (const txn of allTxns) {
+          const key = txn.merchant_name || txn.name;
+          if (!key) continue;
+          const m = dayjs(txn.date).format('YYYY-MM');
+          if (!merchantMonths[key]) merchantMonths[key] = new Set();
+          merchantMonths[key].add(m);
+        }
+        const result = new Set();
+        for (const [key, months] of Object.entries(merchantMonths)) {
+          if (lastThree.filter(m => months.has(m)).length >= 2) result.add(key);
+        }
+        return result;
+      },
+      recurringByCategory() {
+        const map = {};
+        const recurring = this.recurringMerchants;
+        for (const txn of store.state.transactions || []) {
+          const key = txn.merchant_name || txn.name;
+          if (txn.mappedCategory && recurring.has(key)) map[txn.mappedCategory] = true;
+        }
+        return map;
+      },
+      isCurrentMonth() {
+        return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
+      },
+      forecastedEndOfMonth() {
+        const recurring = this.recurringMerchants;
+        const categories = store.state.categories || [];
+        const allTxns = (store.state.transactions || []).filter(t => !t.pending && !t.excludeFromTotal);
+        const now = dayjs();
+        const currentMonth = now.format('YYYY-MM');
+        const lastThree = [
+          now.subtract(1, 'month').format('YYYY-MM'),
+          now.subtract(2, 'month').format('YYYY-MM'),
+          now.subtract(3, 'month').format('YYYY-MM'),
+        ];
+        // Average monthly spend per recurring merchant from last 3 months
+        const merchantAvg = {};
+        for (const key of recurring) {
+          let total = 0, count = 0;
+          for (const m of lastThree) {
+            const monthTotal = allTxns
+              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.date).format('YYYY-MM') === m)
+              .reduce((s, t) => s + Math.abs(t.amount), 0);
+            if (monthTotal > 0) { total += monthTotal; count++; }
+          }
+          merchantAvg[key] = count > 0 ? total / count : 0;
+        }
+        // Which recurring merchants have already appeared this month?
+        const appearedThisMonth = new Set(
+          allTxns
+            .filter(t => dayjs(t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
+            .map(t => t.merchant_name || t.name)
+        );
+        // Sum expected remaining from recurring merchants not yet seen
+        let expectedRemaining = 0, remainingRecurringCount = 0;
+        for (const key of recurring) {
+          if (!appearedThisMonth.has(key)) {
+            expectedRemaining += merchantAvg[key];
+            remainingRecurringCount++;
+          }
+        }
+        // Current actual expense spend this month
+        const expenseNames = new Set(categories.filter(c => c.type === 'expense').map(c => c.category));
+        const currentSpend = allTxns
+          .filter(t => dayjs(t.date).format('YYYY-MM') === currentMonth && expenseNames.has(t.mappedCategory))
+          .reduce((s, t) => s + Math.abs(t.amount), 0);
+        return {
+          currentSpend: Math.round(currentSpend),
+          expectedRemaining: Math.round(expectedRemaining),
+          projectedTotal: Math.round(currentSpend + expectedRemaining),
+          remainingRecurringCount,
         };
       },
       monthStats() {
