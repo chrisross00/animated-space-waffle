@@ -73,13 +73,13 @@
       <div class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
         <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
-        <q-select outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
+        <q-select v-if="!showAll" outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
       </div>
 
       <!-- If show all is false -->    
-      <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+      <div v-show="!showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <q-list>
-          <div v-show="!showAll" class="categories">
+          <div class="categories">
             <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
 
               <!-- Make a category List Item -->
@@ -162,70 +162,78 @@
       <!-- If show all is true -->
       <div v-show="showAll" class="q-pa-md all-transactions-table">
 
-        <!-- Bulk action bar -->
-        <div class="bulk-bar q-mb-sm">
-          <div class="row items-center q-gutter-sm">
-            <span class="text-body2" :class="{ 'text-grey-5': selectedRows.length === 0 }">
-              {{ selectedRows.length > 0 ? `${selectedRows.length} selected` : '0 selected' }}
-            </span>
+        <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
+        <div class="row items-center q-gutter-sm q-mb-sm">
+          <template v-if="selectedRows.length === 0">
+            <q-input
+              v-model="tableSearch"
+              dense
+              outlined
+              placeholder="Search name or merchant"
+              clearable
+              style="flex: 1; min-width: 150px"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+            <q-select
+              v-model="tableMonth"
+              :options="[{ label: 'All months', value: null }, ...months.map(m => ({ label: m, value: m }))]"
+              option-label="label"
+              option-value="value"
+              emit-value
+              map-options
+              dense
+              outlined
+              style="min-width: 140px"
+              @touchmove.stop.prevent
+            />
+            <q-input
+              v-model="amountMin"
+              dense
+              outlined
+              type="number"
+              placeholder="Min $"
+              style="width: 90px"
+            />
+            <q-input
+              v-model="amountMax"
+              dense
+              outlined
+              type="number"
+              placeholder="Max $"
+              style="width: 90px"
+            />
+            <q-btn
+              flat
+              label="Clear"
+              :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null"
+            />
+          </template>
+
+          <template v-else>
+            <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
             <q-select
               v-model="bulkCategory"
               :options="categoryMonthlyLimits.map(c => c.category).sort()"
               label="Move to category"
               dense
               outlined
-              class="bulk-bar__select"
-              :disable="selectedRows.length === 0"
+              style="min-width: 180px"
               @touchmove.stop.prevent
             />
-            <q-btn color="primary" label="Apply" :disable="!bulkCategory || selectedRows.length === 0" @click="applyBulkCategory" />
-            <q-btn flat label="Clear" :disable="selectedRows.length === 0" @click="selectedRows = []" />
-          </div>
-          <div v-if="selectedRows.length > 0 && bulkCategory" class="text-caption text-grey-7 q-mt-xs">
-            This will move {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to <strong>{{ bulkCategory }}</strong>. No rule is created — other transactions from the same merchant are not affected.
-          </div>
-        </div>
-
-        <!-- Filter bar -->
-        <div class="row items-center q-gutter-sm q-mb-sm">
-          <q-input
-            v-model="tableSearch"
-            dense
-            outlined
-            placeholder="Search name or merchant"
-            clearable
-            style="flex: 1; min-width: 150px"
-          >
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-          <q-input
-            v-model="amountMin"
-            dense
-            outlined
-            type="number"
-            placeholder="Min $"
-            style="width: 90px"
-          />
-          <q-input
-            v-model="amountMax"
-            dense
-            outlined
-            type="number"
-            placeholder="Max $"
-            style="width: 90px"
-          />
-          <q-btn
-            flat
-            label="Clear"
-            :disable="!tableSearch && amountMin === null && amountMax === null"
-            @click="tableSearch = ''; amountMin = null; amountMax = null"
-          />
+            <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+            <q-btn flat label="Clear selection" @click="selectedRows = []" />
+            <span v-if="bulkCategory" class="text-caption text-grey-6">
+              Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+            </span>
+          </template>
         </div>
 
         <q-table
-          title="All Transactions"
+          :title="`All Transactions (${tableTransactions.length})`"
           :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
@@ -295,10 +303,10 @@
   dayjs.extend(customParseFormat);
 
   const columns = [
-  { name: 'amount', label: 'Amount', field: 'amount', format: val => val < 0 ? `-$${Math.abs(val)}` : `$${val}`, sortable: true },
+  { name: 'amount', label: 'Amount', field: 'amount', format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
   { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
   { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
-  { name: 'date', label: 'Date', align: 'left', field: row => row.date, format: val => `${val}`, sortable: true },
+  { name: 'date', label: 'Date', align: 'left', field: row => row.date, format: val => dayjs(val).format('MMM D, YYYY'), sortable: true },
   { name: 'pending', label: 'Pending', field: 'pending' },
   ]
   export default {
@@ -352,17 +360,21 @@
         tableDialogOpen: false,
         tableDialogTransaction: null,
         tableSearch: '',
+        tableMonth: null,
         amountMin: null,
         amountMax: null,
       };
     },
     computed: {
       tableTransactions() {
-        const { actual } = this.selectedDate;
-        let rows = this.transactions.filter(t =>
-          dayjs(t.date).year() === actual.year() &&
-          dayjs(t.date).month() === actual.month()
-        );
+        let rows = this.transactions;
+        if (this.tableMonth) {
+          const m = dayjs(this.tableMonth, 'MMMM YYYY');
+          rows = rows.filter(t =>
+            dayjs(t.date).year() === m.year() &&
+            dayjs(t.date).month() === m.month()
+          );
+        }
         if (this.amountMin !== null && this.amountMin !== '') {
           rows = rows.filter(t => Math.abs(t.amount) >= Number(this.amountMin));
         }

@@ -80,16 +80,6 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  .bulk-bar {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-  }
-
-  .bulk-bar__select {
-    flex: 1 1 150px;
-    min-width: 0;
-  }
   
   .dialog-body-form {
     margin: 16px;
