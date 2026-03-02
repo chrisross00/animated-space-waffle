@@ -241,6 +241,14 @@ router.post('/handleDialogSubmit', async (req, res) => {
           { userId: uid, 'rules.merchant_name': req.body.merchantName },
           { $pull: { 'rules.merchant_name': req.body.merchantName } }
         );
+        // Also clear any stale name rule for this specific transaction — name rules are higher
+        // priority than merchant_name rules, so a leftover name rule would override this one
+        if (req.body.name) {
+          await updateManyData('Basil-Categories',
+            { userId: uid, 'rules.name': req.body.name },
+            { $pull: { 'rules.name': req.body.name } }
+          );
+        }
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });
         // Move ALL matching transactions, not just To Sort (they may already be in a wrong category)
         await updateManyData('Plaid-Transactions',
