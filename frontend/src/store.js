@@ -52,9 +52,11 @@ const store = createStore({
         updateCategory(state, updatedCategory) {
             console.log('updateCategory store:', updatedCategory)
             const newPfc = updatedCategory.plaid_pfcBEResponse || [];
+            const oldName = updatedCategory.originalCategoryName;
+            const newName = updatedCategory.categoryNameBEResponse;
             state.categories.forEach(category => {
                 if (category._id === updatedCategory._id) {
-                    category.category = updatedCategory.categoryNameBEResponse
+                    category.category = newName;
                     category.monthly_limit = updatedCategory.monthlyLimitBEResponse
                     category.showOnBudgetPage = updatedCategory.showOnBudgetPageBEResponse
                     category.plaid_pfc = newPfc
@@ -63,6 +65,12 @@ const store = createStore({
                     category.plaid_pfc = (category.plaid_pfc || []).filter(p => !newPfc.includes(p));
                 }
             });
+            // If name changed, update transactions in store to match
+            if (oldName && newName !== oldName && state.transactions) {
+                state.transactions.forEach(txn => {
+                    if (txn.mappedCategory === oldName) txn.mappedCategory = newName;
+                });
+            }
             console.log('store.js updateCategory done!', state.categories)
         },
         addCategory(state, newCategory) {

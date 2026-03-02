@@ -89,7 +89,6 @@
             label="Category Name"
             lazy-rules
             :rules="[ val => val && val.length > 0 || 'Please type something']"
-            :disable="true"
             @change="isFormSubmittable()"
             />
 
