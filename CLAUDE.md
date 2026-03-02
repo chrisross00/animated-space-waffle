@@ -76,49 +76,94 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 
 ## Plan: Rules Management UI
 
-### Goal
-Let the user see and delete auto-learn rules from the **Edit Category dialog**,
-without having to re-edit a transaction.
-
 ### What rules look like in MongoDB
 Each category doc has a `rules` object. Only `merchant_name` and `name` are created
-by auto-learn (the others are legacy). UI should show only those two.
+by auto-learn (the others are legacy). All rule UI should show only those two types.
 ```json
 { "rules": { "merchant_name": ["Uber"], "name": ["Specific Txn Name"] } }
 ```
 
-### Architecture decision
-Rules display lives inside the **existing Edit Category dialog** (DialogComponent).
-The dialog already knows the category. Rules are shown as deletable chips.
-Deletion does NOT retroactively re-categorize existing transactions — only future
-syncs are affected (consistent with how rule creation works).
+---
 
-### Data flow
-1. `BudgetView.groupTransactions()` — add `rules` to each category's entry
-2. `BudgetView.buildEditCategoryDialog()` — pass `rules` in `currentCategoryDetails`
-3. `DialogComponent` — show `merchant_name` and `name` rules as chips with × buttons;
-   clicking × emits `delete-rule` with `{ ruleType, ruleValue }`
-4. `BudgetView` handles `@delete-rule` → calls `deleteRule()` from firebase →
-   on success, mutates `dialogBody.currentCategoryDetails.rules` in place so the
-   dialog re-renders without closing, then commits `updateCategoryRules` to store
-5. `store.js` — new `updateCategoryRules` mutation: `{ categoryId, ruleType, ruleValue }`
-   does a `$pull`-equivalent on `state.categories`
+### Iteration 1 — View & delete rules from Edit Category dialog ✓ DONE
+Shipped in commit `f5f322f`.
 
-### Changes required
+Rules display inside the existing Edit Category dialog (DialogComponent).
+Chips shown for `merchant_name` and `name` rules. Clicking × stages a rule for
+removal (strikethrough); clicking × again un-stages. Deletions fire on Submit,
+Reset clears staged removals. Deletion is forward-only (existing transactions
+are not retroactively re-categorized).
 
-| File | Change |
-|------|--------|
-| `api.js` | New `POST /api/deleteRule` — validates auth, `$pull` rule value from category |
-| `firebase.js` | New `deleteRule(categoryId, ruleType, ruleValue)` |
-| `BudgetView.vue` | Pass `rules` through `groupTransactions` + `buildEditCategoryDialog`; handle `@delete-rule` |
-| `DialogComponent.vue` | Add rules chips section in `editCategory` form; emit `delete-rule` |
-| `store.js` | New `updateCategoryRules` mutation |
+**Key implementation notes for future agents:**
+- `rules` field must be passed through `BudgetView.groupTransactions()` and
+  `buildEditCategoryDialog()` into `currentCategoryDetails`
+- Rules chips read from `item.rules` (the prop) directly — NOT from `dialogBody`,
+  because `data()` only runs once on mount and won't react to prop changes
+- `pendingRuleRemovals` array lives in `DialogComponent.data()`; included in the
+  `update-category` emit payload; processed in `BudgetView.onSubmit()` after
+  `handleDialogSubmit` resolves
+- Backend: `POST /api/deleteRule` — `{ categoryId, ruleType, ruleValue }`, does
+  `$pull` on `Basil-Categories`
+- Store: `updateCategoryRules` mutation does the client-side equivalent
 
-### Key constraint
-`DialogComponent.data()` is only evaluated once on mount, so `dialogBody` won't
-react to prop changes. The rules section must read from `item.rules` (the prop)
-directly, not from `dialogBody`, so Vue's reactivity keeps it live as the parent
-mutates `currentCategoryDetails.rules`.
+---
+
+### Iteration 2 — Add rules from within Edit Category dialog (next to build)
+**Goal:** When editing a category, let the user proactively add merchant or name
+rules from the transactions already in their DB — without having to encounter and
+re-categorize each transaction one by one.
+
+**UX:** An "Add rule" button in the Edit Category dialog opens a searchable dropdown
+of all unique `merchant_name` values (and optionally `name` values) from
+`Plaid-Transactions`. Selecting one adds it to the category's rules, saves it, and
+re-categorizes all matching transactions.
+
+**Backend needed:**
+- `GET /api/merchants` — returns sorted list of unique `merchant_name` values for
+  the user (aggregate query on `Plaid-Transactions`), optionally with current rule
+  assignment so duplicates can be flagged
+- Rule-save logic already exists in `handleDialogSubmit` auto-learn path — can reuse
+  or extract into a shared helper
+
+**Frontend changes:**
+- `DialogComponent.vue` — add "Add rule" section below existing chips; a `q-select`
+  with `use-input` for search, populated from the merchants endpoint; on select,
+  emit a new `add-rule` event with `{ ruleType: 'merchant_name', ruleValue }`
+- `BudgetView.vue` — handle `@add-rule`: call save-rule API, update store, update
+  `dialogBody.currentCategoryDetails.rules` in place so chip appears immediately
+- `firebase.js` — new `fetchMerchants()` and `saveRule(categoryId, ruleType, ruleValue)`
+- `store.js` — new `addCategoryRule` mutation (inverse of `updateCategoryRules`)
+
+**Key decision:** Saving a rule here should also re-categorize all matching
+existing transactions (same behavior as auto-learn). Use the same `updateManyData`
+call as `handleDialogSubmit`.
+
+---
+
+### Iteration 3 — Merchant browser view
+**Goal:** A top-down table of every unique merchant across all synced transactions,
+showing current rule/category assignment. User can assign or reassign any merchant
+to a category in bulk from one screen.
+
+**UX:** New view (or section in ApiDir) — table with columns: Merchant, # of
+transactions, Current category (or "Mixed" / "No rule"). Category column is an
+inline `q-select`. Saving a row creates the rule and re-categorizes all matching
+transactions.
+
+**Backend needed:**
+- `GET /api/merchants` (same endpoint as Iteration 2, extended) — aggregate by
+  `merchant_name`, include count and distinct `mappedCategory` values so "Mixed"
+  can be detected
+- Same rule-save logic as above
+
+**Frontend:** New component or view; reuses category dropdown from existing patterns.
+
+---
+
+### Iteration 4 — Bulk rule creation from transaction table (future)
+In the "Show all" table view, select multiple rows → "Create rule for selected"
+action alongside existing "Move to category". Lower priority since Iterations 2
+and 3 cover the top-down use case better.
 
 ---
 
