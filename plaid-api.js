@@ -28,7 +28,7 @@ router.get("/create_link_token", async (req, res, next) => {
       const decodedToken = await validateIdToken(req);
       const tokenResponse = await client.linkTokenCreate({
         user: { client_user_id: decodedToken.uid },
-        client_name: "Your App Name",
+        client_name: "Basil Budgeting",
         language: "en",
         products: ["auth", "transactions"],
         country_codes: ["US"],
