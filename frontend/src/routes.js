@@ -2,6 +2,7 @@ import ApiDr from './views/ApiDir.vue'
 import BudgetView from './views/BudgetView.vue'
 import ProfileView from './views/ProfileView.vue'
 import MerchantBrowser from './views/MerchantBrowser.vue'
+import TrendsView from './views/TrendsView.vue'
 
 const routes = [
   {
@@ -23,6 +24,11 @@ const routes = [
     path: '/merchants',
     name: 'MerchantBrowser',
     component: MerchantBrowser
+  },
+  {
+    path: '/trends',
+    name: 'TrendsView',
+    component: TrendsView
   },
 ]
 
