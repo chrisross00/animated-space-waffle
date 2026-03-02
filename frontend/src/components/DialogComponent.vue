@@ -122,6 +122,27 @@
                 @update:model-value="isFormSubmittable()"
             />
 
+            <div v-if="hasRules" class="q-mt-md">
+                <div class="text-caption text-grey-7 q-mb-xs">Auto-learn rules</div>
+                <div v-for="ruleType in ['merchant_name', 'name']" :key="ruleType">
+                    <div v-if="item.rules && item.rules[ruleType] && item.rules[ruleType].length">
+                        <div class="text-caption q-mb-xs">{{ ruleType === 'merchant_name' ? 'Merchant' : 'Transaction name' }}</div>
+                        <q-chip
+                            v-for="ruleValue in item.rules[ruleType]"
+                            :key="ruleValue"
+                            removable
+                            :color="isPendingRemoval(ruleType, ruleValue) ? 'grey-5' : 'grey-3'"
+                            :text-color="isPendingRemoval(ruleType, ruleValue) ? 'grey-7' : 'dark'"
+                            :class="{ 'text-strike': isPendingRemoval(ruleType, ruleValue) }"
+                            @remove="stageRuleRemoval(ruleType, ruleValue)"
+                        >{{ ruleValue }}</q-chip>
+                    </div>
+                </div>
+                <div v-if="pendingRuleRemovals.length" class="text-caption text-grey-6 q-mt-xs">
+                    Strikethrough rules will be deleted on Submit. Click × again to undo.
+                </div>
+            </div>
+
             <div class="button-container">
             <div>
                 <q-btn @click="updateCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
@@ -270,11 +291,22 @@ input .select{
             },
             originalDialogBody: {},
             formSubmittable:false,
-            initialData: null
+            initialData: null,
+            pendingRuleRemovals: [],
         };
       },
       
+emits: ['update-transaction', 'update-category', 'add-category'],
 computed: {
+    hasRules() {
+        const r = this.item?.rules;
+        if (!r) return false;
+        return ['merchant_name', 'name'].some(t => r[t]?.length > 0);
+    },
+    isPendingRemoval() {
+        return (ruleType, ruleValue) =>
+            this.pendingRuleRemovals.some(r => r.ruleType === ruleType && r.ruleValue === ruleValue);
+    },
     dropDownOptions() {
         // let dropDown = this.dropDown
         const options = this.dropDown.map(item => item.category);
@@ -295,9 +327,17 @@ computed: {
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
-            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type}
-            // console.log('update-category: edited Category: ', this.editedCategory)
+            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type, pendingRuleRemovals: [...this.pendingRuleRemovals]}
             this.$emit('update-category', this.editedCategory)
+        },
+        stageRuleRemoval(ruleType, ruleValue) {
+            const idx = this.pendingRuleRemovals.findIndex(r => r.ruleType === ruleType && r.ruleValue === ruleValue);
+            if (idx >= 0) {
+                this.pendingRuleRemovals.splice(idx, 1);
+            } else {
+                this.pendingRuleRemovals.push({ ruleType, ruleValue });
+            }
+            this.isFormSubmittable();
         },
         addCategory() {
             this.addedCategory = {...this.dialogBody}
@@ -309,6 +349,7 @@ computed: {
         },
         resetData(){
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
+            this.pendingRuleRemovals = [];
             this.formSubmittable = false
         },
         isFormSubmittable(){
@@ -331,7 +372,8 @@ computed: {
             if (this.dialogType == 'editCategory'){
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
                 || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit
-                || JSON.stringify(this.dialogBody.plaid_pfc) !== JSON.stringify(this.originalDialogBody.plaid_pfc)){
+                || JSON.stringify(this.dialogBody.plaid_pfc) !== JSON.stringify(this.originalDialogBody.plaid_pfc)
+                || this.pendingRuleRemovals.length > 0){
                     this.formSubmittable = true;
                 }
                 else{

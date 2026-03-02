@@ -207,6 +207,20 @@ export async function mapUnmapped() {
   }
 }
 
+export async function deleteRule(categoryId, ruleType, ruleValue) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/deleteRule', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ categoryId, ruleType, ruleValue }),
+    });
+    if (response.ok) return response.json();
+    else Notify.create({ type: 'negative', message: `Failed to delete rule (${response.status})` });
+  }
+}
+
 export async function bulkCategorize(transaction_ids, mappedCategory) {
   const headers = await getAuthHeaders();
   if (headers) {
