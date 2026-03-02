@@ -525,6 +525,8 @@ const SYNTHETIC_TRANSACTIONS = [
   { name: 'CVS Pharmacy',          merchant_name: 'CVS',                   amount:    23.47, personal_finance_category: { primary: 'PERSONAL_CARE' } },
   { name: 'Planet Fitness',        merchant_name: 'Planet Fitness',        amount:    24.99, personal_finance_category: { primary: 'PERSONAL_CARE' } },
   { name: 'Direct Deposit',        merchant_name: null,                    amount: -2500.00, personal_finance_category: { primary: 'INCOME' } },
+  { name: 'Transfer to Savings',   merchant_name: null,                    amount:   500.00, personal_finance_category: { primary: 'TRANSFER_OUT' } },
+  { name: 'Vanguard Contribution', merchant_name: 'Vanguard',              amount:   250.00, personal_finance_category: { primary: 'TRANSFER_OUT' } },
 ];
 
 router.post('/addTestTransactions', async (req, res) => {

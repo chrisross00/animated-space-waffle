@@ -59,6 +59,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Transaction search/filter: text search + month sync + amount range in "Show all" table
 - Bulk categorization in table view (with disclosure note)
 - Charts (`/trends`): Spending (stacked bar), Cash Flow, Cumulative net, Savings rate
+- Recurring transaction detection: badge on category rows, expected amount in Projections card
 - Admin toolbox: dedupe, seed categories, clean pending, map unmapped
 
 ---
@@ -66,10 +67,10 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 ## Things to build next
 
 ### High value
-- [ ] **Recurring transaction detection** — flag transactions that appear monthly.
-      Unlocks meaningful budget forecasting (otherwise it's just linear extrapolation).
-- [ ] **Budget forecast** — project end-of-month spend. Depends on recurring detection
-      to be useful.
+- [x] **Recurring transaction detection** — merchants appearing in ≥2 of last 3 complete
+      months get an `autorenew` badge on their category row.
+- [x] **Budget forecast** — Projections card shows expected amount from recurring merchants
+      not yet seen this month, with merchant name (if one) or count (if multiple).
 
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
