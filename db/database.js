@@ -113,6 +113,24 @@ async function cleanPendingTransactions(collectionName, userId) {
   return collection.deleteMany({ transaction_id: { $in: idsToRemove } });
 }
 
+async function findMerchantsWithStats(userId) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const results = await db.collection('Plaid-Transactions').aggregate([
+    { $match: { userId, merchant_name: { $exists: true, $ne: null } } },
+    { $group: {
+        _id: '$merchant_name',
+        count: { $sum: 1 },
+        categories: { $addToSet: '$mappedCategory' }
+    }},
+    { $sort: { _id: 1 } }
+  ]).toArray();
+  return results.map(r => ({
+    merchant_name: r._id,
+    count: r.count,
+    categories: r.categories.filter(Boolean).sort(),
+  }));
+}
+
 async function findDistinctMerchants(userId) {
   const db = (await connectToDb()).db(process.env.DB_NAME);
   const results = await db.collection('Plaid-Transactions').distinct('merchant_name', {
@@ -148,6 +166,7 @@ module.exports = {
   connectToDb,
   insertData,
   findDistinctMerchants,
+  findMerchantsWithStats,
   findData,
   updateData,
   updateManyData,
