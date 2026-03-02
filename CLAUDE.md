@@ -193,46 +193,28 @@ and 3 cover the top-down use case better.
 
 ---
 
-## Plan: Cashflow & Budget Visualizations (next after trend chart)
+## Plan: Cashflow & Budget Visualizations ✓ DONE
 
-### Viz 1 — Monthly net cash flow bar chart (no new infrastructure)
-Income minus expenses per month as a positive/negative bar chart. Negative months
-red, positive months green. Immediately answers "did I come out ahead?"
+All four visualizations shipped on the `feature/spending-trend-chart` branch as
+tabs in `TrendsView.vue`. Controls: 3/6/12 month range toggle; Income/Payments
+toggles on Spending tab only.
 
-- Lives on the existing Trends page as a second chart / tab toggle
-- All data already in store — income categories (`type: 'income'`) minus expense
-  categories (`type: 'expense'`)
-- X-axis: months; Y-axis: net $ amount; zero line prominent
+### Viz 1 ✓ — Monthly net cash flow (Cash Flow tab)
+Green/red bars per month, income minus expenses, dashed zero line.
 
-### Viz 2 — Budget vs actual per category (cut — redundant with BudgetView cards)
-Horizontal bar chart for the selected month. Each category shows actual spend as a
-filled bar against the `monthly_limit` as a target line/marker. Over-budget bars
-turn red. Good single-month diagnostic.
+### Viz 2 — cut
+Budget vs actual per category — removed as redundant with BudgetView cards.
 
-- Also fits on Trends page (or BudgetView as a chart toggle)
-- Data: `store.state.categories` for limits + existing spend aggregation logic
+### Viz 3 ✓ — Cumulative net cash flow (Cumulative tab)
+Smooth line + area fill, red→green via visualMap as it crosses zero.
 
-### Viz 3 — Cumulative net cash flow / waterfall (no new infrastructure)
-Running sum of monthly net cash flow over time. Shows drift — are you accumulating
-surplus or falling behind month by month?
+### Viz 4 ✓ — Savings rate (Savings tab)
+Dual-axis: monthly saved amount (green bars, left $axis) + savings rate % of
+income (blue line, right % axis). Empty state guides user to create a Savings
+category if none exists.
 
-- Line chart, x-axis = months, y-axis = cumulative net from start of visible range
-- Starts at $0 and moves up/down based on each month's net
-
-### Viz 4 — Savings rate (needs new category type)
-Savings % = savings / income. Requires adding `type: 'savings'` to the category
-schema alongside existing `income / expense / payment`.
-
-**Schema change:** `Basil-Categories` documents get a new allowed `type` value:
-`'savings'`. No migration needed — existing docs are unaffected. UI change: add
-'Savings' to the type dropdown in the Add/Edit Category dialog.
-
-**Once in place:** savings rate chart is trivial — same aggregation as net cash flow
-but isolating the savings category. Also enables a stacked income breakdown:
-income → savings + expenses + leftover.
-
-**Decision needed:** do you have transfers to savings accounts or investment
-contributions in your transactions that you'd want to tag this way?
+**Schema:** `'savings'` added as a valid `type` in `Basil-Categories`. Added to
+the category type dropdown in DialogComponent. No migration needed.
 
 ---
 
