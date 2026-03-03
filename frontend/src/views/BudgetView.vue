@@ -241,21 +241,23 @@
           </template>
 
           <template v-else>
-            <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
-            <q-select
-              v-model="bulkCategory"
-              :options="categoryMonthlyLimits.map(c => c.category).sort()"
-              label="Move to category"
-              dense
-              outlined
-              style="min-width: 180px"
-              @touchmove.stop.prevent
-            />
-            <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-            <q-btn flat label="Clear selection" @click="selectedRows = []" />
-            <span v-if="bulkCategory" class="text-caption text-grey-6">
-              Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
-            </span>
+            <div class="gt-xs row items-center q-gutter-sm full-width">
+              <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
+              <q-select
+                v-model="bulkCategory"
+                :options="categoryMonthlyLimits.map(c => c.category).sort()"
+                label="Move to category"
+                dense
+                outlined
+                style="min-width: 180px"
+                @touchmove.stop.prevent
+              />
+              <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+              <q-btn flat label="Clear selection" @click="selectedRows = []" />
+              <span v-if="bulkCategory" class="text-caption text-grey-6">
+                Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+              </span>
+            </div>
           </template>
         </div>
 
@@ -280,6 +282,33 @@
             @update-transaction="onSubmit"
           />
         </q-dialog>
+      </div>
+
+      <!-- Mobile bulk action bar -->
+      <div
+        v-if="showAll && selectedRows.length > 0"
+        class="lt-sm fixed-bottom bg-white q-pa-sm"
+        style="box-shadow: 0 -2px 8px rgba(0,0,0,0.15); z-index: 100;"
+      >
+        <div class="row items-center q-gutter-sm q-mb-xs">
+          <span class="text-body2 text-grey-7 col-auto">{{ selectedRows.length }} selected</span>
+          <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
+        </div>
+        <div class="row items-center q-gutter-sm">
+          <q-select
+            v-model="bulkCategory"
+            :options="categoryMonthlyLimits.map(c => c.category).sort()"
+            label="Move to category"
+            dense
+            outlined
+            style="flex: 1"
+            @touchmove.stop.prevent
+          />
+          <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+        </div>
+        <div v-if="bulkCategory" class="text-caption text-grey-6 q-mt-xs">
+          Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+        </div>
       </div>
     </div>
     
@@ -330,11 +359,11 @@
   dayjs.extend(customParseFormat);
 
   const columns = [
-  { name: 'amount', label: 'Amount', field: 'amount', format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
-  { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
-  { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
-  { name: 'date', label: 'Date', align: 'left', field: row => row.date, format: val => dayjs(val).format('MMM D, YYYY'), sortable: true },
-  { name: 'pending', label: 'Pending', field: 'pending' },
+  { name: 'name',          label: 'Name',     align: 'left',   field: 'name',                 sortable: true },
+  { name: 'amount',        label: 'Amount',   align: 'right',  field: 'amount',               format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
+  { name: 'mappedCategory',label: 'Category', align: 'left',   field: 'mappedCategory',       sortable: true,  classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'date',          label: 'Date',     align: 'left',   field: row => row.date,        format: val => dayjs(val).format('MMM D, YYYY'), sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'pending',       label: 'Status',   align: 'center', field: 'pending',              format: val => val ? 'Pending' : '', classes: 'gt-xs', headerClasses: 'gt-xs' },
   ]
   export default {
     components: {
