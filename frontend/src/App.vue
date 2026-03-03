@@ -1,32 +1,38 @@
 <template>
   <q-layout view="hHh Lpr lFf">
-    <q-header elevated class="bg-primary text-white" height-hint="98">
+    <q-header :class="['basil-header', headerScrolled && 'basil-header--scrolled']">
       <q-toolbar>
-        <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
+        <q-btn
+          dense flat round
+          icon="menu"
+          class="basil-menu-btn"
+          @click="toggleLeftDrawer"
+        />
 
-        <q-toolbar-title>
-          <q-avatar>
-            <a href="/">
-              <img alt="Vue logo" src="./assets/logo.png">
-            </a>
-          </q-avatar>
-          Basil
+        <q-toolbar-title class="basil-wordmark">
+          <a href="/" class="basil-wordmark__link">Basil</a>
         </q-toolbar-title>
+
+        <!-- Current-month summary — visible when data is loaded, desktop only -->
+        <div v-if="headerStats" class="basil-header-stat gt-xs">
+          <span class="basil-header-stat__spend">${{ headerStats.expenseSpendFmt }} spent</span>
+          <span class="basil-header-stat__dot">·</span>
+          <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
+        </div>
       </q-toolbar>
 
-      <q-tabs align="left">
-        <q-route-tab to="/" label="View Budget" />
-        <q-route-tab to="/trends" label="Trends" />
-        <q-route-tab to="/merchants" label="Merchants" />
-        <q-route-tab to="/api" label="API Directory" />
-        <q-route-tab to="/profile" label="Profile" />
+      <q-tabs align="left" class="basil-tabs">
+        <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
+        <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
+        <q-route-tab to="/merchants" icon="store" label="Merchants" />
+        <q-route-tab to="/api" icon="build" label="Toolbox" />
+        <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>
     </q-header>
 
     <q-drawer
       v-model="leftDrawerOpen"
       side="left"
-      class="bg-grey-2"
       overlay
       elevated
     >
@@ -34,11 +40,11 @@
         <q-item-label header>Essential Links</q-item-label>
         <q-item clickable tag="a" target="_blank" href="/api">
           <q-item-section avatar>
-            <q-icon name="code" />
+            <q-icon name="build" />
           </q-item-section>
           <q-item-section>
             <q-item-label>Toolbox</q-item-label>
-            <q-item-label caption>/api endpoint with various</q-item-label>
+            <q-item-label caption>Admin tools</q-item-label>
           </q-item-section>
         </q-item>
         <q-item clickable tag="a" target="_blank" href="https://github.com/quasarframework/">
@@ -50,40 +56,12 @@
             <q-item-label caption>github.com/quasarframework</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item clickable tag="a" target="_blank" href="https://chat.quasar.dev">
-          <q-item-section avatar>
-            <q-icon name="chat" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Discord Chat Channel</q-item-label>
-            <q-item-label caption>chat.quasar.dev</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable tag="a" target="_blank" href="https://forum.quasar.dev">
-          <q-item-section avatar>
-            <q-icon name="forum" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Forum</q-item-label>
-            <q-item-label caption>forum.quasar.dev</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable tag="a" target="_blank" href="https://twitter.com/quasarframework">
-          <q-item-section avatar>
-            <q-icon name="rss_feed" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Twitter</q-item-label>
-            <q-item-label caption>@quasarframework</q-item-label>
-          </q-item-section>
-        </q-item>
       </q-list>
     </q-drawer>
 
     <q-page-container>
       <router-view></router-view>
     </q-page-container>
-    
   </q-layout>
 </template>
 
@@ -115,7 +93,7 @@ html, body, #app {
   background-color: var(--basil-surface-dialog);
 }
 
-/* ---- Navigation ---- */
+/* ---- Drawer ---- */
 .q-drawer {
   background-color: var(--basil-surface) !important;
   border-right: 1px solid var(--basil-border);
@@ -177,6 +155,85 @@ html, body, #app {
 .page-padder {
   padding: 0 1em;
 }
+
+/* ========================================
+   Header
+   ======================================== */
+.basil-header {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+  border-bottom: 1px solid var(--basil-border);
+  /* Override Quasar's elevated shadow — we apply our own on scroll */
+  box-shadow: none !important;
+  transition: box-shadow var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-header--scrolled {
+  box-shadow: var(--basil-shadow-md) !important;
+}
+
+/* ---- Wordmark ---- */
+.basil-wordmark {
+  font-family: var(--basil-font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.basil-wordmark__link {
+  color: var(--basil-text);
+  text-decoration: none;
+}
+
+/* ---- Menu button ---- */
+.basil-menu-btn {
+  color: var(--basil-text-secondary) !important;
+}
+
+/* ---- Summary stat pill ---- */
+.basil-header-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  padding: 5px 14px;
+  border-radius: var(--basil-radius-pill);
+  background-color: var(--basil-surface-alt);
+  border: 1px solid var(--basil-border);
+  white-space: nowrap;
+}
+
+.basil-header-stat__spend {
+  color: var(--basil-text-secondary);
+  font-weight: 500;
+}
+
+.basil-header-stat__dot {
+  color: var(--basil-border-strong);
+  font-weight: 300;
+}
+
+.basil-header-stat__earned {
+  color: var(--basil-positive);
+  font-weight: 600;
+}
+
+/* ---- Tabs ---- */
+.basil-tabs {
+  color: var(--basil-text-secondary) !important;
+}
+
+/* Active tab */
+.basil-tabs .q-tab--active {
+  color: var(--basil-green) !important;
+}
+
+/* Indicator line */
+.basil-tabs .q-tab__indicator {
+  background-color: var(--basil-green);
+  height: 2px;
+}
 </style>
 
 <script>
@@ -184,19 +241,60 @@ import { ref } from 'vue'
 
 export default {
   name: 'LayoutDefault',
-  // name: 'App',
 
-  components: {
+  data() {
+    return {
+      leftDrawerOpen: ref(false),
+      headerScrolled: false,
+    }
   },
 
-  setup () {
-    const leftDrawerOpen = ref(false);
-    return {
-      leftDrawerOpen,
-      toggleLeftDrawer () {
-        leftDrawerOpen.value = !leftDrawerOpen.value
+  computed: {
+    headerStats() {
+      const txns = this.$store?.state?.transactions;
+      const cats = this.$store?.state?.categories;
+      if (!txns?.length || !cats?.length) return null;
+
+      // Build category type lookup
+      const catTypes = {};
+      for (const c of cats) catTypes[c.category] = c.type;
+
+      // Current month as "YYYY-MM" string — avoids timezone issues
+      const now = new Date();
+      const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      let expenseSpend = 0;
+      let incomeAmount = 0;
+      for (const t of txns) {
+        if (t.pending || t.excludeFromTotal) continue;
+        if (!t.date || t.date.substring(0, 7) !== currentYM) continue;
+        const type = catTypes[t.mappedCategory];
+        if (type === 'expense') expenseSpend += Math.abs(t.amount);
+        if (type === 'income') incomeAmount += Math.abs(t.amount);
       }
-    }
-  }
+
+      return {
+        expenseSpendFmt: Math.round(expenseSpend).toLocaleString(),
+        incomeAmountFmt: Math.round(incomeAmount).toLocaleString(),
+      };
+    },
+  },
+
+  mounted() {
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+  },
+
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.onScroll);
+  },
+
+  methods: {
+    toggleLeftDrawer() {
+      this.leftDrawerOpen = !this.leftDrawerOpen;
+    },
+    onScroll() {
+      this.headerScrolled = window.scrollY > 4;
+    },
+  },
 }
 </script>
