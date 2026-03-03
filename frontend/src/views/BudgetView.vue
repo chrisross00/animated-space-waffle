@@ -97,10 +97,27 @@
       <div v-show="!showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <q-list>
           <div class="categories">
-            <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
+            <div
+              v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
+              :key="category"
+              class="budget-container"
+              :class="{ 'basil-category-reveal': barsReady }"
+              :style="barsReady ? { animationDelay: `${categoryIndex * 35}ms` } : {}"
+            >
 
               <!-- Make a category List Item -->
-              <q-item v-show="this.groupedTransactions[category].showOnBudgetPage" clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
+              <q-item
+                v-show="this.groupedTransactions[category].showOnBudgetPage"
+                clickable v-ripple
+                @click="toggleCategory(category)"
+                category="category"
+                elevated
+                :class="[
+                  { 'active': clickedCategories.includes(category) },
+                  'basil-category-row',
+                  `basil-category-row--${groupedTransactions.type || 'expense'}`
+                ]"
+              >
                 <q-item-section>
 
                   <div class="budget-container header">
@@ -121,12 +138,17 @@
                     </q-item-label>
                   </div>
                   <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
-                    <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getCategoryProgressColor(category)" size="md"/> 
+                    <q-linear-progress
+                      :value="barsReady ? getProgressRatio(category) : 0"
+                      :class="['q-mt-sm', 'basil-progress', `basil-progress--${getCategoryProgressColor(category)}`]"
+                      :color="getCategoryProgressColor(category)"
+                      size="md"
+                    />
                   </div>
 
                   <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
-                    {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }} 
-                    {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
+                    {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }}
+                    {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                   </q-item-label>
                 </q-item-section>
@@ -410,6 +432,7 @@
         },
         monthlyStats:{},
         displayedStats: { expenseSpend: 0, incomeAmount: 0, savingsAmount: 0, netPosition: 0 },
+        barsReady: false,
         selectedRows: [],
         bulkCategory: null,
         tableDialogOpen: false,
@@ -880,7 +903,9 @@ monthStats() {
         this.months = this.buildDateList(this.transactions).reverse()
         this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
         this.isLoading = false
-        
+        // Flip barsReady after the next paint so bars transition from 0 → value
+        this.$nextTick(() => setTimeout(() => { this.barsReady = true; }, 80));
+
         try {
           if (mode == 'sync' || mode == 'addCategory'){
             store.commit("setTransactions", this.transactions);
