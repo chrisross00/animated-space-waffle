@@ -107,8 +107,12 @@
   }
   
   
+    .budget-container > .q-item {
+      background-color: #f5f5f5;
+    }
+
     .active {
-      background-color: #f0f0f0;
+      background-color: #ebebeb;
     }
     .categories {
       /* display: flex; */
