@@ -1,0 +1,146 @@
+/* =====================================================
+   Onboarding Wizard — OnboardingView.css
+   ===================================================== */
+
+.basil-onboarding-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--basil-bg);
+  padding: var(--basil-space-4);
+}
+
+.basil-onboarding-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--basil-surface);
+  border-radius: var(--basil-radius-lg);
+  box-shadow: var(--basil-shadow-md);
+  padding: var(--basil-space-7);
+}
+
+/* ---- Progress dots ---- */
+.basil-onboarding-dots {
+  display: flex;
+  gap: var(--basil-space-2);
+  margin-bottom: var(--basil-space-6);
+}
+
+.basil-onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--basil-border-strong);
+  transition: background-color var(--basil-t-base);
+}
+
+.basil-onboarding-dot--active {
+  background-color: var(--basil-green);
+}
+
+/* ---- Step content ---- */
+@keyframes basil-onboarding-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.basil-onboarding-step {
+  animation: basil-onboarding-in 200ms var(--basil-ease) both;
+}
+
+.basil-onboarding-heading {
+  font-family: var(--basil-font-display);
+  font-size: 2rem;
+  line-height: 1.15;
+  color: var(--basil-text);
+  margin: 0 0 var(--basil-space-3) 0;
+}
+
+.basil-onboarding-body {
+  font-size: 1rem;
+  color: var(--basil-text-secondary);
+  margin: 0 0 var(--basil-space-5) 0;
+  line-height: 1.5;
+}
+
+.basil-onboarding-cta {
+  width: 100%;
+}
+
+.basil-onboarding-skip {
+  margin-top: var(--basil-space-4);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.basil-onboarding-skip a {
+  color: var(--basil-text-muted);
+  text-decoration: none;
+  transition: color var(--basil-t-fast);
+}
+
+.basil-onboarding-skip a:hover {
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Seeding / seeded state ---- */
+.basil-onboarding-seeding,
+.basil-onboarding-seeded {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  font-size: 0.9375rem;
+  color: var(--basil-text-secondary);
+  margin-bottom: var(--basil-space-4);
+}
+
+/* ---- Done — summary rows ---- */
+.basil-onboarding-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-3);
+  margin-bottom: var(--basil-space-5);
+  padding: var(--basil-space-4);
+  background-color: var(--basil-surface-alt);
+  border-radius: var(--basil-radius-md);
+}
+
+.basil-onboarding-summary__row {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  font-size: 0.9375rem;
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Setup card in BudgetView ---- */
+.basil-setup-card {
+  padding: var(--basil-space-5) !important;
+  margin-bottom: var(--basil-space-4);
+}
+
+.basil-setup-card__body {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-4);
+}
+
+.basil-setup-card__heading {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--basil-text);
+}
+
+.basil-setup-card__hint {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: 3px;
+}
