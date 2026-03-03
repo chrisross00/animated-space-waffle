@@ -224,7 +224,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
         mappedCategory: req.body.mappedCategory,
         date: req.body.date,
         note: req.body.note,
-        excludeFromTotal: req.body.excludeFromTotal
+        excludeFromTotal: req.body.excludeFromTotal,
+        manually_set: true, // protect this transaction from future rule sweeps
       }
     };
     await updateData('Plaid-Transactions', filter, update);
@@ -250,9 +251,9 @@ router.post('/handleDialogSubmit', async (req, res) => {
           );
         }
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });
-        // Move ALL matching transactions, not just To Sort (they may already be in a wrong category)
+        // Move matching transactions, skipping any the user has manually categorized
         await updateManyData('Plaid-Transactions',
-          { userId: uid, merchant_name: req.body.merchantName },
+          { userId: uid, merchant_name: req.body.merchantName, manually_set: { $ne: true } },
           { $set: { mappedCategory: req.body.mappedCategory } }
         );
         console.log(`Auto-learn: set merchant_name "${req.body.merchantName}" -> "${req.body.mappedCategory}"`);
@@ -263,9 +264,9 @@ router.post('/handleDialogSubmit', async (req, res) => {
           { $pull: { 'rules.name': req.body.name } }
         );
         await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.name': req.body.name } });
-        // Move ALL matching transactions, not just To Sort
+        // Move matching transactions, skipping any the user has manually categorized
         await updateManyData('Plaid-Transactions',
-          { userId: uid, name: req.body.name },
+          { userId: uid, name: req.body.name, manually_set: { $ne: true } },
           { $set: { mappedCategory: req.body.mappedCategory } }
         );
         console.log(`Auto-learn: set name "${req.body.name}" -> "${req.body.mappedCategory}"`);
@@ -361,10 +362,10 @@ router.post('/saveRule', async (req, res) => {
       { _id: new ObjectID(categoryId), userId: uid },
       { $addToSet: { [`rules.${ruleType}`]: ruleValue } }
     );
-    // Re-categorize all matching transactions
+    // Re-categorize matching transactions, skipping any the user has manually categorized
     const txnFilter = ruleType === 'merchant_name'
-      ? { userId: uid, merchant_name: ruleValue }
-      : { userId: uid, name: ruleValue };
+      ? { userId: uid, merchant_name: ruleValue, manually_set: { $ne: true } }
+      : { userId: uid, name: ruleValue, manually_set: { $ne: true } };
     await updateManyData('Plaid-Transactions', txnFilter, { $set: { mappedCategory: categoryName } });
     console.log(`saveRule: ${ruleType} "${ruleValue}" -> "${categoryName}"`);
     res.json({ ok: true });

@@ -79,6 +79,19 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
       Needs a delivery mechanism decision (in-app banner vs email).
 
+### Needs design decision
+- [ ] **Auto-learn intent clarification** — currently, checking "remember category" on a
+      transaction edit does two things: (1) creates a rule, and (2) sweeps ALL other
+      matching transactions to that category. It's unclear if these should always go
+      together. Use cases to resolve:
+      - Should "remember category" imply "move everything else now"? Or just "apply going forward"?
+      - Should a manual single-transaction edit (no "remember category") still protect
+        that transaction from future sweeps via `manually_set: true`? (Currently: yes.)
+      - Should auto-learn sweeps respect `manually_set`? (Currently: yes — they skip
+        manually-set transactions, same as Merchant Browser rules.)
+      The `manually_set` flag is implemented in `api.js`. The open question is whether
+      the UX of "remember category" should be split into two distinct actions.
+
 ### Maybe / future
 - [ ] **Iteration 3.5** — Multi-select in Merchant Browser: check multiple merchants,
       assign all to the same category in one Apply. See details below.
