@@ -19,6 +19,15 @@
           <span class="basil-header-stat__dot">·</span>
           <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
         </div>
+
+        <!-- Theme toggle -->
+        <q-btn
+          flat round dense
+          :icon="isDark ? 'light_mode' : 'dark_mode'"
+          class="basil-theme-btn q-ml-sm"
+          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        />
       </q-toolbar>
 
       <q-tabs align="left" class="basil-tabs">
@@ -191,6 +200,15 @@ html, body, #app {
   color: var(--basil-text-secondary) !important;
 }
 
+/* ---- Theme toggle button ---- */
+.basil-theme-btn {
+  color: var(--basil-text-secondary) !important;
+  transition: color var(--basil-t-fast) var(--basil-ease);
+}
+.basil-theme-btn:hover {
+  color: var(--basil-text) !important;
+}
+
 /* ---- Summary stat pill ---- */
 .basil-header-stat {
   display: flex;
@@ -217,6 +235,141 @@ html, body, #app {
 .basil-header-stat__earned {
   color: var(--basil-positive);
   font-weight: 600;
+}
+
+/* ========================================
+   Dark mode — Quasar component surface overrides
+   Quasar components use their own backgrounds that don't
+   inherit our token variables automatically.
+   ======================================== */
+[data-theme="dark"] html,
+[data-theme="dark"] body,
+[data-theme="dark"] #app {
+  background-color: var(--basil-bg) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-page {
+  background-color: var(--basil-bg) !important;
+}
+
+[data-theme="dark"] .q-card {
+  background-color: var(--basil-surface) !important;
+  border-color: var(--basil-border) !important;
+}
+
+[data-theme="dark"] .q-dialog .q-card {
+  background-color: var(--basil-surface-dialog) !important;
+}
+
+/* Table rows */
+[data-theme="dark"] .q-table {
+  background-color: var(--basil-surface);
+  color: var(--basil-text);
+}
+
+[data-theme="dark"] .q-table thead th {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text-secondary) !important;
+  border-bottom-color: var(--basil-border-strong) !important;
+}
+
+[data-theme="dark"] .q-table tbody td {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+  border-bottom-color: var(--basil-border) !important;
+}
+
+[data-theme="dark"] .q-table tbody tr:hover td {
+  background-color: var(--basil-surface-alt) !important;
+}
+
+/* List items */
+[data-theme="dark"] .q-item {
+  color: var(--basil-text);
+}
+
+[data-theme="dark"] .q-item__label {
+  color: var(--basil-text);
+}
+
+[data-theme="dark"] .q-item__label--caption {
+  color: var(--basil-text-muted);
+}
+
+/* Separator */
+[data-theme="dark"] .q-separator {
+  background-color: var(--basil-border);
+}
+
+/* Banner */
+[data-theme="dark"] .q-banner {
+  background-color: var(--basil-info-bg) !important;
+  color: var(--basil-text) !important;
+}
+
+/* Input / select fields */
+[data-theme="dark"] .q-field__native,
+[data-theme="dark"] .q-field__prefix,
+[data-theme="dark"] .q-field__suffix,
+[data-theme="dark"] .q-field__input {
+  color: var(--basil-text) !important;
+  caret-color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control {
+  background-color: var(--basil-surface-alt) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control:before {
+  border-color: var(--basil-border) !important;
+}
+
+[data-theme="dark"] .q-field__label {
+  color: var(--basil-text-secondary) !important;
+}
+
+[data-theme="dark"] .q-field__marginal {
+  color: var(--basil-text-muted) !important;
+}
+
+/* Dropdown / popup menus */
+[data-theme="dark"] .q-menu {
+  background-color: var(--basil-surface-raised) !important;
+  border: 1px solid var(--basil-border) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-menu .q-item {
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-menu .q-item:hover,
+[data-theme="dark"] .q-menu .q-item--active {
+  background-color: var(--basil-surface-alt) !important;
+}
+
+/* Chips */
+[data-theme="dark"] .q-chip {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text) !important;
+}
+
+/* Toggle label */
+[data-theme="dark"] .q-toggle__label {
+  color: var(--basil-text);
+}
+
+/* Btn-toggle */
+[data-theme="dark"] .q-btn-toggle .q-btn--standard {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text-secondary) !important;
+}
+
+/* Drawer */
+[data-theme="dark"] .q-drawer {
+  background-color: var(--basil-surface) !important;
+  border-right-color: var(--basil-border) !important;
 }
 
 /* ---- Tabs ---- */
@@ -250,6 +403,9 @@ export default {
   },
 
   computed: {
+    isDark() {
+      return this.$store.state.theme === 'dark';
+    },
     headerStats() {
       const txns = this.$store?.state?.transactions;
       const cats = this.$store?.state?.categories;
@@ -294,6 +450,9 @@ export default {
     },
     onScroll() {
       this.headerScrolled = window.scrollY > 4;
+    },
+    toggleTheme() {
+      this.$store.commit('setTheme', this.isDark ? '' : 'dark');
     },
   },
 }

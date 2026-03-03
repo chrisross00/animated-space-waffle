@@ -389,6 +389,48 @@
 }
 
 /* =====================================================
+   Dark mode — override hardcoded light backgrounds
+   ===================================================== */
+
+[data-theme="dark"] .q-dialog__content {
+  background-color: var(--basil-surface-dialog) !important;
+}
+
+[data-theme="dark"] .budget-container > .q-item,
+[data-theme="dark"] .category-row {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .category-row:hover {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .active {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .category {
+  background-color: var(--basil-surface) !important;
+  border-color: var(--basil-border) !important;
+}
+
+[data-theme="dark"] th {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text-secondary) !important;
+}
+
+[data-theme="dark"] td {
+  border-bottom-color: var(--basil-border) !important;
+}
+
+/* Mobile bulk action bar */
+[data-theme="dark"] .lt-sm.fixed-bottom {
+  background-color: var(--basil-surface) !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* =====================================================
    All Transactions table — Epic 5
    ===================================================== */
 
