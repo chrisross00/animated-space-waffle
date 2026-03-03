@@ -22,6 +22,7 @@ async function getAccountData (uid) {
   // Look at the plaid-transactions collection and get the most recent 'next_cursor'
   try {
     const currentAccounts = await findUserData('Plaid-Accounts', userId);
+    if (!currentAccounts?.length || !currentAccounts[0].Accounts) return response;
     for (const account in currentAccounts[0].Accounts) { // `currentAccounts[0].Accounts` has what we need
       if (Object.hasOwnProperty.call(currentAccounts[0].Accounts, account)) { 
         const element = currentAccounts[0].Accounts[account];
