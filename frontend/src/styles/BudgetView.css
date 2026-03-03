@@ -123,6 +123,7 @@
       margin: 0 auto; /* center the boxes horizontally */
       border-radius: 10px; /* round the corners of the container */
       box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
+      overflow: hidden; /* clip left border accents to the rounded corners */
     }
   
     .category {
@@ -327,4 +328,62 @@
   margin-top: var(--basil-space-4);
   padding-top: var(--basil-space-4);
   border-top: 1px solid var(--basil-border);
+}
+
+/* =====================================================
+   Category list enhancements — Epic 4
+   ===================================================== */
+
+/* ---- Staggered row reveal ---- */
+@keyframes basil-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.basil-category-reveal {
+  animation: basil-row-in 200ms var(--basil-ease) both;
+}
+
+/* ---- Left border accent per category type ---- */
+.basil-category-row {
+  border-left: 3px solid transparent !important;
+  transition: border-color var(--basil-t-fast) var(--basil-ease),
+              background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-category-row--expense  { border-left-color: var(--basil-expense)  !important; }
+.basil-category-row--income   { border-left-color: var(--basil-income)   !important; }
+.basil-category-row--savings  { border-left-color: var(--basil-savings)  !important; }
+.basil-category-row--payment  { border-left-color: var(--basil-payment)  !important; }
+
+/* ---- Progress bar fill animation ---- */
+/* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
+.basil-progress .q-linear-progress__model {
+  transition: transform 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition-delay: 280ms;
+}
+
+/* ---- Progress bar gradient fills ---- */
+.basil-progress--secondary .q-linear-progress__model,
+.basil-progress--positive .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-green) 0%, var(--basil-green-mid) 100%) !important;
+}
+
+.basil-progress--warning .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-warning) 0%, #e8971f 100%) !important;
+}
+
+.basil-progress--negative .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-expense) 0%, #d4453b 100%) !important;
+}
+
+/* Tint the track red when over budget */
+.basil-progress--negative {
+  background-color: var(--basil-expense-bg) !important;
 }
