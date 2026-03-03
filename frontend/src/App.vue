@@ -88,6 +88,85 @@
 </template>
 
 <style>
+/* ---- Base ---- */
+html, body, #app {
+  background-color: var(--basil-bg);
+  color: var(--basil-text);
+  font-family: var(--basil-font-ui);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Surface hierarchy ---- */
+.q-page {
+  background-color: var(--basil-bg);
+}
+
+.q-card {
+  background-color: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  box-shadow: var(--basil-shadow-sm) !important;
+  border-radius: var(--basil-radius-md) !important;
+}
+
+.q-dialog .q-card {
+  background-color: var(--basil-surface-dialog);
+}
+
+/* ---- Navigation ---- */
+.q-drawer {
+  background-color: var(--basil-surface) !important;
+  border-right: 1px solid var(--basil-border);
+}
+
+/* ---- List items ---- */
+.q-item {
+  color: var(--basil-text);
+}
+
+/* ---- Chips ---- */
+.q-chip {
+  font-family: var(--basil-font-ui);
+}
+
+/* ---- Tables ---- */
+.q-table thead th {
+  font-family: var(--basil-font-ui);
+  font-weight: 600;
+  color: var(--basil-text-secondary);
+  border-bottom: 1px solid var(--basil-border-strong);
+  background-color: var(--basil-surface-alt);
+}
+
+.q-table tbody td {
+  border-bottom: 1px solid var(--basil-border);
+  color: var(--basil-text);
+}
+
+.q-table tbody tr:hover td {
+  background-color: var(--basil-surface-alt);
+}
+
+/* ---- Inputs ---- */
+.q-field__label {
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Display typography utility ---- */
+.basil-display {
+  font-family: var(--basil-font-display);
+  font-weight: 400;
+}
+
+/* ---- Monospace numbers utility ---- */
+.basil-mono {
+  font-family: var(--basil-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Existing layout utilities ---- */
 .button-container {
   display: flex;
   justify-content: space-between;
@@ -95,14 +174,9 @@
   gap: 8px;
 }
 
-/* .page-container {
-  min-width: 500px !important;
-} */
-
 .page-padder {
   padding: 0 1em;
 }
-
 </style>
 
 <script>
