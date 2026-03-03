@@ -69,7 +69,11 @@
     </q-drawer>
 
     <q-page-container>
-      <router-view></router-view>
+      <router-view v-slot="{ Component }">
+        <Transition name="basil-page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </router-view>
     </q-page-container>
   </q-layout>
 </template>
@@ -370,6 +374,47 @@ html, body, #app {
 [data-theme="dark"] .q-drawer {
   background-color: var(--basil-surface) !important;
   border-right-color: var(--basil-border) !important;
+}
+
+/* ========================================
+   Motion — Epic 9
+   ======================================== */
+
+/* Page fade transition */
+.basil-page-enter-active,
+.basil-page-leave-active {
+  transition: opacity 180ms var(--basil-ease);
+}
+.basil-page-enter-from,
+.basil-page-leave-to {
+  opacity: 0;
+}
+
+/* Button press — subtle scale-down on :active */
+.q-btn {
+  transform-origin: center;
+  transition: transform 80ms ease;
+}
+.q-btn:active {
+  transform: scale(0.96);
+}
+
+/* Dialog slide-up + scale-in */
+@keyframes basil-dialog-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes basil-dialog-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+
+.q-dialog__inner .slide-up-enter-active {
+  animation: basil-dialog-in 240ms var(--basil-ease-spring) both !important;
+}
+.q-dialog__inner .slide-up-leave-active,
+.q-dialog__inner .slide-down-leave-active {
+  animation: basil-dialog-out 160ms ease-in both !important;
 }
 
 /* ---- Tabs ---- */

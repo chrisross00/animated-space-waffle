@@ -13,8 +13,8 @@
   </EmptyState>
 
   <div v-show="isLoggedIn">
-    <SpinnerComponent :isLoading="isLoading" />
-      <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+    <SkeletonBudget v-if="isLoading" />
+      <div v-show="!isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-actuals-card">
@@ -427,7 +427,7 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
-  import SpinnerComponent from '../components/SpinnerComponent.vue'
+  import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
@@ -449,7 +449,7 @@
   export default {
     components: {
       DialogComponent,
-      SpinnerComponent,
+      SkeletonBudget,
       EmptyState
     },
     data() {
