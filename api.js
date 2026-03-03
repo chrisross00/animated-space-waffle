@@ -553,4 +553,33 @@ router.post('/addTestTransactions', async (req, res) => {
   }
 });
 
+router.post('/deleteCategory', async (req, res) => {
+  let uid;
+  try {
+    const decodedToken = await validateIdToken(req);
+    uid = decodedToken.uid;
+  } catch {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  const { categoryId } = req.body;
+  await deleteRemovedData('Basil-Categories', { _id: new ObjectID(categoryId), userId: uid });
+  res.json({ ok: true });
+});
+
+router.post('/updateBudgetLimit', async (req, res) => {
+  let uid;
+  try {
+    const decodedToken = await validateIdToken(req);
+    uid = decodedToken.uid;
+  } catch {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  const { categoryId, monthly_limit } = req.body;
+  await updateData('Basil-Categories',
+    { _id: new ObjectID(categoryId), userId: uid },
+    { $set: { monthly_limit: Number(monthly_limit) } }
+  );
+  res.json({ ok: true });
+});
+
 module.exports = router;

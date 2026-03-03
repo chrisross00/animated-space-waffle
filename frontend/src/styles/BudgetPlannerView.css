@@ -1,0 +1,257 @@
+/* =====================================================
+   Budget Planner View — basil-planner-* namespace
+   ===================================================== */
+
+.basil-planner-wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  margin-bottom: 80px;
+}
+
+.basil-planner-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-5);
+}
+
+/* =====================================================
+   Summary bar
+   ===================================================== */
+
+.basil-planner-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--basil-space-4);
+  background-color: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-lg);
+  padding: var(--basil-space-5);
+  box-shadow: var(--basil-shadow-sm);
+}
+
+@media (max-width: 600px) {
+  .basil-planner-summary {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--basil-space-4) var(--basil-space-5);
+  }
+}
+
+.basil-planner-summary__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.basil-planner-summary__amount {
+  font-size: 1.75rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--basil-text);
+}
+
+.basil-planner-summary__amount--income   { color: var(--basil-income); }
+.basil-planner-summary__amount--expense  { color: var(--basil-expense); }
+.basil-planner-summary__amount--savings  { color: var(--basil-savings); }
+.basil-planner-summary__amount--positive { color: var(--basil-positive); }
+.basil-planner-summary__amount--negative { color: var(--basil-negative); }
+
+.basil-planner-summary__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--basil-text-muted);
+}
+
+.basil-planner-summary__sublabel {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: 1px;
+}
+
+/* =====================================================
+   Section
+   ===================================================== */
+
+.basil-planner-section {
+  background-color: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--basil-shadow-sm);
+}
+
+.basil-planner-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--basil-space-3) var(--basil-space-4);
+  background-color: var(--basil-surface-alt);
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-planner-section__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--basil-text-muted);
+}
+
+.basil-planner-section__total {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--basil-text-secondary);
+}
+
+/* =====================================================
+   Category rows
+   ===================================================== */
+
+.basil-planner-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--basil-space-3) var(--basil-space-4);
+  border-bottom: 1px solid var(--basil-border);
+  border-left: 3px solid transparent;
+  transition: background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-planner-row:last-child {
+  border-bottom: none;
+}
+
+.basil-planner-row:hover {
+  background-color: var(--basil-surface-alt);
+}
+
+.basil-planner-row--income  { border-left-color: var(--basil-income); }
+.basil-planner-row--expense { border-left-color: var(--basil-expense); }
+.basil-planner-row--savings { border-left-color: var(--basil-savings); }
+.basil-planner-row--payment { border-left-color: var(--basil-payment); }
+
+.basil-planner-row__name-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+.basil-planner-row__name {
+  font-size: 0.9375rem;
+  color: var(--basil-text);
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-planner-row:hover .basil-planner-row__name {
+  border-bottom-color: var(--basil-border-strong);
+}
+
+.basil-planner-name-input {
+  width: 180px;
+}
+
+.basil-planner-row__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  flex-shrink: 0;
+}
+
+.basil-planner-row__amount-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+}
+
+.basil-planner-delete-icon {
+  color: var(--basil-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--basil-t-fast) var(--basil-ease),
+              color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-planner-row:hover .basil-planner-delete-icon {
+  opacity: 1;
+}
+
+.basil-planner-delete-icon:hover {
+  color: var(--basil-negative) !important;
+}
+
+.basil-planner-delete-icon--loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.basil-planner-row__amount {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--basil-text);
+  cursor: pointer;
+  border-bottom: 1px dashed var(--basil-border-strong);
+  padding-bottom: 1px;
+  transition: color var(--basil-t-fast) var(--basil-ease),
+              border-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-planner-row__amount:hover {
+  color: var(--basil-green);
+  border-color: var(--basil-green);
+}
+
+.basil-planner-input {
+  width: 120px;
+}
+
+/* =====================================================
+   Section empty message
+   ===================================================== */
+
+.basil-planner-section__empty-msg {
+  padding: var(--basil-space-3) var(--basil-space-4);
+  font-size: 0.875rem;
+  color: var(--basil-text-muted);
+  font-style: italic;
+  border-bottom: 1px solid var(--basil-border);
+}
+
+/* =====================================================
+   Add category row / form
+   ===================================================== */
+
+.basil-planner-add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  padding: var(--basil-space-3) var(--basil-space-4);
+  font-size: 0.875rem;
+  color: var(--basil-text-muted);
+  cursor: pointer;
+  transition: background-color var(--basil-t-fast) var(--basil-ease),
+              color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-planner-add-row:hover {
+  background-color: var(--basil-surface-alt);
+  color: var(--basil-green);
+}
+
+.basil-planner-add-form {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  padding: var(--basil-space-3) var(--basil-space-4);
+  flex-wrap: wrap;
+}
+
+.basil-planner-add-name {
+  flex: 1;
+  min-width: 140px;
+}
+
+.basil-planner-add-limit {
+  width: 120px;
+}
