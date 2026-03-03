@@ -63,6 +63,13 @@
           </div>
         </q-td>
       </template>
+      <template v-slot:no-data>
+        <EmptyState
+          icon="store"
+          heading="No merchants yet"
+          body="Merchants will appear here once you have transactions imported."
+        />
+      </template>
     </q-table>
   </div>
 </template>
@@ -70,6 +77,7 @@
 <script>
 import store from '../store';
 import { fetchMerchantStats, saveRule } from '@/firebase';
+import EmptyState from '../components/EmptyState.vue';
 
 const columns = [
   { name: 'merchant_name', label: 'Merchant', field: 'merchant_name', sortable: true, align: 'left' },
@@ -80,6 +88,7 @@ const columns = [
 
 export default {
   name: 'MerchantBrowser',
+  components: { EmptyState },
 
   data() {
     return {

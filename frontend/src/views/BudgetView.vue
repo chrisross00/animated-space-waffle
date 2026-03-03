@@ -2,7 +2,16 @@
 
 <template>
   <div class="table-wrapper">
-    
+
+  <EmptyState
+    v-if="!isLoggedIn"
+    icon="account_circle"
+    heading="Sign in to see your budget"
+    body="Connect your bank accounts to start tracking spending and income."
+  >
+    <q-btn unelevated color="primary" label="Go to Profile" to="/profile" class="q-mt-sm" />
+  </EmptyState>
+
   <div v-show="isLoggedIn">
     <SpinnerComponent :isLoading="isLoading" />
       <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
@@ -332,11 +341,6 @@
       </div>
     </div>
     
-    <div v-show="!isLoggedIn">
-      <!-- link to /profile -->
-      
-      You need to login <a href="/profile">here</a>
-    </div>
 
     <q-page-sticky class="floating-button" position="bottom-right" :offset="[25,25]">
       <q-fab
@@ -368,6 +372,7 @@
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
   import SpinnerComponent from '../components/SpinnerComponent.vue'
+  import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
 
@@ -388,7 +393,8 @@
   export default {
     components: {
       DialogComponent,
-      SpinnerComponent
+      SpinnerComponent,
+      EmptyState
     },
     data() {
       const currentDate = dayjs();
