@@ -295,12 +295,68 @@
           :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
-          :pagination="pagination"
           :filter="tableSearch"
+          :rows-per-page-options="[0]"
           selection="multiple"
           v-model:selected="selectedRows"
-          @row-click="openTableDialog"
-        />
+          virtual-scroll
+          :virtual-scroll-item-size="52"
+          style="max-height: calc(100vh - 220px)"
+          class="basil-txn-table"
+        >
+          <template v-slot:body="props">
+            <q-tr
+              :props="props"
+              :class="['basil-txn-row', { 'basil-txn-row--excluded': props.row.excludeFromTotal }]"
+              @click="openTableDialog($event, props.row)"
+            >
+              <q-td auto-width>
+                <q-checkbox dense v-model="props.selected" @click.stop />
+              </q-td>
+
+              <!-- Name: initials avatar + label -->
+              <q-td key="name" :props="props">
+                <div class="basil-txn-cell">
+                  <div class="basil-txn-avatar" :style="{ background: merchantColor(props.row) }">
+                    {{ merchantInitials(props.row) }}
+                  </div>
+                  <div class="basil-txn-label">
+                    <div class="basil-txn-label__primary">{{ props.row.merchant_name || props.row.name }}</div>
+                    <div
+                      v-if="props.row.merchant_name && props.row.merchant_name !== props.row.name"
+                      class="basil-txn-label__secondary"
+                    >{{ props.row.name }}</div>
+                  </div>
+                </div>
+              </q-td>
+
+              <!-- Amount: monospace, colored -->
+              <q-td key="amount" :props="props" class="text-right">
+                <span
+                  class="basil-txn-amount"
+                  :class="props.row.amount >= 0 ? 'basil-txn-amount--credit' : 'basil-txn-amount--debit'"
+                >
+                  {{ props.row.amount < 0 ? `-$${Math.abs(props.row.amount).toFixed(2)}` : `$${Number(props.row.amount).toFixed(2)}` }}
+                </span>
+              </q-td>
+
+              <!-- Category (desktop only) -->
+              <q-td key="mappedCategory" :props="props" class="gt-xs">
+                {{ props.row.mappedCategory }}
+              </q-td>
+
+              <!-- Date (desktop only) -->
+              <q-td key="date" :props="props" class="gt-xs">
+                {{ formatDate(props.row.date) }}
+              </q-td>
+
+              <!-- Status (desktop only) -->
+              <q-td key="pending" :props="props" class="gt-xs text-center">
+                <span v-if="props.row.pending" class="basil-txn-pending">Pending</span>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
 
         <q-dialog v-model="tableDialogOpen" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
           <DialogComponent
@@ -384,7 +440,7 @@
   dayjs.extend(customParseFormat);
 
   const columns = [
-  { name: 'name',          label: 'Name',     align: 'left',   field: 'name',                 sortable: true },
+  { name: 'name',          label: 'Name',     align: 'left',   field: row => row.merchant_name || row.name, sortable: true },
   { name: 'amount',        label: 'Amount',   align: 'right',  field: 'amount',               format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
   { name: 'mappedCategory',label: 'Category', align: 'left',   field: 'mappedCategory',       sortable: true,  classes: 'gt-xs', headerClasses: 'gt-xs' },
   { name: 'date',          label: 'Date',     align: 'left',   field: row => row.date,        format: val => dayjs(val).format('MMM D, YYYY'), sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
@@ -996,6 +1052,29 @@ monthStats() {
           this.isLoading = false;
         })
       }, 
+      formatDate(date) {
+        return dayjs(date).format('MMM D, YYYY');
+      },
+      merchantInitials(row) {
+        const key = (row.merchant_name || row.name || '?').trim();
+        const words = key.split(/\s+/);
+        if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+        return key.substring(0, 2).toUpperCase();
+      },
+      merchantColor(row) {
+        const key = row.merchant_name || row.name || '?';
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+          hash = (hash << 5) - hash + key.charCodeAt(i);
+          hash |= 0;
+        }
+        const palette = [
+          '#b07d4a', '#4a8b6c', '#5a7fb5', '#8b5a4a',
+          '#6b8b4a', '#7a5ab5', '#b54a6a', '#4a8b8b',
+          '#b58b4a', '#6a7ab5',
+        ];
+        return palette[Math.abs(hash) % palette.length];
+      },
       openTableDialog(evt, row) {
         this.dialogBody.currentTransactionDetails = {
           originalCategoryName: row.mappedCategory || ''
