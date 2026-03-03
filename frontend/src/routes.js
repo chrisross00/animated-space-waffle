@@ -4,8 +4,14 @@ import BudgetPlannerView from './views/BudgetPlannerView.vue'
 import ProfileView from './views/ProfileView.vue'
 import MerchantBrowser from './views/MerchantBrowser.vue'
 import TrendsView from './views/TrendsView.vue'
+import OnboardingView from './views/OnboardingView.vue'
 
 const routes = [
+  {
+    path: '/onboarding',
+    name: 'OnboardingView',
+    component: OnboardingView
+  },
   {
     path: '/api/',
     name: 'ApiDr',
