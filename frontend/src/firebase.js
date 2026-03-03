@@ -267,6 +267,32 @@ export async function bulkCategorize(transaction_ids, mappedCategory) {
   }
 }
 
+export async function deleteCategory(categoryId) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/deleteCategory', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ categoryId }),
+  });
+  if (!response.ok) Notify.create({ type: 'negative', message: `Failed to delete category (${response.status})` });
+  return response.ok;
+}
+
+export async function updateBudgetLimit(categoryId, monthly_limit) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/updateBudgetLimit', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ categoryId, monthly_limit }),
+  });
+  if (!response.ok) Notify.create({ type: 'negative', message: `Failed to save limit (${response.status})` });
+  return response.ok;
+}
+
 export async function nukeTransactions() {
   const headers = await getAuthHeaders();
   if (headers) {

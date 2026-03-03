@@ -301,6 +301,10 @@ export default {
         }
         this.session = await store.state.session
         this.isLoading = false;
+        if (!this.user?.accounts?.length) {
+          this.$router.push('/onboarding');
+          return;
+        }
         store.commit("setLastPlaidFetch", null) // set last plaid fetch to 0 since new login
       } catch (error) {
         console.log(error)

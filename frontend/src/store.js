@@ -106,6 +106,13 @@ const store = createStore({
             document.documentElement.classList.add('basil-theme-transitioning');
             setTimeout(() => document.documentElement.classList.remove('basil-theme-transitioning'), 350);
         },
+        updateCategoryLimit(state, { categoryId, monthly_limit }) {
+            const cat = state.categories.find(c => c._id === categoryId);
+            if (cat) cat.monthly_limit = monthly_limit;
+        },
+        removeCategory(state, categoryId) {
+            state.categories = state.categories.filter(c => c._id !== categoryId);
+        },
         addCategory(state, newCategory) {
             console.log('addCategory store:', newCategory)
                 const newPfc = newCategory.plaid_pfcBEResponse || [];

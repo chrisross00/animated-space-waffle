@@ -1,4 +1,5 @@
 <style src="../styles/BudgetView.css"></style>
+<style src="../styles/OnboardingView.css"></style>
 
 <template>
   <div class="table-wrapper">
@@ -15,6 +16,24 @@
   <div v-show="isLoggedIn">
     <SkeletonBudget v-if="isLoading" />
       <div v-show="!isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+
+        <!-- Set up Basil card — shown when logged in but no categories yet -->
+        <div v-if="isLoggedIn && !categoryMonthlyLimits.length" class="q-mb-md">
+          <q-card class="my-card basil-setup-card">
+            <div class="basil-card-head">
+              <span class="basil-card-label">Get started</span>
+            </div>
+            <div class="basil-setup-card__body">
+              <q-icon name="auto_awesome" color="primary" size="2rem" />
+              <div>
+                <div class="basil-setup-card__heading">Set up Basil</div>
+                <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
+              </div>
+            </div>
+            <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
+          </q-card>
+        </div>
+
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-actuals-card">
