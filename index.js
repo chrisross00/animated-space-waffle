@@ -15,13 +15,15 @@ const app = express()
 const port = process.env.PORT
 
 const admin = require('firebase-admin');
+// FIREBASE_SERVICE_ACCOUNT_JSON must be set in your environment.
+// Generate it from: Firebase Console → Project Settings → Service Accounts → Generate new private key
+// Store the entire JSON as a single-line string in the env var.
+if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  console.error('FATAL: FIREBASE_SERVICE_ACCOUNT_JSON env var is not set');
+  process.exit(1);
+}
 admin.initializeApp({
-  apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
-  authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VUE_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VUE_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VUE_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VUE_APP_FIREBASE_APP_ID,
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)),
 });
 
 app.use(helmet({

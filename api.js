@@ -23,6 +23,10 @@ function requireAdmin(uid, res) {
   return true;
 }
 
+function isStr(val, max = 500) {
+  return typeof val === 'string' && val.trim().length > 0 && val.length <= max;
+}
+
 router.use(bodyParser.json());
 
 router.get('/', (req, res) => {
@@ -180,7 +184,9 @@ router.post('/handleDialogSubmit', async (req, res) => {
 
   const updateType = req.body.updateType;
   let d = {}
-  if (updateType ==='editCategory') {
+  if (updateType === 'editCategory') {
+    if (!ObjectID.isValid(req.body._id)) return res.status(400).json({ message: 'Invalid category id' });
+    if (!isStr(req.body.categoryName, 200)) return res.status(400).json({ message: 'Invalid categoryName' });
     const plaid_pfc = req.body.plaid_pfc || [];
     d = {
       _id: req.body._id,
@@ -217,8 +223,13 @@ router.post('/handleDialogSubmit', async (req, res) => {
   }
 
   // Call updateData function to update Mongo Db
-  if (updateType ==='transaction'){
-    d = { 
+  if (updateType === 'transaction') {
+    if (!isStr(req.body.transaction_id)) return res.status(400).json({ message: 'Invalid transaction_id' });
+    if (!isStr(req.body.mappedCategory, 200)) return res.status(400).json({ message: 'Invalid mappedCategory' });
+    if (req.body.note && typeof req.body.note === 'string' && req.body.note.length > 1000) {
+      return res.status(400).json({ message: 'Note exceeds maximum length' });
+    }
+    d = {
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
       transaction_id: req.body.transaction_id,
@@ -357,9 +368,10 @@ router.post('/saveRule', async (req, res) => {
     const uid = decodedToken.uid;
     const { categoryId, categoryName, ruleType, ruleValue } = req.body;
     const allowed = ['merchant_name', 'name'];
-    if (!allowed.includes(ruleType)) {
-      return res.status(400).json({ message: 'Invalid ruleType' });
-    }
+    if (!allowed.includes(ruleType)) return res.status(400).json({ message: 'Invalid ruleType' });
+    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+    if (!isStr(categoryName, 200)) return res.status(400).json({ message: 'Invalid categoryName' });
+    if (!isStr(ruleValue, 500)) return res.status(400).json({ message: 'Invalid ruleValue' });
     // Clear this rule value from any other category so it only lives in one place
     await updateManyData('Basil-Categories',
       { userId: uid, [`rules.${ruleType}`]: ruleValue },
