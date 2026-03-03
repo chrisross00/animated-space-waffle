@@ -8,83 +8,79 @@
       <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card">
-          <q-card-section horizontal>
-            <q-card-section class="q-pt-xs">
-              <div class="text-overline">Actuals</div>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.expenseSpend) }} spent this month
-              </div>
-              <p>Across all your expense categories.</p>
-            </q-card-section>
-          </q-card-section>
+        <q-card class="my-card basil-actuals-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Actuals</span>
+            <span class="basil-card-period">{{ selectedDate.display }}</span>
+          </div>
 
-          <q-card-section horizontal>
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.incomeAmount) }} earned this month
+          <!-- Spent vs Earned -->
+          <div class="basil-primary-stats">
+            <div class="basil-primary-stat">
+              <div class="basil-primary-stat__amount basil-display">
+                ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
               </div>
-              <p>Across all your income categories.</p>
-            </q-card-section>
-          </q-card-section>
+              <div class="basil-primary-stat__label">spent</div>
+            </div>
+            <div class="basil-primary-stats__divider"></div>
+            <div class="basil-primary-stat basil-primary-stat--earned">
+              <div class="basil-primary-stat__amount basil-display">
+                ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+              </div>
+              <div class="basil-primary-stat__label">earned</div>
+            </div>
+          </div>
 
-          <q-card-section horizontal v-if="this.monthlyStats.savingsAmount > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.savingsAmount) }} saved this month.
-              </div>
-              <p>Moved to savings or investments.</p>
-            </q-card-section>
-          </q-card-section>
+          <div class="basil-card-rule"></div>
 
-          <q-card-section horizontal>
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{
-                  this.monthlyStats.netPosition >= 0
-                  ? formatDollar(this.monthlyStats.netPosition) + " free cash flow."
-                  : formatDollar(Math.abs(this.monthlyStats.netPosition)) + " over budget."
-                }}
-              </div>
-              <p>Income minus spending and savings.</p>
-            </q-card-section>
-          </q-card-section>
+          <!-- Net position — hero stat -->
+          <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
+            <div class="basil-net__amount basil-display">
+              {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+            </div>
+            <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
+          </div>
 
-          <q-card-section horizontal v-if="this.monthlyStats.toSortSpending > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.toSortSpending) }} in unsorted transactions.
-              </div>
-            </q-card-section>
-          </q-card-section>
+          <!-- Secondary stats -->
+          <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
+            <q-icon name="savings" size="xs" color="info" />
+            ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
+          </div>
+          <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
+            <q-icon name="warning_amber" size="xs" />
+            ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
+          </div>
         </q-card>
         </div>
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card">
-          <q-card-section horizontal v-if="this.monthlyStats.budgetRemaining > 0">
-            <q-card-section class="q-pt-xs">
-              <div class="text-overline">Projections</div>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.budgetRemaining) }} left in your budgets
-              </div>
-              <p>How much more you can spend before hitting your category limits</p>
-            </q-card-section>
-          </q-card-section>
+        <q-card class="my-card basil-projections-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Projections</span>
+          </div>
 
-          <q-card-section horizontal
-            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                ~{{ formatDollar(forecastedEndOfMonth.expectedRemaining) }} still expected this month
-              </div>
-              <p v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
+          <div v-if="monthlyStats.budgetRemaining > 0" class="basil-primary-stat">
+            <div class="basil-primary-stat__amount basil-display">
+              ${{ Math.round(monthlyStats.budgetRemaining).toLocaleString() }}
+            </div>
+            <div class="basil-primary-stat__label">left in budgets</div>
+          </div>
+
+          <div
+            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0"
+            :class="['basil-forecast', monthlyStats.budgetRemaining > 0 ? 'basil-forecast--mt' : '']"
+          >
+            <div class="basil-forecast__amount basil-display">
+              ~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}
+            </div>
+            <div class="basil-forecast__label">
+              <span v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
                 {{ forecastedEndOfMonth.remainingMerchantNames[0] }} hasn't posted yet
-              </p>
-              <p v-else>
-                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants haven't posted yet
-              </p>
-            </q-card-section>
-          </q-card-section>
+              </span>
+              <span v-else>
+                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants still expected
+              </span>
+            </div>
+          </div>
         </q-card>
         </div>
         </div>
@@ -413,6 +409,7 @@
           rowsPerPage: 30 // current rows per page being displayed
         },
         monthlyStats:{},
+        displayedStats: { expenseSpend: 0, incomeAmount: 0, savingsAmount: 0, netPosition: 0 },
         selectedRows: [],
         bulkCategory: null,
         tableDialogOpen: false,
@@ -424,6 +421,9 @@
       };
     },
     computed: {
+      netPositive() {
+        return (this.monthlyStats.netPosition || 0) >= 0;
+      },
       tableTransactions() {
         let rows = this.transactions;
         if (this.tableMonth) {
@@ -622,6 +622,35 @@ monthStats() {
       },
     },
     methods: {
+      animateStats(from, to) {
+        if (!to || !Object.keys(to).length) return;
+        const fields = ['expenseSpend', 'incomeAmount', 'savingsAmount', 'netPosition'];
+        const startVals = {};
+        for (const f of fields) startVals[f] = this.displayedStats[f] || 0;
+        const endVals = {};
+        for (const f of fields) endVals[f] = to[f] || 0;
+
+        const duration = 600;
+        const startTime = performance.now();
+
+        if (this._animFrame) {
+          cancelAnimationFrame(this._animFrame);
+          this._animFrame = null;
+        }
+
+        const tick = (now) => {
+          const t = 1 - Math.pow(1 - Math.min((now - startTime) / duration, 1), 3); // ease-out cubic
+          for (const f of fields) {
+            this.displayedStats[f] = startVals[f] + (endVals[f] - startVals[f]) * t;
+          }
+          if (t < 1) {
+            this._animFrame = requestAnimationFrame(tick);
+          } else {
+            this._animFrame = null;
+          }
+        };
+        this._animFrame = requestAnimationFrame(tick);
+      },
       categoryAmountLabel(category) {
         const type = this.groupedTransactions[category].type;
         const sum = this.categorySum(category);
@@ -974,7 +1003,13 @@ monthStats() {
         }
       },
     },
-    watch: { 
+    watch: {
+      monthlyStats: {
+        handler(newStats, oldStats) {
+          this.animateStats(oldStats || {}, newStats || {});
+        },
+        immediate: true,
+      },
       'selectedDate.display': function(newVal){//, oldVal) {
         this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
