@@ -21,14 +21,33 @@ Calm, trustworthy, human. Key principles:
 
 ## Token Architecture
 
-All tokens live in `frontend/src/styles/tokens.css` and are imported before any
-component CSS via `frontend/src/quasar-user-options.js`.
+### CSS load order (defined in `frontend/src/quasar-user-options.js`)
 
-Quasar's brand colors are mirrored in `frontend/src/styles/quasar.variables.sass`
-so Quasar components (buttons, chips, progress bars) inherit the palette.
+```
+tokens.css           → CSS custom properties (:root + [data-theme="dark"])
+quasar.sass          → Quasar framework CSS (compiled with our SASS vars)
+quasar-overrides.css → our rules; loads last so they win the cascade
+```
 
-**Rule: every color, font, spacing, radius, and shadow value in a component must
-reference a token. Never write a literal hex, px size, or font name inline.**
+**This order is load-order-sensitive. Do not change it.**
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/styles/tokens.css` | All CSS custom properties — the single source of truth for every color, spacing, radius, shadow, and motion value |
+| `frontend/src/styles/quasar.variables.sass` | Quasar SASS brand vars (`$primary`, `$negative`, etc.) mirrored from tokens so Quasar components inherit the palette |
+| `frontend/src/styles/quasar-overrides.css` | **Quasar component base layer.** Makes every standard Quasar element (q-card, q-table, q-field, q-menu, etc.) inherit token values automatically. Also contains the full `[data-theme="dark"]` override section. Add new Quasar component overrides here — never in App.vue or component scoped styles. |
+| `frontend/src/App.vue` `<style>` | App-level chrome only: layout utilities, header, wordmark, page transition. No Quasar overrides. |
+
+### Rule
+
+Every color, font, spacing, radius, and shadow value in a component must
+reference a token. Never write a literal hex, px size, or font name inline.
+
+Any new Quasar component that needs theme-aware styling: add its overrides to
+`quasar-overrides.css`. Any new custom component: use `var(--basil-*)` tokens
+in `<style scoped>` — dark mode works automatically.
 
 ---
 
