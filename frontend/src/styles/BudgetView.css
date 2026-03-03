@@ -42,8 +42,7 @@
   
   .budget-container .pending {
     font-style: italic;
-    color: rgba(0, 0, 0, 0.54);
-    
+    color: var(--basil-text-muted);
   }
   .budget-container .progress .q-mt-sm {
       margin-top: 0.3rem;
@@ -63,11 +62,11 @@
   .budget-container .total {
     font-size: 14px;
     margin-top: 0px !important;
-    color: rgba(0, 0, 0, 0.54);
+    color: var(--basil-text-muted);
   }
   
   .budget-container .dialog {
-    color: red;
+    color: var(--basil-negative);
   }
   
   .all-transactions-table {
@@ -89,11 +88,11 @@
   } */
   
   .q-dialog__content {
-    background-color: #f1f1f1 !important; /* replace with your desired color */
+    background-color: var(--basil-surface-dialog) !important;
   }
-  
+
   .dialog .titlebar {
-    box-shadow: 0 1px 5px rgb(0 0 0 / 20%), 0 2px 2px rgb(0 0 0 / 14%), 0 3px 1px -2px rgb(0 0 0 / 12%);
+    box-shadow: var(--basil-shadow-md);
   }
   
   .dialog .button-container {
@@ -102,40 +101,40 @@
   }
   
   .icon-hover:hover {
-    color: #424242;
+    color: var(--basil-text-secondary);
     font-size: 20px;
   }
   
   
     .budget-container > .q-item {
-      background-color: #f5f5f5;
+      background-color: var(--basil-surface-alt);
     }
 
     .active {
-      background-color: #ebebeb;
+      background-color: var(--basil-surface-raised);
     }
+
     .categories {
-      /* display: flex; */
       flex-direction: column;
       flex-wrap: wrap;
       justify-content: space-between;
-      max-width: 800px; /* set max width to limit the number of boxes */
-      margin: 0 auto; /* center the boxes horizontally */
-      border-radius: 10px; /* round the corners of the container */
-      box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
-      overflow: hidden; /* clip left border accents to the rounded corners */
+      max-width: 800px;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: var(--basil-shadow-md);
+      overflow: hidden;
     }
-  
+
     .category {
       max-height: 200px;
       overflow: hidden;
-      border: 1px solid black;
+      border: 1px solid var(--basil-border);
       border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--basil-shadow-sm);
       padding: 20px;
       width: calc(66.33% - 20px);
       margin-bottom: 20px;
-      background-color: #fff;
+      background-color: var(--basil-surface);
     }
   
     .category table tbody {
@@ -147,13 +146,13 @@
       align-items: center;
       cursor: pointer;
       padding: 12px;
-      background-color: #f5f5f5;
-      border-bottom: 1px solid #ddd;
+      background-color: var(--basil-surface-alt);
+      border-bottom: 1px solid var(--basil-border);
       transition: background-color 0.2s ease-in-out;
     }
-  
+
     .category-row:hover {
-      background-color: #e0e0e0;
+      background-color: var(--basil-surface-raised);
     }
   
   
@@ -182,11 +181,11 @@
     td {
       padding: 10px;
       text-align: left;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid var(--basil-border);
     }
-  
+
     th {
-      background-color: #f2f2f2;
+      background-color: var(--basil-surface-alt);
       position: sticky;
       top: 0;
     }
@@ -405,58 +404,16 @@
 }
 
 .basil-progress--warning .q-linear-progress__model {
-  background: linear-gradient(90deg, var(--basil-warning) 0%, #e8971f 100%) !important;
+  background: linear-gradient(90deg, var(--basil-warning) 0%, var(--basil-warning-mid) 100%) !important;
 }
 
 .basil-progress--negative .q-linear-progress__model {
-  background: linear-gradient(90deg, var(--basil-expense) 0%, #d4453b 100%) !important;
+  background: linear-gradient(90deg, var(--basil-expense) 0%, var(--basil-expense-mid) 100%) !important;
 }
 
 /* Tint the track red when over budget */
 .basil-progress--negative {
   background-color: var(--basil-expense-bg) !important;
-}
-
-/* =====================================================
-   Dark mode — override hardcoded light backgrounds
-   ===================================================== */
-
-[data-theme="dark"] .q-dialog__content {
-  background-color: var(--basil-surface-dialog) !important;
-}
-
-[data-theme="dark"] .budget-container > .q-item,
-[data-theme="dark"] .category-row {
-  background-color: var(--basil-surface-alt) !important;
-  color: var(--basil-text) !important;
-}
-
-[data-theme="dark"] .category-row:hover {
-  background-color: var(--basil-surface-raised) !important;
-}
-
-[data-theme="dark"] .active {
-  background-color: var(--basil-surface-raised) !important;
-}
-
-[data-theme="dark"] .category {
-  background-color: var(--basil-surface) !important;
-  border-color: var(--basil-border) !important;
-}
-
-[data-theme="dark"] th {
-  background-color: var(--basil-surface-alt) !important;
-  color: var(--basil-text-secondary) !important;
-}
-
-[data-theme="dark"] td {
-  border-bottom-color: var(--basil-border) !important;
-}
-
-/* Mobile bulk action bar */
-[data-theme="dark"] .lt-sm.fixed-bottom {
-  background-color: var(--basil-surface) !important;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* =====================================================
@@ -512,7 +469,7 @@
   justify-content: center;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--basil-text-inverse);
   letter-spacing: 0.03em;
   user-select: none;
 }
@@ -556,4 +513,24 @@
   background-color: var(--basil-warning-bg);
   padding: 2px 7px;
   border-radius: var(--basil-radius-sm);
+}
+
+/* =====================================================
+   Bulk action toolbar
+   ===================================================== */
+
+.basil-mobile-bulk {
+  background-color: var(--basil-surface);
+  box-shadow: var(--basil-shadow-md);
+  z-index: 100;
+}
+
+.basil-bulk-label {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+}
+
+.basil-bulk-disclosure {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
 }

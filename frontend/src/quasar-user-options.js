@@ -1,5 +1,6 @@
 
 import './styles/tokens.css'
+import './styles/quasar-overrides.css'
 import './styles/quasar.sass'
 import '@quasar/extras/material-icons/material-icons.css'
 

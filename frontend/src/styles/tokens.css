@@ -27,6 +27,7 @@
   --basil-income:         #2d7a4f;
   --basil-income-bg:      #eef6f1;
   --basil-expense:        #b83c2b;
+  --basil-expense-mid:    #d4453b;  /* progress bar gradient end */
   --basil-expense-bg:     #fdf0ee;
   --basil-savings:        #2366a8;
   --basil-savings-bg:     #eef3fb;
@@ -39,6 +40,7 @@
   --basil-negative:       #b83c2b;
   --basil-negative-bg:    #fdf0ee;
   --basil-warning:        #c07a1a;
+  --basil-warning-mid:    #e8971f;  /* progress bar gradient end */
   --basil-warning-bg:     #fef9ef;
   --basil-info:           #2366a8;
   --basil-info-bg:        #eef3fb;
@@ -116,6 +118,7 @@
   --basil-income:         #10b981;
   --basil-income-bg:      #0f2820;
   --basil-expense:        #f87171;
+  --basil-expense-mid:    #fb9b8a;
   --basil-expense-bg:     #2a1414;
   --basil-savings:        #60a5fa;
   --basil-savings-bg:     #0f1e38;
@@ -127,6 +130,7 @@
   --basil-negative:       #f87171;
   --basil-negative-bg:    #2a1414;
   --basil-warning:        #fbbf24;
+  --basil-warning-mid:    #fcd34d;
   --basil-warning-bg:     #2a1f00;
   --basil-info:           #60a5fa;
   --basil-info-bg:        #0f1e38;
