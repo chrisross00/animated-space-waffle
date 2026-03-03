@@ -1,0 +1,128 @@
+/* ==========================================================
+   Basil — Design Tokens (Warm/Editorial Theme)
+   All component styles reference these variables.
+   Dark/terminal theme overrides go in [data-theme="dark"].
+   ========================================================== */
+
+:root {
+  /* ---- Backgrounds / Surfaces ---- */
+  --basil-bg:             #faf7f2;  /* warm ivory — page */
+  --basil-surface:        #ffffff;  /* card / panel */
+  --basil-surface-alt:    #f5f1eb;  /* section dividers, zebra rows */
+  --basil-surface-raised: #fffefb;  /* hover / elevated state */
+  --basil-surface-dialog: #faf7f2;  /* modal / dialog */
+
+  /* ---- Text ---- */
+  --basil-text:           #1a1a14;  /* near-black, warm */
+  --basil-text-secondary: #6b6860;  /* secondary labels */
+  --basil-text-muted:     #9e9b94;  /* placeholder / hint / caption */
+  --basil-text-inverse:   #faf7f2;  /* on dark surfaces */
+
+  /* ---- Brand ---- */
+  --basil-green:          #3d8b6c;  /* sage emerald — primary */
+  --basil-green-mid:      #5a9e85;  /* lighter variant */
+  --basil-green-subtle:   #eef6f1;  /* tint for background use */
+
+  /* ---- Category type accents ---- */
+  --basil-income:         #2d7a4f;
+  --basil-income-bg:      #eef6f1;
+  --basil-expense:        #b83c2b;
+  --basil-expense-bg:     #fdf0ee;
+  --basil-savings:        #2366a8;
+  --basil-savings-bg:     #eef3fb;
+  --basil-payment:        #7a6a5a;
+  --basil-payment-bg:     #f5f0ea;
+
+  /* ---- Semantic ---- */
+  --basil-positive:       #2d7a4f;
+  --basil-positive-bg:    #eef6f1;
+  --basil-negative:       #b83c2b;
+  --basil-negative-bg:    #fdf0ee;
+  --basil-warning:        #c07a1a;
+  --basil-warning-bg:     #fef9ef;
+  --basil-info:           #2366a8;
+  --basil-info-bg:        #eef3fb;
+
+  /* ---- Borders ---- */
+  --basil-border:         #e8e2d8;  /* default */
+  --basil-border-strong:  #c8c0b0;  /* emphasized */
+
+  /* ---- Shadows ---- */
+  --basil-shadow-sm: 0 1px 3px rgba(26, 26, 20, 0.06), 0 1px 2px rgba(26, 26, 20, 0.04);
+  --basil-shadow-md: 0 4px 12px rgba(26, 26, 20, 0.08), 0 2px 4px rgba(26, 26, 20, 0.05);
+  --basil-shadow-lg: 0 8px 24px rgba(26, 26, 20, 0.10), 0 4px 8px rgba(26, 26, 20, 0.06);
+
+  /* ---- Border Radius ---- */
+  --basil-radius-sm:   6px;
+  --basil-radius-md:   10px;
+  --basil-radius-lg:   16px;
+  --basil-radius-pill: 9999px;
+
+  /* ---- Typography ---- */
+  --basil-font-display: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --basil-font-ui:      'DM Sans', system-ui, -apple-system, sans-serif;
+  --basil-font-mono:    'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* ---- Spacing scale ---- */
+  --basil-space-1:  4px;
+  --basil-space-2:  8px;
+  --basil-space-3:  12px;
+  --basil-space-4:  16px;
+  --basil-space-5:  24px;
+  --basil-space-6:  32px;
+  --basil-space-7:  48px;
+  --basil-space-8:  64px;
+
+  /* ---- Motion ---- */
+  --basil-ease:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --basil-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --basil-t-fast:   120ms;
+  --basil-t-base:   220ms;
+  --basil-t-slow:   400ms;
+}
+
+/* ==========================================================
+   Dark / Terminal theme
+   Applied via <html data-theme="dark"> — Epic 8
+   ========================================================== */
+[data-theme="dark"] {
+  --basil-bg:             #0f1117;
+  --basil-surface:        #181c24;
+  --basil-surface-alt:    #1f2330;
+  --basil-surface-raised: #242938;
+  --basil-surface-dialog: #181c24;
+
+  --basil-text:           #e8eaf0;
+  --basil-text-secondary: #9ba3b8;
+  --basil-text-muted:     #5c6478;
+  --basil-text-inverse:   #0f1117;
+
+  --basil-green:          #10b981;
+  --basil-green-mid:      #34d399;
+  --basil-green-subtle:   #0f2820;
+
+  --basil-income:         #10b981;
+  --basil-income-bg:      #0f2820;
+  --basil-expense:        #f87171;
+  --basil-expense-bg:     #2a1414;
+  --basil-savings:        #60a5fa;
+  --basil-savings-bg:     #0f1e38;
+  --basil-payment:        #94a3b8;
+  --basil-payment-bg:     #1a2030;
+
+  --basil-positive:       #10b981;
+  --basil-positive-bg:    #0f2820;
+  --basil-negative:       #f87171;
+  --basil-negative-bg:    #2a1414;
+  --basil-warning:        #fbbf24;
+  --basil-warning-bg:     #2a1f00;
+  --basil-info:           #60a5fa;
+  --basil-info-bg:        #0f1e38;
+
+  --basil-border:         #252b3b;
+  --basil-border-strong:  #3a4255;
+
+  --basil-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --basil-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --basil-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.4);
+}
