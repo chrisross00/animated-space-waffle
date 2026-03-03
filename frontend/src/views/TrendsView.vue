@@ -31,12 +31,18 @@
     <div v-if="activeChartHasData">
       <v-chart :option="activeChartOption" autoresize style="height: 420px" />
     </div>
-    <div v-else-if="activeChart === 'savings'" class="text-grey-6 text-center q-mt-xl">
-      No savings data yet. Create a category with type <strong>Savings</strong> and assign transactions to it.
-    </div>
-    <div v-else class="text-grey-6 text-center q-mt-xl">
-      No transaction data available for this range.
-    </div>
+    <EmptyState
+      v-else-if="activeChart === 'savings'"
+      icon="savings"
+      heading="No savings data yet"
+      body="Create a category with type Savings and assign transactions to it."
+    />
+    <EmptyState
+      v-else
+      icon="bar_chart"
+      heading="No data for this range"
+      body="Try a longer time range, or sync more transactions."
+    />
   </div>
 </template>
 
@@ -48,12 +54,13 @@ import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, Vi
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
 import store from '../store'
+import EmptyState from '../components/EmptyState.vue'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
 
 export default {
   name: 'TrendsView',
-  components: { VChart },
+  components: { VChart, EmptyState },
 
   data() {
     return {
