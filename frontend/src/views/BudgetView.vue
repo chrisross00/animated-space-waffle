@@ -223,6 +223,7 @@
               type="number"
               placeholder="Min $"
               style="width: 90px"
+              class="gt-xs"
             />
             <q-input
               v-model="amountMax"
@@ -231,6 +232,7 @@
               type="number"
               placeholder="Max $"
               style="width: 90px"
+              class="gt-xs"
             />
             <q-btn
               flat
