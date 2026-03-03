@@ -233,6 +233,13 @@ export default {
     };
   },
 
+  async mounted() {
+    if (this.isLoggedIn && !this.$store.state.categories?.length) {
+      const cats = await fetchCategories();
+      if (cats) store.commit('setCategories', cats);
+    }
+  },
+
   computed: {
     isLoggedIn() {
       return !!this.$store.state.session;
@@ -312,12 +319,15 @@ export default {
     },
     async saveName(cat) {
       if (this.editingNameId !== cat._id) return;
+      if (this.savingNameId === cat._id) return; // already saving, ignore blur double-fire
       const newName = (this.editNameValue || '').trim();
       const oldId = cat._id;
       const oldName = cat.category;
-      this.editingNameId = null;
-      this.activeNameInputRef = null;
-      if (!newName || newName === oldName) return;
+      if (!newName || newName === oldName) {
+        this.cancelEditName();
+        return;
+      }
+      // Keep input visible with loading spinner until save completes
       this.savingNameId = oldId;
       const payload = {
         updateType: 'editCategory',
@@ -330,17 +340,25 @@ export default {
       };
       const data = await handleDialogSubmit(JSON.stringify(payload));
       this.savingNameId = null;
+      this.editingNameId = null;
+      this.activeNameInputRef = null;
       if (data) store.commit('updateCategory', data);
     },
 
     // ── Delete category ────────────────────────────────
-    async removeCategory(cat) {
-      const confirmed = window.confirm(`Remove "${cat.category}"?\n\nExisting transactions will keep this category label.`);
-      if (!confirmed) return;
-      this.deletingId = cat._id;
-      const ok = await deleteCategory(cat._id);
-      this.deletingId = null;
-      if (ok) store.commit('removeCategory', cat._id);
+    removeCategory(cat) {
+      this.$q.dialog({
+        title: `Remove "${cat.category}"?`,
+        message: 'Existing transactions will keep this category label.',
+        cancel: true,
+        ok: { label: 'Remove', color: 'negative', flat: true },
+        cancel: { label: 'Keep', flat: true },
+      }).onOk(async () => {
+        this.deletingId = cat._id;
+        const ok = await deleteCategory(cat._id);
+        this.deletingId = null;
+        if (ok) store.commit('removeCategory', cat._id);
+      });
     },
 
     // ── Add category ──────────────────────────────────
