@@ -22,6 +22,15 @@ const router = VueRouter.createRouter({
   routes,
 })
 
+const PUBLIC_ROUTES = ['/profile', '/onboarding'];
+router.beforeEach((to, _from, next) => {
+  if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
+    next('/profile');
+  } else {
+    next();
+  }
+});
+
 
 const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
 app.use(router)

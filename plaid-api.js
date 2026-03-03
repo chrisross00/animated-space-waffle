@@ -48,10 +48,13 @@ router.post("/exchange_public_token", async (req, res, next) => {
   }
 
   try {
+    const institution = req.body?.metadata?.institution?.name;
+    if (!institution || typeof institution !== 'string' || /[.$]/.test(institution)) {
+      return res.status(400).json({ message: 'Invalid institution name' });
+    }
     const user = await findUserData('Plaid-Accounts', decodedToken.uid);
     if (user.length > 0) {
       const accounts = user[0].Accounts;
-      const institution = req.body.metadata.institution.name;
       if (accounts.hasOwnProperty(institution)) {
         return res.json({ alreadyLinked: true });
       } else {

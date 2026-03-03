@@ -8,6 +8,20 @@ const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping
 const {validateIdToken} = require('./utils/authentication');
 const path = require('path');
 const ObjectID = require('mongodb').ObjectId;
+const { rateLimit } = require('express-rate-limit');
+
+// Tighter per-endpoint limiter for expensive Plaid sync operations
+const plaidSyncLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
+
+// Admin-only endpoints: uid must be in ADMIN_UIDS env var (comma-separated)
+const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
+function requireAdmin(uid, res) {
+  if (!ADMIN_UIDS.includes(uid)) {
+    res.status(403).json({ message: 'Forbidden' });
+    return false;
+  }
+  return true;
+}
 
 router.use(bodyParser.json());
 
@@ -96,7 +110,7 @@ router.get('/addplaidpfc', async (req, res) => {
   }
 });
 
-router.get('/getNewAuth', async (req, res) => {
+router.get('/getNewAuth', plaidSyncLimiter, async (req, res) => {
   console.log('/getNewAuth starting...');
   try {
     const decodedToken = await validateIdToken(req)
@@ -158,11 +172,9 @@ router.get('/cleanPendingTransactions', async (req, res) => {
 router.post('/handleDialogSubmit', async (req, res) => {
   let uid;
   try {
-    req.body = JSON.parse(req.body.dialogBody)
     const decodedToken = await validateIdToken(req)
     uid = decodedToken.uid;
   } catch (error) {
-    console.log('handleDialogSubmit error: ', error)
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
@@ -394,6 +406,15 @@ router.post('/bulkCategorize', async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
     const { transaction_ids, mappedCategory } = req.body;
+    if (!Array.isArray(transaction_ids) || transaction_ids.length === 0) {
+      return res.status(400).json({ message: 'transaction_ids must be a non-empty array' });
+    }
+    if (transaction_ids.length > 500) {
+      return res.status(400).json({ message: 'Cannot bulk categorize more than 500 transactions at once' });
+    }
+    if (typeof mappedCategory !== 'string' || !mappedCategory.trim()) {
+      return res.status(400).json({ message: 'mappedCategory must be a non-empty string' });
+    }
     await updateManyData('Plaid-Transactions',
       { transaction_id: { $in: transaction_ids }, userId: uid },
       { $set: { mappedCategory } }
@@ -415,10 +436,9 @@ router.get('/mapunmapped', async (req, res) => {
 
     if(mappedTxns.length > 0){
       await Promise.all(mappedTxns.map(txn => {
-        const filter = { transaction_id: txn.transaction_id };
+        const filter = { transaction_id: txn.transaction_id, userId };
         const updateObject = { $set: { mappedCategory: txn.mappedCategory } };
-        console.log(txn._id, txn.mappedCategory);
-        return updateData('Plaid-Transactions', filter, updateObject, { upsert: true });
+        return updateData('Plaid-Transactions', filter, updateObject);
       }));
     }
     // finish
@@ -481,6 +501,7 @@ router.post('/nukeTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
     const result = await deleteRemovedData('Plaid-Transactions', { userId: uid });
     res.json({ deletedCount: result.deletedCount });
   } catch (error) {
@@ -493,6 +514,7 @@ router.post('/nukeAllData', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
     const [txnResult, catResult, accResult] = await Promise.all([
       deleteRemovedData('Plaid-Transactions', { userId: uid }),
       deleteRemovedData('Basil-Categories', { userId: uid }),
@@ -530,6 +552,7 @@ router.post('/addTestTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
     const today = new Date().toISOString().slice(0, 10);
     const ts = Date.now();
     const categories = await findUserData('Basil-Categories', uid);
@@ -558,9 +581,15 @@ router.post('/deleteCategory', async (req, res) => {
   } catch {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const { categoryId } = req.body;
-  await deleteRemovedData('Basil-Categories', { _id: new ObjectID(categoryId), userId: uid });
-  res.json({ ok: true });
+  try {
+    const { categoryId } = req.body;
+    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+    await deleteRemovedData('Basil-Categories', { _id: new ObjectID(categoryId), userId: uid });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/deleteCategory error:', error);
+    res.status(500).json({ message: 'Failed to delete category' });
+  }
 });
 
 router.post('/updateBudgetLimit', async (req, res) => {
@@ -571,12 +600,18 @@ router.post('/updateBudgetLimit', async (req, res) => {
   } catch {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const { categoryId, monthly_limit } = req.body;
-  await updateData('Basil-Categories',
-    { _id: new ObjectID(categoryId), userId: uid },
-    { $set: { monthly_limit: Number(monthly_limit) } }
-  );
-  res.json({ ok: true });
+  try {
+    const { categoryId, monthly_limit } = req.body;
+    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+    await updateData('Basil-Categories',
+      { _id: new ObjectID(categoryId), userId: uid },
+      { $set: { monthly_limit: Number(monthly_limit) } }
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/updateBudgetLimit error:', error);
+    res.status(500).json({ message: 'Failed to update budget limit' });
+  }
 });
 
 module.exports = router;

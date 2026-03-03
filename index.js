@@ -27,25 +27,33 @@ admin.initializeApp({
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc:  ["'self'"],
-      scriptSrc:   ["'self'", "cdn.plaid.com"],
-      styleSrc:    ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
-      fontSrc:     ["'self'", "fonts.gstatic.com"],
-      imgSrc:      ["'self'", "data:", "https:"],
-      connectSrc:  ["'self'",
-                    "https://*.googleapis.com",
-                    "https://*.firebaseapp.com",
-                    "wss://*.firebaseio.com"],
+      defaultSrc:       ["'self'"],
+      scriptSrc:        ["'self'", "cdn.plaid.com"],
+      styleSrc:         ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
+      fontSrc:          ["'self'", "fonts.gstatic.com"],
+      imgSrc:           ["'self'", "data:", "lh3.googleusercontent.com"],
+      connectSrc:       ["'self'",
+                         "https://*.googleapis.com",
+                         "https://*.firebaseapp.com",
+                         "wss://*.firebaseio.com"],
+      frameAncestors:   ["'none'"],
+      baseUri:          ["'self'"],
+      formAction:       ["'self'"],
     },
   },
 }))
+
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.ALLOWED_ORIGIN].filter(Boolean)
+  : [/^http:\/\/localhost(:\d+)?$/];
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    if (!origin) return callback(null, true); // same-origin requests have no Origin header
+    const allowed = allowedOrigins.some(o =>
+      o instanceof RegExp ? o.test(origin) : o === origin
+    );
+    allowed ? callback(null, true) : callback(new Error('Not allowed by CORS'));
   }
 }))
 app.use(rateLimit({

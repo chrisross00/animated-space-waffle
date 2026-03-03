@@ -11,11 +11,10 @@ const store = createStore({
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
-        // exclude theme — it lives in localStorage, not sessionStorage
-        reducer: state => {
-            const { theme, ...rest } = state;
-            return rest;
-        },
+        // Only persist session (needed for isLoggedIn check on page refresh).
+        // User data (email, account names) and financial data are reloaded
+        // from the network via auth.onAuthStateChanged + getOrAddUser().
+        reducer: state => ({ session: state.session }),
     })],
     mutations: {
         setUser(state, user) {

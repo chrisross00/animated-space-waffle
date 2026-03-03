@@ -125,10 +125,10 @@ export async function handleDialogSubmit(dialogBody) {
   if (headers) {
     headers['Content-Type'] = 'application/json';
     console.log('firebase.handleDialogSubmit(): dialog body is', dialogBody);
-    const response = await fetch('/api/handleDialogSubmit', {  
+    const response = await fetch('/api/handleDialogSubmit', {
       method: 'POST',
-      headers: headers, 
-      body: JSON.stringify({dialogBody})
+      headers: headers,
+      body: dialogBody,
     });
     // const data = await response;
     if (response.ok) {

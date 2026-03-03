@@ -33,10 +33,6 @@ async function insertData(collectionName, data) {
   }
 }
 
-async function findData(collectionName) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection(collectionName).find().sort({ date: -1 }).toArray();
-}
 
 async function findUserData(collectionName, uid) {
   const db = (await connectToDb()).db(process.env.DB_NAME);
@@ -177,7 +173,6 @@ module.exports = {
   findDistinctMerchants,
   findMerchantsWithStats,
   findRecentTransactions,
-  findData,
   updateData,
   updateManyData,
   deduplicateData,
