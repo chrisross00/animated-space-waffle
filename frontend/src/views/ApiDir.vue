@@ -130,13 +130,13 @@ export default {
   gap: 4px;
 }
 .tool-desc {
-  color: #666;
+  color: var(--basil-text-muted);
   font-size: 0.9em;
 }
 .tool-result {
   margin-top: 4px;
   padding: 8px 12px;
-  background: #f5f5f5;
+  background: var(--basil-surface-alt);
   border-radius: 4px;
   font-size: 0.9em;
   font-family: monospace;

@@ -278,7 +278,7 @@
 
           <template v-else>
             <div class="gt-xs row items-center q-gutter-sm full-width">
-              <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
+              <span class="basil-bulk-label">{{ selectedRows.length }} selected</span>
               <q-select
                 v-model="bulkCategory"
                 :options="categoryMonthlyLimits.map(c => c.category).sort()"
@@ -290,7 +290,7 @@
               />
               <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
               <q-btn flat label="Clear selection" @click="selectedRows = []" />
-              <span v-if="bulkCategory" class="text-caption text-grey-6">
+              <span v-if="bulkCategory" class="basil-bulk-disclosure">
                 Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
               </span>
             </div>
@@ -379,11 +379,10 @@
       <!-- Mobile bulk action bar -->
       <div
         v-if="showAll && selectedRows.length > 0"
-        class="lt-sm fixed-bottom bg-white q-pa-sm"
-        style="box-shadow: 0 -2px 8px rgba(0,0,0,0.15); z-index: 100;"
+        class="lt-sm fixed-bottom basil-mobile-bulk q-pa-sm"
       >
         <div class="row items-center q-gutter-sm q-mb-xs">
-          <span class="text-body2 text-grey-7 col-auto">{{ selectedRows.length }} selected</span>
+          <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
           <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
         </div>
         <div class="row items-center q-gutter-sm">
@@ -398,7 +397,7 @@
           />
           <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
         </div>
-        <div v-if="bulkCategory" class="text-caption text-grey-6 q-mt-xs">
+        <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
           Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
         </div>
       </div>
