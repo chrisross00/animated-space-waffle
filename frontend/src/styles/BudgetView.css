@@ -350,6 +350,35 @@
   animation: basil-row-in 200ms var(--basil-ease) both;
 }
 
+/* ---- Transaction cascade expand/collapse ---- */
+@keyframes basil-txn-cascade {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Each row cascades in with a staggered delay on open */
+.basil-txn-expand-enter-active .category-txn-item {
+  animation: basil-txn-cascade 180ms var(--basil-ease) both;
+  animation-delay: calc(var(--txn-i, 0) * 30ms);
+}
+
+/* Whole container fades + rises on close */
+.basil-txn-expand-leave-active {
+  transition: opacity 120ms ease-in, transform 120ms ease-in;
+  pointer-events: none;
+}
+
+.basil-txn-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 /* ---- Left border accent per category type ---- */
 .basil-category-row {
   border-left: 3px solid transparent !important;

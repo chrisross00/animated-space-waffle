@@ -182,9 +182,15 @@
               
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
-              <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
+              <Transition name="basil-txn-expand" :duration="{ enter: 800, leave: 150 }">
+              <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
                 <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
-                <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
+                <div
+                  v-for="(item, index) in filteredTransactions(groupedTransactions)"
+                  :key="index"
+                  class="category-txn-item"
+                  :style="{ '--txn-i': index }"
+                >
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
@@ -207,6 +213,7 @@
                     </q-item>
                 </div>
               </div>
+              </Transition>
               </q-list>
             </div>
           </div>
