@@ -1,3 +1,8 @@
+// Apply saved theme before app mounts — prevents flash of wrong theme
+if (localStorage.getItem('basil-theme') === 'dark') {
+  document.documentElement.dataset.theme = 'dark';
+}
+
 import * as Vue from 'vue'
 import * as VueRouter from 'vue-router'
 import App from './App.vue'

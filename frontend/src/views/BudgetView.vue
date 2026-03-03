@@ -2,89 +2,94 @@
 
 <template>
   <div class="table-wrapper">
-    
+
+  <EmptyState
+    v-if="!isLoggedIn"
+    icon="account_circle"
+    heading="Sign in to see your budget"
+    body="Connect your bank accounts to start tracking spending and income."
+  >
+    <q-btn unelevated color="primary" label="Go to Profile" to="/profile" class="q-mt-sm" />
+  </EmptyState>
+
   <div v-show="isLoggedIn">
-    <SpinnerComponent :isLoading="isLoading" />
-      <div class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+    <SkeletonBudget v-if="isLoading" />
+      <div v-show="!isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card">
-          <q-card-section horizontal>
-            <q-card-section class="q-pt-xs">
-              <div class="text-overline">Actuals</div>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.expenseSpend) }} spent this month
-              </div>
-              <p>Across all your expense categories.</p>
-            </q-card-section>
-          </q-card-section>
+        <q-card class="my-card basil-actuals-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Actuals</span>
+            <span class="basil-card-period">{{ selectedDate.display }}</span>
+          </div>
 
-          <q-card-section horizontal>
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.incomeAmount) }} earned this month
+          <!-- Spent vs Earned -->
+          <div class="basil-primary-stats">
+            <div class="basil-primary-stat">
+              <div class="basil-primary-stat__amount basil-display">
+                ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
               </div>
-              <p>Across all your income categories.</p>
-            </q-card-section>
-          </q-card-section>
+              <div class="basil-primary-stat__label">spent</div>
+            </div>
+            <div class="basil-primary-stats__divider"></div>
+            <div class="basil-primary-stat basil-primary-stat--earned">
+              <div class="basil-primary-stat__amount basil-display">
+                ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+              </div>
+              <div class="basil-primary-stat__label">earned</div>
+            </div>
+          </div>
 
-          <q-card-section horizontal v-if="this.monthlyStats.savingsAmount > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.savingsAmount) }} saved this month.
-              </div>
-              <p>Moved to savings or investments.</p>
-            </q-card-section>
-          </q-card-section>
+          <div class="basil-card-rule"></div>
 
-          <q-card-section horizontal>
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{
-                  this.monthlyStats.netPosition >= 0
-                  ? formatDollar(this.monthlyStats.netPosition) + " free cash flow."
-                  : formatDollar(Math.abs(this.monthlyStats.netPosition)) + " over budget."
-                }}
-              </div>
-              <p>Income minus spending and savings.</p>
-            </q-card-section>
-          </q-card-section>
+          <!-- Net position — hero stat -->
+          <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
+            <div class="basil-net__amount basil-display">
+              {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+            </div>
+            <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
+          </div>
 
-          <q-card-section horizontal v-if="this.monthlyStats.toSortSpending > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.toSortSpending) }} in unsorted transactions.
-              </div>
-            </q-card-section>
-          </q-card-section>
+          <!-- Secondary stats -->
+          <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
+            <q-icon name="savings" size="xs" color="info" />
+            ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
+          </div>
+          <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
+            <q-icon name="warning_amber" size="xs" />
+            ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
+          </div>
         </q-card>
         </div>
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card">
-          <q-card-section horizontal v-if="this.monthlyStats.budgetRemaining > 0">
-            <q-card-section class="q-pt-xs">
-              <div class="text-overline">Projections</div>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                {{ formatDollar(this.monthlyStats.budgetRemaining) }} left in your budgets
-              </div>
-              <p>How much more you can spend before hitting your category limits</p>
-            </q-card-section>
-          </q-card-section>
+        <q-card class="my-card basil-projections-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Projections</span>
+          </div>
 
-          <q-card-section horizontal
-            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0">
-            <q-card-section>
-              <div class="text-h5 q-mt-sm q-mb-xs">
-                ~{{ formatDollar(forecastedEndOfMonth.expectedRemaining) }} still expected this month
-              </div>
-              <p v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
+          <div v-if="monthlyStats.budgetRemaining > 0" class="basil-primary-stat">
+            <div class="basil-primary-stat__amount basil-display">
+              ${{ Math.round(monthlyStats.budgetRemaining).toLocaleString() }}
+            </div>
+            <div class="basil-primary-stat__label">left in budgets</div>
+          </div>
+
+          <div
+            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0"
+            :class="['basil-forecast', monthlyStats.budgetRemaining > 0 ? 'basil-forecast--mt' : '']"
+          >
+            <div class="basil-forecast__amount basil-display">
+              ~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}
+            </div>
+            <div class="basil-forecast__label">
+              <span v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
                 {{ forecastedEndOfMonth.remainingMerchantNames[0] }} hasn't posted yet
-              </p>
-              <p v-else>
-                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants haven't posted yet
-              </p>
-            </q-card-section>
-          </q-card-section>
+              </span>
+              <span v-else>
+                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants still expected
+              </span>
+            </div>
+          </div>
         </q-card>
         </div>
         </div>
@@ -101,10 +106,27 @@
       <div v-show="!showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <q-list>
           <div class="categories">
-            <div v-for="(groupedTransactions, category) in groupedTransactions" :key="category" class="budget-container">
+            <div
+              v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
+              :key="category"
+              class="budget-container"
+              :class="{ 'basil-category-reveal': barsReady }"
+              :style="barsReady ? { animationDelay: `${categoryIndex * 35}ms` } : {}"
+            >
 
               <!-- Make a category List Item -->
-              <q-item v-show="this.groupedTransactions[category].showOnBudgetPage" clickable v-ripple @click="toggleCategory(category)" category="category" elevated :class="{ 'active': clickedCategories.includes(category)}">
+              <q-item
+                v-show="this.groupedTransactions[category].showOnBudgetPage"
+                clickable v-ripple
+                @click="toggleCategory(category)"
+                category="category"
+                elevated
+                :class="[
+                  { 'active': clickedCategories.includes(category) },
+                  'basil-category-row',
+                  `basil-category-row--${groupedTransactions.type || 'expense'}`
+                ]"
+              >
                 <q-item-section>
 
                   <div class="budget-container header">
@@ -125,12 +147,17 @@
                     </q-item-label>
                   </div>
                   <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
-                    <q-linear-progress :value=getProgressRatio(category) class="q-mt-sm" :color="getCategoryProgressColor(category)" size="md"/> 
+                    <q-linear-progress
+                      :value="barsReady ? getProgressRatio(category) : 0"
+                      :class="['q-mt-sm', 'basil-progress', `basil-progress--${getCategoryProgressColor(category)}`]"
+                      :color="getCategoryProgressColor(category)"
+                      size="md"
+                    />
                   </div>
 
                   <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
-                    {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }} 
-                    {{ isNaN(this.groupedTransactions[category].monthly_limit) || 
+                    {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }}
+                    {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                   </q-item-label>
                 </q-item-section>
@@ -155,9 +182,15 @@
               
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
-              <div v-show="groupedTransactionsVisible[category]" class="category-transactions">
+              <Transition name="basil-txn-expand" :duration="{ enter: 800, leave: 150 }">
+              <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
                 <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
-                <div v-for="(item, index) in filteredTransactions(groupedTransactions)" :key=index>
+                <div
+                  v-for="(item, index) in filteredTransactions(groupedTransactions)"
+                  :key="index"
+                  class="category-txn-item"
+                  :style="{ '--txn-i': index }"
+                >
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
@@ -180,6 +213,7 @@
                     </q-item>
                 </div>
               </div>
+              </Transition>
               </q-list>
             </div>
           </div>
@@ -223,6 +257,7 @@
               type="number"
               placeholder="Min $"
               style="width: 90px"
+              class="gt-xs"
             />
             <q-input
               v-model="amountMax"
@@ -231,6 +266,7 @@
               type="number"
               placeholder="Max $"
               style="width: 90px"
+              class="gt-xs"
             />
             <q-btn
               flat
@@ -241,21 +277,23 @@
           </template>
 
           <template v-else>
-            <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
-            <q-select
-              v-model="bulkCategory"
-              :options="categoryMonthlyLimits.map(c => c.category).sort()"
-              label="Move to category"
-              dense
-              outlined
-              style="min-width: 180px"
-              @touchmove.stop.prevent
-            />
-            <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-            <q-btn flat label="Clear selection" @click="selectedRows = []" />
-            <span v-if="bulkCategory" class="text-caption text-grey-6">
-              Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
-            </span>
+            <div class="gt-xs row items-center q-gutter-sm full-width">
+              <span class="text-body2 text-grey-7">{{ selectedRows.length }} selected</span>
+              <q-select
+                v-model="bulkCategory"
+                :options="categoryMonthlyLimits.map(c => c.category).sort()"
+                label="Move to category"
+                dense
+                outlined
+                style="min-width: 180px"
+                @touchmove.stop.prevent
+              />
+              <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+              <q-btn flat label="Clear selection" @click="selectedRows = []" />
+              <span v-if="bulkCategory" class="text-caption text-grey-6">
+                Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+              </span>
+            </div>
           </template>
         </div>
 
@@ -264,12 +302,68 @@
           :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
-          :pagination="pagination"
           :filter="tableSearch"
+          :rows-per-page-options="[0]"
           selection="multiple"
           v-model:selected="selectedRows"
-          @row-click="openTableDialog"
-        />
+          virtual-scroll
+          :virtual-scroll-item-size="52"
+          style="max-height: calc(100vh - 220px)"
+          class="basil-txn-table"
+        >
+          <template v-slot:body="props">
+            <q-tr
+              :props="props"
+              :class="['basil-txn-row', { 'basil-txn-row--excluded': props.row.excludeFromTotal }]"
+              @click="openTableDialog($event, props.row)"
+            >
+              <q-td auto-width>
+                <q-checkbox dense v-model="props.selected" @click.stop />
+              </q-td>
+
+              <!-- Name: initials avatar + label -->
+              <q-td key="name" :props="props">
+                <div class="basil-txn-cell">
+                  <div class="basil-txn-avatar" :style="{ background: merchantColor(props.row) }">
+                    {{ merchantInitials(props.row) }}
+                  </div>
+                  <div class="basil-txn-label">
+                    <div class="basil-txn-label__primary">{{ props.row.merchant_name || props.row.name }}</div>
+                    <div
+                      v-if="props.row.merchant_name && props.row.merchant_name !== props.row.name"
+                      class="basil-txn-label__secondary"
+                    >{{ props.row.name }}</div>
+                  </div>
+                </div>
+              </q-td>
+
+              <!-- Amount: monospace, colored -->
+              <q-td key="amount" :props="props" class="text-right">
+                <span
+                  class="basil-txn-amount"
+                  :class="props.row.amount >= 0 ? 'basil-txn-amount--credit' : 'basil-txn-amount--debit'"
+                >
+                  {{ props.row.amount < 0 ? `-$${Math.abs(props.row.amount).toFixed(2)}` : `$${Number(props.row.amount).toFixed(2)}` }}
+                </span>
+              </q-td>
+
+              <!-- Category (desktop only) -->
+              <q-td key="mappedCategory" :props="props" class="gt-xs">
+                {{ props.row.mappedCategory }}
+              </q-td>
+
+              <!-- Date (desktop only) -->
+              <q-td key="date" :props="props" class="gt-xs">
+                {{ formatDate(props.row.date) }}
+              </q-td>
+
+              <!-- Status (desktop only) -->
+              <q-td key="pending" :props="props" class="gt-xs text-center">
+                <span v-if="props.row.pending" class="basil-txn-pending">Pending</span>
+              </q-td>
+            </q-tr>
+          </template>
+        </q-table>
 
         <q-dialog v-model="tableDialogOpen" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
           <DialogComponent
@@ -281,13 +375,35 @@
           />
         </q-dialog>
       </div>
+
+      <!-- Mobile bulk action bar -->
+      <div
+        v-if="showAll && selectedRows.length > 0"
+        class="lt-sm fixed-bottom bg-white q-pa-sm"
+        style="box-shadow: 0 -2px 8px rgba(0,0,0,0.15); z-index: 100;"
+      >
+        <div class="row items-center q-gutter-sm q-mb-xs">
+          <span class="text-body2 text-grey-7 col-auto">{{ selectedRows.length }} selected</span>
+          <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
+        </div>
+        <div class="row items-center q-gutter-sm">
+          <q-select
+            v-model="bulkCategory"
+            :options="categoryMonthlyLimits.map(c => c.category).sort()"
+            label="Move to category"
+            dense
+            outlined
+            style="flex: 1"
+            @touchmove.stop.prevent
+          />
+          <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+        </div>
+        <div v-if="bulkCategory" class="text-caption text-grey-6 q-mt-xs">
+          Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+        </div>
+      </div>
     </div>
     
-    <div v-show="!isLoggedIn">
-      <!-- link to /profile -->
-      
-      You need to login <a href="/profile">here</a>
-    </div>
 
     <q-page-sticky class="floating-button" position="bottom-right" :offset="[25,25]">
       <q-fab
@@ -318,7 +434,8 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
-  import SpinnerComponent from '../components/SpinnerComponent.vue'
+  import SkeletonBudget from '../components/SkeletonBudget.vue'
+  import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
 
@@ -330,16 +447,17 @@
   dayjs.extend(customParseFormat);
 
   const columns = [
-  { name: 'amount', label: 'Amount', field: 'amount', format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
-  { name: 'name', align: 'center', label: 'Name', field: 'name', sortable: true },
-  { name: 'mappedCategory', label: 'Category', field: 'mappedCategory', sortable: true },
-  { name: 'date', label: 'Date', align: 'left', field: row => row.date, format: val => dayjs(val).format('MMM D, YYYY'), sortable: true },
-  { name: 'pending', label: 'Pending', field: 'pending' },
+  { name: 'name',          label: 'Name',     align: 'left',   field: row => row.merchant_name || row.name, sortable: true },
+  { name: 'amount',        label: 'Amount',   align: 'right',  field: 'amount',               format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
+  { name: 'mappedCategory',label: 'Category', align: 'left',   field: 'mappedCategory',       sortable: true,  classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'date',          label: 'Date',     align: 'left',   field: row => row.date,        format: val => dayjs(val).format('MMM D, YYYY'), sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
+  { name: 'pending',       label: 'Status',   align: 'center', field: 'pending',              format: val => val ? 'Pending' : '', classes: 'gt-xs', headerClasses: 'gt-xs' },
   ]
   export default {
     components: {
       DialogComponent,
-      SpinnerComponent
+      SkeletonBudget,
+      EmptyState
     },
     data() {
       const currentDate = dayjs();
@@ -382,6 +500,8 @@
           rowsPerPage: 30 // current rows per page being displayed
         },
         monthlyStats:{},
+        displayedStats: { expenseSpend: 0, incomeAmount: 0, savingsAmount: 0, netPosition: 0 },
+        barsReady: false,
         selectedRows: [],
         bulkCategory: null,
         tableDialogOpen: false,
@@ -393,6 +513,9 @@
       };
     },
     computed: {
+      netPositive() {
+        return (this.monthlyStats.netPosition || 0) >= 0;
+      },
       tableTransactions() {
         let rows = this.transactions;
         if (this.tableMonth) {
@@ -591,6 +714,35 @@ monthStats() {
       },
     },
     methods: {
+      animateStats(from, to) {
+        if (!to || !Object.keys(to).length) return;
+        const fields = ['expenseSpend', 'incomeAmount', 'savingsAmount', 'netPosition'];
+        const startVals = {};
+        for (const f of fields) startVals[f] = this.displayedStats[f] || 0;
+        const endVals = {};
+        for (const f of fields) endVals[f] = to[f] || 0;
+
+        const duration = 600;
+        const startTime = performance.now();
+
+        if (this._animFrame) {
+          cancelAnimationFrame(this._animFrame);
+          this._animFrame = null;
+        }
+
+        const tick = (now) => {
+          const t = 1 - Math.pow(1 - Math.min((now - startTime) / duration, 1), 3); // ease-out cubic
+          for (const f of fields) {
+            this.displayedStats[f] = startVals[f] + (endVals[f] - startVals[f]) * t;
+          }
+          if (t < 1) {
+            this._animFrame = requestAnimationFrame(tick);
+          } else {
+            this._animFrame = null;
+          }
+        };
+        this._animFrame = requestAnimationFrame(tick);
+      },
       categoryAmountLabel(category) {
         const type = this.groupedTransactions[category].type;
         const sum = this.categorySum(category);
@@ -820,7 +972,9 @@ monthStats() {
         this.months = this.buildDateList(this.transactions).reverse()
         this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
         this.isLoading = false
-        
+        // Flip barsReady after the next paint so bars transition from 0 → value
+        this.$nextTick(() => setTimeout(() => { this.barsReady = true; }, 80));
+
         try {
           if (mode == 'sync' || mode == 'addCategory'){
             store.commit("setTransactions", this.transactions);
@@ -905,6 +1059,29 @@ monthStats() {
           this.isLoading = false;
         })
       }, 
+      formatDate(date) {
+        return dayjs(date).format('MMM D, YYYY');
+      },
+      merchantInitials(row) {
+        const key = (row.merchant_name || row.name || '?').trim();
+        const words = key.split(/\s+/);
+        if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+        return key.substring(0, 2).toUpperCase();
+      },
+      merchantColor(row) {
+        const key = row.merchant_name || row.name || '?';
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+          hash = (hash << 5) - hash + key.charCodeAt(i);
+          hash |= 0;
+        }
+        const palette = [
+          '#b07d4a', '#4a8b6c', '#5a7fb5', '#8b5a4a',
+          '#6b8b4a', '#7a5ab5', '#b54a6a', '#4a8b8b',
+          '#b58b4a', '#6a7ab5',
+        ];
+        return palette[Math.abs(hash) % palette.length];
+      },
       openTableDialog(evt, row) {
         this.dialogBody.currentTransactionDetails = {
           originalCategoryName: row.mappedCategory || ''
@@ -943,7 +1120,13 @@ monthStats() {
         }
       },
     },
-    watch: { 
+    watch: {
+      monthlyStats: {
+        handler(newStats, oldStats) {
+          this.animateStats(oldStats || {}, newStats || {});
+        },
+        immediate: true,
+      },
       'selectedDate.display': function(newVal){//, oldVal) {
         this.selectedDate.actual = dayjs(newVal, "MMMM YYYY");
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats

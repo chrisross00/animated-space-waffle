@@ -154,6 +154,47 @@ cash flow charts — revisit if needed).
 
 ---
 
+---
+
+## Design System
+
+**Full spec:** `DESIGN.md` in the repo root. Read it before writing any new UI.
+
+### Key rules (must follow in every PR)
+- **All colors via tokens** — `var(--basil-*)`. Never hardcode hex values.
+- **Token file:** `frontend/src/styles/tokens.css` — surfaces, text, brand, semantic,
+  category accents, spacing, radius, shadow, motion, fonts.
+- **Quasar brand colors** synced via `frontend/src/styles/quasar.variables.sass`.
+
+### Fonts — three roles, never mix
+| Role | Token | When |
+|------|-------|------|
+| Display | `--basil-font-display` (DM Serif Display) | Hero dollar amounts, large stats |
+| UI | `--basil-font-ui` (DM Sans) | Everything else |
+| Mono | `--basil-font-mono` (JetBrains Mono) | Tabular amounts in tables |
+
+Utility classes: `basil-display` (display font), `basil-mono` (mono + tabular nums).
+
+### Dark mode
+- Activated by `[data-theme="dark"]` on `<html>` — managed by `store.commit('setTheme', 'dark'|'')`.
+- Token overrides in `tokens.css`. Quasar component overrides in the dark mode section of `App.vue`.
+- New components: use only `var(--basil-*)` tokens and they adapt automatically.
+  If a Quasar component still shows a light background in dark mode, add a
+  `[data-theme="dark"] .q-whatever { background-color: var(--basil-surface) !important; }`
+  override to `App.vue`.
+
+### CSS naming
+All custom classes: `basil-[block]__[element]--[modifier]` (BEM-like, `basil-` prefix).
+Never create classes starting with `q-` (Quasar's namespace).
+
+### Component patterns
+- **Card header:** `<div class="basil-card-head"><span class="basil-card-label">Title</span></div>`
+- **Empty state:** `<EmptyState icon="..." heading="..." body="..." />`
+- **Loading (BudgetView):** `<SkeletonBudget />` — not a spinner
+- **Charts:** spread `ANIMATION` constant, use `CHART_PALETTE`, render HTML legend below chart
+
+---
+
 ## Recent history (for context)
 - Built Merchant Browser, rules management iterations 1–3, transaction search/filter
 - Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)

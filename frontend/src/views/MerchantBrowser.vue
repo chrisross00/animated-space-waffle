@@ -40,13 +40,13 @@
 
       <template v-slot:body-cell-assign="props">
         <q-td :props="props">
-          <div class="row no-wrap items-center q-gutter-sm">
+          <div class="row no-wrap items-center q-gutter-sm" style="height: 40px">
             <q-select
               v-model="pendingAssignments[props.row.merchant_name]"
               :options="filteredCategories"
               dense
               outlined
-              style="min-width: 160px"
+              style="width: 200px"
               use-input
               input-debounce="0"
               @filter="filterFn"
@@ -54,13 +54,21 @@
             <q-btn
               label="Apply"
               color="primary"
-              size="sm"
+              unelevated
+              style="height: 40px"
               :loading="!!saving[props.row.merchant_name]"
               :disable="!canApply(props.row.merchant_name)"
               @click="onApply(props.row.merchant_name)"
             />
           </div>
         </q-td>
+      </template>
+      <template v-slot:no-data>
+        <EmptyState
+          icon="store"
+          heading="No merchants yet"
+          body="Merchants will appear here once you have transactions imported."
+        />
       </template>
     </q-table>
   </div>
@@ -69,6 +77,7 @@
 <script>
 import store from '../store';
 import { fetchMerchantStats, saveRule } from '@/firebase';
+import EmptyState from '../components/EmptyState.vue';
 
 const columns = [
   { name: 'merchant_name', label: 'Merchant', field: 'merchant_name', sortable: true, align: 'left' },
@@ -79,6 +88,7 @@ const columns = [
 
 export default {
   name: 'MerchantBrowser',
+  components: { EmptyState },
 
   data() {
     return {
