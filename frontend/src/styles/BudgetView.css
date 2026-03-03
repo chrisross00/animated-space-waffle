@@ -387,3 +387,102 @@
 .basil-progress--negative {
   background-color: var(--basil-expense-bg) !important;
 }
+
+/* =====================================================
+   All Transactions table — Epic 5
+   ===================================================== */
+
+.basil-txn-table {
+  border-radius: var(--basil-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--basil-shadow-sm);
+}
+
+/* Sticky header via Quasar's virtual-scroll thead class */
+.basil-txn-table thead tr th {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--basil-surface-alt);
+}
+.basil-txn-table thead tr:first-child th {
+  top: 0;
+}
+
+/* Row — pointer + warm hover */
+.basil-txn-row {
+  cursor: pointer;
+  transition: background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-txn-row:hover td {
+  background-color: var(--basil-surface-alt) !important;
+}
+
+/* Excluded rows dimmed to 40% */
+.basil-txn-row--excluded {
+  opacity: 0.4;
+}
+
+/* Name cell: flex row */
+.basil-txn-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Initials avatar circle */
+.basil-txn-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+  user-select: none;
+}
+
+.basil-txn-label__primary {
+  font-size: 0.875rem;
+  color: var(--basil-text);
+  line-height: 1.3;
+}
+
+.basil-txn-label__secondary {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  line-height: 1.2;
+}
+
+/* Monospace amount */
+.basil-txn-amount {
+  font-family: var(--basil-font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.basil-txn-amount--credit {
+  color: var(--basil-positive);
+}
+
+.basil-txn-amount--debit {
+  color: var(--basil-text);
+}
+
+/* Pending badge */
+.basil-txn-pending {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--basil-warning);
+  background-color: var(--basil-warning-bg);
+  padding: 2px 7px;
+  border-radius: var(--basil-radius-sm);
+}
