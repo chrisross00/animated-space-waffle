@@ -32,6 +32,7 @@
 
       <q-tabs align="left" class="basil-tabs">
         <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
+        <q-route-tab v-if="$store.state.session" to="/plan" icon="edit_note" label="Plan" />
         <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
         <q-route-tab to="/merchants" icon="store" label="Merchants" />
         <q-route-tab to="/api" icon="build" label="Toolbox" />
