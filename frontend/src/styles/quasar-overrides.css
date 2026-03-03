@@ -38,6 +38,7 @@ html, body, #app {
   border: 1px solid var(--basil-border);
   box-shadow: var(--basil-shadow-sm) !important;
   border-radius: var(--basil-radius-md) !important;
+  overflow: hidden;
 }
 
 .q-dialog .q-card {
@@ -257,9 +258,13 @@ html, body, #app {
 
 /* Tables */
 
-[data-theme="dark"] .q-table {
-  background-color: var(--basil-surface);
-  color: var(--basil-text);
+[data-theme="dark"] .q-table__container,
+[data-theme="dark"] .q-table,
+[data-theme="dark"] .q-table__top,
+[data-theme="dark"] .q-table__middle,
+[data-theme="dark"] .q-table__bottom {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
 }
 
 [data-theme="dark"] .q-table thead th {
