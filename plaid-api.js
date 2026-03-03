@@ -23,7 +23,6 @@ const config = new Configuration({
 const client = new PlaidApi(config);
 
 router.get("/create_link_token", async (req, res, next) => {
-    console.log('/create_link_token starting...');
     try {
       const decodedToken = await validateIdToken(req);
       const tokenResponse = await client.linkTokenCreate({
@@ -33,7 +32,6 @@ router.get("/create_link_token", async (req, res, next) => {
         products: ["auth", "transactions"],
         country_codes: ["US"],
       });
-      console.log('tokenResponse.data', tokenResponse)
       res.json(tokenResponse.data);
     } catch (error) {
       console.error('/create_link_token error:', error.message);
@@ -42,38 +40,29 @@ router.get("/create_link_token", async (req, res, next) => {
 });
 
 router.post("/exchange_public_token", async (req, res, next) => {
-
-  // get the user ID from the Firebase session
-  console.log('/exchange_public_token starting...');
-  const decodedToken = await validateIdToken(req)
-  if(decodedToken.uid){
-      console.log('exchange_public_token: got the user ID', decodedToken.uid)
+  let decodedToken;
+  try {
+    decodedToken = await validateIdToken(req);
+  } catch (error) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  
-  // send exchangeResponse.data.access_token to Mongodb
-  // check if the user exists in the database first; only create an access_token if the user doesn't exist
   try {
-    const user = await findUserData('Plaid-Accounts', decodedToken.uid)
-    if(user.length>0){
-      console.log('user exists, need to now checkif the institution exists in the accounts object', req.body.metadata.institution.name)
+    const user = await findUserData('Plaid-Accounts', decodedToken.uid);
+    if (user.length > 0) {
       const accounts = user[0].Accounts;
       const institution = req.body.metadata.institution.name;
       if (accounts.hasOwnProperty(institution)) {
-      console.log(`The institution '${institution}' exists in the accounts object. Return now and do not update the account, or you will invalidate the token`);
-      return res.json({ alreadyLinked: true });
+        return res.json({ alreadyLinked: true });
       } else {
-      console.log(`The institution '${institution}' does not exist in the accounts object.`);
-        // new function
-        await addInstitution(req, decodedToken, 'addToExisting')
+        await addInstitution(req, decodedToken, 'addToExisting');
       }
     } else {
-      console.log('user does not exist, need to insert the user and institution data into the database')
-      // new function
-      await addInstitution(req, decodedToken)
+      await addInstitution(req, decodedToken);
     }
   } catch (error) {
-    console.log(error)
+    console.error('/exchange_public_token error:', error.message);
+    return res.status(500).json({ message: 'Failed to exchange token' });
   }
   res.json(true);
 });
@@ -88,7 +77,6 @@ async function addInstitution(req, decodedToken, type='new'){
     console.log(error,'\nerror getting exchangeResponse')
   }
   try {
-    console.log('inserting institution data into the database')
     const exchangeResponseData = exchangeResponse.data;
     const institutionName = req.body.metadata.institution.name;
     const userId = decodedToken.uid;
@@ -114,10 +102,8 @@ async function addInstitution(req, decodedToken, type='new'){
           earliestDate: earliestDate,
         } },
       };
-      console.log('addInstitution(): inserting only institution data since type == ', type)
       await updateData('Plaid-Accounts', filter, update);
-    } else { // new user and data
-      console.log('addInstitution(): inserting user and institution data == ', type)
+    } else {
       await insertData('Plaid-Accounts', updateObject);
     }
     return;

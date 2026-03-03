@@ -32,7 +32,6 @@ router.get('/getcategories', async (req, res)=>{
   try {
     const decodedToken = await validateIdToken(req)
     const userId = decodedToken.uid;
-    console.log('/test userId, ', userId)
     const categories = await findUserData('Basil-Categories', userId);
     res.send(categories)
     
@@ -131,13 +130,10 @@ router.get('/getNewAuth', async (req, res) => {
 
 // Requires the ID token from the Authorization header, which you can easily create using firebase.js/getAuthHeaders() on the client side
 router.get('/getOrAddUser', async (req, res) => {
-  console.log('/getOrAddUser starting...');
   try {
     const decodedToken = await validateIdToken(req)
-    console.log('decodedToken: ', decodedToken)
     if(decodedToken){
       const user = await getOrAddUser(decodedToken)
-      console.log('received user from getOrAddUser() method', user)
       res.status(200).json(user);
       return user
     } else {

@@ -274,7 +274,6 @@ export default {
         try {
           const userData = {
             uid: user.uid,
-            refreshToken: user.refreshToken,
             email: user.email,
             createdAt: user.metadata.createdAt,
           }
