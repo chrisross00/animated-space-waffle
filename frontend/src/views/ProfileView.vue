@@ -1,93 +1,183 @@
 <style>
-.icon-hover-neg:hover {
-  color: red;
+.basil-profile-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
 }
-.icon-hover-pos:hover {
-  color: green;
-}
+
 .profile-card {
   width: 100%;
-  min-width: 400px;
   max-width: 400px;
-  margin: 1rem;
 }
-.connectedAccounts {
+
+.basil-profile-card {
+  padding: var(--basil-space-5) !important;
+}
+
+/* ---- Identity row ---- */
+.basil-profile-identity {
   display: flex;
-  flex-direction: column;
-  width: calc(66.33% - 2px);
+  align-items: center;
+  gap: var(--basil-space-4);
+  margin-bottom: var(--basil-space-2);
 }
 
-.profile-card-item {
-  flex: 1;
-  margin: 10px;
+.basil-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--basil-border);
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
+.basil-profile-avatar--placeholder {
+  background-color: var(--basil-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--basil-text-muted);
+}
+
+.basil-profile-name {
+  font-size: 1.25rem;
+  color: var(--basil-text);
+  line-height: 1.2;
+}
+
+.basil-profile-email {
+  font-size: 0.875rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
+/* ---- Account list ---- */
+.basil-account-item {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* ---- Settings row ---- */
+.basil-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--basil-space-4);
+}
+
+.basil-settings-row__label {
+  font-size: 0.9375rem;
+  color: var(--basil-text);
+  font-weight: 500;
+}
+
+.basil-settings-row__hint {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
 </style>
 
 <template>
   <div class="q-pa-md-page-padder p-3">
     <SpinnerComponent :isLoading="isLoading"/>
-    <div v-if="session !== null && user">
-      <q-card class="my-card profile-card ">
-        <q-card-section horizontal>
-          <q-card-section class="q-pt-xs">
-            <div class="text-overline">Profile</div>
-              <p><img :src="user.picture" alt="User photo"></p>
-              <p>Name: {{ user.name }}</p>
-              <p>Email: {{ user.email }}</p>
-            <q-btn v-show="user" @click="signOut">Sign Out</q-btn>
-          </q-card-section>
-        </q-card-section>
+    <div v-if="session !== null && user" class="basil-profile-layout">
+
+      <!-- Profile card -->
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Profile</span>
+        </div>
+        <div class="basil-profile-identity">
+          <img v-if="user.picture" :src="user.picture" alt="User photo" class="basil-profile-avatar" />
+          <div v-else class="basil-profile-avatar basil-profile-avatar--placeholder">
+            <q-icon name="person" size="2rem" />
+          </div>
+          <div class="basil-profile-info">
+            <div class="basil-profile-name basil-display">{{ user.name }}</div>
+            <div class="basil-profile-email">{{ user.email }}</div>
+          </div>
+        </div>
+        <q-btn flat dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
       </q-card>
-      
-        <q-card class="my-card profile-card ">
-            <q-card-section class="q-pt-xs">       
-              <div class="text-overline">Linked Accounts</div>
-              <div class="connectedAccounts" v-if="user.accounts !== null">
-                <q-item class="profile-card-item" v-for="account in user.accounts" :key="account.id" 
-                        clickable v-ripple>
-                  <q-item-section>
-                    {{ account }}
-                  </q-item-section>
 
-                  <q-item-section side>
-                    <template v-if="!preDelete[account]">
-                      <q-icon 
-                        key="account.id"
-                        style="font-size: 16px;"
-                        name="delete"
-                        class="icon-hover-neg"
-                        @click.stop="preDeleteAccount(account)"
-                      />
-                    </template>
-                    <template v-else>
-                      <div style="display: flex;">
-                        <q-icon name="check" class="icon-hover-pos" style="font-size: 16px;" @click.stop="deleteAccount(account)" />
-                        <q-icon name="close" class="icon-hover-neg" style="font-size: 16px;" @click.stop="cancelPreDeleteAccount(account)" />
-                      </div>
-                    </template>
-                  </q-item-section>
+      <!-- Display settings card -->
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Display</span>
+        </div>
+        <div class="basil-settings-row">
+          <div>
+            <div class="basil-settings-row__label">Dark mode</div>
+            <div class="basil-settings-row__hint">Terminal theme with emerald accents</div>
+          </div>
+          <q-toggle :model-value="isDark" color="primary" @update:model-value="toggleTheme" />
+        </div>
+      </q-card>
 
-                </q-item>
-              </div>
-              <div class="addAccount">
-                <div>
-                  <q-btn @click="handleAddNewAccountClick">Add new account</q-btn>
-                  <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+      <!-- Linked Accounts card -->
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Linked Accounts</span>
+        </div>
+
+        <EmptyState
+          v-if="!user.accounts || user.accounts.length === 0"
+          icon="account_balance"
+          heading="No accounts linked"
+          body="Connect a bank account to start importing your transactions."
+        />
+
+        <q-list v-else separator>
+          <q-item v-for="account in user.accounts" :key="account" class="basil-account-item">
+            <q-item-section avatar>
+              <q-icon name="account_balance" color="primary" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ account }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <template v-if="!preDelete[account]">
+                <q-btn flat round dense icon="delete" color="negative" size="sm"
+                  @click.stop="preDeleteAccount(account)" />
+              </template>
+              <template v-else>
+                <div class="row q-gutter-xs">
+                  <q-btn flat round dense icon="check" color="positive" size="sm"
+                    @click.stop="deleteAccount(account)" />
+                  <q-btn flat round dense icon="close" color="negative" size="sm"
+                    @click.stop="cancelPreDeleteAccount(account)" />
                 </div>
-              </div>
-            </q-card-section>
-        </q-card>
+              </template>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <div class="q-mt-md">
+          <q-btn unelevated color="primary" icon="add" label="Add account"
+            @click="handleAddNewAccountClick" />
+          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+        </div>
+      </q-card>
+
     </div>
 
     <div v-if="session == null || !user">
-      <q-card class="my-card profile-card ">
-      <q-card-section horizontal>
-        <q-card-section class="q-pt-xs">       
-          <q-btn v-show="!user" @click="signInWithGoogle">Sign in with Google</q-btn>
-          </q-card-section>
-        </q-card-section>
-      </q-card>
+      <EmptyState
+        icon="lock_open"
+        heading="Welcome to Basil"
+        body="Track your spending, set budgets, and understand your finances. Sign in to get started."
+      >
+        <q-btn
+          unelevated
+          color="primary"
+          label="Sign in with Google"
+          :loading="isLoading"
+          class="q-mt-sm"
+          @click="signInWithGoogle"
+        />
+      </EmptyState>
     </div>
       
   </div>
@@ -98,14 +188,16 @@ import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetch
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import SpinnerComponent from '../components/SpinnerComponent.vue'
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
+import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
 
 
 export default {
   components: {
     SpinnerComponent,
-    PlaidLinkHandler
-},
+    PlaidLinkHandler,
+    EmptyState,
+  },
   data() {
     return {
       user: store.state.user ? store.state.user : null,
@@ -115,7 +207,15 @@ export default {
       preDelete: {}
     }
   },
+  computed: {
+    isDark() {
+      return this.$store.state.theme === 'dark';
+    },
+  },
   methods: {
+    toggleTheme() {
+      this.$store.commit('setTheme', this.isDark ? '' : 'dark');
+    },
     preDeleteAccount(account){
       // set preDelete to true
     this.preDelete[account] = true;

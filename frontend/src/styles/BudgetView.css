@@ -107,8 +107,12 @@
   }
   
   
+    .budget-container > .q-item {
+      background-color: #f5f5f5;
+    }
+
     .active {
-      background-color: #f0f0f0;
+      background-color: #ebebeb;
     }
     .categories {
       /* display: flex; */
@@ -119,6 +123,7 @@
       margin: 0 auto; /* center the boxes horizontally */
       border-radius: 10px; /* round the corners of the container */
       box-shadow: 0 1px 5px rgba(0, 0, 0, .2), 0 2px 2px rgba(0, 0, 0, .14), 0 3px 1px -2px rgba(0, 0, 0, .12);
+      overflow: hidden; /* clip left border accents to the rounded corners */
     }
   
     .category {
@@ -188,3 +193,367 @@
     .text-p{
       padding-top: 0px;
     }
+
+/* =====================================================
+   Actuals & Projections cards — Epic 3
+   ===================================================== */
+
+.basil-actuals-card,
+.basil-projections-card {
+  padding: var(--basil-space-5) !important;
+}
+
+/* suppress default q-card-section padding inside our cards */
+.basil-actuals-card .q-card__section,
+.basil-projections-card .q-card__section {
+  padding: 0 !important;
+}
+
+/* ---- Card header row ---- */
+.basil-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--basil-space-5);
+}
+
+.basil-card-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--basil-text-muted);
+}
+
+.basil-card-period {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+}
+
+/* ---- Primary stats row (spent | earned) ---- */
+.basil-primary-stats {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--basil-space-5);
+  margin-bottom: var(--basil-space-4);
+}
+
+.basil-primary-stats__divider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--basil-border);
+  flex-shrink: 0;
+}
+
+.basil-primary-stat__amount {
+  font-size: 1.875rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--basil-text);
+}
+
+.basil-primary-stat--earned .basil-primary-stat__amount {
+  color: var(--basil-positive);
+}
+
+.basil-primary-stat__label {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* ---- Horizontal rule ---- */
+.basil-card-rule {
+  height: 1px;
+  background-color: var(--basil-border);
+  margin: var(--basil-space-4) 0;
+}
+
+/* ---- Net position ---- */
+.basil-net {
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-net__amount {
+  font-size: 2.125rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  transition: color var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-net--positive .basil-net__amount {
+  color: var(--basil-positive);
+}
+
+.basil-net--negative .basil-net__amount {
+  color: var(--basil-negative);
+}
+
+.basil-net__label {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: 3px;
+}
+
+/* ---- Secondary stats (savings, unsorted) ---- */
+.basil-secondary-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: var(--basil-space-3);
+}
+
+.basil-secondary-stat--warn {
+  color: var(--basil-warning);
+}
+
+/* ---- Projections card ---- */
+.basil-forecast__amount {
+  font-size: 1.875rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--basil-text-secondary);
+}
+
+.basil-forecast__label {
+  font-size: 0.875rem;
+  color: var(--basil-text-muted);
+  margin-top: 4px;
+}
+
+.basil-forecast--mt {
+  margin-top: var(--basil-space-4);
+  padding-top: var(--basil-space-4);
+  border-top: 1px solid var(--basil-border);
+}
+
+/* =====================================================
+   Category list enhancements — Epic 4
+   ===================================================== */
+
+/* ---- Staggered row reveal ---- */
+@keyframes basil-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.basil-category-reveal {
+  animation: basil-row-in 200ms var(--basil-ease) both;
+}
+
+/* ---- Transaction cascade expand/collapse ---- */
+@keyframes basil-txn-cascade {
+  from {
+    opacity: 0;
+    transform: translateY(-7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Each row cascades in with a staggered delay on open */
+.basil-txn-expand-enter-active .category-txn-item {
+  animation: basil-txn-cascade 180ms var(--basil-ease) both;
+  animation-delay: calc(var(--txn-i, 0) * 30ms);
+}
+
+/* Whole container fades + rises on close */
+.basil-txn-expand-leave-active {
+  transition: opacity 120ms ease-in, transform 120ms ease-in;
+  pointer-events: none;
+}
+
+.basil-txn-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* ---- Left border accent per category type ---- */
+.basil-category-row {
+  border-left: 3px solid transparent !important;
+  transition: border-color var(--basil-t-fast) var(--basil-ease),
+              background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-category-row--expense  { border-left-color: var(--basil-expense)  !important; }
+.basil-category-row--income   { border-left-color: var(--basil-income)   !important; }
+.basil-category-row--savings  { border-left-color: var(--basil-savings)  !important; }
+.basil-category-row--payment  { border-left-color: var(--basil-payment)  !important; }
+
+/* ---- Progress bar fill animation ---- */
+/* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
+.basil-progress .q-linear-progress__model {
+  transition: transform 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition-delay: 280ms;
+}
+
+/* ---- Progress bar gradient fills ---- */
+.basil-progress--secondary .q-linear-progress__model,
+.basil-progress--positive .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-green) 0%, var(--basil-green-mid) 100%) !important;
+}
+
+.basil-progress--warning .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-warning) 0%, #e8971f 100%) !important;
+}
+
+.basil-progress--negative .q-linear-progress__model {
+  background: linear-gradient(90deg, var(--basil-expense) 0%, #d4453b 100%) !important;
+}
+
+/* Tint the track red when over budget */
+.basil-progress--negative {
+  background-color: var(--basil-expense-bg) !important;
+}
+
+/* =====================================================
+   Dark mode — override hardcoded light backgrounds
+   ===================================================== */
+
+[data-theme="dark"] .q-dialog__content {
+  background-color: var(--basil-surface-dialog) !important;
+}
+
+[data-theme="dark"] .budget-container > .q-item,
+[data-theme="dark"] .category-row {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .category-row:hover {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .active {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .category {
+  background-color: var(--basil-surface) !important;
+  border-color: var(--basil-border) !important;
+}
+
+[data-theme="dark"] th {
+  background-color: var(--basil-surface-alt) !important;
+  color: var(--basil-text-secondary) !important;
+}
+
+[data-theme="dark"] td {
+  border-bottom-color: var(--basil-border) !important;
+}
+
+/* Mobile bulk action bar */
+[data-theme="dark"] .lt-sm.fixed-bottom {
+  background-color: var(--basil-surface) !important;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* =====================================================
+   All Transactions table — Epic 5
+   ===================================================== */
+
+.basil-txn-table {
+  border-radius: var(--basil-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--basil-shadow-sm);
+}
+
+/* Sticky header via Quasar's virtual-scroll thead class */
+.basil-txn-table thead tr th {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--basil-surface-alt);
+}
+.basil-txn-table thead tr:first-child th {
+  top: 0;
+}
+
+/* Row — pointer + warm hover */
+.basil-txn-row {
+  cursor: pointer;
+  transition: background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-txn-row:hover td {
+  background-color: var(--basil-surface-alt) !important;
+}
+
+/* Excluded rows dimmed to 40% */
+.basil-txn-row--excluded {
+  opacity: 0.4;
+}
+
+/* Name cell: flex row */
+.basil-txn-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Initials avatar circle */
+.basil-txn-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+  user-select: none;
+}
+
+.basil-txn-label__primary {
+  font-size: 0.875rem;
+  color: var(--basil-text);
+  line-height: 1.3;
+}
+
+.basil-txn-label__secondary {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  line-height: 1.2;
+}
+
+/* Monospace amount */
+.basil-txn-amount {
+  font-family: var(--basil-font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.basil-txn-amount--credit {
+  color: var(--basil-positive);
+}
+
+.basil-txn-amount--debit {
+  color: var(--basil-text);
+}
+
+/* Pending badge */
+.basil-txn-pending {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--basil-warning);
+  background-color: var(--basil-warning-bg);
+  padding: 2px 7px;
+  border-radius: var(--basil-radius-sm);
+}

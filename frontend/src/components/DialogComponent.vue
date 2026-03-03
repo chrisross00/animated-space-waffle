@@ -1,281 +1,460 @@
 <template>
-    <q-card class="bg-white">
-        <!-- Dialog: Top Bar -->
-        <q-bar class="bg-primary titlebar">
-        <q-space />
-        <q-btn dense flat icon="minimize" @click="maximizedToggle = false" :disable="!maximizedToggle">
-            <q-tooltip v-if="maximizedToggle" class="bg-white text-primary">Minimize</q-tooltip>
-        </q-btn>
-        <q-btn dense flat icon="crop_square" @click="maximizedToggle = true" :disable="maximizedToggle">
-            <q-tooltip v-if="!maximizedToggle" class="bg-white text-primary">Maximize</q-tooltip>
-        </q-btn>
-        <q-btn dense flat icon="close" v-close-popup>
-            <q-tooltip class="bg-white text-primary">Close</q-tooltip>
-        </q-btn>
-        </q-bar>
-        
-<!-- TRANSACTION Body Form -->
-        <div v-if="dialogType=='transaction'" class="dialog-body-form">
-            <q-card-section>
-                <div class="text-h3">Edit Transaction</div>
-                <br />
-                <div class="text-h4">$ {{item.amount}}</div>
-            </q-card-section>
+  <q-card class="basil-dialog-card">
 
-            <!-- Q-Form -->
-                <div class="text-p">{{dialogBody.name}}</div>
-                    <q-input
-                        type="date"
-                        filled
-                        v-model="this.dialogBody.date"
-                        lazy-rules
-                        label="Date"
-                        class="q-field--with-bottom"
-                        @change="isFormSubmittable()"
-                        />
+    <!-- ── Header ─────────────────────────────────────── -->
+    <div class="basil-dialog-header">
+      <div class="basil-dialog-title">
+        <div v-if="dialogSubtitle" class="basil-dialog-title__sub">{{ dialogSubtitle }}</div>
+        <div class="basil-dialog-title__main basil-display">{{ dialogMainTitle }}</div>
+      </div>
+      <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
+    </div>
 
-                    <q-select
-                        filled
-                        v-model="this.dialogBody.mappedCategory"
-                        label="Category Name"
-                        :options="dropDownOptions"
-                        class="q-field--with-bottom"
-                        @touchmove.stop.prevent
-                        />
-                    <q-input
-                        type="text"
-                        filled
-                        v-model="this.dialogBody.note"
-                        lazy-rules
-                        label="Note"
-                        class="q-field--with-bottom"
-                        @change="isFormSubmittable()"
-                        />
+    <!-- ── TRANSACTION form ───────────────────────────── -->
+    <div v-if="dialogType === 'transaction'" class="basil-dialog-body">
 
-                    <q-toggle
-                        color="primary"
-                        label="Exclude from Total"
-                        v-model="this.dialogBody.excludeFromTotal"
-                        @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"/>
-
-                    <q-toggle
-                        v-if="this.dialogBody.merchantName || this.dialogBody.name"
-                        color="secondary"
-                        v-model="this.dialogBody.createRule"
-                        :label="'Remember category for ' + (this.dialogBody.merchantName || this.dialogBody.name)"
-                    />
-                    <div v-if="this.dialogBody.createRule" class="text-caption text-grey-7 q-mt-xs q-ml-sm">
-                        All existing transactions from <strong>{{ this.dialogBody.merchantName || this.dialogBody.name }}</strong> will be moved to <strong>{{ this.dialogBody.mappedCategory }}</strong>, and future ones will be assigned automatically.
-                    </div>
-
-                <div class="button-container">
-                    <div>
-                        <q-btn @click="updateTransaction" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
-                        <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
-                    </div>
-                    <div>
-                        <q-btn label="Cancel" v-close-popup color="accent"/>
-                    </div>
-                </div>
+      <!-- Amount hero -->
+      <div class="basil-dialog-txn-hero">
+        <div
+          class="basil-dialog-txn-amount basil-display"
+          :class="item.amount >= 0 ? 'basil-dialog-txn-amount--credit' : ''"
+        >
+          {{ item.amount < 0 ? `-$${Math.abs(item.amount).toFixed(2)}` : `$${Number(item.amount).toFixed(2)}` }}
         </div>
+        <div class="basil-dialog-txn-name">{{ dialogBody.merchantName || dialogBody.name }}</div>
+        <div
+          v-if="dialogBody.merchantName && dialogBody.merchantName !== dialogBody.name"
+          class="basil-dialog-txn-subname"
+        >{{ dialogBody.name }}</div>
+      </div>
 
-<!-- EDIT CATEGORY Body Form -->
-        <div v-if="dialogType=='editCategory'" class="dialog-body-form">
-            <q-card-section>
-                <div class="text-h3">Edit Category: {{this.dialogBody.originalCategoryName}}</div>
-            </q-card-section>
+      <div class="basil-dialog-fields">
+        <q-input
+          type="date"
+          outlined
+          v-model="dialogBody.date"
+          label="Date"
+          @change="isFormSubmittable()"
+        />
+        <q-select
+          outlined
+          v-model="dialogBody.mappedCategory"
+          label="Category"
+          :options="dropDownOptions"
+          @touchmove.stop.prevent
+        />
+        <q-input
+          type="text"
+          outlined
+          v-model="dialogBody.note"
+          label="Note"
+          @change="isFormSubmittable()"
+        />
+      </div>
 
-            <!-- Q-Form -->
-            <q-input
-            filled
-            v-model="this.dialogBody.categoryName"
-            label="Category Name"
-            lazy-rules
-            :rules="[ val => val && val.length > 0 || 'Please type something']"
-            @change="isFormSubmittable()"
-            />
+      <div class="basil-dialog-toggles">
+        <q-toggle
+          color="primary"
+          label="Exclude from total"
+          v-model="dialogBody.excludeFromTotal"
+          @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"
+        />
+        <q-toggle
+          v-if="dialogBody.merchantName || dialogBody.name"
+          color="primary"
+          v-model="dialogBody.createRule"
+          :label="'Remember category for ' + (dialogBody.merchantName || dialogBody.name)"
+        />
+        <p v-if="dialogBody.createRule" class="basil-dialog-hint">
+          All existing transactions from <strong>{{ dialogBody.merchantName || dialogBody.name }}</strong>
+          will be moved to <strong>{{ dialogBody.mappedCategory }}</strong>, and future ones assigned automatically.
+        </p>
+      </div>
 
-            <q-input
-            filled
-            type="number"
-            v-model="this.dialogBody.monthly_limit"
-            label="Monthly Limit"
-            lazy-rules
-            @change="isFormSubmittable()"
-            :rules="[
-                val => val !== null && val !== '' || 'Please enter a monthly limit',
-            ]"
-            />
-
-            <q-toggle color="primary" :disable="true" label="Show on View Budgets screen" v-model="this.dialogBody.showOnBudgetPage" />
-
-            <q-select
-                filled
-                v-model="this.dialogBody.plaid_pfc"
-                label="Auto-map Plaid transaction types"
-                :options="plaidPfcOptions"
-                option-value="value"
-                option-label="label"
-                emit-value
-                map-options
-                multiple
-                use-chips
-                hint="Transactions Plaid labels with these types will be automatically assigned to this category."
-                class="q-field--with-bottom q-mt-sm"
-                @update:model-value="isFormSubmittable()"
-            />
-
-            <div v-if="hasRules" class="q-mt-md">
-                <div class="text-caption text-grey-7 q-mb-xs">Auto-learn rules</div>
-                <div v-for="ruleType in ['merchant_name', 'name']" :key="ruleType">
-                    <div v-if="item.rules && item.rules[ruleType] && item.rules[ruleType].length">
-                        <div class="text-caption q-mb-xs">{{ ruleType === 'merchant_name' ? 'Merchant' : 'Transaction name' }}</div>
-                        <q-chip
-                            v-for="ruleValue in item.rules[ruleType]"
-                            :key="ruleValue"
-                            removable
-                            :color="isPendingRemoval(ruleType, ruleValue) ? 'grey-5' : 'grey-3'"
-                            :text-color="isPendingRemoval(ruleType, ruleValue) ? 'grey-7' : 'dark'"
-                            :class="{ 'text-strike': isPendingRemoval(ruleType, ruleValue) }"
-                            @remove="stageRuleRemoval(ruleType, ruleValue)"
-                        >{{ ruleValue }}</q-chip>
-                    </div>
-                </div>
-                <div v-if="pendingRuleRemovals.length" class="text-caption text-grey-6 q-mt-xs">
-                    Strikethrough rules will be deleted on Submit. Click × again to undo.
-                </div>
-            </div>
-
-            <div class="q-mt-md">
-                <div class="text-caption text-grey-7 q-mb-xs">Add merchant rule</div>
-                <div class="row items-center q-gutter-sm">
-                    <q-select
-                        v-model="newRuleValue"
-                        :options="filteredMerchants"
-                        option-value="value"
-                        option-label="value"
-                        emit-value
-                        map-options
-                        label="Search merchants..."
-                        dense
-                        outlined
-                        use-input
-                        hide-selected
-                        fill-input
-                        input-debounce="0"
-                        @filter="filterMerchants"
-                        @touchmove.stop.prevent
-                        class="col"
-                    >
-                        <template #option="scope">
-                            <q-item v-bind="scope.itemProps">
-                                <q-item-section>
-                                    <q-item-label>{{ scope.opt.value }}</q-item-label>
-                                    <q-item-label v-if="scope.opt.conflict" caption class="text-orange-8">currently: {{ scope.opt.conflict }}</q-item-label>
-                                </q-item-section>
-                            </q-item>
-                        </template>
-                    </q-select>
-                    <q-btn dense flat icon="add" color="primary" :disable="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
-                </div>
-                <div v-if="conflictingCategory" class="text-caption text-orange-8 q-mt-xs">
-                    "{{ newRuleValue }}" is currently assigned to <strong>{{ conflictingCategory }}</strong>. Adding it here will move it and re-categorize all matching transactions.
-                </div>
-                <div v-if="pendingRuleAdditions.length" class="q-mt-xs">
-                    <q-chip
-                        v-for="r in pendingRuleAdditions"
-                        :key="r.ruleValue"
-                        removable
-                        color="primary"
-                        text-color="white"
-                        @remove="removePendingAddition(r.ruleValue)"
-                    >{{ r.ruleValue }}</q-chip>
-                    <div class="text-caption text-grey-6 q-mt-xs">These rules will be saved on Submit and applied to all existing and future transactions.</div>
-                </div>
-            </div>
-
-            <div class="button-container q-mt-lg">
-            <div>
-                <q-btn @click="updateCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
-                <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
-            </div>
-            <div>
-                <q-btn label="Cancel" v-close-popup  color="accent"/>
-            </div>
-            </div>
+      <div class="basil-dialog-actions">
+        <q-btn flat label="Cancel" v-close-popup />
+        <div class="basil-dialog-actions__right">
+          <q-btn flat label="Reset" @click="resetData()" />
+          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateTransaction" />
         </div>
+      </div>
+    </div>
 
-<!-- ADD CATEGORY Body Form -->
-        <div v-if="dialogType=='addCategory'" class="dialog-body-form">
-            <q-card-section>
-                <div class="text-h3">Add Category</div>
-            </q-card-section>
+    <!-- ── EDIT CATEGORY form ─────────────────────────── -->
+    <div v-if="dialogType === 'editCategory'" class="basil-dialog-body">
 
-            <!-- Q-Form -->
+      <div class="basil-dialog-fields">
+        <q-input
+          outlined
+          v-model="dialogBody.categoryName"
+          label="Category Name"
+          :rules="[val => val && val.length > 0 || 'Please type something']"
+          @change="isFormSubmittable()"
+        />
+        <q-input
+          outlined
+          type="number"
+          v-model="dialogBody.monthly_limit"
+          label="Monthly Limit"
+          :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
+          @change="isFormSubmittable()"
+        />
+        <q-select
+          outlined
+          v-model="dialogBody.plaid_pfc"
+          label="Auto-map Plaid transaction types"
+          :options="plaidPfcOptions"
+          option-value="value"
+          option-label="label"
+          emit-value
+          map-options
+          multiple
+          use-chips
+          hint="Transactions Plaid labels with these types will be auto-assigned to this category."
+          class="q-mt-xs"
+          @update:model-value="isFormSubmittable()"
+        />
+      </div>
 
-            <q-input
-            filled
-            v-model="this.dialogBody.categoryName"
-            label="Category Name"
-            lazy-rules
-            :rules="[ val => val && val.length > 0 || 'Please type something']"
-            @change="isFormSubmittable()"
-            />
-
-            <q-input
-            filled
-            type="number"
-            v-model="this.dialogBody.monthly_limit"
-            label="Monthly Limit"
-            lazy-rules
-            @change="isFormSubmittable()"
-            :rules="[
-                val => val !== null && val !== '' || 'Please enter a monthly limit',
-            ]"
-            />
-            <q-select
-                filled
-                v-model="this.dialogBody.type"
-                label="Category Type"
-                :options="type"
-                class="q-field--with-bottom"
-                @touchmove.stop.prevent
-                />
-
-            <q-select
-                filled
-                v-model="this.dialogBody.plaid_pfc"
-                label="Auto-map Plaid transaction types"
-                :options="plaidPfcOptions"
-                option-value="value"
-                option-label="label"
-                emit-value
-                map-options
-                multiple
-                use-chips
-                hint="Transactions Plaid labels with these types will be automatically assigned to this category."
-                class="q-field--with-bottom q-mt-sm"
-            />
-
-            <div class="button-container">
-            <div>
-                <q-btn @click="addCategory" label="Submit" type="submit" color="primary" :disable="!formSubmittable"/>
-                <q-btn @click="resetData()" label="Reset" type="reset" color="secondary" flat class="q-ml-sm" />
+      <!-- Existing rules -->
+      <div v-if="hasRules" class="basil-dialog-section">
+        <div class="basil-dialog-section__label">Auto-learn rules</div>
+        <div v-for="ruleType in ['merchant_name', 'name']" :key="ruleType">
+          <div v-if="item.rules && item.rules[ruleType] && item.rules[ruleType].length" class="q-mb-xs">
+            <div class="basil-dialog-section__sublabel">
+              {{ ruleType === 'merchant_name' ? 'Merchant' : 'Transaction name' }}
             </div>
-            <div>
-                <q-btn label="Cancel" v-close-popup  color="accent"/>
+            <div class="basil-chips">
+              <span
+                v-for="ruleValue in item.rules[ruleType]"
+                :key="ruleValue"
+                class="basil-chip"
+                :class="{ 'basil-chip--removing': isPendingRemoval(ruleType, ruleValue) }"
+              >
+                {{ ruleValue }}
+                <button class="basil-chip__remove" @click="stageRuleRemoval(ruleType, ruleValue)">×</button>
+              </span>
             </div>
-            </div>
+          </div>
         </div>
-    </q-card>
+        <p v-if="pendingRuleRemovals.length" class="basil-dialog-hint">
+          Struck-through rules will be deleted on Submit. Click × again to undo.
+        </p>
+      </div>
+
+      <!-- Add rule -->
+      <div class="basil-dialog-section">
+        <div class="basil-dialog-section__label">Add merchant rule</div>
+        <div class="row items-center q-gutter-sm">
+          <q-select
+            v-model="newRuleValue"
+            :options="filteredMerchants"
+            option-value="value"
+            option-label="value"
+            emit-value
+            map-options
+            label="Search merchants…"
+            dense
+            outlined
+            use-input
+            hide-selected
+            fill-input
+            input-debounce="0"
+            @filter="filterMerchants"
+            @touchmove.stop.prevent
+            class="col"
+          >
+            <template #option="scope">
+              <q-item v-bind="scope.itemProps">
+                <q-item-section>
+                  <q-item-label>{{ scope.opt.value }}</q-item-label>
+                  <q-item-label v-if="scope.opt.conflict" caption class="basil-conflict-label">
+                    currently: {{ scope.opt.conflict }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
+          <q-btn dense flat icon="add" color="primary" :disable="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
+        </div>
+        <p v-if="conflictingCategory" class="basil-dialog-hint basil-dialog-hint--warn">
+          "{{ newRuleValue }}" is currently assigned to <strong>{{ conflictingCategory }}</strong>.
+          Adding it here will move it and re-categorize all matching transactions.
+        </p>
+        <div v-if="pendingRuleAdditions.length" class="basil-chips q-mt-xs">
+          <span
+            v-for="r in pendingRuleAdditions"
+            :key="r.ruleValue"
+            class="basil-chip basil-chip--pending"
+          >
+            {{ r.ruleValue }}
+            <button class="basil-chip__remove" @click="removePendingAddition(r.ruleValue)">×</button>
+          </span>
+        </div>
+        <p v-if="pendingRuleAdditions.length" class="basil-dialog-hint">
+          These rules will be saved on Submit and applied to all existing and future transactions.
+        </p>
+      </div>
+
+      <div class="basil-dialog-actions">
+        <q-btn flat label="Cancel" v-close-popup />
+        <div class="basil-dialog-actions__right">
+          <q-btn flat label="Reset" @click="resetData()" />
+          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateCategory" />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADD CATEGORY form ──────────────────────────── -->
+    <div v-if="dialogType === 'addCategory'" class="basil-dialog-body">
+
+      <div class="basil-dialog-fields">
+        <q-input
+          outlined
+          v-model="dialogBody.categoryName"
+          label="Category Name"
+          :rules="[val => val && val.length > 0 || 'Please type something']"
+          @change="isFormSubmittable()"
+        />
+        <q-input
+          outlined
+          type="number"
+          v-model="dialogBody.monthly_limit"
+          label="Monthly Limit"
+          :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
+          @change="isFormSubmittable()"
+        />
+        <q-select
+          outlined
+          v-model="dialogBody.type"
+          label="Category Type"
+          :options="type"
+          @touchmove.stop.prevent
+        />
+        <q-select
+          outlined
+          v-model="dialogBody.plaid_pfc"
+          label="Auto-map Plaid transaction types"
+          :options="plaidPfcOptions"
+          option-value="value"
+          option-label="label"
+          emit-value
+          map-options
+          multiple
+          use-chips
+          hint="Transactions Plaid labels with these types will be auto-assigned to this category."
+          class="q-mt-xs"
+        />
+      </div>
+
+      <div class="basil-dialog-actions">
+        <q-btn flat label="Cancel" v-close-popup />
+        <div class="basil-dialog-actions__right">
+          <q-btn flat label="Reset" @click="resetData()" />
+          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="addCategory" />
+        </div>
+      </div>
+    </div>
+
+  </q-card>
 </template>
 
-<style>
-
-input .select{
-    padding: 10px;
+<style scoped>
+/* ── Card ── */
+.basil-dialog-card {
+  background-color: var(--basil-surface-dialog) !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
+/* ── Header ── */
+.basil-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--basil-space-4) var(--basil-space-5);
+  border-bottom: 1px solid var(--basil-border);
+  flex-shrink: 0;
+}
+
+.basil-dialog-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.basil-dialog-title__sub {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--basil-text-muted);
+  line-height: 1;
+}
+
+.basil-dialog-title__main {
+  font-size: 1.25rem;
+  color: var(--basil-text);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.basil-dialog-close {
+  color: var(--basil-text-muted) !important;
+}
+
+/* ── Body ── */
+.basil-dialog-body {
+  padding: var(--basil-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-4);
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Transaction hero ── */
+.basil-dialog-txn-hero {
+  padding-bottom: var(--basil-space-4);
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-dialog-txn-amount {
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--basil-text);
+}
+
+.basil-dialog-txn-amount--credit {
+  color: var(--basil-positive);
+}
+
+.basil-dialog-txn-name {
+  font-size: 0.9375rem;
+  color: var(--basil-text-secondary);
+  margin-top: var(--basil-space-1);
+}
+
+.basil-dialog-txn-subname {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+}
+
+/* ── Fields ── */
+.basil-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-3);
+}
+
+/* ── Toggles ── */
+.basil-dialog-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-2);
+}
+
+/* ── Section (rules) ── */
+.basil-dialog-section {
+  padding-top: var(--basil-space-4);
+  border-top: 1px solid var(--basil-border);
+}
+
+.basil-dialog-section__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--basil-text-muted);
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-dialog-section__sublabel {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-bottom: var(--basil-space-1);
+}
+
+/* ── Hint text ── */
+.basil-dialog-hint {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin: var(--basil-space-1) 0 0;
+  line-height: 1.5;
+}
+
+.basil-dialog-hint--warn {
+  color: var(--basil-warning);
+}
+
+.basil-conflict-label {
+  color: var(--basil-warning) !important;
+}
+
+/* ── Rule chips ── */
+.basil-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.basil-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8125rem;
+  padding: 3px 8px 3px 10px;
+  border-radius: var(--basil-radius-pill);
+  background-color: var(--basil-surface-alt);
+  color: var(--basil-text);
+  border: 1px solid var(--basil-border);
+  line-height: 1.4;
+}
+
+.basil-chip--removing {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.basil-chip--pending {
+  background-color: var(--basil-green-subtle);
+  color: var(--basil-income);
+  border-color: var(--basil-income);
+}
+
+.basil-chip__remove {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-chip__remove:hover {
+  opacity: 1;
+}
+
+/* ── Action row ── */
+.basil-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--basil-space-4);
+  border-top: 1px solid var(--basil-border);
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.basil-dialog-actions__right {
+  display: flex;
+  gap: var(--basil-space-2);
+}
 </style>
 
 <script>
@@ -352,6 +531,15 @@ input .select{
       
 emits: ['update-transaction', 'update-category', 'add-category'],
 computed: {
+    dialogSubtitle() {
+        if (this.dialogType === 'editCategory') return 'Edit Category';
+        return null;
+    },
+    dialogMainTitle() {
+        if (this.dialogType === 'editCategory') return this.dialogBody.originalCategoryName;
+        if (this.dialogType === 'transaction') return 'Edit Transaction';
+        return 'Add Category';
+    },
     hasRules() {
         const r = this.item?.rules;
         if (!r) return false;
