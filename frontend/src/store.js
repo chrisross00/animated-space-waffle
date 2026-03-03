@@ -6,10 +6,16 @@ import createPersistedState from 'vuex-persistedstate';
 const store = createStore({
     state: {
         user: null,
-        session: null
+        session: null,
+        theme: localStorage.getItem('basil-theme') || '',
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
+        // exclude theme — it lives in localStorage, not sessionStorage
+        reducer: state => {
+            const { theme, ...rest } = state;
+            return rest;
+        },
     })],
     mutations: {
         setUser(state, user) {
@@ -88,6 +94,17 @@ const store = createStore({
                     cat.rules[ruleType].push(ruleValue);
                 }
             }
+        },
+        setTheme(state, theme) {
+            state.theme = theme;
+            localStorage.setItem('basil-theme', theme);
+            if (theme === 'dark') {
+                document.documentElement.dataset.theme = 'dark';
+            } else {
+                delete document.documentElement.dataset.theme;
+            }
+            document.documentElement.classList.add('basil-theme-transitioning');
+            setTimeout(() => document.documentElement.classList.remove('basil-theme-transitioning'), 350);
         },
         addCategory(state, newCategory) {
             console.log('addCategory store:', newCategory)

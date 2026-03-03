@@ -57,6 +57,26 @@
   padding-left: 0;
   padding-right: 0;
 }
+
+/* ---- Settings row ---- */
+.basil-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--basil-space-4);
+}
+
+.basil-settings-row__label {
+  font-size: 0.9375rem;
+  color: var(--basil-text);
+  font-weight: 500;
+}
+
+.basil-settings-row__hint {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
 </style>
 
 <template>
@@ -80,6 +100,20 @@
           </div>
         </div>
         <q-btn flat dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
+      </q-card>
+
+      <!-- Display settings card -->
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Display</span>
+        </div>
+        <div class="basil-settings-row">
+          <div>
+            <div class="basil-settings-row__label">Dark mode</div>
+            <div class="basil-settings-row__hint">Terminal theme with emerald accents</div>
+          </div>
+          <q-toggle :model-value="isDark" color="primary" @update:model-value="toggleTheme" />
+        </div>
       </q-card>
 
       <!-- Linked Accounts card -->
@@ -173,7 +207,15 @@ export default {
       preDelete: {}
     }
   },
+  computed: {
+    isDark() {
+      return this.$store.state.theme === 'dark';
+    },
+  },
   methods: {
+    toggleTheme() {
+      this.$store.commit('setTheme', this.isDark ? '' : 'dark');
+    },
     preDeleteAccount(account){
       // set preDelete to true
     this.preDelete[account] = true;

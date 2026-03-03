@@ -82,6 +82,18 @@
 }
 
 /* ==========================================================
+   Theme transition — applied briefly during toggle
+   ========================================================== */
+.basil-theme-transitioning,
+.basil-theme-transitioning * {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease !important;
+}
+
+/* ==========================================================
    Dark / Terminal theme
    Applied via <html data-theme="dark"> — Epic 8
    ========================================================== */
