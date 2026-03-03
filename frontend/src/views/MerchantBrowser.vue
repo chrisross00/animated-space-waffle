@@ -1,8 +1,15 @@
+<style scoped>
+.basil-info-banner {
+  background-color: var(--basil-info-bg) !important;
+  color: var(--basil-info) !important;
+}
+</style>
+
 <template>
   <div class="q-pa-md">
-    <q-banner class="bg-blue-1 text-blue-9 q-mb-md" rounded>
+    <q-banner class="basil-info-banner q-mb-md" rounded>
       <template v-slot:avatar>
-        <q-icon name="info" color="blue-7" />
+        <q-icon name="info" color="info" />
       </template>
       Assigning or changing a merchant rule will re-categorize <strong>all existing transactions</strong> from that merchant, not just future ones.
     </q-banner>
