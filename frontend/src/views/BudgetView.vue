@@ -396,11 +396,17 @@
         </q-dialog>
       </div>
 
-      <!-- Mobile bulk action bar -->
-      <div
-        v-if="showAll && selectedRows.length > 0"
-        class="lt-sm basil-mobile-bulk q-pa-sm"
-      >
+    </div>
+
+    <!-- Mobile bulk action bar — sits above bottom nav via q-page-sticky -->
+    <q-page-sticky
+      v-if="showAll && selectedRows.length > 0"
+      class="lt-sm"
+      position="bottom"
+      :offset="[0, 0]"
+      style="width: 100%"
+    >
+      <div class="basil-mobile-bulk q-pa-sm" style="width: 100vw">
         <div class="row items-center q-gutter-sm q-mb-xs">
           <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
           <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
@@ -421,7 +427,7 @@
           Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
         </div>
       </div>
-    </div>
+    </q-page-sticky>
     
 
     <q-page-sticky class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
@@ -966,7 +972,9 @@ monthStats() {
         window.location.reload();
       },
       async onPullRefresh(done) {
-        await this.forceSync();
+        this.categoryMonthlyLimits = [];
+        await this.buildPage('sync');
+        store.commit('setLastPlaidFetch', Date.now());
         done();
       },
       async resetLastFetch (){

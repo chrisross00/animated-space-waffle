@@ -4,11 +4,13 @@ import 'firebase/compat/firestore';
 import { getAuth } from '@firebase/auth'
 import { Notify } from 'quasar'
 
-const _notify = (opts) => Notify.create({
-  position: 'bottom',
-  offset: window.innerWidth < 600 ? [0, 80] : [0, 0],
-  ...opts,
-})
+const _notify = (opts) => {
+  const isMobile = window.innerWidth < 600;
+  const navHeight = isMobile
+    ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--basil-bottom-nav-height')) || 72
+    : 0;
+  Notify.create({ position: 'bottom', ...(navHeight ? { offset: [0, navHeight] } : {}), ...opts });
+}
 // import 'firebase/GoogleAuthProvider'
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
