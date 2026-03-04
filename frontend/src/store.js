@@ -8,6 +8,12 @@ const store = createStore({
         user: null,
         session: null,
         theme: localStorage.getItem('basil-theme') || '',
+        settings: {
+            defaultMonth: localStorage.getItem('basil-defaultMonth') || 'current',
+            hideExcluded: localStorage.getItem('basil-hideExcluded') === 'true',
+            chartRange: Number(localStorage.getItem('basil-chartRange')) || 6,
+            currencySymbol: localStorage.getItem('basil-currencySymbol') || '$',
+        },
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
@@ -93,6 +99,10 @@ const store = createStore({
                     cat.rules[ruleType].push(ruleValue);
                 }
             }
+        },
+        setSetting(state, { key, value }) {
+            state.settings[key] = value;
+            localStorage.setItem(`basil-${key}`, String(value));
         },
         setTheme(state, theme) {
             state.theme = theme;
