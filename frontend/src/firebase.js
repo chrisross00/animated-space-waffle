@@ -3,6 +3,12 @@ import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
 import { getAuth } from '@firebase/auth'
 import { Notify } from 'quasar'
+
+const _notify = (opts) => Notify.create({
+  position: 'bottom',
+  offset: window.innerWidth < 600 ? [0, 80] : [0, 0],
+  ...opts,
+})
 // import 'firebase/GoogleAuthProvider'
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -52,7 +58,7 @@ export async function fetchTransactions() {
       const transactions = await response.json();
       return transactions;
     } else {
-      Notify.create({ type: 'negative', message: `Failed to fetch transactions (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to fetch transactions (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -68,7 +74,7 @@ export async function fetchCategories() {
       const categories = await response.json();
       return categories;
     } else {
-      Notify.create({ type: 'negative', message: `Failed to fetch categories (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to fetch categories (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -86,7 +92,7 @@ export async function getOrAddUser() {
       const user = data
       return user;
     } else {
-      Notify.create({ type: 'negative', message: `Failed to load user (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to load user (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -111,7 +117,7 @@ export async function getOrAddUserAccount(publicToken, metadata) {
     if (response.ok) {
       return response.json();
     } else {
-      Notify.create({ type: 'negative', message: `Failed to link account (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to link account (${response.status})` });
     }
   } else {
     // User is not signed in
@@ -135,7 +141,7 @@ export async function handleDialogSubmit(dialogBody) {
       // console.log('data is', data);
       return response.json();
     } else {
-      Notify.create({ type: 'negative', message: `Failed to save changes (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to save changes (${response.status})` });
     }
   } else {
     console.log('headers are null, therefore user is not logged in');
@@ -154,7 +160,7 @@ export async function removeAccount(institution) {
     if (response.ok) {
       return response.json();
     } else {
-      Notify.create({ type: 'negative', message: `Failed to remove account (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to remove account (${response.status})` });
     }
   }
 }
@@ -164,7 +170,7 @@ export async function addPlaidPfc() {
   if (headers) {
     const response = await fetch('/api/addplaidpfc', { headers });
     if (response.ok) return response.text();
-    else Notify.create({ type: 'negative', message: `Failed to add Plaid PFC (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to add Plaid PFC (${response.status})` });
   }
 }
 
@@ -174,7 +180,7 @@ export async function dedupe() {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/dedupe', { method: 'POST', headers });
     if (response.ok) return response.text();
-    else Notify.create({ type: 'negative', message: `Dedupe failed (${response.status})` });
+    else _notify({ type: 'negative', message: `Dedupe failed (${response.status})` });
   }
 }
 
@@ -183,7 +189,7 @@ export async function seedCategories() {
   if (headers) {
     const response = await fetch('/api/seedcategories', { headers });
     if (response.ok) return response.text();
-    else Notify.create({ type: 'negative', message: `Failed to seed categories (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to seed categories (${response.status})` });
   }
 }
 
@@ -192,7 +198,7 @@ export async function cleanPending() {
   if (headers) {
     const response = await fetch('/api/cleanPendingTransactions', { headers });
     if (response.ok) return response.text();
-    else Notify.create({ type: 'negative', message: `Failed to clean pending transactions (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to clean pending transactions (${response.status})` });
   }
 }
 
@@ -201,7 +207,7 @@ export async function mapUnmapped() {
   if (headers) {
     const response = await fetch('/api/mapunmapped', { headers });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Failed to map unmapped transactions (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to map unmapped transactions (${response.status})` });
   } else {
     console.log('headers are null, therefore user is not logged in');
   }
@@ -212,7 +218,7 @@ export async function fetchMerchantStats() {
   if (headers) {
     const response = await fetch('/api/merchantStats', { headers });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Failed to fetch merchant stats (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to fetch merchant stats (${response.status})` });
   }
 }
 
@@ -221,7 +227,7 @@ export async function fetchMerchants() {
   if (headers) {
     const response = await fetch('/api/merchants', { headers });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Failed to fetch merchants (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to fetch merchants (${response.status})` });
   }
 }
 
@@ -235,7 +241,7 @@ export async function saveRule(categoryId, categoryName, ruleType, ruleValue) {
       body: JSON.stringify({ categoryId, categoryName, ruleType, ruleValue }),
     });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Failed to save rule (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to save rule (${response.status})` });
   }
 }
 
@@ -249,7 +255,7 @@ export async function deleteRule(categoryId, ruleType, ruleValue) {
       body: JSON.stringify({ categoryId, ruleType, ruleValue }),
     });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Failed to delete rule (${response.status})` });
+    else _notify({ type: 'negative', message: `Failed to delete rule (${response.status})` });
   }
 }
 
@@ -263,7 +269,7 @@ export async function bulkCategorize(transaction_ids, mappedCategory) {
       body: JSON.stringify({ transaction_ids, mappedCategory }),
     });
     if (response.ok) return response.json();
-    else Notify.create({ type: 'negative', message: `Bulk categorize failed (${response.status})` });
+    else _notify({ type: 'negative', message: `Bulk categorize failed (${response.status})` });
   }
 }
 
@@ -276,7 +282,7 @@ export async function deleteCategory(categoryId) {
     headers,
     body: JSON.stringify({ categoryId }),
   });
-  if (!response.ok) Notify.create({ type: 'negative', message: `Failed to delete category (${response.status})` });
+  if (!response.ok) _notify({ type: 'negative', message: `Failed to delete category (${response.status})` });
   return response.ok;
 }
 
@@ -289,7 +295,7 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
     headers,
     body: JSON.stringify({ categoryId, monthly_limit }),
   });
-  if (!response.ok) Notify.create({ type: 'negative', message: `Failed to save limit (${response.status})` });
+  if (!response.ok) _notify({ type: 'negative', message: `Failed to save limit (${response.status})` });
   return response.ok;
 }
 
@@ -302,7 +308,7 @@ export async function nukeTransactions() {
       const data = await response.json();
       return `Deleted ${data.deletedCount} transaction${data.deletedCount !== 1 ? 's' : ''}.`;
     } else {
-      Notify.create({ type: 'negative', message: `Nuke failed (${response.status})` });
+      _notify({ type: 'negative', message: `Nuke failed (${response.status})` });
     }
   }
 }
@@ -316,7 +322,7 @@ export async function nukeAllData() {
       const data = await response.json();
       return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts.`;
     } else {
-      Notify.create({ type: 'negative', message: `Nuke failed (${response.status})` });
+      _notify({ type: 'negative', message: `Nuke failed (${response.status})` });
     }
   }
 }
@@ -330,7 +336,7 @@ export async function addTestTransactions() {
       const data = await response.json();
       return `Inserted ${data.inserted} test transactions dated today.`;
     } else {
-      Notify.create({ type: 'negative', message: `Failed to add test transactions (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to add test transactions (${response.status})` });
     }
   }
 }

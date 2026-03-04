@@ -2,6 +2,7 @@
 <style src="../styles/OnboardingView.css"></style>
 
 <template>
+  <q-pull-to-refresh @refresh="onPullRefresh">
   <div class="table-wrapper">
 
   <EmptyState
@@ -398,7 +399,7 @@
       <!-- Mobile bulk action bar -->
       <div
         v-if="showAll && selectedRows.length > 0"
-        class="lt-sm fixed-bottom basil-mobile-bulk q-pa-sm"
+        class="lt-sm basil-mobile-bulk q-pa-sm"
       >
         <div class="row items-center q-gutter-sm q-mb-xs">
           <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
@@ -423,7 +424,7 @@
     </div>
     
 
-    <q-page-sticky class="floating-button" position="bottom-right" :offset="[25,25]">
+    <q-page-sticky class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
       <q-fab
       v-model="fabRight"
       vertical-actions-align="right"
@@ -442,6 +443,7 @@
     </q-dialog>
     </q-page-sticky>
   </div>
+  </q-pull-to-refresh>
 </template>
 
 
@@ -962,6 +964,10 @@ monthStats() {
       async forceSync(){
         this.resetLastFetch();
         window.location.reload();
+      },
+      async onPullRefresh(done) {
+        await this.forceSync();
+        done();
       },
       async resetLastFetch (){
         const now = Date.now();
