@@ -3,6 +3,10 @@
   background-color: var(--basil-info-bg) !important;
   color: var(--basil-info) !important;
 }
+
+:deep(.q-dialog__inner--bottom) {
+  padding: 0 !important;
+}
 </style>
 
 <template>
@@ -14,7 +18,9 @@
       Assigning or changing a merchant rule will re-categorize <strong>all existing transactions</strong> from that merchant, not just future ones.
     </q-banner>
 
+    <!-- Desktop table (hidden on mobile) -->
     <q-table
+      class="gt-xs"
       title="Merchant Browser"
       :rows="merchants"
       :columns="columns"
@@ -78,6 +84,99 @@
         />
       </template>
     </q-table>
+
+    <!-- Mobile card list (hidden on desktop) -->
+    <div class="lt-sm">
+      <div class="row items-center q-mb-sm">
+        <div class="text-h6 col">Merchant Browser</div>
+      </div>
+
+      <q-input dense outlined debounce="300" v-model="filter"
+        placeholder="Search merchants" class="q-mb-md">
+        <template v-slot:append><q-icon name="search" /></template>
+      </q-input>
+
+      <q-card flat bordered>
+        <q-list separator>
+          <!-- skeleton while loading -->
+          <template v-if="isLoading">
+            <q-item v-for="i in 6" :key="i">
+              <q-item-section>
+                <q-skeleton type="text" width="60%" />
+                <q-skeleton type="text" width="40%" />
+              </q-item-section>
+            </q-item>
+          </template>
+
+          <!-- empty state -->
+          <q-item v-else-if="filteredMerchants.length === 0">
+            <q-item-section class="text-center q-py-lg">
+              <EmptyState icon="store" heading="No merchants yet"
+                body="Merchants will appear here once you have transactions imported." />
+            </q-item-section>
+          </q-item>
+
+          <!-- merchant rows -->
+          <q-item v-for="row in filteredMerchants" :key="row.merchant_name"
+            clickable v-ripple @click="openEdit(row)">
+            <q-item-section>
+              <q-item-label class="text-weight-medium">{{ row.merchant_name }}</q-item-label>
+              <q-item-label caption>
+                {{ row.count }} transaction{{ row.count !== 1 ? 's' : '' }}
+                · {{ currentLabel(row) }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <div class="row items-center q-gutter-xs">
+                <q-icon v-if="ruleMap[row.merchant_name]" name="gavel" size="xs" color="primary" />
+                <q-icon name="chevron_right" color="grey-5" />
+              </div>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-card>
+    </div>
+
+    <!-- Bottom sheet dialog (mobile edit) -->
+    <q-dialog v-model="editDialog.open" position="bottom">
+      <q-card style="width: 100%; border-radius: 16px 16px 0 0 !important;
+                     background-color: var(--basil-surface);
+                     padding-bottom: env(safe-area-inset-bottom)">
+
+        <!-- drag handle -->
+        <div class="q-pt-md q-pb-xs" style="display:flex; justify-content:center">
+          <div style="width:40px; height:4px; border-radius:2px;
+                      background-color: var(--basil-border-strong)" />
+        </div>
+
+        <q-card-section class="q-pb-sm">
+          <div class="text-subtitle1 text-weight-medium">{{ editDialog.merchantName }}</div>
+          <div class="text-caption" style="color: var(--basil-text-muted)">
+            Currently: {{ editDialog.currentLabel }}
+            <q-icon v-if="editDialog.hasRule" name="gavel" size="xs" class="q-ml-xs text-primary" />
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-select
+            v-model="editDialog.selectedCategory"
+            :options="filteredCategories"
+            label="Assign to category"
+            outlined use-input input-debounce="0"
+            @filter="filterFn"
+          />
+        </q-card-section>
+
+        <q-card-actions class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" @click="editDialog.open = false" class="col" />
+          <q-btn label="Save" color="primary" unelevated class="col"
+            :loading="!!saving[editDialog.merchantName]"
+            :disable="!editDialog.selectedCategory ||
+                      editDialog.selectedCategory === ruleMap[editDialog.merchantName]"
+            @click="saveEdit" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -106,6 +205,13 @@ export default {
       pendingAssignments: {},
       saving: {},
       filteredCategories: [],
+      editDialog: {
+        open: false,
+        merchantName: null,
+        currentLabel: '',
+        hasRule: false,
+        selectedCategory: null,
+      },
     };
   },
 
@@ -121,6 +227,13 @@ export default {
         }
       }
       return map;
+    },
+    filteredMerchants() {
+      if (!this.filter) return this.merchants;
+      const needle = this.filter.toLowerCase();
+      return this.merchants.filter(m =>
+        m.merchant_name.toLowerCase().includes(needle)
+      );
     },
   },
 
@@ -147,6 +260,24 @@ export default {
           this.filteredCategories = this.categoryNames.filter(n => n.toLowerCase().includes(needle));
         }
       });
+    },
+
+    openEdit(row) {
+      this.filteredCategories = this.categoryNames;
+      this.editDialog = {
+        open: true,
+        merchantName: row.merchant_name,
+        currentLabel: this.currentLabel(row),
+        hasRule: !!this.ruleMap[row.merchant_name],
+        selectedCategory: this.ruleMap[row.merchant_name] || null,
+      };
+    },
+
+    async saveEdit() {
+      const { merchantName, selectedCategory } = this.editDialog;
+      this.pendingAssignments[merchantName] = selectedCategory;
+      await this.onApply(merchantName);
+      this.editDialog.open = false;
     },
 
     async onApply(merchantName) {

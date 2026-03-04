@@ -2,7 +2,7 @@
 <style src="../styles/OnboardingView.css"></style>
 
 <template>
-  <q-pull-to-refresh @refresh="onPullRefresh">
+  <q-pull-to-refresh @refresh="onPullRefresh" :disable="!$q.screen.lt.sm">
   <div class="table-wrapper">
 
   <EmptyState
@@ -19,7 +19,7 @@
       <div v-show="!isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
         <!-- Set up Basil card — shown when logged in but no categories yet -->
-        <div v-if="isLoggedIn && !categoryMonthlyLimits.length" class="q-mb-md">
+        <div v-if="isLoggedIn && !categoryMonthlyLimits.length && !isRefreshing" class="q-mb-md">
           <q-card class="my-card basil-setup-card">
             <div class="basil-card-head">
               <span class="basil-card-label">Get started</span>
@@ -398,36 +398,32 @@
 
     </div>
 
-    <!-- Mobile bulk action bar — sits above bottom nav via q-page-sticky -->
-    <q-page-sticky
+    <!-- Mobile bulk action bar — sits above bottom nav -->
+    <div
       v-if="showAll && selectedRows.length > 0"
-      class="lt-sm"
-      position="bottom"
-      :offset="[0, 0]"
-      style="width: 100%"
+      class="lt-sm basil-mobile-bulk q-pa-sm"
+      style="position: fixed; left: 0; right: 0; bottom: var(--basil-bottom-nav-height); z-index: 2000"
     >
-      <div class="basil-mobile-bulk q-pa-sm" style="width: 100vw">
-        <div class="row items-center q-gutter-sm q-mb-xs">
-          <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
-          <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
-        </div>
-        <div class="row items-center q-gutter-sm">
-          <q-select
-            v-model="bulkCategory"
-            :options="categoryMonthlyLimits.map(c => c.category).sort()"
-            label="Move to category"
-            dense
-            outlined
-            style="flex: 1"
-            @touchmove.stop.prevent
-          />
-          <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-        </div>
-        <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
-          Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
-        </div>
+      <div class="row items-center q-gutter-sm q-mb-xs">
+        <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
+        <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
       </div>
-    </q-page-sticky>
+      <div class="row items-center q-gutter-sm">
+        <q-select
+          v-model="bulkCategory"
+          :options="categoryMonthlyLimits.map(c => c.category).sort()"
+          label="Move to category"
+          dense
+          outlined
+          style="flex: 1"
+          @touchmove.stop.prevent
+        />
+        <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+      </div>
+      <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
+        Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
+      </div>
+    </div>
     
 
     <q-page-sticky class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
@@ -494,6 +490,7 @@
       return {   
         isLoggedIn: false,
         isLoading: true,
+        isRefreshing: false,
         selectedDate, 
         currentDate,
         clicker: ref(false),
@@ -972,9 +969,11 @@ monthStats() {
         window.location.reload();
       },
       async onPullRefresh(done) {
+        this.isRefreshing = true;
         this.categoryMonthlyLimits = [];
         await this.buildPage('sync');
         store.commit('setLastPlaidFetch', Date.now());
+        this.isRefreshing = false;
         done();
       },
       async resetLastFetch (){
