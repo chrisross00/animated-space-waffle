@@ -15,19 +15,11 @@
 
         <!-- Current-month summary — visible when data is loaded, desktop only -->
         <div v-if="headerStats" class="basil-header-stat gt-xs">
-          <span class="basil-header-stat__spend">${{ headerStats.expenseSpendFmt }} spent</span>
+          <span class="basil-header-stat__spend">{{ currencySymbol }}{{ headerStats.expenseSpendFmt }} spent</span>
           <span class="basil-header-stat__dot">·</span>
-          <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
+          <span class="basil-header-stat__earned">{{ currencySymbol }}{{ headerStats.incomeAmountFmt }} earned</span>
         </div>
 
-        <!-- Theme toggle -->
-        <q-btn
-          flat round dense
-          :icon="isDark ? 'light_mode' : 'dark_mode'"
-          class="basil-theme-btn q-ml-sm"
-          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-          @click="toggleTheme"
-        />
       </q-toolbar>
 
       <q-tabs align="left" class="basil-tabs">
@@ -47,25 +39,102 @@
       side="left"
       overlay
       elevated
+      class="basil-settings-drawer"
     >
+      <div class="basil-settings-drawer__header">
+        <span class="basil-card-label">Settings</span>
+      </div>
+
       <q-list>
-        <q-item-label header>Essential Links</q-item-label>
-        <q-item clickable tag="a" target="_blank" href="/api">
+        <q-item-label header class="basil-settings-section-label">Appearance</q-item-label>
+
+        <q-item tag="label" class="basil-settings-item">
           <q-item-section avatar>
-            <q-icon name="build" />
+            <q-icon :name="isDark ? 'dark_mode' : 'light_mode'" class="basil-settings-icon" />
           </q-item-section>
           <q-item-section>
-            <q-item-label>Toolbox</q-item-label>
-            <q-item-label caption>Admin tools</q-item-label>
+            <q-item-label>Dark mode</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-toggle :model-value="isDark" @update:model-value="toggleTheme" color="primary" />
           </q-item-section>
         </q-item>
-        <q-item clickable tag="a" target="_blank" href="https://github.com/quasarframework/">
+
+        <q-item class="basil-settings-item">
           <q-item-section avatar>
-            <q-icon name="school" />
+            <q-icon name="attach_money" class="basil-settings-icon" />
           </q-item-section>
           <q-item-section>
-            <q-item-label>Github</q-item-label>
-            <q-item-label caption>github.com/quasarframework</q-item-label>
+            <q-item-label>Currency symbol</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-select
+              :model-value="settings.currencySymbol"
+              @update:model-value="setSetting('currencySymbol', $event)"
+              :options="['$', '€', '£', '¥', '₹']"
+              dense outlined
+              style="width: 64px"
+            />
+          </q-item-section>
+        </q-item>
+
+        <q-item-label header class="basil-settings-section-label">Budget</q-item-label>
+
+        <q-item class="basil-settings-item">
+          <q-item-section avatar>
+            <q-icon name="calendar_month" class="basil-settings-icon" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Default month</q-item-label>
+            <q-item-label caption>Which month opens on load</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-select
+              :model-value="settings.defaultMonth"
+              @update:model-value="setSetting('defaultMonth', $event)"
+              :options="[{ label: 'Current', value: 'current' }, { label: 'Previous', value: 'last' }]"
+              emit-value map-options
+              dense outlined
+              style="width: 100px"
+            />
+          </q-item-section>
+        </q-item>
+
+        <q-item tag="label" class="basil-settings-item">
+          <q-item-section avatar>
+            <q-icon name="visibility_off" class="basil-settings-icon" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Hide excluded transactions</q-item-label>
+            <q-item-label caption>Collapse excluded from lists</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-toggle
+              :model-value="settings.hideExcluded"
+              @update:model-value="setSetting('hideExcluded', $event)"
+              color="primary"
+            />
+          </q-item-section>
+        </q-item>
+
+        <q-item-label header class="basil-settings-section-label">Charts</q-item-label>
+
+        <q-item class="basil-settings-item">
+          <q-item-section avatar>
+            <q-icon name="bar_chart" class="basil-settings-icon" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>Default range</q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-select
+              :model-value="settings.chartRange"
+              @update:model-value="setSetting('chartRange', $event)"
+              :options="[{ label: '3 months', value: 3 }, { label: '6 months', value: 6 }, { label: '12 months', value: 12 }]"
+              emit-value map-options
+              dense outlined
+              style="width: 100px"
+            />
           </q-item-section>
         </q-item>
       </q-list>
@@ -141,13 +210,33 @@
   color: var(--basil-text-secondary) !important;
 }
 
-/* ---- Theme toggle button ---- */
-.basil-theme-btn {
-  color: var(--basil-text-secondary) !important;
-  transition: color var(--basil-t-fast) var(--basil-ease);
-}
-.basil-theme-btn:hover {
+/* ---- Settings drawer ---- */
+.basil-settings-drawer {
+  background-color: var(--basil-surface) !important;
   color: var(--basil-text) !important;
+}
+.basil-settings-drawer__header {
+  padding: var(--basil-space-5) var(--basil-space-5) var(--basil-space-3);
+  border-bottom: 1px solid var(--basil-border);
+}
+.basil-settings-section-label {
+  color: var(--basil-text-secondary) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.basil-settings-item {
+  color: var(--basil-text) !important;
+}
+.basil-settings-icon {
+  color: var(--basil-text-secondary) !important;
+}
+[data-theme="dark"] .basil-settings-drawer .q-item__label {
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .basil-settings-drawer .q-item__label--caption {
+  color: var(--basil-text-secondary) !important;
 }
 
 /* ---- Summary stat pill ---- */
@@ -211,6 +300,12 @@ export default {
     isDark() {
       return this.$store.state.theme === 'dark';
     },
+    settings() {
+      return this.$store.state.settings;
+    },
+    currencySymbol() {
+      return this.$store.state.settings.currencySymbol;
+    },
     headerStats() {
       const txns = this.$store?.state?.transactions;
       const cats = this.$store?.state?.categories;
@@ -258,6 +353,9 @@ export default {
     },
     toggleTheme() {
       this.$store.commit('setTheme', this.isDark ? '' : 'dark');
+    },
+    setSetting(key, value) {
+      this.$store.commit('setSetting', { key, value });
     },
   },
 }

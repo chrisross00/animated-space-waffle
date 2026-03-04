@@ -175,7 +175,7 @@ export default {
   data() {
     return {
       activeChart: 'spending',
-      monthCount: 6,
+      monthCount: store.state.settings?.chartRange || 6,
       showIncome: false,
       showPayments: false,
     };

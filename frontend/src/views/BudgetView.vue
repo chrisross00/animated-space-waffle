@@ -479,9 +479,12 @@
     },
     data() {
       const currentDate = dayjs();
+      const startDate = store.state.settings?.defaultMonth === 'last'
+        ? currentDate.subtract(1, 'month')
+        : currentDate;
       const selectedDate = {
-        display: dayjs(currentDate).format('MMMM YYYY'),
-        actual: dayjs(currentDate)
+        display: startDate.format('MMMM YYYY'),
+        actual: startDate
       }
       return {   
         isLoggedIn: false,
@@ -553,17 +556,17 @@
       },
       filteredTransactions: function() {
         let selectedDate = this.selectedDate.actual;
+        const hideExcluded = store.state.settings?.hideExcluded;
         return function (groupedTransactions) {
-          // console.log('this.selectedDate',selectedDate.year())
-          const filtered = groupedTransactions.length === 0
+          let filtered = groupedTransactions.length === 0
             ? []
             : groupedTransactions.filter(
                 (transaction) =>
                   dayjs(transaction.date).year() === selectedDate.year() &&
                   dayjs(transaction.date).month() === selectedDate.month()
               );
-          // console.log('filteredTransactions', filtered)
-          return filtered; 
+          if (hideExcluded) filtered = filtered.filter(t => !t.excludeFromTotal);
+          return filtered;
         };
       },
       categorySum() { // returns sums of txns for each group in budget table
@@ -793,7 +796,8 @@ monthStats() {
           prefix = ''; // change to `prefix = '-'` for negative income values
         }
         if (isNaN(val)) val = 0;
-        return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const symbol = store.state.settings?.currencySymbol ?? '$';
+        return prefix + symbol + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
       addCategoryDialog(){
         if(!this.newCategory){
