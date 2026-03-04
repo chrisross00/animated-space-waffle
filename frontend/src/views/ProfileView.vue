@@ -184,7 +184,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetchTransactions } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetchTransactions, fetchCategories } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import SpinnerComponent from '../components/SpinnerComponent.vue'
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
@@ -298,9 +298,16 @@ export default {
         } catch (error) {
           console.log(error)
         }
+        // load categories so we can detect returning users who skipped Plaid
+        try {
+          const categories = await fetchCategories()
+          if (categories?.length) store.commit('setCategories', categories)
+        } catch (error) {
+          console.log(error)
+        }
         this.session = await store.state.session
         this.isLoading = false;
-        if (!this.user?.accounts?.length) {
+        if (!this.user?.accounts?.length && !store.state.categories?.length) {
           this.$router.push('/onboarding');
           return;
         }
