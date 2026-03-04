@@ -184,6 +184,46 @@ All use `var(--basil-*)` tokens — dark mode works automatically.
 
 ---
 
+## V2: Suggestion Engine Improvements
+
+Ideas for a future iteration of the suggestion engine. None of these require changes to the triage UX — they improve the quality of `toSortWithSuggestions` only.
+
+### What shipped in v1
+- **Merchant + amount bucket match** (last 12 months) — primary signal. Buckets: `<$10 / $10–30 / $30–100 / $100–300 / $300+`. Count ≥ 2 required for bucket match to fire; falls back to merchant-only.
+- **Merchant-only match** (last 12 months) — fallback when bucket count < 2. Lower confidence.
+- **Recurring boost** — bumps confidence to high if merchant is in `recurringMerchants`.
+- **Same-day context** — if no historical match and exactly one other categorized transaction on the same day, suggest that category (low confidence).
+- **12-month recency cap** — all history lookups ignore transactions older than 12 months, so behavioral changes override stale patterns.
+
+### Pattern-based signals (no user input required)
+
+**Recurring peer payment detection**
+Apply the existing `recurringMerchants` logic to peer payment amounts, not just merchant names. A "Venmo" transaction for ~$800 appearing on the 1st–5th of each month is almost certainly rent. Combine: `merchant === peer payment app` + `amount bucket` + `day-of-month range (1–5)` → high-confidence Housing suggestion. No user input needed.
+
+**Bill-split inference**
+If there's a known categorized transaction (e.g., restaurant charge for $144) within 0–2 days of a peer payment, and the peer payment amount is an integer divisor of that charge (÷2, ÷3, ÷4), suggest the same category as the restaurant charge. Pure arithmetic on existing data — strong signal for the exact Venmo/Cash App use case with zero friction.
+
+**Time-of-month signal**
+Large peer payment amounts (e.g., bucket `lg` or `xl`) occurring in the first 5 days of the month skew heavily toward Housing. Could be a weak signal that boosts confidence when combined with other signals rather than a standalone rule.
+
+### Note-based disambiguation (requires user input)
+
+**The idea**
+Prompt users to add a short note during triage ("What was this for?"). Store the note on the transaction. Use notes as a third lookup dimension in `historicalCategoryMap`: `merchant + amount bucket + note` → category. This handles the case where the same merchant and amount range maps to different categories depending on purpose (e.g., Venmo $50 → "dinner" → Food & Dining vs "tickets" → Entertainment).
+
+**The variation problem**
+Freeform text creates inconsistency — "dinner", "Dinner with friends", "eating out" are all the same intent. Two approaches:
+- **Autocomplete from prior notes** — the note field surfaces the user's own previously-used notes as suggestions. Nudges them toward reusing their own vocabulary. Matching stays exact/case-insensitive. Simple, no AI needed. Only helps if user picks from the list.
+- **AI embeddings** — embed note text so "splitting dinner" and "food with Jake" cluster together semantically. Handles synonyms and variation but requires API calls or client-side models. Probably overkill as a standalone feature; natural fit if AI categorization is added more broadly.
+
+**Note vs category redundancy**
+Tags would be redundant — "rent" tag is just a shadow of the Housing category. Freeform notes are not: they capture *why* (context), which is distinct from the budget *destination*. For peer payments specifically the two are closely related, but notes remain more expressive and don't create a parallel taxonomy.
+
+**What to build**
+Autocomplete notes is the right first step. When triage shows a peer payment app transaction with no/low-confidence suggestion, prompt: "Add a note to improve future suggestions." Autocomplete from prior notes on the same merchant. On save, store the note. In `historicalCategoryMap`, add a `merchantBucketNote` lookup layer above `merchantBucket`.
+
+---
+
 ## Verification
 1. Budget dashboard: nudge card appears when To Sort has items for the current month, hides when empty
 2. Nudge card shows correct count + "X with suggested categories" subtitle

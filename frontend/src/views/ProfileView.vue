@@ -177,6 +177,15 @@
           class="q-mt-sm"
           @click="signInWithGoogle"
         />
+        <q-btn
+          v-if="isDevAuthBypassEnabled"
+          unelevated
+          color="secondary"
+          label="Login as test user"
+          :loading="isLoading"
+          class="q-mt-sm q-ml-sm"
+          @click="devTestLogin"
+        />
       </EmptyState>
     </div>
       
@@ -210,6 +219,9 @@ export default {
   computed: {
     isDark() {
       return this.$store.state.theme === 'dark';
+    },
+    isDevAuthBypassEnabled() {
+      return import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
     },
   },
   methods: {
@@ -256,6 +268,28 @@ export default {
       }
       this.isLoading = false;
       this.showPlaidLink = false;
+    },
+    async devTestLogin() {
+      this.isLoading = true;
+      try {
+        const response = await getOrAddUser();
+        this.user = response;
+        store.commit('setUser', this.user);
+        store.commit('setSession', { isSessionActive: true });
+
+        const [categories, txnResult] = await Promise.all([
+          fetchCategories(),
+          fetchTransactions(),
+        ]);
+        if (categories?.length) store.commit('setCategories', categories);
+        if (txnResult?.transactions) store.commit('setTransactions', txnResult.transactions);
+
+        this.session = store.state.session;
+        this.isLoading = false;
+      } catch (error) {
+        console.error('devTestLogin error:', error);
+        this.isLoading = false;
+      }
     },
     async signInWithGoogle() {
       this.isLoading = true;

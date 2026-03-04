@@ -560,6 +560,58 @@ const SYNTHETIC_TRANSACTIONS = [
   { name: 'Vanguard Contribution', merchant_name: 'Vanguard',              amount:   250.00, personal_finance_category: { primary: 'TRANSFER_OUT' } },
 ];
 
+router.post('/addVenmoTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
+
+    const ts = Date.now();
+    const categories = await findUserData('Basil-Categories', uid);
+    const ruleList = await getMappingRuleList(categories);
+
+    // Resolve real category names from the user's data so historical seeding works
+    const foodCat = categories.find(c => /food|dining|restaurant/i.test(c.category))?.category
+      || categories.find(c => c.type === 'expense' && c.category !== 'To Sort')?.category
+      || 'Food & Dining';
+    const housingCat = categories.find(c => /hous|rent|home/i.test(c.category))?.category || foodCat;
+
+    const today = new Date(ts).toISOString().slice(0, 10);
+    const daysBack = (n) => new Date(ts - n * 86400000).toISOString().slice(0, 10);
+
+    const txns = [
+      // Historical (categorized) — seeds the suggestion engine
+      // Small amounts: food/social split territory → foodCat
+      { name: 'Venmo', merchant_name: 'Venmo', amount:  14.50, mappedCategory: foodCat,    date: daysBack(38) },
+      { name: 'Venmo', merchant_name: 'Venmo', amount:  18.25, mappedCategory: foodCat,    date: daysBack(44) },
+      { name: 'Venmo', merchant_name: 'Venmo', amount:  21.00, mappedCategory: foodCat,    date: daysBack(52) },
+      // Large amounts: rent territory → housingCat
+      { name: 'Venmo', merchant_name: 'Venmo', amount: 825.00, mappedCategory: housingCat, date: daysBack(68) },
+      { name: 'Venmo', merchant_name: 'Venmo', amount: 825.00, mappedCategory: housingCat, date: daysBack(98) },
+      // Current month — To Sort, for triage + suggestion testing
+      // These should receive suggestions based on the history above:
+      { name: 'Venmo',    merchant_name: 'Venmo',    amount:  16.00, date: today }, // → suggest foodCat (bucket sm, 3 matches)
+      { name: 'Venmo',    merchant_name: 'Venmo',    amount:  19.50, date: today }, // → suggest foodCat (bucket sm, 3 matches)
+      { name: 'Venmo',    merchant_name: 'Venmo',    amount: 825.00, date: today }, // → suggest housingCat (bucket xl, 2 matches)
+      { name: 'Venmo',    merchant_name: 'Venmo',    amount:  55.00, date: today }, // → merchant-only fallback (no bucket match)
+      { name: 'Cash App', merchant_name: 'Cash App', amount:  30.00, date: today }, // → no history, no suggestion
+    ].map((t, i) => ({
+      ...t,
+      transaction_id: `synthetic-venmo-${ts}-${i}`,
+      pending: false,
+      userId: uid,
+      personal_finance_category: { primary: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+    }));
+
+    const mapped = await mapTransactions(txns, ruleList);
+    await insertData('Plaid-Transactions', mapped);
+    res.json({ inserted: mapped.length, foodCat, housingCat });
+  } catch (error) {
+    console.error('/addVenmoTransactions error:', error);
+    res.status(500).json({ message: 'Failed to add Venmo test transactions' });
+  }
+});
+
 router.post('/addTestTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);

@@ -534,3 +534,152 @@
   font-size: 0.75rem;
   color: var(--basil-text-muted);
 }
+
+/* =====================================================
+   To Sort nudge card
+   ===================================================== */
+
+.basil-tosort-card {
+  cursor: pointer;
+  padding: var(--basil-space-5) !important;
+  transition: box-shadow var(--basil-motion-fast);
+}
+
+.basil-tosort-card:hover {
+  box-shadow: var(--basil-shadow-md);
+}
+
+.basil-tosort-card__body {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+}
+
+.basil-tosort-card__count {
+  font-family: var(--basil-font-display);
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--basil-warning);
+  min-width: 2ch;
+}
+
+.basil-tosort-card__headline {
+  font-size: 0.9375rem;
+  color: var(--basil-text-primary);
+}
+
+.basil-tosort-card__hint {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
+/* =====================================================
+   Triage flow dialog
+   ===================================================== */
+
+.basil-triage__handle-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+}
+
+.basil-triage__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--basil-border);
+}
+
+.basil-triage__header {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  padding: var(--basil-space-3) var(--basil-space-4) var(--basil-space-2);
+}
+
+.basil-triage__title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--basil-text-primary);
+  flex: 1;
+}
+
+.basil-triage__progress {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+}
+
+.basil-triage__txn {
+  text-align: center;
+  padding: var(--basil-space-4) var(--basil-space-4) var(--basil-space-3);
+}
+
+.basil-triage__amount {
+  font-family: var(--basil-font-display);
+  font-size: 2rem;
+  color: var(--basil-text-primary);
+  line-height: 1.1;
+}
+
+.basil-triage__merchant {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--basil-text-primary);
+  margin-top: var(--basil-space-1);
+}
+
+.basil-triage__date {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
+.basil-triage__suggestion-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 var(--basil-space-4) var(--basil-space-2);
+}
+
+.basil-triage__reason {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
+.basil-triage__picker {
+  padding: var(--basil-space-2) var(--basil-space-4);
+}
+
+.basil-triage__toggle-area {
+  padding: var(--basil-space-1) var(--basil-space-4) var(--basil-space-2);
+}
+
+.basil-triage__disclosure {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: var(--basil-space-1);
+  padding-left: 36px;
+}
+
+.basil-triage__actions {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--basil-space-3) var(--basil-space-4) var(--basil-space-4);
+  gap: var(--basil-space-2);
+}
+
+.basil-triage__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--basil-space-3);
+  padding: var(--basil-space-6) var(--basil-space-4) var(--basil-space-4);
+}
+
+.basil-triage__done-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--basil-text-primary);
+}

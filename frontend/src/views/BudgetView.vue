@@ -114,6 +114,29 @@
         </div>
       </div>
 
+      <!-- To Sort Nudge Card -->
+      <div
+        v-if="toSortSuggestionStats.total > 0 && !showAll && !isLoading"
+        class="q-pa-md"
+        style="max-width: 800px; margin: 0 auto;"
+      >
+        <q-card class="basil-tosort-card" @click="openTriageFlow()" role="button" tabindex="0">
+          <div class="basil-card-head">
+            <span class="basil-card-label">To Sort</span>
+            <q-icon name="chevron_right" size="20px" />
+          </div>
+          <div class="basil-tosort-card__body">
+            <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
+            <div>
+              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to review</div>
+              <div v-if="toSortSuggestionStats.withSuggestion > 0" class="basil-tosort-card__hint">
+                {{ toSortSuggestionStats.withSuggestion }} with suggested {{ toSortSuggestionStats.withSuggestion !== 1 ? 'categories' : 'category' }}
+              </div>
+            </div>
+          </div>
+        </q-card>
+      </div>
+
       <!-- Button Container -->
       <div class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
@@ -441,6 +464,101 @@
       <DialogComponent :dialogType="'addCategory'" @add-category="onSubmit"/>
     </q-dialog>
     </q-page-sticky>
+
+    <!-- Triage Flow Dialog -->
+    <q-dialog
+      v-model="triageOpen"
+      :position="$q.screen.lt.sm ? 'bottom' : 'standard'"
+      class="basil-triage__dialog"
+    >
+      <q-card :style="$q.screen.lt.sm ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:440px;'">
+
+        <!-- Drag handle (mobile only) -->
+        <div v-if="$q.screen.lt.sm" class="basil-triage__handle-wrap">
+          <div class="basil-triage__handle"></div>
+        </div>
+
+        <!-- Done state -->
+        <template v-if="triageDone">
+          <div class="basil-triage__done">
+            <q-icon name="check_circle" size="48px" color="positive" />
+            <div class="basil-triage__done-heading">All caught up!</div>
+          </div>
+          <div class="basil-triage__actions">
+            <q-btn unelevated color="primary" label="Done" class="full-width" v-close-popup />
+          </div>
+        </template>
+
+        <!-- Triage state -->
+        <template v-else-if="triageItems.length > 0">
+          <!-- Header -->
+          <div class="basil-triage__header">
+            <span class="basil-triage__title">Sort Transactions</span>
+            <span class="basil-triage__progress">{{ triageTotal - triageItems.length + 1 }} of {{ triageTotal }}</span>
+            <q-btn flat round dense icon="close" v-close-popup />
+          </div>
+
+          <!-- Transaction -->
+          <div class="basil-triage__txn">
+            <div class="basil-triage__amount basil-mono">
+              {{ triageItems[0].amount < 0 ? `-$${Math.abs(triageItems[0].amount).toFixed(2)}` : `$${triageItems[0].amount.toFixed(2)}` }}
+            </div>
+            <div class="basil-triage__merchant">{{ triageItems[0].merchant_name || triageItems[0].name }}</div>
+            <div class="basil-triage__date">{{ formatDate(triageItems[0].date) }}</div>
+          </div>
+
+          <!-- Suggestion chip -->
+          <div v-if="triageItems[0].suggestion" class="basil-triage__suggestion-area">
+            <q-chip
+              clickable
+              :outline="triageCategory !== triageItems[0].suggestion"
+              :color="triageCategory === triageItems[0].suggestion ? 'primary' : undefined"
+              :text-color="triageCategory === triageItems[0].suggestion ? 'white' : undefined"
+              icon="auto_awesome"
+              @click="triageCategory = triageItems[0].suggestion"
+            >
+              {{ triageItems[0].suggestion }}
+            </q-chip>
+            <div class="basil-triage__reason">{{ triageItems[0].reason }}</div>
+          </div>
+
+          <!-- Category picker -->
+          <div class="basil-triage__picker">
+            <q-select
+              v-model="triageCategory"
+              :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
+              label="Category"
+              outlined
+              dense
+              @touchmove.stop.prevent
+            />
+          </div>
+
+          <!-- Remember toggle -->
+          <div v-if="triageItems[0].merchant_name" class="basil-triage__toggle-area">
+            <q-toggle v-model="triageCreateRule" :label="`Remember for ${triageItems[0].merchant_name}`" />
+            <div v-if="triageCreateRule" class="basil-triage__disclosure">
+              All existing &amp; future transactions from {{ triageItems[0].merchant_name }} will be assigned to {{ triageCategory || '…' }}.
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="basil-triage__actions">
+            <q-btn flat label="Skip" @click="triageSkip()" :disable="triageSaving" />
+            <q-btn
+              unelevated
+              color="primary"
+              label="Save"
+              :disable="!triageCategory || triageSaving"
+              :loading="triageSaving"
+              @click="triageAccept()"
+            />
+          </div>
+        </template>
+
+      </q-card>
+    </q-dialog>
+
   </div>
 </template>
 
@@ -458,6 +576,14 @@
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
 
 // import e from 'express';
+
+  function amountBucket(abs) {
+    if (abs < 10)  return 'xs';
+    if (abs < 30)  return 'sm';
+    if (abs < 100) return 'md';
+    if (abs < 300) return 'lg';
+    return 'xl';
+  }
 
   dayjs().format()
   dayjs.extend(minMax);
@@ -528,6 +654,13 @@
         tableMonth: null,
         amountMin: null,
         amountMax: null,
+        triageSkipped: new Set(),
+        triageOpen: false,
+        triageCategory: null,
+        triageCreateRule: false,
+        triageSaving: false,
+        triageDone: false,
+        triageTotal: 0,
       };
     },
     computed: {
@@ -620,6 +753,94 @@
           if (txn.mappedCategory && recurring.has(key)) map[txn.mappedCategory] = true;
         }
         return map;
+      },
+      historicalCategoryMap() {
+        const byMerchant = {};
+        const byMerchantBucket = {};
+        const cutoff = dayjs().subtract(12, 'month');
+        const resolveBest = (freqObj) => {
+          let best = null, bestCount = 0;
+          for (const [cat, count] of Object.entries(freqObj)) {
+            if (count > bestCount) { best = cat; bestCount = count; }
+          }
+          return best ? { category: best, count: bestCount } : null;
+        };
+        for (const txn of store.state.transactions || []) {
+          if (txn.pending || !txn.mappedCategory || txn.mappedCategory === 'To Sort') continue;
+          if (dayjs(txn.date).isBefore(cutoff)) continue;
+          const key = (txn.merchant_name || txn.name || '').toLowerCase().trim();
+          if (!key) continue;
+          const bucket = amountBucket(Math.abs(txn.amount));
+          if (!byMerchant[key]) byMerchant[key] = {};
+          byMerchant[key][txn.mappedCategory] = (byMerchant[key][txn.mappedCategory] || 0) + 1;
+          const mbKey = `${key}::${bucket}`;
+          if (!byMerchantBucket[mbKey]) byMerchantBucket[mbKey] = {};
+          byMerchantBucket[mbKey][txn.mappedCategory] = (byMerchantBucket[mbKey][txn.mappedCategory] || 0) + 1;
+        }
+        const merchant = {};
+        for (const [key, cats] of Object.entries(byMerchant)) {
+          const r = resolveBest(cats);
+          if (r) merchant[key] = r;
+        }
+        const merchantBucket = {};
+        for (const [mbKey, cats] of Object.entries(byMerchantBucket)) {
+          const r = resolveBest(cats);
+          if (r) merchantBucket[mbKey] = r;
+        }
+        return { merchant, merchantBucket };
+      },
+      toSortTransactions() {
+        const sel = this.selectedDate.actual;
+        return (store.state.transactions || []).filter(txn =>
+          !txn.pending && txn.mappedCategory === 'To Sort' &&
+          dayjs(txn.date).year() === sel.year() &&
+          dayjs(txn.date).month() === sel.month()
+        );
+      },
+      toSortWithSuggestions() {
+        const { merchant: merchantMap, merchantBucket: bucketMap } = this.historicalCategoryMap;
+        const recurring = this.recurringMerchants;
+        const sameDayMap = {};
+        for (const txn of store.state.transactions || []) {
+          if (txn.pending || !txn.mappedCategory || txn.mappedCategory === 'To Sort') continue;
+          const d = txn.date;
+          if (!sameDayMap[d]) sameDayMap[d] = new Set();
+          sameDayMap[d].add(txn.mappedCategory);
+        }
+        return this.toSortTransactions.map(txn => {
+          const key = (txn.merchant_name || txn.name || '').toLowerCase().trim();
+          const bucket = amountBucket(Math.abs(txn.amount));
+          const mbKey = `${key}::${bucket}`;
+          let suggestion = null, confidence = null, reason = null;
+          const bucketMatch = key ? bucketMap[mbKey] : null;
+          const merchantMatch = key ? merchantMap[key] : null;
+          if (bucketMatch && bucketMatch.count >= 2) {
+            suggestion = bucketMatch.category;
+            confidence = bucketMatch.count >= 3 ? 'high' : 'medium';
+            reason = `Previously categorized (${bucketMatch.count}x, similar amount)`;
+            if (recurring.has(txn.merchant_name || txn.name)) confidence = 'high';
+          } else if (merchantMatch) {
+            suggestion = merchantMatch.category;
+            confidence = merchantMatch.count >= 3 ? 'medium' : 'low';
+            reason = `Previously categorized (${merchantMatch.count}x)`;
+            if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
+          } else {
+            const dayCats = sameDayMap[txn.date];
+            if (dayCats && dayCats.size === 1) {
+              suggestion = [...dayCats][0];
+              confidence = 'low';
+              reason = 'Same-day context';
+            }
+          }
+          return { ...txn, suggestion, confidence, reason };
+        });
+      },
+      toSortSuggestionStats() {
+        const items = this.toSortWithSuggestions;
+        return { total: items.length, withSuggestion: items.filter(t => t.suggestion).length };
+      },
+      triageItems() {
+        return this.toSortWithSuggestions.filter(t => !this.triageSkipped.has(t.transaction_id));
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
@@ -1077,6 +1298,67 @@ monthStats() {
           this.isLoading = false;
         })
       }, 
+      openTriageFlow() {
+        this.triageSkipped = new Set();
+        this.triageDone = false;
+        this.triageCreateRule = false;
+        this.triageTotal = this.triageItems.length;
+        const first = this.triageItems[0];
+        this.triageCategory = first?.suggestion || null;
+        this.triageOpen = true;
+      },
+      async triageAccept() {
+        const txn = this.triageItems[0];
+        if (!txn || !this.triageCategory) return;
+        this.triageSaving = true;
+        const d = {
+          updateType: 'transaction',
+          mappedCategory: this.triageCategory,
+          date: txn.date,
+          note: txn.note || '',
+          name: txn.name,
+          merchantName: txn.merchant_name || '',
+          createRule: this.triageCreateRule,
+          transaction_id: txn.transaction_id,
+          originalCategoryName: txn.mappedCategory || '',
+          excludeFromTotal: txn.excludeFromTotal || false,
+        };
+        try {
+          const data = await handleDialogSubmit(JSON.stringify(d));
+          this.updatedTransaction = { ...data };
+          if (this.triageCreateRule && txn.merchant_name) {
+            const merchantKey = txn.merchant_name;
+            const targetCategory = this.triageCategory;
+            store.state.transactions
+              .filter(t => t.merchant_name === merchantKey && t.mappedCategory === 'To Sort')
+              .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: targetCategory }));
+          }
+        } catch (e) {
+          console.error('Triage save error:', e);
+        } finally {
+          this.triageSaving = false;
+        }
+        this.triageAdvance();
+      },
+      triageSkip() {
+        const txn = this.triageItems[0];
+        if (!txn) return;
+        const newSkipped = new Set(this.triageSkipped);
+        newSkipped.add(txn.transaction_id);
+        this.triageSkipped = newSkipped;
+        this.triageAdvance();
+      },
+      triageAdvance() {
+        this.$nextTick(() => {
+          if (this.triageItems.length === 0) {
+            this.triageDone = true;
+          } else {
+            const next = this.triageItems[0];
+            this.triageCategory = next?.suggestion || null;
+            this.triageCreateRule = false;
+          }
+        });
+      },
       formatDate(date) {
         return dayjs(date).format('MMM D, YYYY');
       },

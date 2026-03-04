@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, nukeTransactions, nukeAllData, addTestTransactions } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions } from '../firebase';
 import store from '../store';
 
 const TOOLS = [
@@ -53,6 +53,12 @@ const TOOLS = [
     label: 'Clean Pending Transactions',
     description: 'Removes pending transactions that have since posted.',
     fn: cleanPending,
+  },
+  {
+    key: 'addvenmotransactions',
+    label: 'Add Venmo Transactions',
+    description: 'Inserts 5 historical Venmo transactions (categorized, to seed the suggestion engine) + 5 current-month Venmo/Cash App transactions in To Sort. Run once, then open the To Sort triage flow to test suggestions.',
+    fn: addVenmoTransactions,
   },
   {
     key: 'addtesttransactions',

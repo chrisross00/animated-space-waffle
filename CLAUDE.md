@@ -92,6 +92,17 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       The `manually_set` flag is implemented in `api.js`. The open question is whether
       the UX of "remember category" should be split into two distinct actions.
 
+### Tech debt
+- [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
+      share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
+      route with a `type` parameter if more test-data tools are added.
+
+### Dev tools
+- [x] **Dev auth bypass** — "Login as test user" button on ProfileView login screen. Skips Google
+      auth locally for faster iteration. Gated by `VITE_DEV_AUTH_BYPASS=true` (frontend) and
+      `DEV_AUTH_BYPASS_UID=<firebase-uid>` (backend). Backend guard: only active if
+      `NODE_ENV !== 'production'`. Feature is safe—completely absent from production builds.
+
 ### Maybe / future
 - [ ] **Iteration 3.5** — Multi-select in Merchant Browser: check multiple merchants,
       assign all to the same category in one Apply. See details below.

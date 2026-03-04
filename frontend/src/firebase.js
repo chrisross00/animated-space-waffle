@@ -26,12 +26,17 @@ export const firestore = firebase.firestore()
 export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
 
 export async function getAuthHeaders() {
+  // Dev auth bypass — skip Firebase entirely when flag is set
+  if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
+    return { Authorization: 'Bearer dev-bypass' };
+  }
+
   const authInstance = getAuth();
 
   return new Promise((resolve, reject) => {
     const unsubscribe = authInstance.onAuthStateChanged(async (user) => {
       unsubscribe(); // Remove the listener after it's called once.
-      
+
       if (user) {
         console.log('getAuthHeaders', user);
         const idToken = await user.getIdToken();
@@ -317,6 +322,20 @@ export async function nukeAllData() {
       return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts.`;
     } else {
       Notify.create({ type: 'negative', message: `Nuke failed (${response.status})` });
+    }
+  }
+}
+
+export async function addVenmoTransactions() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/addVenmoTransactions', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Inserted ${data.inserted} transactions (5 historical seeded as "${data.foodCat}" / "${data.housingCat}", 5 current month in To Sort).`;
+    } else {
+      Notify.create({ type: 'negative', message: `Failed to add Venmo test transactions (${response.status})` });
     }
   }
 }
