@@ -29,7 +29,7 @@ router.get("/create_link_token", async (req, res, next) => {
         user: { client_user_id: decodedToken.uid },
         client_name: "Basil Budgeting",
         language: "en",
-        products: ["auth", "transactions"],
+        products: ["transactions"],
         country_codes: ["US"],
       });
       res.json(tokenResponse.data);
@@ -83,7 +83,7 @@ async function addInstitution(req, decodedToken, type='new'){
     const exchangeResponseData = exchangeResponse.data;
     const institutionName = req.body.metadata.institution.name;
     const userId = decodedToken.uid;
-    const earliestDate = '2022-07-29';
+    const earliestDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const updateObject = {
       Accounts: {
         [institutionName]: {
