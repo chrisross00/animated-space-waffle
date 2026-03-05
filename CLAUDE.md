@@ -74,23 +74,24 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
+- [ ] **Rules & suggestion engine: user control + intent clarification** — two related
+      problems to solve together: (1) Auto-learn intent: "remember category" currently creates
+      a rule AND sweeps all matching historical transactions — should these always be coupled?
+      Should a manual single-transaction edit protect it from future sweeps via `manually_set`?
+      (2) Suggestion engine controls: show why a suggestion was made (confidence reason chip),
+      let users exclude a merchant from auto-suggestion, pin manual overrides so the engine
+      stops second-guessing them, and review/edit auto-created rules without opening a full
+      category dialog. Any design work on one touches the other.
+- [ ] **Fixed vs variable category dimension** — add a `fixed` / `variable` flag to
+      categories (fixed = rent, subscriptions, loan payments; variable = dining, entertainment,
+      shopping). Enables a bucketed budget view showing your cost floor (fixed) vs discretionary
+      spend (variable). Could surface in BudgetView as a toggle or summary card, and in
+      TrendsView as a stacked breakdown. Needs schema addition (`Basil-Categories`) + UI in
+      the category edit dialog.
 - [ ] **Spending trend chart: legend improvement** — current ECharts scroll legend
       is awkward on mobile. Consider wrapping HTML legend below chart.
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
       Needs a delivery mechanism decision (in-app banner vs email).
-
-### Needs design decision
-- [ ] **Auto-learn intent clarification** — currently, checking "remember category" on a
-      transaction edit does two things: (1) creates a rule, and (2) sweeps ALL other
-      matching transactions to that category. It's unclear if these should always go
-      together. Use cases to resolve:
-      - Should "remember category" imply "move everything else now"? Or just "apply going forward"?
-      - Should a manual single-transaction edit (no "remember category") still protect
-        that transaction from future sweeps via `manually_set: true`? (Currently: yes.)
-      - Should auto-learn sweeps respect `manually_set`? (Currently: yes — they skip
-        manually-set transactions, same as Merchant Browser rules.)
-      The `manually_set` flag is implemented in `api.js`. The open question is whether
-      the UX of "remember category" should be split into two distinct actions.
 
 ### Prerequisites for Accounts & Balances feature
 These should be resolved before building the Accounts view. See `plans/accounts-balances.md`.
