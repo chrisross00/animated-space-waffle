@@ -362,4 +362,52 @@ export async function addTestTransactions() {
   }
 }
 
+export async function fetchRules() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/rules', { headers });
+    if (response.ok) return response.json();
+    else _notify({ type: 'negative', message: `Failed to fetch rules (${response.status})` });
+  }
+}
+
+export async function saveCompoundRule(rule) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/saveCompoundRule', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(rule),
+  });
+  if (response.ok) return response.json();
+  else _notify({ type: 'negative', message: `Failed to save rule (${response.status})` });
+}
+
+export async function updateCompoundRule(ruleId, label, conditions) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/updateCompoundRule', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ruleId, label, conditions }),
+  });
+  if (response.ok) return response.json();
+  else _notify({ type: 'negative', message: `Failed to update rule (${response.status})` });
+}
+
+export async function deleteCompoundRule(ruleId) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/deleteCompoundRule', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ ruleId }),
+  });
+  if (response.ok) return response.json();
+  else _notify({ type: 'negative', message: `Failed to delete rule (${response.status})` });
+}
+
 // export async function updateCategories() {} later...

@@ -1,3 +1,38 @@
+function matchesCondition(txn, condition) {
+  const { field, op, value, min, max } = condition;
+  switch (field) {
+    case 'name':
+      return op === 'eq' && (txn.name || '').toLowerCase() === (value || '').toLowerCase();
+    case 'merchant_name':
+      return op === 'eq' && txn.merchant_name != null &&
+        txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
+    case 'amount': {
+      if (op !== 'range') return false;
+      const abs = Math.abs(txn.amount);
+      return abs >= min && abs <= max;
+    }
+    case 'personal_finance_category_primary':
+      return op === 'eq' && txn.personal_finance_category?.primary === value;
+    case 'day_of_month': {
+      if (op !== 'range') return false;
+      const day = new Date(txn.date + 'T12:00:00').getDate();
+      return day >= min && day <= max;
+    }
+    default:
+      return false;
+  }
+}
+
+function evaluateCompoundRules(compoundRules, transaction) {
+  const sorted = [...compoundRules].sort((a, b) => b.conditions.length - a.conditions.length);
+  for (const rule of sorted) {
+    if (rule.conditions.every(c => matchesCondition(transaction, c))) {
+      return rule.action;
+    }
+  }
+  return null;
+}
+
 async function getMappingRuleList(dbCategories = null) {
   const ruleList = [];
   dbCategories.forEach(e => {
@@ -10,8 +45,24 @@ async function getMappingRuleList(dbCategories = null) {
   return ruleList;
 }
 
-async function mapTransactions(transactions, rulesArray) {
+async function mapTransactions(transactions, rulesArray, compoundRules = []) {
   const ruleList = rulesArray;
+
+  // RULE: compound rules (highest priority — user-defined, multi-condition)
+  if (compoundRules.length > 0) {
+    transactions.forEach(transaction => {
+      if (!transaction.mappedCategory) {
+        const action = evaluateCompoundRules(compoundRules, transaction);
+        if (action) {
+          if (action.type === 'categorize') {
+            transaction.mappedCategory = action.categoryName;
+          } else if (action.type === 'route') {
+            transaction.mappedCategory = action.destination === 'to-sort' ? 'To Sort' : null;
+          }
+        }
+      }
+    });
+  }
 
   // BUILD SPECIFIC RULE LISTS (normalized to lowercase for case-insensitive matching)
   let nameList = [];
@@ -91,4 +142,4 @@ async function mapTransactions(transactions, rulesArray) {
   return transactions;
 }
 
-module.exports = { mapTransactions, getMappingRuleList };
+module.exports = { mapTransactions, getMappingRuleList, evaluateCompoundRules };

@@ -1,5 +1,5 @@
 const { Configuration, PlaidApi, PlaidEnvironments } = require( 'plaid');
-const { findUserData , updateData, insertData, deleteRemovedData } = require('../db/database');
+const { findUserData, updateData, insertData, deleteRemovedData, findUserRules } = require('../db/database');
 const { getMappingRuleList, mapTransactions } = require('./categoryMapping')
 
 
@@ -123,8 +123,9 @@ async function getNewPlaidTransactions(uid) {
       console.log('getting user data.... userId = ', userId);
       const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
+    const compoundRules = await findUserRules(userId);
     const addedTxns = updatedResponses.flatMap(r => r.added || []);
-    const mappedTxns = await mapTransactions(addedTxns, ruleList);
+    const mappedTxns = await mapTransactions(addedTxns, ruleList, compoundRules);
 
     if (mappedTxns.length > 0) {
       await insertData('Plaid-Transactions', mappedTxns);

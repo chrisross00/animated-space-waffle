@@ -5,6 +5,7 @@ import ProfileView from './views/ProfileView.vue'
 import MerchantBrowser from './views/MerchantBrowser.vue'
 import TrendsView from './views/TrendsView.vue'
 import OnboardingView from './views/OnboardingView.vue'
+import RulesView from './views/RulesView.vue'
 
 const routes = [
   {
@@ -16,6 +17,11 @@ const routes = [
     path: '/admin',
     name: 'ApiDr',
     component: ApiDr
+  },
+  {
+    path: '/rules',
+    name: 'RulesView',
+    component: RulesView
   },
   {
     path: '/',

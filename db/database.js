@@ -167,6 +167,33 @@ async function findSimilarTransactionGroupsByCategory(uid) {
   return db.collection('Plaid-Transactions').aggregate(pipeline, { allowDiskUse: true }).toArray();
 }
 
+// ---- Compound rules (Basil-Rules collection) ----
+
+async function findUserRules(userId) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Basil-Rules').find({ userId }).sort({ createdAt: -1 }).toArray();
+}
+
+async function insertRule(rule) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Basil-Rules').insertOne(rule);
+}
+
+async function updateCompoundRule(userId, ruleId, updates) {
+  const { ObjectId } = require('mongodb');
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Basil-Rules').updateOne(
+    { _id: new ObjectId(ruleId), userId },
+    { $set: updates }
+  );
+}
+
+async function deleteCompoundRule(userId, ruleId) {
+  const { ObjectId } = require('mongodb');
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Basil-Rules').deleteOne({ _id: new ObjectId(ruleId), userId });
+}
+
 module.exports = {
   connectToDb,
   insertData,
@@ -183,4 +210,8 @@ module.exports = {
   findUserData,
   findSimilarTransactionGroupsByName,
   findSimilarTransactionGroupsByCategory,
+  findUserRules,
+  insertRule,
+  updateCompoundRule,
+  deleteCompoundRule,
 };

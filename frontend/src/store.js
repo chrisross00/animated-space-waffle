@@ -8,6 +8,7 @@ const store = createStore({
         user: null,
         session: null,
         theme: localStorage.getItem('basil-theme') || '',
+        rules: [],
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
@@ -26,6 +27,7 @@ const store = createStore({
           state.lastPlaidFetch = null;
           state.transactions = [];
           state.categories = [];
+          state.rules = [];
         },
         setSession(state, session) {
             state.session = session;
@@ -93,6 +95,19 @@ const store = createStore({
                     cat.rules[ruleType].push(ruleValue);
                 }
             }
+        },
+        setRules(state, rules) {
+            state.rules = rules;
+        },
+        addRule(state, rule) {
+            state.rules.unshift(rule);
+        },
+        removeRule(state, ruleId) {
+            state.rules = state.rules.filter(r => String(r._id) !== String(ruleId));
+        },
+        updateRule(state, { ruleId, label, conditions }) {
+            const rule = state.rules.find(r => String(r._id) === String(ruleId));
+            if (rule) { rule.label = label; rule.conditions = conditions; }
         },
         setTheme(state, theme) {
             state.theme = theme;

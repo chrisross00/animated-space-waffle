@@ -537,11 +537,19 @@
             />
           </div>
 
-          <!-- Remember toggle -->
-          <div v-if="triageItems[0].merchant_name" class="basil-triage__toggle-area">
-            <q-toggle v-model="triageCreateRule" :label="`Remember for ${triageItems[0].merchant_name}`" />
-            <div v-if="triageCreateRule" class="basil-triage__disclosure">
-              All existing &amp; future transactions from {{ triageItems[0].merchant_name }} will be assigned to {{ triageCategory || '…' }}.
+          <!-- Remember options -->
+          <div v-if="triageRuleOptions.length > 0" class="basil-triage__toggle-area">
+            <q-option-group
+              v-model="triageRuleMode"
+              :options="[{ label: 'No rule', value: null }, ...triageRuleOptions]"
+              color="primary"
+              dense
+            />
+            <div v-if="triageRuleMode === 'merchant'" class="basil-triage__disclosure">
+              All existing &amp; future {{ triageItems[0].merchant_name || triageItems[0].name }} transactions → {{ triageCategory || '…' }}.
+            </div>
+            <div v-if="triageRuleMode === 'compound'" class="basil-triage__disclosure">
+              {{ triageItems[0].merchant_name || triageItems[0].name }} transactions in this amount range → {{ triageCategory || '…' }}.
             </div>
           </div>
 
@@ -577,7 +585,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule } from '@/firebase';
 
 // import e from 'express';
 
@@ -662,7 +670,7 @@
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
-        triageCreateRule: false,
+        triageRuleMode: null, // null | 'merchant' | 'compound'
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,
@@ -846,6 +854,18 @@
       },
       triageItems() {
         return this.toSortWithSuggestions.filter(t => !this.triageSkipped.has(t.transaction_id));
+      },
+      triageRuleOptions() {
+        const txn = this.triageItems[0];
+        if (!txn) return [];
+        const merchantOrName = txn.merchant_name || txn.name;
+        if (!merchantOrName) return [];
+        const bucketRanges = { xs: '$0–$10', sm: '$10–$30', md: '$30–$100', lg: '$100–$300', xl: '$300+' };
+        const bucket = bucketRanges[amountBucket(Math.abs(txn.amount))] || '';
+        return [
+          { label: `Remember for all ${merchantOrName}`, value: 'merchant' },
+          { label: `Remember for ${merchantOrName} · ${bucket}`, value: 'compound' },
+        ];
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
@@ -1209,7 +1229,9 @@ monthStats() {
             txns = await fetchTransactions()
             this.transactions = txns.transactions;
             categoryResponse = await fetchCategories();
-            this.categoryMonthlyLimits.push(...categoryResponse) //
+            this.categoryMonthlyLimits.push(...categoryResponse)
+            const rules = await fetchRules();
+            if (rules) store.commit('setRules', rules);
           } else if(mode == 'refresh'){
               this.transactions = store.state.transactions
               this.categoryMonthlyLimits.push(...store.state.categories)
@@ -1314,7 +1336,7 @@ monthStats() {
       openTriageFlow() {
         this.triageSkipped = new Set();
         this.triageDone = false;
-        this.triageCreateRule = false;
+        this.triageRuleMode = null;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
         this.triageCategory = first?.suggestion || null;
@@ -1324,6 +1346,8 @@ monthStats() {
         const txn = this.triageItems[0];
         if (!txn || !this.triageCategory) return;
         this.triageSaving = true;
+        const isMerchantRule = this.triageRuleMode === 'merchant';
+        const isCompoundRule = this.triageRuleMode === 'compound';
         const d = {
           updateType: 'transaction',
           mappedCategory: this.triageCategory,
@@ -1331,7 +1355,7 @@ monthStats() {
           note: txn.note || '',
           name: txn.name,
           merchantName: txn.merchant_name || '',
-          createRule: this.triageCreateRule,
+          createRule: isMerchantRule,
           transaction_id: txn.transaction_id,
           originalCategoryName: txn.mappedCategory || '',
           excludeFromTotal: txn.excludeFromTotal || false,
@@ -1339,12 +1363,49 @@ monthStats() {
         try {
           const data = await handleDialogSubmit(JSON.stringify(d));
           this.updatedTransaction = { ...data };
-          if (this.triageCreateRule && txn.merchant_name) {
-            const merchantKey = txn.merchant_name;
-            const targetCategory = this.triageCategory;
+
+          const merchantOrName = txn.merchant_name || txn.name;
+          const targetCategory = this.triageCategory;
+
+          if (isMerchantRule && merchantOrName) {
+            // Sweep matching To Sort transactions in store
+            const field = txn.merchant_name ? 'merchant_name' : 'name';
             store.state.transactions
-              .filter(t => t.merchant_name === merchantKey && t.mappedCategory === 'To Sort')
+              .filter(t => t[field] === merchantOrName && t.mappedCategory === 'To Sort')
               .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: targetCategory }));
+          }
+
+          if (isCompoundRule && merchantOrName) {
+            // Build compound rule from current transaction signals
+            const abs = Math.abs(txn.amount);
+            const bucket = amountBucket(abs);
+            const bucketMinMax = { xs: [0, 10], sm: [10, 30], md: [30, 100], lg: [100, 300], xl: [300, 9999] };
+            const [min, max] = bucketMinMax[bucket];
+            const conditions = [];
+            if (txn.merchant_name) {
+              conditions.push({ field: 'merchant_name', op: 'eq', value: txn.merchant_name });
+            } else {
+              conditions.push({ field: 'name', op: 'eq', value: txn.name });
+            }
+            conditions.push({ field: 'amount', op: 'range', min, max });
+            const rule = await saveCompoundRule({
+              label: `${merchantOrName} ~$${Math.round(abs)}`,
+              conditions,
+              action: { type: 'categorize', categoryName: targetCategory },
+              createdFrom: 'triage',
+            });
+            if (rule) {
+              store.commit('addRule', rule);
+              // Sweep matching To Sort transactions in store
+              const field = txn.merchant_name ? 'merchant_name' : 'name';
+              store.state.transactions
+                .filter(t => {
+                  if (t.mappedCategory !== 'To Sort') return false;
+                  const tAbs = Math.abs(t.amount);
+                  return t[field] === merchantOrName && tAbs >= min && tAbs <= max;
+                })
+                .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: targetCategory }));
+            }
           }
         } catch (e) {
           console.error('Triage save error:', e);
@@ -1368,7 +1429,7 @@ monthStats() {
           } else {
             const next = this.triageItems[0];
             this.triageCategory = next?.suggestion || null;
-            this.triageCreateRule = false;
+            this.triageRuleMode = null;
           }
         });
       },

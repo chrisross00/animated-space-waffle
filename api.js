@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -413,6 +413,57 @@ router.post('/deleteRule', async (req, res) => {
   }
 });
 
+// ---- Compound rules ----
+
+router.get('/rules', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const rules = await findUserRules(decodedToken.uid);
+    res.json(rules);
+  } catch (error) {
+    console.error('/rules error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch rules' });
+  }
+});
+
+router.post('/saveCompoundRule', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { label, conditions, action, createdFrom } = req.body;
+    const rule = { userId: uid, label, conditions, action, createdAt: Date.now(), createdFrom: createdFrom || 'manual' };
+    const result = await insertRule(rule);
+    res.json({ ...rule, _id: result.insertedId });
+  } catch (error) {
+    console.error('/saveCompoundRule error:', error.message);
+    res.status(500).json({ message: 'Failed to save compound rule' });
+  }
+});
+
+router.post('/updateCompoundRule', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const { ruleId, label, conditions } = req.body;
+    await updateCompoundRule(decodedToken.uid, ruleId, { label, conditions });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/updateCompoundRule error:', error.message);
+    res.status(500).json({ message: 'Failed to update compound rule' });
+  }
+});
+
+router.post('/deleteCompoundRule', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const { ruleId } = req.body;
+    await deleteCompoundRule(decodedToken.uid, ruleId);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/deleteCompoundRule error:', error.message);
+    res.status(500).json({ message: 'Failed to delete compound rule' });
+  }
+});
+
 router.post('/bulkCategorize', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
@@ -444,7 +495,8 @@ router.get('/mapunmapped', async (req, res) => {
     const unmappedTransactions = await findUnmappedData('Plaid-Transactions', userId);
     const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
-    const mappedTxns = await mapTransactions(unmappedTransactions, ruleList);
+    const compoundRules = await findUserRules(userId);
+    const mappedTxns = await mapTransactions(unmappedTransactions, ruleList, compoundRules);
 
     if(mappedTxns.length > 0){
       await Promise.all(mappedTxns.map(txn => {
