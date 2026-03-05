@@ -104,6 +104,15 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       `NODE_ENV !== 'production'`. Feature is safe—completely absent from production builds.
 
 ### Maybe / future
+- [ ] **Settings: Budget rollover** — whether unspent budget carries to next month or resets.
+      Needs design decision: per-category or global? How to handle categories with no limit set?
+- [ ] **Settings: First day of week** — affects weekly groupings if/when added.
+- [ ] **Settings: Notification thresholds** — warn when a category hits X% of budget.
+      Needs delivery mechanism decision (in-app banner vs email) and the alerts feature built first.
+- [ ] **Sign in with Apple** — Firebase Auth supports it; requires Apple Developer account ($99/yr),
+      a registered domain, and a privacy policy URL. Apple-side setup is the main effort;
+      frontend change is minimal (swap `GoogleAuthProvider` for `OAuthProvider('apple.com')`).
+
 - [ ] **Iteration 3.5** — Multi-select in Merchant Browser: check multiple merchants,
       assign all to the same category in one Apply. See details below.
 - [ ] **Iteration 4** — Bulk rule creation from transaction table: select rows →

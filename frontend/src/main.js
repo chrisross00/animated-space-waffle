@@ -33,6 +33,7 @@ router.beforeEach((to, _from, next) => {
 
 
 const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
+
 app.use(router)
 app.use(store)
   .mount('#app')

@@ -30,7 +30,8 @@
         />
       </q-toolbar>
 
-      <q-tabs align="left" class="basil-tabs">
+      <!-- Desktop tab bar — hidden on mobile -->
+      <q-tabs align="left" class="basil-tabs gt-xs">
         <template v-if="$store.state.session">
           <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
           <q-route-tab to="/plan" icon="edit_note" label="Plan" />
@@ -49,27 +50,39 @@
       elevated
     >
       <q-list>
-        <q-item-label header>Essential Links</q-item-label>
-        <q-item clickable tag="a" target="_blank" href="/api">
-          <q-item-section avatar>
-            <q-icon name="build" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Toolbox</q-item-label>
-            <q-item-label caption>Admin tools</q-item-label>
-          </q-item-section>
-        </q-item>
-        <q-item clickable tag="a" target="_blank" href="https://github.com/quasarframework/">
-          <q-item-section avatar>
-            <q-icon name="school" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>Github</q-item-label>
-            <q-item-label caption>github.com/quasarframework</q-item-label>
-          </q-item-section>
-        </q-item>
+        <template v-if="$store.state.session">
+          <q-item-label header class="basil-drawer-section-label">Navigation</q-item-label>
+          <q-item clickable to="/plan" @click="leftDrawerOpen = false">
+            <q-item-section avatar>
+              <q-icon name="edit_note" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Plan</q-item-label>
+              <q-item-label caption>Budget planner</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item clickable to="/api" @click="leftDrawerOpen = false">
+            <q-item-section avatar>
+              <q-icon name="build" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Toolbox</q-item-label>
+              <q-item-label caption>Admin tools</q-item-label>
+            </q-item-section>
+          </q-item>
+        </template>
       </q-list>
     </q-drawer>
+
+    <!-- Mobile bottom nav — hidden on desktop -->
+    <q-footer v-if="$store.state.session" class="lt-sm basil-bottom-nav">
+      <q-tabs align="justify" class="basil-bottom-tabs">
+        <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
+        <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
+        <q-route-tab to="/merchants" icon="store" label="Merchants" />
+        <q-route-tab to="/profile" icon="person" label="Profile" />
+      </q-tabs>
+    </q-footer>
 
     <q-page-container>
       <router-view v-slot="{ Component }">
@@ -191,6 +204,36 @@
 .basil-page-leave-to {
   opacity: 0;
 }
+
+/* ========================================
+   Mobile bottom nav
+   ======================================== */
+:root {
+  --basil-bottom-nav-height: 72px;
+}
+
+.basil-bottom-nav {
+  background-color: var(--basil-surface) !important;
+  border-top: 1px solid var(--basil-border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.basil-bottom-tabs {
+  color: var(--basil-text-secondary) !important;
+}
+
+.basil-bottom-tabs .q-tab--active {
+  color: var(--basil-brand) !important;
+}
+
+.basil-drawer-section-label {
+  color: var(--basil-text-secondary) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 
 </style>
 
