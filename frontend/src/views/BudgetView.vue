@@ -117,7 +117,7 @@
 
       <!-- To Sort Nudge Card -->
       <div
-        v-if="toSortSuggestionStats.total > 0 && !showAll && !isLoading"
+        v-if="toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
         class="q-pa-md"
         style="max-width: 800px; margin: 0 auto;"
       >
