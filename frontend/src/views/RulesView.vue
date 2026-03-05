@@ -57,6 +57,38 @@
       </q-item>
     </q-list>
 
+    <!-- Plaid auto-categorization rules section -->
+    <div class="basil-card-head q-mb-xs">
+      <span class="basil-card-label">Plaid Auto-Categorization</span>
+      <q-icon name="info_outline" size="14px" class="q-ml-xs" style="color: var(--basil-text-muted)">
+        <q-tooltip max-width="240px">
+          Plaid classifies transactions into categories automatically. These rules map
+          Plaid's categories to your budget categories. Edit them via a category's settings.
+        </q-tooltip>
+      </q-icon>
+    </div>
+    <p class="basil-rules__pfc-note q-mb-sm">
+      These run after merchant &amp; compound rules. Edit them by opening a category's settings.
+    </p>
+
+    <div v-if="pfcRules.length === 0" class="basil-rules__empty q-mb-lg">
+      No Plaid category mappings set.
+    </div>
+
+    <q-list v-else bordered separator rounded class="q-mb-lg">
+      <q-item v-for="rule in pfcRules" :key="rule.key" class="basil-rules__item">
+        <q-item-section>
+          <q-item-label class="basil-rules__label">{{ pfcLabel(rule.pfc) }}</q-item-label>
+          <q-item-label caption>Plaid: {{ rule.pfc }}</q-item-label>
+        </q-item-section>
+        <q-item-section side>
+          <q-chip dense color="primary" text-color="white" size="sm">
+            {{ rule.category }}
+          </q-chip>
+        </q-item-section>
+      </q-item>
+    </q-list>
+
     <!-- Delete confirmation dialog -->
     <q-dialog v-model="deleteDialog">
       <q-card style="min-width: 280px">
@@ -101,11 +133,36 @@
   align-items: center;
   gap: var(--basil-space-2);
 }
+
+.basil-rules__pfc-note {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin: 0 0 var(--basil-space-3) 0;
+}
 </style>
 
 <script>
 import store from '../store';
 import { fetchRules, deleteCompoundRule, deleteRule } from '@/firebase';
+
+const PFC_NAMES = {
+  INCOME:                   'Income',
+  TRANSFER_IN:              'Transfer In',
+  TRANSFER_OUT:             'Transfer Out',
+  LOAN_PAYMENTS:            'Loan Payments',
+  BANK_FEES:                'Bank Fees',
+  ENTERTAINMENT:            'Entertainment',
+  FOOD_AND_DRINK:           'Food & Drink',
+  GENERAL_MERCHANDISE:      'General Merchandise',
+  HOME_IMPROVEMENT:         'Home Improvement',
+  MEDICAL:                  'Medical',
+  PERSONAL_CARE:            'Personal Care',
+  GENERAL_SERVICES:         'General Services',
+  GOVERNMENT_AND_NON_PROFIT:'Government & Non-Profit',
+  TRANSPORTATION:           'Transportation',
+  TRAVEL:                   'Travel',
+  RENT_AND_UTILITIES:       'Rent & Utilities',
+};
 
 const BUCKET_LABELS = {
   amount_range: (min, max) => max >= 9999 ? `$${min}+` : `$${min}–$${max}`,
@@ -146,6 +203,15 @@ export default {
       }
       return rules.sort((a, b) => a.value.localeCompare(b.value));
     },
+    pfcRules() {
+      const rules = [];
+      for (const cat of (store.state.categories || [])) {
+        for (const pfc of (cat.plaid_pfc || [])) {
+          rules.push({ key: `${cat._id}-${pfc}`, category: cat.category, pfc });
+        }
+      }
+      return rules.sort((a, b) => a.pfc.localeCompare(b.pfc));
+    },
   },
 
   async mounted() {
@@ -158,6 +224,10 @@ export default {
   },
 
   methods: {
+    pfcLabel(pfc) {
+      return PFC_NAMES[pfc] || pfc;
+    },
+
     formatConditions(conditions) {
       return conditions.map(c => {
         const fieldLabel = FIELD_LABELS[c.field] || c.field;

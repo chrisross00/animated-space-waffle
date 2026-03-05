@@ -68,7 +68,7 @@ const DEFAULT_CATEGORIES = [
   { category: 'Health',         type: 'expense',  monthly_limit: 0, plaid_pfc: ['MEDICAL', 'PERSONAL_CARE'] },
   { category: 'Utilities',      type: 'expense',  monthly_limit: 0, plaid_pfc: ['RENT_AND_UTILITIES'] },
   { category: 'To Sort',        type: 'expense',  monthly_limit: 0, plaid_pfc: [] },
-  { category: 'Payment',        type: 'payment',  monthly_limit: 0, plaid_pfc: ['TRANSFER_OUT', 'LOAN_PAYMENTS', 'BANK_FEES'] },
+  { category: 'Payment',        type: 'payment',  monthly_limit: 0, plaid_pfc: ['LOAN_PAYMENTS', 'BANK_FEES'] },
 ];
 
 router.get('/seedcategories', async (req, res) => {
