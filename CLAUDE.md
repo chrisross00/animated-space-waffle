@@ -32,10 +32,11 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/views/ProfileView.vue` | Auth (Google sign-in) + linked accounts |
 | `frontend/src/views/ApiDir.vue` | Admin toolbox (dedupe, seed, map unmapped, etc.) |
 | `frontend/src/components/DialogComponent.vue` | Edit transaction / category dialog |
+| `frontend/src/components/RuleModeSelector.vue` | Shared rule mode radio group (used in triage + dialog) |
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
 | `frontend/src/store.js` | Vuex store (user, session, transactions, categories) |
 | `frontend/src/firebase.js` | All fetch calls to backend API + Firebase auth helpers |
-| `categoryMapping.js` | Transaction categorization rule engine |
+| `utils/categoryMapping.js` | Transaction categorization rule engine |
 
 ## Architecture notes
 - **Auth:** Firebase ID token sent as `Authorization: Bearer <token>` header on every
@@ -55,6 +56,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Auto-learn rules: recategorize once → all matching transactions updated
 - Category management (add, edit budget limit, Plaid PFC mapping, type incl. savings)
 - Rules management: view/delete/add merchant rules from Edit Category dialog
+- **Compound rules**: multi-condition rules (merchant + exact amount) created from triage or Edit Transaction dialog; stored in `Basil-Rules`; evaluated before simple rules; retroactively sweep all matching transactions on creation
 - Merchant Browser (`/merchants`): top-down table, inline rule assignment per merchant
 - Transaction search/filter: text search + month sync + amount range in "Show all" table
 - Bulk categorization in table view (with disclosure note)
@@ -105,9 +107,7 @@ These should be resolved before building the Accounts view. See `plans/accounts-
 - [ ] **Sync failure visibility** — if a transaction sync fails, the user sees stale data
       with no indication anything is wrong. Add error state handling so failures surface
       rather than silently disappear.
-- [ ] **Dynamic `earliestDate`** — currently hardcoded to `'2022-07-29'` in plaid-api.js
-      for all users. Should be set dynamically at link time (e.g. 24 months back from
-      today) so new users get appropriate history and the value isn't stale forever.
+- [x] **Dynamic `earliestDate`** — set to 30 days before today at link time in `plaid-api.js`.
 - [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal. Once
       a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
       vs moves to Accounts before building the new view.
@@ -175,6 +175,17 @@ Top-down table: Merchant | Txns | Current category | Assign (inline q-select + A
 - Retroactive disclosure banner at top of page
 - Rule icon + tooltip when explicit merchant_name rule exists
 - Pre-populates selects from store ruleMap on mount
+
+### Compound rules ✓ — multi-condition rules (triage + dialog)
+Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, createdAt, createdFrom }`.
+- `conditions`: array of `{ field, op, value }` or `{ field: 'amount', op: 'eq'|'range', value|min|max }`
+- Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
+- Created from: Sort Transactions triage card OR Edit Transaction dialog (third radio option)
+- Both flows use `RuleModeSelector` component for the radio group + hint text
+- Creation sweeps all matching non-`manually_set` transactions (client store + backend `updateMany`)
+- Duplicate guard: `isDuplicateRule()` in BudgetView checks store; backend returns 409
+- Edit/delete in RulesView (label rename, remove conditions, delete)
+- Key helpers in BudgetView: `buildCompoundRule()`, `sweepToSort()`, `condKey()`, `isDuplicateRule()`
 
 ### Iteration 3.5 — Multi-select in Merchant Browser (maybe)
 Select multiple merchants → assign all to one category. Better than "Apply All"
@@ -252,6 +263,12 @@ Never create classes starting with `q-` (Quasar's namespace).
 ---
 
 ## Recent history (for context)
+- Built compound rules feature: multi-condition rules (merchant + exact amount), created from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine, retroactively sweep all matching transactions
+- Built `RuleModeSelector` shared component — used in both Sort Transactions triage and Edit Transaction dialog
+- Fixed compound rule sweep to cover all transactions (not just To Sort); backend `saveCompoundRule` now runs `updateMany`
+- Added duplicate rule guard (frontend store check + backend 409)
+- Added compound rule edit dialog to RulesView (rename label, remove conditions)
+- Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded
 - Built Merchant Browser, rules management iterations 1–3, transaction search/filter
 - Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)
 - Added `savings` category type to schema + dialog dropdown

@@ -431,8 +431,34 @@ router.post('/saveCompoundRule', async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
     const { label, conditions, action, createdFrom } = req.body;
+    // Duplicate check — same conditions (field+op+value/min/max), order-independent
+    const existing = await findUserRules(uid);
+    const condKey = c => `${c.field}|${c.op}|${c.value ?? ''}|${c.min ?? ''}|${c.max ?? ''}`;
+    const incomingKey = conditions.map(condKey).sort().join(',');
+    const isDuplicate = existing.some(r =>
+      Array.isArray(r.conditions) && r.conditions.map(condKey).sort().join(',') === incomingKey
+    );
+    if (isDuplicate) return res.status(409).json({ message: 'Duplicate rule' });
+
     const rule = { userId: uid, label, conditions, action, createdAt: Date.now(), createdFrom: createdFrom || 'manual' };
     const result = await insertRule(rule);
+
+    // Sweep existing transactions that match the rule's conditions
+    if (action?.type === 'categorize' && Array.isArray(conditions)) {
+      const txnFilter = { userId: uid, manually_set: { $ne: true } };
+      const amountExprs = [];
+      for (const c of conditions) {
+        if (c.field === 'amount') {
+          if (c.op === 'eq')    amountExprs.push({ $eq: [{ $abs: '$amount' }, c.value] });
+          if (c.op === 'range') amountExprs.push({ $gte: [{ $abs: '$amount' }, c.min] }, { $lte: [{ $abs: '$amount' }, c.max] });
+        } else if (c.op === 'eq') {
+          txnFilter[c.field] = c.value;
+        }
+      }
+      if (amountExprs.length > 0) txnFilter.$expr = amountExprs.length === 1 ? amountExprs[0] : { $and: amountExprs };
+      await updateManyData('Plaid-Transactions', txnFilter, { $set: { mappedCategory: action.categoryName } });
+    }
+
     res.json({ ...rule, _id: result.insertedId });
   } catch (error) {
     console.error('/saveCompoundRule error:', error.message);

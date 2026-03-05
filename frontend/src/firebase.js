@@ -381,6 +381,7 @@ export async function saveCompoundRule(rule) {
     body: JSON.stringify(rule),
   });
   if (response.ok) return response.json();
+  if (response.status === 409) { _notify({ type: 'info', message: 'A rule with these conditions already exists.' }); return null; }
   else _notify({ type: 'negative', message: `Failed to save rule (${response.status})` });
 }
 

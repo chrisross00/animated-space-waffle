@@ -59,16 +59,14 @@
           v-model="dialogBody.excludeFromTotal"
           @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"
         />
-        <q-toggle
+        <RuleModeSelector
           v-if="dialogBody.merchantName || dialogBody.name"
-          color="primary"
-          v-model="dialogBody.createRule"
-          :label="'Remember category for ' + (dialogBody.merchantName || dialogBody.name)"
+          v-model="dialogBody.ruleMode"
+          :merchant-name="dialogBody.merchantName || ''"
+          :name="dialogBody.name || ''"
+          :amount="item?.amount || 0"
+          :category="dialogBody.mappedCategory || ''"
         />
-        <p v-if="dialogBody.createRule" class="basil-dialog-hint">
-          All existing transactions from <strong>{{ dialogBody.merchantName || dialogBody.name }}</strong>
-          will be moved to <strong>{{ dialogBody.mappedCategory }}</strong>, and future ones assigned automatically.
-        </p>
       </div>
 
       <div class="basil-dialog-actions">
@@ -472,6 +470,7 @@
 
 <script>
   import {ref} from 'vue'
+  import RuleModeSelector from './RuleModeSelector.vue'
 
   const PLAID_PFC_OPTIONS = [
     { label: 'Income',                   value: 'INCOME' },
@@ -529,7 +528,7 @@
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
-                createRule: false,
+                ruleMode: null,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},
@@ -542,6 +541,7 @@
         };
       },
       
+components: { RuleModeSelector },
 emits: ['update-transaction', 'update-category', 'add-category'],
 computed: {
     dialogSubtitle() {
@@ -577,14 +577,10 @@ computed: {
         return (assignedTo && assignedTo !== currentName) ? assignedTo : null;
     },
     dropDownOptions() {
-        // let dropDown = this.dropDown
         const options = this.dropDown.map(item => item.category);
-
-        // console.log('dropDownOptions =',this.dropDown)
-        // console.log('options =',options)
         options.sort()
         return options
-    }
+    },
   },
   methods: {
         onTransactionFormReset () {
@@ -655,9 +651,10 @@ computed: {
             if(this.dialogType == 'transaction'){
                 if(
                     this.dialogBody.date !== this.originalDialogBody.date ||
-                    this.dialogBody.mappedCategory !== this.originalDialogBody.mappedCategory || 
+                    this.dialogBody.mappedCategory !== this.originalDialogBody.mappedCategory ||
                     this.dialogBody.note !== this.originalDialogBody.note ||
-                    this.dialogBody.excludeFromTotal !== this.originalDialogBody.excludeFromTotal 
+                    this.dialogBody.excludeFromTotal !== this.originalDialogBody.excludeFromTotal ||
+                    this.dialogBody.ruleMode !== null
                 ){
                     this.formSubmittable = true
                 }
@@ -703,6 +700,9 @@ computed: {
             this.isFormSubmittable()
         },
         "dialogBody.plaid_pfc": function (){
+            this.isFormSubmittable()
+        },
+        "dialogBody.ruleMode": function (){
             this.isFormSubmittable()
         }
     }

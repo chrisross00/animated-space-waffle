@@ -7,9 +7,10 @@ function matchesCondition(txn, condition) {
       return op === 'eq' && txn.merchant_name != null &&
         txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
     case 'amount': {
-      if (op !== 'range') return false;
       const abs = Math.abs(txn.amount);
-      return abs >= min && abs <= max;
+      if (op === 'eq') return abs === value;
+      if (op === 'range') return abs >= min && abs <= max;
+      return false;
     }
     case 'personal_finance_category_primary':
       return op === 'eq' && txn.personal_finance_category?.primary === value;

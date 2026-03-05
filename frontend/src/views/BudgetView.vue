@@ -538,19 +538,14 @@
           </div>
 
           <!-- Remember options -->
-          <div v-if="triageRuleOptions.length > 0" class="basil-triage__toggle-area">
-            <q-option-group
+          <div v-if="triageItems[0] && (triageItems[0].merchant_name || triageItems[0].name)" class="basil-triage__toggle-area">
+            <RuleModeSelector
               v-model="triageRuleMode"
-              :options="[{ label: 'No rule', value: null }, ...triageRuleOptions]"
-              color="primary"
-              dense
+              :merchant-name="triageItems[0].merchant_name || ''"
+              :name="triageItems[0].name || ''"
+              :amount="triageItems[0].amount || 0"
+              :category="triageCategory || ''"
             />
-            <div v-if="triageRuleMode === 'merchant'" class="basil-triage__disclosure">
-              All existing &amp; future {{ triageItems[0].merchant_name || triageItems[0].name }} transactions → {{ triageCategory || '…' }}.
-            </div>
-            <div v-if="triageRuleMode === 'compound'" class="basil-triage__disclosure">
-              {{ triageItems[0].merchant_name || triageItems[0].name }} transactions in this amount range → {{ triageCategory || '…' }}.
-            </div>
           </div>
 
           <!-- Actions -->
@@ -584,10 +579,53 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
+  import RuleModeSelector from '../components/RuleModeSelector.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule } from '@/firebase';
 
 // import e from 'express';
+
+  // Sweep "To Sort" transactions matching merchantOrName (and optionally exact amount) to a category.
+  // field: 'merchant_name' | 'name'
+  function condKey(c) { return `${c.field}|${c.op}|${c.value ?? ''}|${c.min ?? ''}|${c.max ?? ''}`; }
+  function isDuplicateRule(conditions) {
+    const incoming = conditions.map(condKey).sort().join(',');
+    return (store.state.rules || []).some(r =>
+      Array.isArray(r.conditions) && r.conditions.map(condKey).sort().join(',') === incoming
+    );
+  }
+
+  function buildCompoundRule(merchantName, name, amount, categoryName, createdFrom) {
+    const merchantOrName = merchantName || name;
+    const field = merchantName ? 'merchant_name' : 'name';
+    const abs = Math.abs(amount);
+    return {
+      merchantOrName,
+      field,
+      abs,
+      payload: {
+        label: `${merchantOrName} $${abs % 1 === 0 ? Math.round(abs) : abs.toFixed(2)}`,
+        conditions: [
+          { field, op: 'eq', value: merchantOrName },
+          { field: 'amount', op: 'eq', value: abs },
+        ],
+        action: { type: 'categorize', categoryName },
+        createdFrom,
+      },
+    };
+  }
+
+  function sweepToSort(merchantOrName, field, category, exactAmount = null, toSortOnly = true) {
+    store.state.transactions
+      .filter(t => {
+        if (toSortOnly && t.mappedCategory !== 'To Sort') return false;
+        if (t.manually_set) return false;
+        if (t[field] !== merchantOrName) return false;
+        if (exactAmount !== null && Math.abs(t.amount) !== exactAmount) return false;
+        return true;
+      })
+      .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: category }));
+  }
 
   function amountBucket(abs) {
     if (abs < 10)  return 'xs';
@@ -613,7 +651,8 @@
     components: {
       DialogComponent,
       SkeletonBudget,
-      EmptyState
+      EmptyState,
+      RuleModeSelector,
     },
     data() {
       const currentDate = dayjs();
@@ -854,18 +893,6 @@
       },
       triageItems() {
         return this.toSortWithSuggestions.filter(t => !this.triageSkipped.has(t.transaction_id));
-      },
-      triageRuleOptions() {
-        const txn = this.triageItems[0];
-        if (!txn) return [];
-        const merchantOrName = txn.merchant_name || txn.name;
-        if (!merchantOrName) return [];
-        const bucketRanges = { xs: '$0–$10', sm: '$10–$30', md: '$30–$100', lg: '$100–$300', xl: '$300+' };
-        const bucket = bucketRanges[amountBucket(Math.abs(txn.amount))] || '';
-        return [
-          { label: `Remember for all ${merchantOrName}`, value: 'merchant' },
-          { label: `Remember for ${merchantOrName} · ${bucket}`, value: 'compound' },
-        ];
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
@@ -1268,7 +1295,7 @@ monthStats() {
             'note':e.note,
             'name': e.name,
             'merchantName': e.merchantName,
-            'createRule': e.createRule ? true : false,
+            'createRule': e.ruleMode === 'merchant',
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
@@ -1319,6 +1346,20 @@ monthStats() {
             if (this.transactionClickers[e.transaction_id]) {
               this.transactionClickers[e.transaction_id] = false
             }
+            if (e.ruleMode === 'compound') {
+              const { merchantOrName, field, abs, payload } = buildCompoundRule(e.merchantName, e.name, e.amount || 0, e.mappedCategory, 'dialog');
+              if (merchantOrName) {
+                if (isDuplicateRule(payload.conditions)) {
+                  this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+                } else {
+                  const rule = await saveCompoundRule(payload);
+                  if (rule) {
+                    store.commit('addRule', rule);
+                    sweepToSort(merchantOrName, field, e.mappedCategory, abs, false);
+                  }
+                }
+              }
+            }
             this.tableDialogOpen = false
           }
           if(d.updateType == 'addCategory'){
@@ -1367,44 +1408,22 @@ monthStats() {
           const merchantOrName = txn.merchant_name || txn.name;
           const targetCategory = this.triageCategory;
 
+          const txnField = txn.merchant_name ? 'merchant_name' : 'name';
+
           if (isMerchantRule && merchantOrName) {
-            // Sweep matching To Sort transactions in store
-            const field = txn.merchant_name ? 'merchant_name' : 'name';
-            store.state.transactions
-              .filter(t => t[field] === merchantOrName && t.mappedCategory === 'To Sort')
-              .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: targetCategory }));
+            sweepToSort(merchantOrName, txnField, targetCategory);
           }
 
           if (isCompoundRule && merchantOrName) {
-            // Build compound rule from current transaction signals
-            const abs = Math.abs(txn.amount);
-            const bucket = amountBucket(abs);
-            const bucketMinMax = { xs: [0, 10], sm: [10, 30], md: [30, 100], lg: [100, 300], xl: [300, 9999] };
-            const [min, max] = bucketMinMax[bucket];
-            const conditions = [];
-            if (txn.merchant_name) {
-              conditions.push({ field: 'merchant_name', op: 'eq', value: txn.merchant_name });
+            const { abs, payload } = buildCompoundRule(txn.merchant_name, txn.name, txn.amount, targetCategory, 'triage');
+            if (isDuplicateRule(payload.conditions)) {
+              this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
             } else {
-              conditions.push({ field: 'name', op: 'eq', value: txn.name });
-            }
-            conditions.push({ field: 'amount', op: 'range', min, max });
-            const rule = await saveCompoundRule({
-              label: `${merchantOrName} ~$${Math.round(abs)}`,
-              conditions,
-              action: { type: 'categorize', categoryName: targetCategory },
-              createdFrom: 'triage',
-            });
-            if (rule) {
-              store.commit('addRule', rule);
-              // Sweep matching To Sort transactions in store
-              const field = txn.merchant_name ? 'merchant_name' : 'name';
-              store.state.transactions
-                .filter(t => {
-                  if (t.mappedCategory !== 'To Sort') return false;
-                  const tAbs = Math.abs(t.amount);
-                  return t[field] === merchantOrName && tAbs >= min && tAbs <= max;
-                })
-                .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: targetCategory }));
+              const rule = await saveCompoundRule(payload);
+              if (rule) {
+                store.commit('addRule', rule);
+                sweepToSort(merchantOrName, txnField, targetCategory, abs, false);
+              }
             }
           }
         } catch (e) {
