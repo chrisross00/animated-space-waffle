@@ -541,10 +541,11 @@
 .basil-tosort-card {
   cursor: pointer;
   padding: var(--basil-space-5) !important;
-  transition: box-shadow var(--basil-motion-fast);
+  transition: box-shadow var(--basil-motion-fast), background-color var(--basil-motion-fast);
 }
 
 .basil-tosort-card:hover {
+  background-color: var(--basil-surface-raised) !important;
   box-shadow: var(--basil-shadow-md);
 }
 

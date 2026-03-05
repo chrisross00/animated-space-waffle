@@ -37,7 +37,7 @@
           <q-route-tab to="/plan" icon="edit_note" label="Plan" />
           <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
           <q-route-tab to="/merchants" icon="store" label="Merchants" />
-          <q-route-tab to="/api" icon="build" label="Toolbox" />
+          <q-route-tab to="/admin" icon="build" label="Toolbox" />
         </template>
         <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>
@@ -61,7 +61,7 @@
               <q-item-label caption>Budget planner</q-item-label>
             </q-item-section>
           </q-item>
-          <q-item clickable to="/api" @click="leftDrawerOpen = false">
+          <q-item clickable to="/admin" @click="leftDrawerOpen = false">
             <q-item-section avatar>
               <q-icon name="build" />
             </q-item-section>

@@ -13,7 +13,7 @@ const routes = [
     component: OnboardingView
   },
   {
-    path: '/api/',
+    path: '/admin',
     name: 'ApiDr',
     component: ApiDr
   },

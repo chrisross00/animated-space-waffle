@@ -92,6 +92,25 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       The `manually_set` flag is implemented in `api.js`. The open question is whether
       the UX of "remember category" should be split into two distinct actions.
 
+### Prerequisites for Accounts & Balances feature
+These should be resolved before building the Accounts view. See `plans/accounts-balances.md`.
+
+- [ ] **Plaid item error handling + reconnect flow** — the most critical blocker. When a
+      Plaid token goes stale (user changes bank password, institution requires re-auth),
+      the app currently fails silently. Need to detect Plaid error codes (e.g.
+      `ITEM_LOGIN_REQUIRED`) on sync, surface a "reconnect your account" prompt, and
+      launch Plaid Link in update mode. Without this, an Accounts view showing stale/missing
+      balances will look like a broken app.
+- [ ] **Sync failure visibility** — if a transaction sync fails, the user sees stale data
+      with no indication anything is wrong. Add error state handling so failures surface
+      rather than silently disappear.
+- [ ] **Dynamic `earliestDate`** — currently hardcoded to `'2022-07-29'` in plaid-api.js
+      for all users. Should be set dynamically at link time (e.g. 24 months back from
+      today) so new users get appropriate history and the value isn't stale forever.
+- [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal. Once
+      a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
+      vs moves to Accounts before building the new view.
+
 ### Tech debt
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
@@ -104,6 +123,9 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       `NODE_ENV !== 'production'`. Feature is safe—completely absent from production builds.
 
 ### Maybe / future
+- [ ] **Customizable nav** — user picks which views appear in the bottom toolbar;
+      everything else goes in a hamburger/overflow menu. Solves nav scaling as new
+      views are added (Accounts, etc.) without hardcoding tab order.
 - [ ] **Settings: Budget rollover** — whether unspent budget carries to next month or resets.
       Needs design decision: per-category or global? How to handle categories with no limit set?
 - [ ] **Settings: First day of week** — affects weekly groupings if/when added.

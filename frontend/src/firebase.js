@@ -343,7 +343,7 @@ export async function addVenmoTransactions() {
       const data = await response.json();
       return `Inserted ${data.inserted} transactions (5 historical seeded as "${data.foodCat}" / "${data.housingCat}", 5 current month in To Sort).`;
     } else {
-      Notify.create({ type: 'negative', message: `Failed to add Venmo test transactions (${response.status})` });
+      _notify({ type: 'negative', message: `Failed to add Venmo test transactions (${response.status})` });
     }
   }
 }

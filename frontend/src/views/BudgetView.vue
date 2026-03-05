@@ -906,7 +906,7 @@ monthStats() {
           let incomeAmount = 0; // income-type categories only, positive
           let savingsAmount = 0; // savings-type categories only, positive
           for (const category in groupedTransactions) {
-            if(category !== 'Payment' ){
+            if(groupedTransactions[category].type !== 'payment' ){
               absoluteSpend += this.categorySum(category)
             }
             const catSum = this.categorySum(category);
@@ -928,7 +928,7 @@ monthStats() {
                 if (groupedTransactions[category].type == 'expense') budgetRemaining += this.budgetRemaining(category)
               }
             }
-            if (this.isBudgetRemaining(category) == false && category !== 'Payment'){
+            if (this.isBudgetRemaining(category) == false && groupedTransactions[category].type !== 'payment'){
               projectedSum += this.categorySum(category)
             }
             if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {

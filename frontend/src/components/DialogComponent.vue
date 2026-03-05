@@ -231,6 +231,12 @@
           :options="type"
           @touchmove.stop.prevent
         />
+        <div v-if="dialogBody.type" class="basil-type-hint">
+          <span v-if="dialogBody.type === 'Expense'">Counts toward your monthly spending totals.</span>
+          <span v-else-if="dialogBody.type === 'Income'">Counted as money in. Excluded from spending totals.</span>
+          <span v-else-if="dialogBody.type === 'Savings'">Tracked separately as money saved. Excluded from spending totals.</span>
+          <span v-else-if="dialogBody.type === 'Payment'">Excluded from all totals. Use for credit card payments and transfers to avoid double-counting money you've already tracked as expenses.</span>
+        </div>
         <q-select
           outlined
           v-model="dialogBody.plaid_pfc"
@@ -455,6 +461,13 @@
   display: flex;
   gap: var(--basil-space-2);
 }
+
+.basil-type-hint {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: calc(var(--basil-space-1) * -1);
+  padding: 0 var(--basil-space-1);
+}
 </style>
 
 <script>
@@ -500,7 +513,7 @@
         return {
             maximizedToggle: ref(true),
             editedTransaction: {},
-            type: ['Expense', 'Income', 'Savings'],
+            type: ['Expense', 'Income', 'Savings', 'Payment'],
             plaidPfcOptions: PLAID_PFC_OPTIONS,
             dialogBody:{
                 amount: this.item?.amount ? this.item.amount : 0 ,
