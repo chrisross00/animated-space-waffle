@@ -53,8 +53,8 @@ This plan adds:
   "userId": "...",
   "label": "Venmo rent",
   "conditions": [
-    { "field": "merchant_name", "op": "eq",    "value": "Venmo" },
-    { "field": "amount",        "op": "range",  "min": 700, "max": 900 }
+    { "field": "name",   "op": "eq",    "value": "Venmo" },
+    { "field": "amount", "op": "range", "min": 700, "max": 900 }
   ],
   "action": {
     "type": "categorize",
@@ -72,10 +72,21 @@ This plan adds:
   (useful for "always review Venmo" without a category assignment)
 
 **Supported condition fields:**
-- `merchant_name` — op: `eq` (exact match, case-insensitive)
-- `name` — op: `contains` (substring match on transaction name/memo)
-- `amount` — op: `range` (min/max, based on absolute value)
-- `day_of_month` — op: `range` (min/max, for recurring rent-on-the-1st patterns)
+- `name` — op: `eq` (exact match, case-insensitive). Primary identifier for peer
+  payment apps — real Plaid data shows `merchant_name` is null for Venmo; `name`
+  is the reliable field ("Venmo", "Cash App", "Zelle").
+- `merchant_name` — op: `eq` (exact match, case-insensitive). Used for traditional
+  merchants where `merchant_name` is populated.
+- `amount` — op: `range` (min/max, based on absolute value). Primary disambiguation
+  signal for peer payments where no memo data exists.
+- `personal_finance_category_primary` — op: `eq`. Matches Plaid's `TRANSFER_IN` vs
+  `TRANSFER_OUT` — distinguishes money-in from money-out for the same sender (e.g.,
+  Venmo income vs Venmo expense).
+- `day_of_month` — op: `range` (min/max, for recurring patterns like rent on the 1st–5th).
+
+**Note on name-contains matching:** Real Plaid Venmo transactions carry no memo data —
+`name` is just "Venmo" and `payment_meta.reason` is null. Name-substring matching was
+considered and dropped; it provides no signal for peer payment apps.
 
 **Rule priority:**
 1. Compound rules (Basil-Rules) — evaluated first, most specific match wins
@@ -199,9 +210,10 @@ Loaded on session init alongside transactions and categories.
 1. **Rule editing UX** — v1 plan is inline edit on the rules view. Is that enough, or do
    users need a dedicated edit dialog? Defer until we see how complex the conditions get.
 
-2. **`name` field matching for Venmo memos** — Plaid sometimes puts the payment memo in
-   `transaction.name` (e.g., "Venmo - rent"). Need to audit actual Venmo transaction data
-   before designing around this. Could be a strong signal; could be inconsistent.
+2. ~~**`name` field matching for Venmo memos**~~ — **Resolved.** Real Plaid Venmo data
+   has `merchant_name: null` and `name: "Venmo"` with no memo. `payment_meta.reason`
+   is also null. Name-contains matching is not viable. Amount + `personal_finance_category_primary`
+   (TRANSFER_IN/OUT) are the useful signals.
 
 3. **Routing rules ("always send to To Sort")** — the data model supports it, but should
    this be exposed in the triage flow or only in the rules view? Triage flow might be
