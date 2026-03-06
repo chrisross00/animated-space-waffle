@@ -582,50 +582,12 @@
   import RuleModeSelector from '../components/RuleModeSelector.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
-  import { sweepStore } from '@/utils/ruleUtils';
+  import { sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore } from '@/utils/ruleUtils';
 
 // import e from 'express';
 
   // Sweep "To Sort" transactions matching merchantOrName (and optionally exact amount) to a category.
   // field: 'merchant_name' | 'name'
-  function condKey(c) { return `${c.field}|${c.op}|${c.value ?? ''}|${c.min ?? ''}|${c.max ?? ''}`; }
-  function findExistingRule(conditions) {
-    const incoming = conditions.map(condKey).sort().join(',');
-    return (store.state.rules || []).find(r =>
-      Array.isArray(r.conditions) && r.conditions.map(condKey).sort().join(',') === incoming
-    ) || null;
-  }
-
-  function applyMerchantRuleToStore(ruleType, ruleValue, categoryName, notify) {
-    const prevCat = store.state.categories.find(c => (c.rules?.[ruleType] || []).includes(ruleValue));
-    const newCat = store.state.categories.find(c => c.category === categoryName);
-    if (prevCat && prevCat.category === categoryName) {
-      notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
-    } else {
-      if (prevCat) store.commit('updateCategoryRules', { categoryId: prevCat._id, ruleType, ruleValue });
-      if (newCat) store.commit('addCategoryRule', { categoryId: newCat._id, ruleType, ruleValue });
-      if (prevCat) notify({ type: 'info', message: 'Rule updated — categorization applied.' });
-    }
-  }
-
-  async function applyCompoundRuleToStore(payload, categoryName, notify) {
-    const existing = findExistingRule(payload.conditions);
-    if (existing) {
-      if (existing.action?.categoryName !== categoryName) {
-        const updated = { ...existing.action, categoryName };
-        await updateCompoundRule(String(existing._id), existing.label, existing.conditions, updated);
-        store.commit('updateRule', { ruleId: existing._id, label: existing.label, conditions: existing.conditions, action: updated });
-        notify({ type: 'info', message: 'Rule updated — categorization applied.' });
-      } else {
-        notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
-      }
-    } else {
-      const rule = await saveCompoundRule(payload);
-      if (rule) store.commit('addRule', rule);
-    }
-    sweepStore(store, payload.conditions, categoryName, null, false);
-  }
-
   function buildCompoundRule(merchantName, name, amount, categoryName, createdFrom) {
     const merchantOrName = merchantName || name;
     const field = merchantName ? 'merchant_name' : 'name';
@@ -1373,12 +1335,12 @@ monthStats() {
               this.transactionClickers[e.transaction_id] = false
             }
             if (e.ruleMode === 'merchant' && e.merchantName) {
-              applyMerchantRuleToStore('merchant_name', e.merchantName, e.mappedCategory, this.$q.notify.bind(this.$q));
+              applyMerchantRuleToStore(store, 'merchant_name', e.merchantName, e.mappedCategory, this.$q.notify.bind(this.$q));
             }
             if (e.ruleMode === 'compound') {
               const { merchantOrName, payload } = buildCompoundRule(e.merchantName, e.name, e.amount || 0, e.mappedCategory, 'dialog');
               if (merchantOrName) {
-                await applyCompoundRuleToStore(payload, e.mappedCategory, this.$q.notify.bind(this.$q));
+                await applyCompoundRuleToStore(store, payload, e.mappedCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
               }
             }
             this.tableDialogOpen = false
@@ -1433,12 +1395,12 @@ monthStats() {
 
           if (isMerchantRule && merchantOrName) {
             sweepStore(store, [{ field: txnField, op: 'eq', value: merchantOrName }], targetCategory, null, true);
-            applyMerchantRuleToStore(txnField, merchantOrName, targetCategory, this.$q.notify.bind(this.$q));
+            applyMerchantRuleToStore(store, txnField, merchantOrName, targetCategory, this.$q.notify.bind(this.$q));
           }
 
           if (isCompoundRule && merchantOrName) {
             const { payload } = buildCompoundRule(txn.merchant_name, txn.name, txn.amount, targetCategory, 'triage');
-            await applyCompoundRuleToStore(payload, targetCategory, this.$q.notify.bind(this.$q));
+            await applyCompoundRuleToStore(store, payload, targetCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
           }
         } catch (e) {
           console.error('Triage save error:', e);
