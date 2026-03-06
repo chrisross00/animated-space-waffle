@@ -35,10 +35,12 @@ quasar-overrides.css → our rules; loads last so they win the cascade
 
 | File | Purpose |
 |------|---------|
-| `frontend/src/styles/tokens.css` | All CSS custom properties — the single source of truth for every color, spacing, radius, shadow, and motion value |
+| `frontend/src/styles/tokens.css` | All CSS custom properties — the single source of truth for every color, spacing, radius, shadow, and motion value. Includes `[data-theme="dark"]` token overrides. |
 | `frontend/src/styles/quasar.variables.sass` | Quasar SASS brand vars (`$primary`, `$negative`, etc.) mirrored from tokens so Quasar components inherit the palette |
-| `frontend/src/styles/quasar-overrides.css` | **Quasar component base layer.** Makes every standard Quasar element (q-card, q-table, q-field, q-menu, etc.) inherit token values automatically. Also contains the full `[data-theme="dark"]` override section. Add new Quasar component overrides here — never in App.vue or component scoped styles. |
-| `frontend/src/App.vue` `<style>` | App-level chrome only: layout utilities, header, wordmark, page transition. No Quasar overrides. |
+| `frontend/src/styles/quasar-overrides.css` | **Quasar component base layer.** Theme-neutral overrides that make standard Quasar elements (q-card, q-table, q-field, q-menu, etc.) inherit token values automatically. No dark mode rules here. |
+| `frontend/src/App.vue` `<style>` | App-level chrome: layout utilities, header, wordmark, page transition. Also contains all `[data-theme="dark"]` Quasar component overrides — this is the canonical location for dark mode Quasar fixes. |
+| `frontend/src/styles/dialogs.css` | **Shared dialog shell.** Structural/layout classes used by all dialogs (`basil-dialog-card`, `basil-dialog-header`, `basil-dialog-title`, etc.). Component-specific dialog styles stay scoped in their own file. |
+| `frontend/src/styles/[ViewName].css` | View-specific CSS externalized to keep large `.vue` files manageable (e.g. `BudgetView.css`, `BudgetPlannerView.css`). Import at the top of the `<style>` block. |
 
 ### Rule
 
@@ -219,6 +221,25 @@ For any prominent dollar figure, follow the hero number pattern:
 </div>
 ```
 
+### Dialog shell
+All dialogs import `dialogs.css` for structural layout. Use these classes for the outer shell:
+```html
+<q-card class="basil-dialog-card">
+  <div class="basil-dialog-header">
+    <div class="basil-dialog-title">
+      <span class="basil-dialog-title__sub">CONTEXT LABEL</span>
+      <span class="basil-dialog-title__main">Dialog Title</span>
+    </div>
+    <q-btn flat round dense icon="close" class="basil-dialog-close" @click="$emit('hide')" />
+  </div>
+  <!-- scrollable body -->
+  <q-card-section class="col overflow-auto"> ... </q-card-section>
+  <!-- sticky footer -->
+  <q-card-actions align="right"> ... </q-card-actions>
+</q-card>
+```
+Component-specific styles stay in the component's `<style scoped>`. Never duplicate the shell structure.
+
 ### Transaction row (All Transactions table)
 The table uses a custom `v-slot:body` with:
 - Initials avatar: `merchantColor()` + `merchantInitials()` methods (BudgetView)
@@ -243,12 +264,12 @@ writes to `localStorage`, and triggers the transition class.
 ### Two layers of dark mode CSS
 
 **Layer 1 — token overrides** (`tokens.css`):
-All semantic color, surface, and text tokens get new values. Any component that
-uses `var(--basil-*)` tokens automatically adapts.
+All semantic color, surface, and text tokens get new values under `[data-theme="dark"]`.
+Any component that uses only `var(--basil-*)` tokens automatically adapts — no extra work needed.
 
-**Layer 2 — Quasar overrides** (`App.vue` global styles):
+**Layer 2 — Quasar component overrides** (`App.vue` global `<style>`):
 Quasar components bake in their own light backgrounds (`#fff`, `#f5f5f5`) and
-ignore our custom properties. These must be explicitly overridden:
+ignore CSS custom properties. These must be explicitly overridden with `!important`:
 
 ```css
 [data-theme="dark"] .q-table tbody td { background-color: var(--basil-surface) !important; }
@@ -258,10 +279,10 @@ ignore our custom properties. These must be explicitly overridden:
 
 ### Rule for new components
 1. Use only `var(--basil-*)` tokens for all colors — no hardcoded hex values.
-2. If you use any Quasar component with its own background, test in dark mode and add
-   a `[data-theme="dark"]` override in `App.vue`'s dark mode section if needed.
-3. If a `.vue` file has hardcoded `#f5f5f5`, `#ffffff`, or similar light colors,
-   add a `[data-theme="dark"]` override at the bottom of the same CSS file.
+2. If you introduce a Quasar component that still shows a light background in dark mode,
+   add a `[data-theme="dark"] .q-whatever { ... !important; }` override to the dark mode
+   section of **`App.vue`** — that is the canonical location for all Quasar dark fixes.
+3. Never add Quasar dark mode overrides in `quasar-overrides.css` or component scoped styles.
 
 ---
 

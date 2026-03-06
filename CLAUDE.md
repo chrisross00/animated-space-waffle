@@ -1,5 +1,38 @@
 # Project: animated-space-waffle (personal finance / budget tracker)
 
+## Standard operating procedures — read first
+
+These apply to every task, every session, including after context compaction.
+
+### Before writing any frontend UI
+1. **Read `DESIGN.md`** in full before touching any component or view.
+   It is the single source of truth for tokens, typography, spacing, dark mode,
+   component patterns, and the new-component checklist. Violations ship as bugs.
+
+### Before writing any rule, sweep, or condition logic
+2. **Check `frontend/src/utils/ruleUtils.js`** — `matchesCondition` and `sweepStore`
+   are the canonical client-side implementations. Never write inline sweep loops.
+3. **Check `api.js → sweepCompoundRule`** for the backend equivalent.
+4. If adding a new condition type or operator, update **all three**:
+   `ruleUtils.js`, `categoryMapping.js` (`evaluateCompoundRules`), and `api.js`
+   (`conditionsToMongoFilter`).
+
+### Before building any new component or UI pattern
+5. **Check existing shared components first:**
+   `RuleEditorDialog`, `RuleModeSelector`, `EmptyState`, `SkeletonBudget`, `dialogs.css`.
+   Reuse over rebuild. One-off implementations that duplicate existing abstractions
+   will be flagged for refactor.
+
+### Always
+6. **State changes go through store mutations.** Never mutate `store.state.*` directly.
+7. **No hardcoded colors, fonts, or spacing.** Use `var(--basil-*)` tokens.
+   `var(--basil-surface)` not `#ffffff`. `var(--basil-space-4)` not `16px`.
+8. **CSS class names use `basil-` prefix + BEM structure.**
+   `basil-[block]__[element]--[modifier]`. Never prefix with `q-`.
+9. **Dark mode Quasar overrides go in `App.vue`** global style section — nowhere else.
+
+---
+
 ## What this app is
 A personal finance app that links bank accounts via Plaid, pulls transactions, and
 auto-categorizes them using a rules engine. The core feature is **auto-learn**: when
@@ -29,26 +62,58 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/views/BudgetView.vue` | Main dashboard — monthly budget, transactions |
 | `frontend/src/views/TrendsView.vue` | Charts — Spending, Cash Flow, Cumulative, Savings |
 | `frontend/src/views/MerchantBrowser.vue` | Top-down merchant rule assignment |
+| `frontend/src/views/RulesView.vue` | View/edit/delete all compound rules |
 | `frontend/src/views/ProfileView.vue` | Auth (Google sign-in) + linked accounts |
-| `frontend/src/views/ApiDir.vue` | Admin toolbox (dedupe, seed, map unmapped, etc.) |
+| `frontend/src/views/ApiDir.vue` | Admin toolbox (dedupe, seed, map unmapped, clear manual overrides, etc.) |
 | `frontend/src/components/DialogComponent.vue` | Edit transaction / category dialog |
+| `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit dialog |
 | `frontend/src/components/RuleModeSelector.vue` | Shared rule mode radio group (used in triage + dialog) |
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
-| `frontend/src/store.js` | Vuex store (user, session, transactions, categories) |
+| `frontend/src/store.js` | Vuex store (user, session, transactions, categories, rules) |
 | `frontend/src/firebase.js` | All fetch calls to backend API + Firebase auth helpers |
+| `frontend/src/utils/ruleUtils.js` | Shared condition matching + store sweep utilities |
 | `utils/categoryMapping.js` | Transaction categorization rule engine |
 
 ## Architecture notes
 - **Auth:** Firebase ID token sent as `Authorization: Bearer <token>` header on every
   backend request. Backend verifies with `firebase-admin`.
 - **MongoDB collections:** `Basil-Users`, `Plaid-Transactions`, `Plaid-Accounts`,
-  `Basil-Categories`
+  `Basil-Categories`, `Basil-Rules` (compound rules)
 - **Category types:** `income` / `expense` / `payment` / `savings`
+- **`transaction.account`:** Institution name stamped onto each individual transaction
+  at Plaid sync time (`utils/plaidTools.js`). Used by the `account` condition type in
+  compound rules.
+- **`manually_set` flag:** Marks transactions that were explicitly overridden by the user
+  *without* creating a rule. Only set when `ruleMode` is absent from the update request.
+  When `ruleMode` is present (merchant, compound), the entry-point transaction stays
+  sweepable. Rule sweeps skip `manually_set: true` transactions.
+- **`ruleMode` request field:** Sent in transaction update payloads to signal intent.
+  Values: `null` (pure manual edit → sets `manually_set`), `'merchant'`, `'compound'`.
 - **DNS fix:** `index.js` sets `dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4'])`
   at startup — required on Node 24 + Windows because c-ares uses TCP for SRV queries
   and home routers only support DNS over UDP.
 - **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend).
   `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
+
+## Shared utilities — check before building
+
+**Before writing any sweep, condition-matching, or rule logic, check these first:**
+
+| Utility | Location | What it does |
+|---------|----------|--------------|
+| `matchesCondition(txn, condition)` | `frontend/src/utils/ruleUtils.js` | Evaluates a single condition object against a transaction. Single source of truth for client-side matching. |
+| `sweepStore(store, conditions, categoryName, note, toSortOnly)` | `frontend/src/utils/ruleUtils.js` | Applies a rule to all matching transactions in the Vuex store. Used by all rule creation/edit flows. |
+| `sweepCompoundRule(uid, conditions, action)` | `api.js` (module-level helper) | Backend equivalent — runs `updateMany` on `Plaid-Transactions`. Used by both `saveCompoundRule` and `updateCompoundRule` routes. |
+| `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates an array of compound rules against a transaction during batch categorization. |
+| `RuleModeSelector` | `frontend/src/components/RuleModeSelector.vue` | Shared radio group for rule mode selection (no rule / merchant rule / compound rule). |
+| `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Full compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
+
+### Key architecture rules
+- **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
+- **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToMongoFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
+- **Shared components over one-off markup.** `RuleModeSelector`, `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement rule mode radio buttons or empty states inline.
+- **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations (`updateTransaction`, `updateRule`, `addRule`, etc.) or add a new named mutation.
+- **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `range`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
 
 ## What works end-to-end
 - Google Sign-In → Plaid bank link → transaction sync → budget dashboard
@@ -56,13 +121,13 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Auto-learn rules: recategorize once → all matching transactions updated
 - Category management (add, edit budget limit, Plaid PFC mapping, type incl. savings)
 - Rules management: view/delete/add merchant rules from Edit Category dialog
-- **Compound rules**: multi-condition rules (merchant + exact amount) created from triage or Edit Transaction dialog; stored in `Basil-Rules`; evaluated before simple rules; retroactively sweep all matching transactions on creation
+- **Compound rules**: multi-condition rules (merchant name, transaction name, amount, institution) created from triage, Edit Transaction dialog, or RuleEditorDialog; stored in `Basil-Rules`; evaluated before simple rules; retroactively sweep all matching transactions on creation or reapply; edit/delete in RulesView
 - Merchant Browser (`/merchants`): top-down table, inline rule assignment per merchant
 - Transaction search/filter: text search + month sync + amount range in "Show all" table
 - Bulk categorization in table view (with disclosure note)
 - Charts (`/trends`): Spending (stacked bar), Cash Flow, Cumulative net, Savings rate
 - Recurring transaction detection: badge on category rows, expected amount in Projections card
-- Admin toolbox: dedupe, seed categories, clean pending, map unmapped
+- Admin toolbox: dedupe, seed categories, clean pending, map unmapped, clear manual overrides
 
 ---
 
@@ -186,16 +251,18 @@ Top-down table: Merchant | Txns | Current category | Assign (inline q-select + A
 - Rule icon + tooltip when explicit merchant_name rule exists
 - Pre-populates selects from store ruleMap on mount
 
-### Compound rules ✓ — multi-condition rules (triage + dialog)
+### Compound rules ✓ — multi-condition rules (triage + dialog + RuleEditorDialog)
 Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, createdAt, createdFrom }`.
-- `conditions`: array of `{ field, op, value }` or `{ field: 'amount', op: 'eq'|'range', value|min|max }`
+- `conditions`: array of `{ field, op, value }` — supported fields: `merchant_name`, `name`, `amount` (`eq`|`range`), `account` (`eq`)
+- `action`: `{ type: 'categorize', categoryName, note? }`
 - Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
-- Created from: Sort Transactions triage card OR Edit Transaction dialog (third radio option)
-- Both flows use `RuleModeSelector` component for the radio group + hint text
-- Creation sweeps all matching non-`manually_set` transactions (client store + backend `updateMany`)
-- Duplicate guard: `isDuplicateRule()` in BudgetView checks store; backend returns 409
-- Edit/delete in RulesView (label rename, remove conditions, delete)
-- Key helpers in BudgetView: `buildCompoundRule()`, `sweepToSort()`, `condKey()`, `isDuplicateRule()`
+- Created from: Sort Transactions triage card, Edit Transaction dialog, or RuleEditorDialog
+- Both triage + dialog flows use `RuleModeSelector` component for the radio group + hint text
+- Creation sweeps all matching non-`manually_set` transactions (client: `sweepStore`; backend: `sweepCompoundRule`)
+- Duplicate guard: `findExistingRule()` in BudgetView checks store; if found with different category, calls `updateCompoundRule`; backend returns 409
+- Edit/delete in RulesView; edit opens RuleEditorDialog with "Apply to existing transactions" checkbox
+- Key helpers in BudgetView: `buildCompoundRule()`, `condKey()`, `findExistingRule()`
+- Sweep helpers: `sweepStore()` in `ruleUtils.js` (frontend); `sweepCompoundRule()` in `api.js` (backend)
 
 ### Iteration 3.5 — Multi-select in Merchant Browser (maybe)
 Select multiple merchants → assign all to one category. Better than "Apply All"
@@ -254,11 +321,9 @@ Utility classes: `basil-display` (display font), `basil-mono` (mono + tabular nu
 
 ### Dark mode
 - Activated by `[data-theme="dark"]` on `<html>` — managed by `store.commit('setTheme', 'dark'|'')`.
-- Token overrides in `tokens.css`. Quasar component overrides in the dark mode section of `App.vue`.
-- New components: use only `var(--basil-*)` tokens and they adapt automatically.
-  If a Quasar component still shows a light background in dark mode, add a
-  `[data-theme="dark"] .q-whatever { background-color: var(--basil-surface) !important; }`
-  override to `App.vue`.
+- **Layer 1:** token value overrides in `tokens.css` — any component using `var(--basil-*)` adapts automatically.
+- **Layer 2:** Quasar component overrides (hardcoded backgrounds that ignore CSS vars) in **`App.vue`** global style dark mode section — canonical location, use `!important`.
+- Never add Quasar dark overrides in `quasar-overrides.css` or component scoped styles.
 
 ### CSS naming
 All custom classes: `basil-[block]__[element]--[modifier]` (BEM-like, `basil-` prefix).
@@ -269,20 +334,25 @@ Never create classes starting with `q-` (Quasar's namespace).
 - **Empty state:** `<EmptyState icon="..." heading="..." body="..." />`
 - **Loading (BudgetView):** `<SkeletonBudget />` — not a spinner
 - **Charts:** spread `ANIMATION` constant, use `CHART_PALETTE`, render HTML legend below chart
+- **Dialogs:** import `dialogs.css`; use `basil-dialog-card` / `basil-dialog-header` / `basil-dialog-title` shell. Don't reinvent the shell structure per dialog — see `RuleEditorDialog.vue`.
+- **View CSS:** large views externalize styles to `frontend/src/styles/[ViewName].css` and import at top of `<style>` block
 
 ---
 
 ## Recent history (for context)
-- Built compound rules feature: multi-condition rules (merchant + exact amount), created from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine, retroactively sweep all matching transactions
-- Built `RuleModeSelector` shared component — used in both Sort Transactions triage and Edit Transaction dialog
-- Fixed compound rule sweep to cover all transactions (not just To Sort); backend `saveCompoundRule` now runs `updateMany`
-- Added duplicate rule guard (frontend store check + backend 409)
-- Added compound rule edit dialog to RulesView (rename label, remove conditions)
-- Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded
+- Extracted `sweepStore` + `matchesCondition` to `frontend/src/utils/ruleUtils.js`; removed all inline sweep implementations from BudgetView and RuleEditorDialog
+- Extracted `sweepCompoundRule` backend helper in `api.js`; both save + update routes call it
+- Built `RuleEditorDialog` — full compound rule create/edit UI with condition builder, note field, tags placeholder, and "Apply to existing transactions" checkbox
+- Added `account` (institution) condition type; `transaction.account` stamped at sync time in `plaidTools.js`
+- Fixed `manually_set` intent: only set on pure manual edits (no `ruleMode`); rule-creation flows stay sweepable
+- Added `findExistingRule` (replaces `isDuplicateRule`) — detects duplicate rules and applies category updates when category differs
+- Added unit tests: `ruleUtils.test.js` (25 tests) + compound rule tests in `categoryMapping.test.js`
+- Type-colored category badges in RulesView (design token pairs, BEM classes)
+- Built compound rules feature: multi-condition rules from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine
+- Built `RuleModeSelector` shared component — used in Sort Transactions triage and Edit Transaction dialog
 - Built Merchant Browser, rules management iterations 1–3, transaction search/filter
 - Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)
+- Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded
 - Added `savings` category type to schema + dialog dropdown
-- Fixed Plaid post-link flow, added error toasts, removed debug routes
 - Migrated from Vue CLI / webpack to **Vite 7**
 - Added **helmet**, CORS restriction, rate limiting, MongoDB singleton pool
-- Fixed Helmet CSP, MongoDB DNS SRV failure (Node 24 + Windows c-ares issue)
