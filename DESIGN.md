@@ -246,10 +246,47 @@ The table uses a custom `v-slot:body` with:
 - Amount: `basil-txn-amount` + `--credit` / `--debit` modifier
 - Excluded rows: `basil-txn-row--excluded` (40% opacity)
 
-### Loading state
-Use `<SkeletonBudget />` for the budget view loading state. For other views, a
-Quasar `q-linear-progress indeterminate` is acceptable as a fallback until a
-view-specific skeleton is built.
+### Loading states (three-state pattern)
+Non-Budget views use `store.state.bootstrapping` to gate content:
+
+1. `bootstrapping=true` → skeleton rows (`q-skeleton`) or centered spinner
+2. `bootstrapping=false`, data empty → `<EmptyState>` component
+3. `bootstrapping=false`, has data → real content
+
+**Never show `<EmptyState>` while `bootstrapping` is true** — it will flash and
+immediately be replaced with real content.
+
+```html
+<!-- Skeleton while loading -->
+<template v-if="$store.state.bootstrapping">
+  <q-item v-for="i in 4" :key="i">
+    <q-item-section>
+      <q-skeleton type="text" width="55%" />
+      <q-skeleton type="text" width="35%" />
+    </q-item-section>
+  </q-item>
+</template>
+<!-- Empty state only after load -->
+<EmptyState v-else-if="items.length === 0" ... />
+<!-- Real content -->
+<q-list v-else>...</q-list>
+```
+
+For chart views, use a centered spinner instead of skeleton rows:
+```html
+<div v-if="$store.state.bootstrapping" class="basil-[view]__loading">
+  <q-spinner-dots size="2rem" color="primary" />
+</div>
+<template v-else>...</template>
+```
+CSS: `display: flex; align-items: center; justify-content: center; min-height: 200px;`
+
+**BudgetView** owns its own loading pattern (`<SkeletonBudget />`) — it does **not**
+use `bootstrapping`. The flag is only set by `ensureAppData` in `firebase.js`, which
+BudgetView does not call (it handles its own sync).
+
+A global 2px `q-linear-progress` bar is rendered in `App.vue` while bootstrapping,
+giving a subtle top-of-header indicator on any view.
 
 ---
 

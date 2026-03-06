@@ -107,6 +107,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates an array of compound rules against a transaction during batch categorization. |
 | `RuleModeSelector` | `frontend/src/components/RuleModeSelector.vue` | Shared radio group for rule mode selection (no rule / merchant rule / compound rule). |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Full compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
+| `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/firebase.js` | Set `true` while `ensureAppData` is in-flight. Gate non-Budget view content — show skeleton/spinner while true, `EmptyState` only when false and data empty. See DESIGN.md "Loading states" for the three-state pattern. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.

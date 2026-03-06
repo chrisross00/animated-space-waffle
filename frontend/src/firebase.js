@@ -426,3 +426,34 @@ export async function deleteCompoundRule(ruleId) {
 }
 
 // export async function updateCategories() {} later...
+
+// ---------------------------------------------------------------------------
+// App bootstrap — fetch all core data if the store is empty.
+// Singleton promise prevents duplicate in-flight requests when multiple
+// components call ensureAppData concurrently on the same page load.
+// ---------------------------------------------------------------------------
+let _bootstrapPromise = null;
+
+export async function ensureAppData(store) {
+  if (store.state.transactions?.length > 0) return; // already loaded
+  if (_bootstrapPromise) return _bootstrapPromise;   // already in flight
+
+  store.commit('setBootstrapping', true);
+  _bootstrapPromise = (async () => {
+    try {
+      const [txnsResponse, categories, rules] = await Promise.all([
+        fetchTransactions(),
+        fetchCategories(),
+        fetchRules(),
+      ]);
+      if (txnsResponse) store.commit('setTransactions', txnsResponse.transactions);
+      if (categories)   store.commit('setCategories', categories);
+      if (rules)        store.commit('setRules', rules);
+    } finally {
+      store.commit('setBootstrapping', false);
+      _bootstrapPromise = null;
+    }
+  })();
+
+  return _bootstrapPromise;
+}

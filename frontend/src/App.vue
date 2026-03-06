@@ -42,6 +42,14 @@
         </template>
         <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>
+
+      <!-- Global thin progress bar — visible while bootstrapping app data -->
+      <q-linear-progress
+        v-if="$store.state.bootstrapping"
+        indeterminate
+        color="primary"
+        class="basil-loading-bar"
+      />
     </q-header>
 
     <q-drawer
@@ -202,6 +210,17 @@
 }
 
 /* ========================================
+   Global loading bar
+   ======================================== */
+.basil-loading-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+/* ========================================
    Motion
    ======================================== */
 
@@ -249,6 +268,8 @@
 
 <script>
 import { ref } from 'vue'
+import { ensureAppData } from '@/firebase'
+import store from './store'
 
 export default {
   name: 'LayoutDefault',
@@ -292,6 +313,13 @@ export default {
         incomeAmountFmt: Math.round(incomeAmount).toLocaleString(),
       };
     },
+  },
+
+  created() {
+    // Bootstrap core data on any non-Budget route.
+    // BudgetView owns its own sync on '/', so we skip it here to avoid
+    // a redundant concurrent fetch when landing on the budget page.
+    if (this.$route?.path !== '/') ensureAppData(store);
   },
 
   mounted() {

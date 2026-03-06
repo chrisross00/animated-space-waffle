@@ -9,6 +9,7 @@ const store = createStore({
         session: null,
         theme: localStorage.getItem('basil-theme') || '',
         rules: [],
+        bootstrapping: false,
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
@@ -108,6 +109,9 @@ const store = createStore({
         updateRule(state, { ruleId, label, conditions, action }) {
             const rule = state.rules.find(r => String(r._id) === String(ruleId));
             if (rule) { rule.label = label; rule.conditions = conditions; if (action) rule.action = action; }
+        },
+        setBootstrapping(state, val) {
+            state.bootstrapping = val;
         },
         setTheme(state, theme) {
             state.theme = theme;

@@ -70,6 +70,14 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ---- Loading state ---- */
+.basil-trends__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
 </style>
 
 <template>
@@ -104,7 +112,11 @@
       </template>
     </div>
 
-    <template v-if="activeChartHasData">
+    <div v-if="$store.state.bootstrapping" class="basil-trends__loading">
+      <q-spinner-dots size="2rem" color="primary" />
+    </div>
+
+    <template v-else-if="activeChartHasData">
       <!-- Delta badge -->
       <div v-if="deltaLabel" class="basil-chart-delta">
         <span
@@ -155,6 +167,7 @@ import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, Vi
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
 import store from '../store'
+import { ensureAppData } from '@/firebase'
 import EmptyState from '../components/EmptyState.vue'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
@@ -490,6 +503,10 @@ export default {
       const months = this.monthList;
       return months.length >= 2 ? months[months.length - 2] : '';
     },
+  },
+
+  async mounted() {
+    await ensureAppData(store);
   },
 };
 </script>

@@ -81,8 +81,28 @@
 
 <template>
   <div class="q-pa-md-page-padder p-3">
-    <SpinnerComponent :isLoading="isLoading"/>
-    <div v-if="session !== null && user" class="basil-profile-layout">
+
+    <!-- Skeleton cards while data is bootstrapping or auth state is resolving -->
+    <div v-if="$store.state.bootstrapping || (session && !user)" class="basil-profile-layout">
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head"><span class="basil-card-label">Profile</span></div>
+        <div class="basil-profile-identity">
+          <q-skeleton type="QAvatar" size="56px" />
+          <div style="flex: 1">
+            <q-skeleton type="text" width="55%" />
+            <q-skeleton type="text" width="40%" />
+          </div>
+        </div>
+      </q-card>
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head"><span class="basil-card-label">Linked Accounts</span></div>
+        <q-skeleton type="text" width="60%" class="q-mt-sm" />
+        <q-skeleton type="text" width="45%" class="q-mt-xs" />
+      </q-card>
+    </div>
+
+    <!-- Real content once loaded -->
+    <div v-else-if="session !== null && user" class="basil-profile-layout">
 
       <!-- Profile card -->
       <q-card class="my-card profile-card basil-profile-card">
@@ -163,7 +183,8 @@
 
     </div>
 
-    <div v-if="session == null || !user">
+    <!-- Login screen — only when definitively not signed in -->
+    <div v-else>
       <EmptyState
         icon="lock_open"
         heading="Welcome to Basil"
@@ -188,14 +209,13 @@
         />
       </EmptyState>
     </div>
-      
+
   </div>
 </template>
 
 <script>
 import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetchTransactions, fetchCategories } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
-import SpinnerComponent from '../components/SpinnerComponent.vue'
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
@@ -203,7 +223,6 @@ import store from '../store'
 
 export default {
   components: {
-    SpinnerComponent,
     PlaidLinkHandler,
     EmptyState,
   },

@@ -77,7 +77,7 @@
         </q-td>
       </template>
       <template v-slot:no-data>
-        <EmptyState
+        <EmptyState v-if="!isLoading"
           icon="store"
           heading="No merchants yet"
           body="Merchants will appear here once you have transactions imported."
@@ -182,7 +182,7 @@
 
 <script>
 import store from '../store';
-import { fetchMerchantStats, saveRule } from '@/firebase';
+import { ensureAppData, fetchMerchantStats, saveRule } from '@/firebase';
 import EmptyState from '../components/EmptyState.vue';
 
 const columns = [
@@ -316,7 +316,7 @@ export default {
   async mounted() {
     this.filteredCategories = this.categoryNames;
     this.isLoading = true;
-    const data = await fetchMerchantStats();
+    const [data] = await Promise.all([fetchMerchantStats(), ensureAppData(store)]);
     this.isLoading = false;
     if (data) {
       this.merchants = data;

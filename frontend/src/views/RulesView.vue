@@ -7,7 +7,15 @@
       <q-btn flat dense icon="add" size="sm" @click="openCreateRule" />
     </div>
 
-    <div v-if="compoundRules.length === 0" class="basil-rules__empty q-mb-lg">
+    <template v-if="$store.state.bootstrapping">
+      <q-item v-for="i in 3" :key="i">
+        <q-item-section>
+          <q-skeleton type="text" width="55%" />
+          <q-skeleton type="text" width="35%" />
+        </q-item-section>
+      </q-item>
+    </template>
+    <div v-else-if="compoundRules.length === 0" class="basil-rules__empty q-mb-lg">
       No compound rules yet.
       <span class="basil-rules__empty-link" @click="openCreateRule">Create one</span>
       or use the Sort Transactions flow.
@@ -40,7 +48,15 @@
       <span class="basil-card-label">Merchant & Name Rules</span>
     </div>
 
-    <div v-if="simpleRules.length === 0" class="basil-rules__empty q-mb-lg">
+    <template v-if="$store.state.bootstrapping">
+      <q-item v-for="i in 4" :key="i">
+        <q-item-section>
+          <q-skeleton type="text" width="45%" />
+          <q-skeleton type="text" width="25%" />
+        </q-item-section>
+      </q-item>
+    </template>
+    <div v-else-if="simpleRules.length === 0" class="basil-rules__empty q-mb-lg">
       No merchant or name rules yet.
     </div>
 
@@ -76,7 +92,15 @@
       These run after merchant &amp; compound rules. Edit them by opening a category's settings.
     </p>
 
-    <div v-if="pfcRules.length === 0" class="basil-rules__empty q-mb-lg">
+    <template v-if="$store.state.bootstrapping">
+      <q-item v-for="i in 4" :key="i">
+        <q-item-section>
+          <q-skeleton type="text" width="40%" />
+          <q-skeleton type="text" width="30%" />
+        </q-item-section>
+      </q-item>
+    </template>
+    <div v-else-if="pfcRules.length === 0" class="basil-rules__empty q-mb-lg">
       No Plaid category mappings set.
     </div>
 
@@ -197,7 +221,7 @@
 
 <script>
 import store from '../store';
-import { fetchRules, deleteCompoundRule, deleteRule } from '@/firebase';
+import { ensureAppData, deleteCompoundRule, deleteRule } from '@/firebase';
 import RuleEditorDialog from '../components/RuleEditorDialog.vue';
 
 const PFC_NAMES = {
@@ -236,7 +260,6 @@ export default {
 
   data() {
     return {
-      isLoading: false,
       deleteDialog: false,
       deleting: false,
       pendingDelete: null,
@@ -273,12 +296,7 @@ export default {
   },
 
   async mounted() {
-    if (!store.state.rules?.length) {
-      this.isLoading = true;
-      const rules = await fetchRules();
-      if (rules) store.commit('setRules', rules);
-      this.isLoading = false;
-    }
+    await ensureAppData(store);
   },
 
   methods: {
