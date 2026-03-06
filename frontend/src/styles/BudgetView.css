@@ -502,6 +502,22 @@
   color: var(--basil-text);
 }
 
+.basil-txn-amount--income {
+  color: var(--basil-income);
+}
+
+.basil-txn-amount--expense {
+  color: var(--basil-text);
+}
+
+.basil-txn-amount--payment {
+  color: var(--basil-payment);
+}
+
+.basil-txn-amount--savings {
+  color: var(--basil-savings);
+}
+
 /* Pending badge */
 .basil-txn-pending {
   display: inline-block;

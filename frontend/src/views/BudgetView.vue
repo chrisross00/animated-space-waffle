@@ -380,13 +380,13 @@
                 </div>
               </q-td>
 
-              <!-- Amount: monospace, colored -->
+              <!-- Amount: monospace, colored by category type -->
               <q-td key="amount" :props="props" class="text-right">
                 <span
                   class="basil-txn-amount"
-                  :class="props.row.amount >= 0 ? 'basil-txn-amount--credit' : 'basil-txn-amount--debit'"
+                  :class="`basil-txn-amount--${categoryTypeMap[props.row.mappedCategory] || 'expense'}`"
                 >
-                  {{ props.row.amount < 0 ? `-$${Math.abs(props.row.amount).toFixed(2)}` : `$${Number(props.row.amount).toFixed(2)}` }}
+                  {{ categoryTypeMap[props.row.mappedCategory] === 'income' ? '+' : '' }}${{ Math.abs(props.row.amount).toFixed(2) }}
                 </span>
               </q-td>
 
@@ -632,7 +632,7 @@
 
   const columns = [
   { name: 'name',          label: 'Name',     align: 'left',   field: row => row.merchant_name || row.name, sortable: true },
-  { name: 'amount',        label: 'Amount',   align: 'right',  field: 'amount',               format: val => val < 0 ? `-$${Math.abs(val).toFixed(2)}` : `$${Number(val).toFixed(2)}`, sortable: true },
+  { name: 'amount',        label: 'Amount',   align: 'right',  field: 'amount',               format: val => `$${Math.abs(val).toFixed(2)}`, sortable: true },
   { name: 'mappedCategory',label: 'Category', align: 'left',   field: 'mappedCategory',       sortable: true,  classes: 'gt-xs', headerClasses: 'gt-xs' },
   { name: 'date',          label: 'Date',     align: 'left',   field: row => row.date,        format: val => dayjs(val).format('MMM D, YYYY'), sortable: true, classes: 'gt-xs', headerClasses: 'gt-xs' },
   { name: 'pending',       label: 'Status',   align: 'center', field: 'pending',              format: val => val ? 'Pending' : '', classes: 'gt-xs', headerClasses: 'gt-xs' },
@@ -706,6 +706,11 @@
       };
     },
     computed: {
+      categoryTypeMap() {
+        const map = {};
+        for (const c of store.state.categories || []) map[c.category] = c.type;
+        return map;
+      },
       netPositive() {
         return (this.monthlyStats.netPosition || 0) >= 0;
       },
