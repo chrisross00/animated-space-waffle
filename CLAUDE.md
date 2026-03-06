@@ -77,13 +77,16 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
 - [ ] **Rules & suggestion engine: user control + intent clarification** — two related
-      problems to solve together: (1) Auto-learn intent: "remember category" currently creates
-      a rule AND sweeps all matching historical transactions — should these always be coupled?
-      Should a manual single-transaction edit protect it from future sweeps via `manually_set`?
-      (2) Suggestion engine controls: show why a suggestion was made (confidence reason chip),
-      let users exclude a merchant from auto-suggestion, pin manual overrides so the engine
-      stops second-guessing them, and review/edit auto-created rules without opening a full
-      category dialog. Any design work on one touches the other.
+      problems to solve together: (1) Auto-learn intent: `manually_set: true` is now only
+      set on pure single-transaction edits (no rule). When `ruleMode` is present in the
+      transaction update request, `manually_set` is skipped — the entry point transaction
+      stays sweepable. Remaining work: add an explicit "exclude from rules" checkbox in the
+      Edit Transaction dialog so users can protect specific transactions on demand without
+      conflating it with rule creation. (2) Suggestion engine controls: show why a suggestion
+      was made (confidence reason chip), let users exclude a merchant from auto-suggestion,
+      pin manual overrides so the engine stops second-guessing them, and review/edit
+      auto-created rules without opening a full category dialog. Any design work on one
+      touches the other.
 - [ ] **Fixed vs variable category dimension** — add a `fixed` / `variable` flag to
       categories (fixed = rent, subscriptions, loan payments; variable = dining, entertainment,
       shopping). Enables a bucketed budget view showing your cost floor (fixed) vs discretionary
@@ -111,6 +114,13 @@ These should be resolved before building the Accounts view. See `plans/accounts-
 - [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal. Once
       a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
       vs moves to Accounts before building the new view.
+
+### Rule editor future operators (not yet built)
+When the rule editor condition fields are extended, these operators should be added:
+- **Name / Merchant name:** `contains` (currently exact-match only)
+- **Amount:** `>` (greater than), `<` (less than), `between` (range with min + max)
+These require changes to `utils/categoryMapping.js → matchesCondition()` and the
+`conditionsToMongoFilter()` helper in `api.js → /saveCompoundRule`.
 
 ### Tech debt
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`

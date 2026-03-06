@@ -14,6 +14,8 @@ function matchesCondition(txn, condition) {
     }
     case 'personal_finance_category_primary':
       return op === 'eq' && txn.personal_finance_category?.primary === value;
+    case 'account':
+      return op === 'eq' && txn.account === value;
     case 'day_of_month': {
       if (op !== 'range') return false;
       const day = new Date(txn.date + 'T12:00:00').getDate();
@@ -57,6 +59,7 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
         if (action) {
           if (action.type === 'categorize') {
             transaction.mappedCategory = action.categoryName;
+            if (action.note) transaction.note = action.note;
           } else if (action.type === 'route') {
             transaction.mappedCategory = action.destination === 'to-sort' ? 'To Sort' : null;
           }

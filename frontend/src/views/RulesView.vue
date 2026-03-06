@@ -4,10 +4,13 @@
     <!-- Compound rules section -->
     <div class="basil-card-head q-mb-sm">
       <span class="basil-card-label">Compound Rules</span>
+      <q-btn flat dense icon="add" size="sm" @click="openCreateRule" />
     </div>
 
     <div v-if="compoundRules.length === 0" class="basil-rules__empty q-mb-lg">
-      No compound rules yet. Create one from the Sort Transactions flow or when editing a transaction.
+      No compound rules yet.
+      <span class="basil-rules__empty-link" @click="openCreateRule">Create one</span>
+      or use the Sort Transactions flow.
     </div>
 
     <q-list v-else bordered separator rounded class="q-mb-lg">
@@ -20,9 +23,9 @@
         </q-item-section>
         <q-item-section side>
           <div class="basil-rules__side">
-            <q-chip dense color="primary" text-color="white" size="sm">
+            <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.action.categoryName)}`">
               {{ rule.action.categoryName }}
-            </q-chip>
+            </span>
             <q-btn flat round dense icon="edit" size="sm"
               @click="openEditCompound(rule)" />
             <q-btn flat round dense icon="delete" size="sm" color="negative"
@@ -49,9 +52,9 @@
         </q-item-section>
         <q-item-section side>
           <div class="basil-rules__side">
-            <q-chip dense color="primary" text-color="white" size="sm">
+            <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.category)}`">
               {{ rule.category }}
-            </q-chip>
+            </span>
             <q-btn flat round dense icon="delete" size="sm" color="negative"
               @click="confirmDeleteSimple(rule)" />
           </div>
@@ -84,46 +87,19 @@
           <q-item-label caption>Plaid: {{ rule.pfc }}</q-item-label>
         </q-item-section>
         <q-item-section side>
-          <q-chip dense color="primary" text-color="white" size="sm">
+          <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.category)}`">
             {{ rule.category }}
-          </q-chip>
+          </span>
         </q-item-section>
       </q-item>
     </q-list>
 
-    <!-- Edit compound rule dialog -->
-    <q-dialog v-model="editDialog">
-      <q-card style="min-width: 320px; max-width: 480px; width: 100%">
-        <q-card-section>
-          <div class="text-subtitle1">Edit rule</div>
-        </q-card-section>
-        <q-card-section class="q-pt-none">
-          <q-input v-model="editLabel" outlined dense label="Label" class="q-mb-md" />
-          <div class="basil-rules__edit-label q-mb-xs">Conditions</div>
-          <div class="basil-rules__edit-conditions">
-            <q-chip
-              v-for="(cond, i) in editConditions"
-              :key="i"
-              removable
-              dense
-              @remove="removeEditCondition(i)"
-              color="primary"
-              text-color="white"
-              size="sm"
-            >
-              {{ formatCondition(cond) }}
-            </q-chip>
-            <span v-if="editConditions.length === 0" class="basil-rules__edit-empty">
-              No conditions — rule will not match anything.
-            </span>
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn flat label="Save" color="primary" :loading="editing" :disable="editConditions.length === 0" @click="saveEditCompound" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <!-- Rule editor (create + edit) -->
+    <RuleEditorDialog
+      v-model="ruleEditorOpen"
+      :rule="editingRule"
+      @saved="onRuleSaved"
+    />
 
     <!-- Delete confirmation dialog -->
     <q-dialog v-model="deleteDialog">
@@ -176,31 +152,53 @@
   margin: 0 0 var(--basil-space-3) 0;
 }
 
-.basil-rules__edit-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--basil-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.basil-rules__empty-link {
+  color: var(--basil-brand);
+  cursor: pointer;
+  text-decoration: underline;
 }
 
-.basil-rules__edit-conditions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--basil-space-1);
-  min-height: 32px;
+.basil-rules__cat-badge {
+  display: inline-flex;
   align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--basil-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid;
+  white-space: nowrap;
+  line-height: 1.4;
 }
 
-.basil-rules__edit-empty {
-  font-size: 0.8125rem;
-  color: var(--basil-text-muted);
+.basil-rules__cat-badge--expense {
+  background: var(--basil-expense-bg);
+  color: var(--basil-expense);
+  border-color: var(--basil-expense);
+}
+
+.basil-rules__cat-badge--income {
+  background: var(--basil-income-bg);
+  color: var(--basil-income);
+  border-color: var(--basil-income);
+}
+
+.basil-rules__cat-badge--savings {
+  background: var(--basil-savings-bg);
+  color: var(--basil-savings);
+  border-color: var(--basil-savings);
+}
+
+.basil-rules__cat-badge--payment {
+  background: var(--basil-payment-bg);
+  color: var(--basil-payment);
+  border-color: var(--basil-payment);
 }
 </style>
 
 <script>
 import store from '../store';
-import { fetchRules, deleteCompoundRule, deleteRule, updateCompoundRule } from '@/firebase';
+import { fetchRules, deleteCompoundRule, deleteRule } from '@/firebase';
+import RuleEditorDialog from '../components/RuleEditorDialog.vue';
 
 const PFC_NAMES = {
   INCOME:                   'Income',
@@ -234,6 +232,7 @@ const FIELD_LABELS = {
 
 export default {
   name: 'RulesView',
+  components: { RuleEditorDialog },
 
   data() {
     return {
@@ -242,11 +241,8 @@ export default {
       deleting: false,
       pendingDelete: null,
       pendingDeleteType: null, // 'compound' | 'simple'
-      editDialog: false,
-      editingRule: null,
-      editLabel: '',
-      editConditions: [],
-      editing: false,
+      ruleEditorOpen: false,
+      editingRule: null,  // null = create, object = edit
     };
   },
 
@@ -286,6 +282,9 @@ export default {
   },
 
   methods: {
+    categoryType(name) {
+      return (store.state.categories || []).find(c => c.category === name)?.type || 'expense';
+    },
     pfcLabel(pfc) {
       return PFC_NAMES[pfc] || pfc;
     },
@@ -301,38 +300,18 @@ export default {
       }).join(' · ');
     },
 
+    openCreateRule() {
+      this.editingRule = null;
+      this.ruleEditorOpen = true;
+    },
+
     openEditCompound(rule) {
       this.editingRule = rule;
-      this.editLabel = rule.label;
-      this.editConditions = [...rule.conditions];
-      this.editDialog = true;
+      this.ruleEditorOpen = true;
     },
 
-    formatCondition(c) {
-      const fieldLabel = FIELD_LABELS[c.field] || c.field;
-      if (c.field === 'amount' && c.op === 'eq') return `amount = $${c.value % 1 === 0 ? c.value : c.value.toFixed(2)}`;
-      if (c.op === 'eq') return `${fieldLabel} = ${c.value}`;
-      if (c.op === 'range' && c.field === 'amount') return `amount ${BUCKET_LABELS.amount_range(c.min, c.max)}`;
-      if (c.op === 'range') return `${fieldLabel} ${c.min}–${c.max}`;
-      return `${fieldLabel} ${c.op} ${c.value}`;
-    },
-
-    removeEditCondition(i) {
-      this.editConditions = this.editConditions.filter((_, idx) => idx !== i);
-    },
-
-    async saveEditCompound() {
-      if (!this.editingRule) return;
-      this.editing = true;
-      try {
-        const updated = await updateCompoundRule(String(this.editingRule._id), this.editLabel, this.editConditions);
-        if (updated) {
-          store.commit('updateRule', { ruleId: this.editingRule._id, label: this.editLabel, conditions: this.editConditions });
-          this.editDialog = false;
-        }
-      } finally {
-        this.editing = false;
-      }
+    onRuleSaved() {
+      // store already updated inside RuleEditorDialog; nothing extra needed here
     },
 
     confirmDeleteCompound(rule) {

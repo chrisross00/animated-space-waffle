@@ -320,6 +320,20 @@ export async function nukeTransactions() {
   }
 }
 
+export async function clearManualOverrides() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/clearManualOverrides', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Cleared manual override on ${data.clearedCount} transaction${data.clearedCount !== 1 ? 's' : ''}.`;
+    } else {
+      _notify({ type: 'negative', message: `Failed to clear overrides (${response.status})` });
+    }
+  }
+}
+
 export async function nukeAllData() {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -385,14 +399,14 @@ export async function saveCompoundRule(rule) {
   else _notify({ type: 'negative', message: `Failed to save rule (${response.status})` });
 }
 
-export async function updateCompoundRule(ruleId, label, conditions) {
+export async function updateCompoundRule(ruleId, label, conditions, action, reapply = false) {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/updateCompoundRule', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ ruleId, label, conditions }),
+    body: JSON.stringify({ ruleId, label, conditions, action, reapply }),
   });
   if (response.ok) return response.json();
   else _notify({ type: 'negative', message: `Failed to update rule (${response.status})` });

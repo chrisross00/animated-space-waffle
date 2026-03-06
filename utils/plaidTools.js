@@ -124,7 +124,7 @@ async function getNewPlaidTransactions(uid) {
       const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
     const compoundRules = await findUserRules(userId);
-    const addedTxns = updatedResponses.flatMap(r => r.added || []);
+    const addedTxns = updatedResponses.flatMap(r => (r.added || []).map(t => ({ ...t, account: r.account })));
     const mappedTxns = await mapTransactions(addedTxns, ruleList, compoundRules);
 
     if (mappedTxns.length > 0) {

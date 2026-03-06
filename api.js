@@ -236,6 +236,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
       originalCategoryName: req.body.originalCategoryName,
       note: req.body.note ? req.body.note : '',
       excludeFromTotal: req.body.excludeFromTotal? req.body.excludeFromTotal : false,
+      ...(!req.body.ruleMode && { manually_set: true }),
     }
     const filter = { transaction_id: req.body.transaction_id, userId: uid };
     const update = {
@@ -244,7 +245,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
         date: req.body.date,
         note: req.body.note,
         excludeFromTotal: req.body.excludeFromTotal,
-        manually_set: true, // protect this transaction from future rule sweeps
+        // Only protect from future sweeps if this is a standalone edit, not part of a rule
+        ...(!req.body.ruleMode && { manually_set: true }),
       }
     };
     await updateData('Plaid-Transactions', filter, update);
@@ -426,6 +428,24 @@ router.get('/rules', async (req, res) => {
   }
 });
 
+async function sweepCompoundRule(uid, conditions, action) {
+  if (action?.type !== 'categorize' || !Array.isArray(conditions)) return;
+  const txnFilter = { userId: uid, manually_set: { $ne: true } };
+  const amountExprs = [];
+  for (const c of conditions) {
+    if (c.field === 'amount') {
+      if (c.op === 'eq')    amountExprs.push({ $eq: [{ $abs: '$amount' }, c.value] });
+      if (c.op === 'range') amountExprs.push({ $gte: [{ $abs: '$amount' }, c.min] }, { $lte: [{ $abs: '$amount' }, c.max] });
+    } else if (c.op === 'eq') {
+      txnFilter[c.field] = c.value;
+    }
+  }
+  if (amountExprs.length > 0) txnFilter.$expr = amountExprs.length === 1 ? amountExprs[0] : { $and: amountExprs };
+  const sweep = { mappedCategory: action.categoryName };
+  if (action.note) sweep.note = action.note;
+  await updateManyData('Plaid-Transactions', txnFilter, { $set: sweep });
+}
+
 router.post('/saveCompoundRule', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
@@ -443,21 +463,7 @@ router.post('/saveCompoundRule', async (req, res) => {
     const rule = { userId: uid, label, conditions, action, createdAt: Date.now(), createdFrom: createdFrom || 'manual' };
     const result = await insertRule(rule);
 
-    // Sweep existing transactions that match the rule's conditions
-    if (action?.type === 'categorize' && Array.isArray(conditions)) {
-      const txnFilter = { userId: uid, manually_set: { $ne: true } };
-      const amountExprs = [];
-      for (const c of conditions) {
-        if (c.field === 'amount') {
-          if (c.op === 'eq')    amountExprs.push({ $eq: [{ $abs: '$amount' }, c.value] });
-          if (c.op === 'range') amountExprs.push({ $gte: [{ $abs: '$amount' }, c.min] }, { $lte: [{ $abs: '$amount' }, c.max] });
-        } else if (c.op === 'eq') {
-          txnFilter[c.field] = c.value;
-        }
-      }
-      if (amountExprs.length > 0) txnFilter.$expr = amountExprs.length === 1 ? amountExprs[0] : { $and: amountExprs };
-      await updateManyData('Plaid-Transactions', txnFilter, { $set: { mappedCategory: action.categoryName } });
-    }
+    await sweepCompoundRule(uid, conditions, action);
 
     res.json({ ...rule, _id: result.insertedId });
   } catch (error) {
@@ -469,8 +475,14 @@ router.post('/saveCompoundRule', async (req, res) => {
 router.post('/updateCompoundRule', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
-    const { ruleId, label, conditions } = req.body;
-    await updateCompoundRule(decodedToken.uid, ruleId, { label, conditions });
+    const uid = decodedToken.uid;
+    const { ruleId, label, conditions, action, reapply } = req.body;
+    const updates = { label, conditions };
+    if (action) updates.action = action;
+    await updateCompoundRule(uid, ruleId, updates);
+
+    if (reapply) await sweepCompoundRule(uid, conditions, action);
+
     res.json({ ok: true });
   } catch (error) {
     console.error('/updateCompoundRule error:', error.message);
@@ -597,6 +609,19 @@ router.post('/nukeTransactions', async (req, res) => {
   } catch (error) {
     console.error('/nukeTransactions error:', error);
     res.status(500).json({ message: 'Failed to delete transactions' });
+  }
+});
+
+router.post('/clearManualOverrides', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
+    const result = await updateManyData('Plaid-Transactions', { userId: uid, manually_set: true }, { $unset: { manually_set: '' } });
+    res.json({ clearedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('/clearManualOverrides error:', error);
+    res.status(500).json({ message: 'Failed to clear manual overrides' });
   }
 });
 

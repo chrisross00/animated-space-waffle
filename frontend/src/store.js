@@ -105,9 +105,9 @@ const store = createStore({
         removeRule(state, ruleId) {
             state.rules = state.rules.filter(r => String(r._id) !== String(ruleId));
         },
-        updateRule(state, { ruleId, label, conditions }) {
+        updateRule(state, { ruleId, label, conditions, action }) {
             const rule = state.rules.find(r => String(r._id) === String(ruleId));
-            if (rule) { rule.label = label; rule.conditions = conditions; }
+            if (rule) { rule.label = label; rule.conditions = conditions; if (action) rule.action = action; }
         },
         setTheme(state, theme) {
             state.theme = theme;

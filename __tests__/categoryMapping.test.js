@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapTransactions, getMappingRuleList } from '../utils/categoryMapping.js'
+import { mapTransactions, getMappingRuleList, evaluateCompoundRules } from '../utils/categoryMapping.js'
 
 // ---------------------------------------------------------------------------
 // getMappingRuleList
@@ -117,5 +117,113 @@ describe('mapTransactions', () => {
     expect(result[0].mappedCategory).toBe('Groceries')
     expect(result[1].mappedCategory).toBe('Transport')
     expect(result[2].mappedCategory).toBe('To Sort')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// evaluateCompoundRules
+// ---------------------------------------------------------------------------
+
+function rule(conditions, categoryName, overrides = {}) {
+  return {
+    conditions,
+    action: { type: 'categorize', categoryName },
+    ...overrides,
+  }
+}
+
+describe('evaluateCompoundRules — merchant_name + amount', () => {
+  it('matches when all conditions pass', () => {
+    const rules = [rule([
+      { field: 'merchant_name', op: 'eq', value: 'Zelle' },
+      { field: 'amount', op: 'eq', value: 1200 },
+    ], 'Transfers')]
+    const action = evaluateCompoundRules(rules, txn({ merchant_name: 'Zelle', amount: -1200 }))
+    expect(action.categoryName).toBe('Transfers')
+  })
+
+  it('does not match when only one condition passes', () => {
+    const rules = [rule([
+      { field: 'merchant_name', op: 'eq', value: 'Zelle' },
+      { field: 'amount', op: 'eq', value: 1200 },
+    ], 'Transfers')]
+    const action = evaluateCompoundRules(rules, txn({ merchant_name: 'Zelle', amount: -50 }))
+    expect(action).toBeNull()
+  })
+})
+
+describe('evaluateCompoundRules — amount range', () => {
+  it('matches amount within range', () => {
+    const rules = [rule([{ field: 'amount', op: 'range', min: 100, max: 500 }], 'Large Purchase')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 250 }))).not.toBeNull()
+  })
+
+  it('does not match amount outside range', () => {
+    const rules = [rule([{ field: 'amount', op: 'range', min: 100, max: 500 }], 'Large Purchase')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 50 }))).toBeNull()
+  })
+})
+
+describe('evaluateCompoundRules — account', () => {
+  it('matches by institution', () => {
+    const rules = [rule([{ field: 'account', op: 'eq', value: 'Chase' }], 'Chase Expenses')]
+    expect(evaluateCompoundRules(rules, txn({ account: 'Chase' }))).not.toBeNull()
+  })
+
+  it('does not match null account', () => {
+    const rules = [rule([{ field: 'account', op: 'eq', value: 'Chase' }], 'Chase Expenses')]
+    expect(evaluateCompoundRules(rules, txn({ account: null }))).toBeNull()
+  })
+})
+
+describe('evaluateCompoundRules — note in action', () => {
+  it('returns note from action when rule matches', () => {
+    const rules = [rule(
+      [{ field: 'merchant_name', op: 'eq', value: 'Zelle' }],
+      'Transfers',
+      { action: { type: 'categorize', categoryName: 'Transfers', note: 'auto-tagged' } }
+    )]
+    const action = evaluateCompoundRules(rules, txn({ merchant_name: 'Zelle' }))
+    expect(action.note).toBe('auto-tagged')
+  })
+})
+
+describe('evaluateCompoundRules — priority', () => {
+  it('returns the first matching rule', () => {
+    const rules = [
+      rule([{ field: 'merchant_name', op: 'eq', value: 'Zelle' }], 'First'),
+      rule([{ field: 'merchant_name', op: 'eq', value: 'Zelle' }], 'Second'),
+    ]
+    const action = evaluateCompoundRules(rules, txn({ merchant_name: 'Zelle' }))
+    expect(action.categoryName).toBe('First')
+  })
+
+  it('returns null when no rules match', () => {
+    const rules = [rule([{ field: 'merchant_name', op: 'eq', value: 'Zelle' }], 'Transfers')]
+    expect(evaluateCompoundRules(rules, txn({ merchant_name: 'Uber' }))).toBeNull()
+  })
+})
+
+describe('mapTransactions — compound rules take priority', () => {
+  it('compound rule overrides merchant_name rule', async () => {
+    const compoundRules = [rule([
+      { field: 'merchant_name', op: 'eq', value: 'Zelle' },
+      { field: 'amount', op: 'eq', value: 1200 },
+    ], 'Large Transfers')]
+    const simpleRules = [{ category: 'Transfers', rules: { merchant_name: ['Zelle'] }, plaid_pfc: [] }]
+    const txns = [txn({ merchant_name: 'Zelle', amount: -1200 })]
+    const result = await mapTransactions(txns, simpleRules, compoundRules)
+    expect(result[0].mappedCategory).toBe('Large Transfers')
+  })
+
+  it('falls through to simple rule when compound does not match', async () => {
+    const compoundRules = [rule([
+      { field: 'merchant_name', op: 'eq', value: 'Zelle' },
+      { field: 'amount', op: 'eq', value: 1200 },
+    ], 'Large Transfers')]
+    const simpleRules = [{ category: 'Transfers', rules: { merchant_name: ['Zelle'] }, plaid_pfc: [] }]
+    const txns = [txn({ merchant_name: 'Zelle', amount: -50 })]
+    const result = await mapTransactions(txns, simpleRules, compoundRules)
+    expect(result[0].mappedCategory).toBe('Transfers')
   })
 })

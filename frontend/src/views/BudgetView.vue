@@ -581,18 +581,19 @@
   import EmptyState from '../components/EmptyState.vue'
   import RuleModeSelector from '../components/RuleModeSelector.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule } from '@/firebase';
+  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
+  import { sweepStore } from '@/utils/ruleUtils';
 
 // import e from 'express';
 
   // Sweep "To Sort" transactions matching merchantOrName (and optionally exact amount) to a category.
   // field: 'merchant_name' | 'name'
   function condKey(c) { return `${c.field}|${c.op}|${c.value ?? ''}|${c.min ?? ''}|${c.max ?? ''}`; }
-  function isDuplicateRule(conditions) {
+  function findExistingRule(conditions) {
     const incoming = conditions.map(condKey).sort().join(',');
-    return (store.state.rules || []).some(r =>
+    return (store.state.rules || []).find(r =>
       Array.isArray(r.conditions) && r.conditions.map(condKey).sort().join(',') === incoming
-    );
+    ) || null;
   }
 
   function buildCompoundRule(merchantName, name, amount, categoryName, createdFrom) {
@@ -615,17 +616,6 @@
     };
   }
 
-  function sweepToSort(merchantOrName, field, category, exactAmount = null, toSortOnly = true) {
-    store.state.transactions
-      .filter(t => {
-        if (toSortOnly && t.mappedCategory !== 'To Sort') return false;
-        if (t.manually_set) return false;
-        if (t[field] !== merchantOrName) return false;
-        if (exactAmount !== null && Math.abs(t.amount) !== exactAmount) return false;
-        return true;
-      })
-      .forEach(t => store.commit('updateTransaction', { ...t, mappedCategory: category }));
-  }
 
   function amountBucket(abs) {
     if (abs < 10)  return 'xs';
@@ -1296,6 +1286,7 @@ monthStats() {
             'name': e.name,
             'merchantName': e.merchantName,
             'createRule': e.ruleMode === 'merchant',
+            'ruleMode': e.ruleMode || null,
             'transaction_id': e.transaction_id,
             'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
@@ -1349,15 +1340,21 @@ monthStats() {
             if (e.ruleMode === 'compound') {
               const { merchantOrName, field, abs, payload } = buildCompoundRule(e.merchantName, e.name, e.amount || 0, e.mappedCategory, 'dialog');
               if (merchantOrName) {
-                if (isDuplicateRule(payload.conditions)) {
-                  this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+                const existing = findExistingRule(payload.conditions);
+                if (existing) {
+                  if (existing.action?.categoryName !== e.mappedCategory) {
+                    const updated = { ...existing.action, categoryName: e.mappedCategory };
+                    await updateCompoundRule(String(existing._id), existing.label, existing.conditions, updated);
+                    store.commit('updateRule', { ruleId: existing._id, label: existing.label, conditions: existing.conditions, action: updated });
+                    this.$q.notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+                  } else {
+                    this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+                  }
                 } else {
                   const rule = await saveCompoundRule(payload);
-                  if (rule) {
-                    store.commit('addRule', rule);
-                    sweepToSort(merchantOrName, field, e.mappedCategory, abs, false);
-                  }
+                  if (rule) store.commit('addRule', rule);
                 }
+                sweepStore(store, payload.conditions, e.mappedCategory, null, false);
               }
             }
             this.tableDialogOpen = false
@@ -1411,20 +1408,26 @@ monthStats() {
           const txnField = txn.merchant_name ? 'merchant_name' : 'name';
 
           if (isMerchantRule && merchantOrName) {
-            sweepToSort(merchantOrName, txnField, targetCategory);
+            sweepStore(store, [{ field: txnField, op: 'eq', value: merchantOrName }], targetCategory, null, true);
           }
 
           if (isCompoundRule && merchantOrName) {
             const { abs, payload } = buildCompoundRule(txn.merchant_name, txn.name, txn.amount, targetCategory, 'triage');
-            if (isDuplicateRule(payload.conditions)) {
-              this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+            const existing = findExistingRule(payload.conditions);
+            if (existing) {
+              if (existing.action?.categoryName !== targetCategory) {
+                const updated = { ...existing.action, categoryName: targetCategory };
+                await updateCompoundRule(String(existing._id), existing.label, existing.conditions, updated);
+                store.commit('updateRule', { ruleId: existing._id, label: existing.label, conditions: existing.conditions, action: updated });
+                this.$q.notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+              } else {
+                this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+              }
             } else {
               const rule = await saveCompoundRule(payload);
-              if (rule) {
-                store.commit('addRule', rule);
-                sweepToSort(merchantOrName, txnField, targetCategory, abs, false);
-              }
+              if (rule) store.commit('addRule', rule);
             }
+            sweepStore(store, payload.conditions, targetCategory, null, false);
           }
         } catch (e) {
           console.error('Triage save error:', e);

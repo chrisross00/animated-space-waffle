@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions } from '../firebase';
 import store from '../store';
 
 const TOOLS = [
@@ -65,6 +65,17 @@ const TOOLS = [
     label: 'Add Test Transactions',
     description: 'Inserts 14 realistic synthetic transactions dated today (groceries, transport, income, etc.) — no existing data needed.',
     fn: addTestTransactions,
+  },
+  {
+    key: 'clearmanuals',
+    label: 'Clear Manual Overrides',
+    description: 'Removes the manually_set flag from all transactions, allowing rules to re-categorize them.',
+    fn: clearManualOverrides,
+    postRun() {
+      store.state.transactions.forEach(t => {
+        if (t.manually_set) store.commit('updateTransaction', { ...t, manually_set: false });
+      });
+    },
   },
   {
     key: 'nuketransactions',

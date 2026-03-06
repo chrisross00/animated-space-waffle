@@ -264,49 +264,6 @@
 </template>
 
 <style scoped>
-/* ── Card ── */
-.basil-dialog-card {
-  background-color: var(--basil-surface-dialog) !important;
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-
-/* ── Header ── */
-.basil-dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--basil-space-4) var(--basil-space-5);
-  border-bottom: 1px solid var(--basil-border);
-  flex-shrink: 0;
-}
-
-.basil-dialog-title {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.basil-dialog-title__sub {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--basil-text-muted);
-  line-height: 1;
-}
-
-.basil-dialog-title__main {
-  font-size: 1.25rem;
-  color: var(--basil-text);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-}
-
-.basil-dialog-close {
-  color: var(--basil-text-muted) !important;
-}
 
 /* ── Body ── */
 .basil-dialog-body {
