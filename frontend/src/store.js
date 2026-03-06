@@ -7,7 +7,7 @@ const store = createStore({
     state: {
         user: null,
         session: null,
-        theme: localStorage.getItem('basil-theme') || '',
+        theme: localStorage?.getItem?.('basil-theme') || '',
         rules: [],
         bootstrapping: false,
     },
