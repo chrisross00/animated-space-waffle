@@ -6,14 +6,8 @@
       <!-- Header -->
       <div class="basil-dialog-header">
         <div class="basil-dialog-title">
-          <div class="basil-dialog-title__sub">{{ isEdit ? 'Edit Rule' : 'New Rule' }}</div>
-          <input
-            v-model="form.label"
-            type="text"
-            placeholder="Rule label…"
-            class="basil-re__label-input basil-display"
-            @input="onLabelInput"
-          />
+          <div v-if="isEdit" class="basil-dialog-title__sub">Edit Rule</div>
+          <div class="basil-dialog-title__main basil-display">{{ isEdit ? rule.label : 'New Rule' }}</div>
         </div>
         <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
       </div>
@@ -23,6 +17,20 @@
 
         <!-- Left: Conditions -->
         <div class="basil-re__panel">
+          <!-- Rule Name -->
+          <div class="basil-re__condition">
+            <div class="basil-re__condition-head">
+              <span class="basil-re__condition-label">Rule Name</span>
+            </div>
+            <q-input
+              v-model="form.label"
+              outlined dense
+              placeholder="e.g. Venmo food"
+              class="basil-re__condition-input"
+              @update:model-value="onLabelInput"
+            />
+          </div>
+
           <div class="basil-re__panel-heading">If transaction matches…</div>
 
           <!-- Merchant name -->
@@ -272,31 +280,6 @@
 .basil-re__amount-sep {
   color: var(--basil-text-muted);
   font-size: 0.875rem;
-}
-
-/* Title takes all available header space left of the close button */
-.basil-re__card .basil-dialog-title {
-  flex: 1;
-  min-width: 0;
-  padding-right: var(--basil-space-3);
-}
-
-/* Label input in header — matches basil-dialog-title__main */
-.basil-re__label-input {
-  font-size: 1.25rem;
-  color: var(--basil-text);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  background: transparent;
-  border: none;
-  outline: none;
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-}
-
-.basil-re__label-input::placeholder {
-  color: var(--basil-text-muted);
 }
 
 /* Footer */
