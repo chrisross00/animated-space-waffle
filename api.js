@@ -229,6 +229,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
     if (req.body.note && typeof req.body.note === 'string' && req.body.note.length > 1000) {
       return res.status(400).json({ message: 'Note exceeds maximum length' });
     }
+    const manualCategoryChange = req.body.mappedCategory !== req.body.originalCategoryName;
+    const shouldPin = !req.body.ruleMode && manualCategoryChange;
     d = {
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
@@ -236,7 +238,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
       originalCategoryName: req.body.originalCategoryName,
       note: req.body.note ? req.body.note : '',
       excludeFromTotal: req.body.excludeFromTotal? req.body.excludeFromTotal : false,
-      ...(!req.body.ruleMode && { manually_set: true }),
+      ...(shouldPin && { manually_set: true }),
     }
     const filter = { transaction_id: req.body.transaction_id, userId: uid };
     const update = {
@@ -245,8 +247,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
         date: req.body.date,
         note: req.body.note,
         excludeFromTotal: req.body.excludeFromTotal,
-        // Only protect from future sweeps if this is a standalone edit, not part of a rule
-        ...(!req.body.ruleMode && { manually_set: true }),
+        // Only protect from future sweeps if category was manually changed without a rule
+        ...(shouldPin && { manually_set: true }),
       }
     };
     await updateData('Plaid-Transactions', filter, update);
