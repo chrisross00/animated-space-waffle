@@ -1342,6 +1342,17 @@ monthStats() {
             if (this.transactionClickers[e.transaction_id]) {
               this.transactionClickers[e.transaction_id] = false
             }
+            if (e.ruleMode === 'merchant' && e.merchantName) {
+              const prevCat = store.state.categories.find(c => (c.rules?.merchant_name || []).includes(e.merchantName));
+              const newCat = store.state.categories.find(c => c.category === e.mappedCategory);
+              if (prevCat && prevCat.category === e.mappedCategory) {
+                this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+              } else {
+                if (prevCat) store.commit('updateCategoryRules', { categoryId: prevCat._id, ruleType: 'merchant_name', ruleValue: e.merchantName });
+                if (newCat) store.commit('addCategoryRule', { categoryId: newCat._id, ruleType: 'merchant_name', ruleValue: e.merchantName });
+                if (prevCat) this.$q.notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+              }
+            }
             if (e.ruleMode === 'compound') {
               const { merchantOrName, field, abs, payload } = buildCompoundRule(e.merchantName, e.name, e.amount || 0, e.mappedCategory, 'dialog');
               if (merchantOrName) {
@@ -1414,6 +1425,15 @@ monthStats() {
 
           if (isMerchantRule && merchantOrName) {
             sweepStore(store, [{ field: txnField, op: 'eq', value: merchantOrName }], targetCategory, null, true);
+            const prevCat = store.state.categories.find(c => (c.rules?.[txnField] || []).includes(merchantOrName));
+            const newCat = store.state.categories.find(c => c.category === targetCategory);
+            if (prevCat && prevCat.category === targetCategory) {
+              this.$q.notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+            } else {
+              if (prevCat) store.commit('updateCategoryRules', { categoryId: prevCat._id, ruleType: txnField, ruleValue: merchantOrName });
+              if (newCat) store.commit('addCategoryRule', { categoryId: newCat._id, ruleType: txnField, ruleValue: merchantOrName });
+              if (prevCat) this.$q.notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+            }
           }
 
           if (isCompoundRule && merchantOrName) {
