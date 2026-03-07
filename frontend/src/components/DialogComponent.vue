@@ -26,6 +26,10 @@
           v-if="dialogBody.merchantName && dialogBody.merchantName !== dialogBody.name"
           class="basil-dialog-txn-subname"
         >{{ dialogBody.name }}</div>
+        <div
+          v-else-if="!dialogBody.merchantName && item?.account && item.account !== '?'"
+          class="basil-dialog-txn-subname"
+        >{{ item.account }}</div>
       </div>
 
       <div class="basil-dialog-fields">
@@ -59,14 +63,19 @@
           v-model="dialogBody.excludeFromTotal"
           @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"
         />
-        <RuleModeSelector
-          v-if="dialogBody.merchantName || dialogBody.name"
-          v-model="dialogBody.ruleMode"
-          :merchant-name="dialogBody.merchantName || ''"
-          :name="dialogBody.name || ''"
-          :amount="item?.amount || 0"
-          :category="dialogBody.mappedCategory || ''"
-        />
+        <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
+          <q-checkbox v-model="dialogBody.createRule" dense color="primary">
+            <template #default>
+              <span v-if="similarityData.toSortCount > 0">
+                Also categorize {{ similarityData.toSortCount }} similar
+              </span>
+              <span v-else>Remember for future "{{ similarityData.label }}"</span>
+            </template>
+          </q-checkbox>
+          <div class="basil-dialog-similar__hint">
+            Matched by {{ similarityData.strategy === 'merchant_name' ? 'merchant' : similarityData.strategy === 'name_account' ? 'name + institution' : 'name' }}
+          </div>
+        </div>
       </div>
 
       <div class="basil-dialog-actions">
@@ -423,11 +432,22 @@
   margin-top: calc(var(--basil-space-1) * -1);
   padding: 0 var(--basil-space-1);
 }
+
+/* ── Similarity toggle ── */
+.basil-dialog-similar {
+  padding: var(--basil-space-2) 0;
+}
+
+.basil-dialog-similar__hint {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: var(--basil-space-1);
+  padding-left: calc(var(--basil-space-6) + 2px);
+}
 </style>
 
 <script>
   import {ref} from 'vue'
-  import RuleModeSelector from './RuleModeSelector.vue'
 
   const PLAID_PFC_OPTIONS = [
     { label: 'Income',                   value: 'INCOME' },
@@ -462,7 +482,11 @@
         dropDown: {
             type: Array,
             required: false,
-        }
+        },
+        similarityData: {
+          type: Object,
+          default: null,
+        },
       },
       data(){
         // console.log('beginning of data log: ', this.item)
@@ -485,7 +509,7 @@
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
-                ruleMode: null,
+                createRule: this.similarityData?.toSortCount > 0,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},
@@ -498,7 +522,7 @@
         };
       },
       
-components: { RuleModeSelector },
+components: {},
 emits: ['update-transaction', 'update-category', 'add-category'],
 computed: {
     dialogSubtitle() {
@@ -544,8 +568,7 @@ computed: {
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
         },
         updateTransaction() {
-            this.editedTransaction = {...this.dialogBody}
-            // console.log('updateTransaction: edited Transaction: ', this.editedTransaction)
+            this.editedTransaction = {...this.dialogBody, similarityData: this.similarityData}
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
@@ -611,7 +634,7 @@ computed: {
                     this.dialogBody.mappedCategory !== this.originalDialogBody.mappedCategory ||
                     this.dialogBody.note !== this.originalDialogBody.note ||
                     this.dialogBody.excludeFromTotal !== this.originalDialogBody.excludeFromTotal ||
-                    this.dialogBody.ruleMode !== null
+                    this.dialogBody.createRule !== this.originalDialogBody.createRule
                 ){
                     this.formSubmittable = true
                 }
@@ -659,7 +682,7 @@ computed: {
         "dialogBody.plaid_pfc": function (){
             this.isFormSubmittable()
         },
-        "dialogBody.ruleMode": function (){
+        "dialogBody.createRule": function (){
             this.isFormSubmittable()
         }
     }

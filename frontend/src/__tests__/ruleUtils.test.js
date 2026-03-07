@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore } from '@/utils/ruleUtils'
+import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions } from '@/utils/ruleUtils'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -372,5 +372,133 @@ describe('applyCompoundRuleToStore', () => {
     const store = makeFullStore([], [txn({ transaction_id: '1', merchant_name: 'Starbucks', amount: 6 })])
     await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
     expect(store.commit).toHaveBeenCalledWith('updateTransaction', expect.objectContaining({ mappedCategory: 'Coffee' }))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// findSimilarTransactions
+// ---------------------------------------------------------------------------
+
+describe('findSimilarTransactions', () => {
+  it('matches by merchant_name (strategy 1)', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Starbucks', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', merchant_name: 'Uber', mappedCategory: 'To Sort' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('merchant_name')
+    expect(result.ruleType).toBe('merchant')
+    expect(result.ruleField).toBe('merchant_name')
+    expect(result.ruleValue).toBe('Starbucks')
+    expect(result.allCount).toBe(1)
+    expect(result.toSortCount).toBe(1)
+    expect(result.label).toBe('Starbucks')
+  })
+
+  it('is case-insensitive for merchant_name', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'STARBUCKS' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'starbucks', mappedCategory: 'Coffee' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(1)
+    expect(result.strategy).toBe('merchant_name')
+  })
+
+  it('uses name + account when merchant_name is null (strategy 2)', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Venmo Payment', account: 'Chase' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Venmo Payment', account: 'Chase', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', name: 'Venmo Payment', account: 'BofA', mappedCategory: 'To Sort' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('name_account')
+    expect(result.ruleType).toBe('compound')
+    expect(result.allCount).toBe(1)
+    expect(result.conditions).toEqual([
+      { field: 'name', op: 'eq', value: 'Venmo Payment' },
+      { field: 'account', op: 'eq', value: 'Chase' },
+    ])
+  })
+
+  it('falls back to name-only when account is null (strategy 3)', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Venmo', account: null })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Venmo', mappedCategory: 'To Sort' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('name')
+    expect(result.ruleType).toBe('merchant')
+    expect(result.ruleField).toBe('name')
+    expect(result.ruleValue).toBe('Venmo')
+    expect(result.allCount).toBe(1)
+  })
+
+  it('treats account "?" as no account — falls through to strategy 3', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Zelle', account: '?' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Zelle', account: '?', mappedCategory: 'To Sort' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('name')
+    expect(result.ruleType).toBe('merchant')
+  })
+
+  it('excludes the anchor transaction by transaction_id', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
+    const all = [anchor]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(0)
+    expect(result.matches).toHaveLength(0)
+  })
+
+  it('includes manually_set transactions in allCount but excludes from toSortCount', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Starbucks', manually_set: true, mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', merchant_name: 'Starbucks', manually_set: false, mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'd', merchant_name: 'Starbucks', manually_set: true, mappedCategory: 'Coffee' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(3)
+    expect(result.toSortCount).toBe(1)
+  })
+
+  it('counts toSortCount only for "To Sort" transactions', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Starbucks', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', merchant_name: 'Starbucks', mappedCategory: 'Coffee' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(2)
+    expect(result.toSortCount).toBe(1)
+  })
+
+  it('returns zeroes and null strategy when no matches', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'UniqueShop' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Uber', mappedCategory: 'Transport' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(0)
+    expect(result.toSortCount).toBe(0)
+    expect(result.strategy).toBe('merchant_name')
+  })
+
+  it('returns empty result for anchor with no name and no merchant', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: '' })
+    const result = findSimilarTransactions(anchor, [anchor])
+    expect(result.strategy).toBeNull()
+    expect(result.allCount).toBe(0)
   })
 })

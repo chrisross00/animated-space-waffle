@@ -237,8 +237,11 @@
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
-                        <q-item-label lines="1">{{item.name == 'Venmo' ? item.name + (item.note ?  ': '+ item.note : '') : item.name }}</q-item-label>
-                        <q-item-label caption lines="2">{{ item.date }}</q-item-label>
+                        <q-item-label lines="1">{{ item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</q-item-label>
+                        <q-item-label caption lines="2">
+                          {{ item.date }}
+                          <span v-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
+                        </q-item-label>
                       </q-item-section>
                       <div class="transaction-decoration">
                         <q-item-section side top>
@@ -249,8 +252,9 @@
                         </q-item-section>
                       </div>
                       <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
-                        <DialogComponent :dialogType="'transaction'" :item="item" 
-                        :dropDown="this.categoryMonthlyLimits" 
+                        <DialogComponent :dialogType="'transaction'" :item="item"
+                        :dropDown="this.categoryMonthlyLimits"
+                        :similarity-data="dialogSimilarityData"
                         @update-transaction="onSubmit"/>
                       </q-dialog>
                     </q-item>
@@ -376,6 +380,10 @@
                       v-if="props.row.merchant_name && props.row.merchant_name !== props.row.name"
                       class="basil-txn-label__secondary"
                     >{{ props.row.name }}</div>
+                    <div
+                      v-else-if="!props.row.merchant_name && props.row.account && props.row.account !== '?'"
+                      class="basil-txn-label__secondary"
+                    >{{ props.row.account }}</div>
                   </div>
                 </div>
               </q-td>
@@ -414,6 +422,7 @@
             :dialogType="'transaction'"
             :item="tableDialogTransaction"
             :dropDown="categoryMonthlyLimits"
+            :similarity-data="tableDialogSimilarityData"
             @update-transaction="onSubmit"
           />
         </q-dialog>
@@ -507,6 +516,7 @@
               {{ triageItems[0].amount < 0 ? `-$${Math.abs(triageItems[0].amount).toFixed(2)}` : `$${triageItems[0].amount.toFixed(2)}` }}
             </div>
             <div class="basil-triage__merchant">{{ triageItems[0].merchant_name || triageItems[0].name }}</div>
+            <div v-if="!triageItems[0].merchant_name && triageItems[0].account && triageItems[0].account !== '?'" class="basil-triage__institution">{{ triageItems[0].account }}</div>
             <div class="basil-triage__date">{{ formatDate(triageItems[0].date) }}</div>
           </div>
 
@@ -537,15 +547,19 @@
             />
           </div>
 
-          <!-- Remember options -->
-          <div v-if="triageItems[0] && (triageItems[0].merchant_name || triageItems[0].name)" class="basil-triage__toggle-area">
-            <RuleModeSelector
-              v-model="triageRuleMode"
-              :merchant-name="triageItems[0].merchant_name || ''"
-              :name="triageItems[0].name || ''"
-              :amount="triageItems[0].amount || 0"
-              :category="triageCategory || ''"
-            />
+          <!-- Similar transactions toggle -->
+          <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
+            <q-checkbox v-model="triageCreateRule" dense color="primary">
+              <template #default>
+                <span v-if="triageSimilar.toSortCount > 0">
+                  Also categorize {{ triageSimilar.toSortCount }} similar
+                </span>
+                <span v-else>Remember for future "{{ triageSimilar.label }}"</span>
+              </template>
+            </q-checkbox>
+            <div class="basil-triage__similar-hint">
+              Matched by {{ triageSimilar.strategy === 'merchant_name' ? 'merchant' : triageSimilar.strategy === 'name_account' ? 'name + institution' : 'name' }}
+            </div>
           </div>
 
           <!-- Actions -->
@@ -579,35 +593,11 @@
   import DialogComponent from '../components/DialogComponent.vue'
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
-  import RuleModeSelector from '../components/RuleModeSelector.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
-  import { sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore } from '@/utils/ruleUtils';
+  import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions } from '@/utils/ruleUtils';
 
 // import e from 'express';
-
-  // Sweep "To Sort" transactions matching merchantOrName (and optionally exact amount) to a category.
-  // field: 'merchant_name' | 'name'
-  function buildCompoundRule(merchantName, name, amount, categoryName, createdFrom) {
-    const merchantOrName = merchantName || name;
-    const field = merchantName ? 'merchant_name' : 'name';
-    const abs = Math.abs(amount);
-    return {
-      merchantOrName,
-      field,
-      abs,
-      payload: {
-        label: `${merchantOrName} $${abs % 1 === 0 ? Math.round(abs) : abs.toFixed(2)}`,
-        conditions: [
-          { field, op: 'eq', value: merchantOrName },
-          { field: 'amount', op: 'eq', value: abs },
-        ],
-        action: { type: 'categorize', categoryName },
-        createdFrom,
-      },
-    };
-  }
-
 
   function amountBucket(abs) {
     if (abs < 10)  return 'xs';
@@ -634,7 +624,6 @@
       DialogComponent,
       SkeletonBudget,
       EmptyState,
-      RuleModeSelector,
     },
     data() {
       const currentDate = dayjs();
@@ -684,6 +673,8 @@
         bulkCategory: null,
         tableDialogOpen: false,
         tableDialogTransaction: null,
+        dialogSimilarityData: null,
+        tableDialogSimilarityData: null,
         tableSearch: '',
         tableMonth: null,
         amountMin: null,
@@ -691,7 +682,7 @@
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
-        triageRuleMode: null, // null | 'merchant' | 'compound'
+        triageCreateRule: true,
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,
@@ -880,6 +871,11 @@
       },
       triageItems() {
         return this.toSortWithSuggestions.filter(t => !this.triageSkipped.has(t.transaction_id));
+      },
+      triageSimilar() {
+        const first = this.triageItems[0];
+        if (!first) return null;
+        return findSimilarTransactions(first, store.state.transactions);
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
@@ -1113,13 +1109,14 @@ monthStats() {
           isOriginalCategoryNameSet = true;
           if (!this.dialogBody.currentTransactionDetails.originalCategoryName){
             this.dialogBody.currentTransactionDetails.originalCategoryName = this.groupedTransactions[e.mappedCategory].categoryName
-          } 
+          }
           if(!this.transactionClickers[e.transaction_id]){
             this.transactionClickers[e.transaction_id] = true
           } else{
             this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
           }
           this.transactionDetails = e
+          this.dialogSimilarityData = findSimilarTransactions(e, store.state.transactions);
           return this.transactionClickers[e.transaction_id];
       },
       buildDateList(transactions) {
@@ -1275,6 +1272,8 @@ monthStats() {
       onSubmit(e) { 
         let d = {}
         if (e.dialogType == 'transaction') {
+          const sim = e.similarityData;
+          const wantsRule = e.createRule && sim?.allCount > 0;
           d = {
             'updateType': e.dialogType,
             'mappedCategory': e.mappedCategory,
@@ -1282,10 +1281,10 @@ monthStats() {
             'note':e.note,
             'name': e.name,
             'merchantName': e.merchantName,
-            'createRule': e.ruleMode === 'merchant',
-            'ruleMode': e.ruleMode || null,
+            'createRule': wantsRule && sim?.ruleType === 'merchant',
+            'ruleMode': wantsRule ? sim?.ruleType : null,
             'transaction_id': e.transaction_id,
-            'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',//e.originalCategoryName,
+            'originalCategoryName': this.dialogBody.currentTransactionDetails.originalCategoryName ? this.dialogBody.currentTransactionDetails.originalCategoryName : '',
             'excludeFromTotal' : e.excludeFromTotal ? e.excludeFromTotal : false
           }
         }
@@ -1334,14 +1333,19 @@ monthStats() {
             if (this.transactionClickers[e.transaction_id]) {
               this.transactionClickers[e.transaction_id] = false
             }
-            if (e.ruleMode === 'merchant' && e.merchantName) {
-              applyMerchantRuleToStore(store, 'merchant_name', e.merchantName, e.mappedCategory, this.$q.notify.bind(this.$q));
+            const sim = e.similarityData;
+            const wantsRule = e.createRule && sim?.allCount > 0;
+            if (wantsRule && sim.ruleType === 'merchant') {
+              applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, e.mappedCategory, this.$q.notify.bind(this.$q));
             }
-            if (e.ruleMode === 'compound') {
-              const { merchantOrName, payload } = buildCompoundRule(e.merchantName, e.name, e.amount || 0, e.mappedCategory, 'dialog');
-              if (merchantOrName) {
-                await applyCompoundRuleToStore(store, payload, e.mappedCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
-              }
+            if (wantsRule && sim.ruleType === 'compound') {
+              const payload = {
+                label: sim.label,
+                conditions: sim.conditions,
+                action: { type: 'categorize', categoryName: e.mappedCategory },
+                createdFrom: 'dialog',
+              };
+              await applyCompoundRuleToStore(store, payload, e.mappedCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
             }
             this.tableDialogOpen = false
           }
@@ -1360,7 +1364,7 @@ monthStats() {
       openTriageFlow() {
         this.triageSkipped = new Set();
         this.triageDone = false;
-        this.triageRuleMode = null;
+        this.triageCreateRule = true;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
         this.triageCategory = first?.suggestion || null;
@@ -1370,8 +1374,8 @@ monthStats() {
         const txn = this.triageItems[0];
         if (!txn || !this.triageCategory) return;
         this.triageSaving = true;
-        const isMerchantRule = this.triageRuleMode === 'merchant';
-        const isCompoundRule = this.triageRuleMode === 'compound';
+        const sim = this.triageSimilar;
+        const wantsRule = this.triageCreateRule && sim?.allCount > 0;
         const d = {
           updateType: 'transaction',
           mappedCategory: this.triageCategory,
@@ -1379,7 +1383,8 @@ monthStats() {
           note: txn.note || '',
           name: txn.name,
           merchantName: txn.merchant_name || '',
-          createRule: isMerchantRule,
+          createRule: wantsRule && sim.ruleType === 'merchant',
+          ruleMode: wantsRule ? sim.ruleType : null,
           transaction_id: txn.transaction_id,
           originalCategoryName: txn.mappedCategory || '',
           excludeFromTotal: txn.excludeFromTotal || false,
@@ -1388,18 +1393,20 @@ monthStats() {
           const data = await handleDialogSubmit(JSON.stringify(d));
           this.updatedTransaction = { ...data };
 
-          const merchantOrName = txn.merchant_name || txn.name;
           const targetCategory = this.triageCategory;
 
-          const txnField = txn.merchant_name ? 'merchant_name' : 'name';
-
-          if (isMerchantRule && merchantOrName) {
-            sweepStore(store, [{ field: txnField, op: 'eq', value: merchantOrName }], targetCategory, null, true);
-            applyMerchantRuleToStore(store, txnField, merchantOrName, targetCategory, this.$q.notify.bind(this.$q));
+          if (wantsRule && sim.ruleType === 'merchant') {
+            sweepStore(store, sim.conditions, targetCategory, null, true);
+            applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, targetCategory, this.$q.notify.bind(this.$q));
           }
 
-          if (isCompoundRule && merchantOrName) {
-            const { payload } = buildCompoundRule(txn.merchant_name, txn.name, txn.amount, targetCategory, 'triage');
+          if (wantsRule && sim.ruleType === 'compound') {
+            const payload = {
+              label: sim.label,
+              conditions: sim.conditions,
+              action: { type: 'categorize', categoryName: targetCategory },
+              createdFrom: 'triage',
+            };
             await applyCompoundRuleToStore(store, payload, targetCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
           }
         } catch (e) {
@@ -1424,7 +1431,7 @@ monthStats() {
           } else {
             const next = this.triageItems[0];
             this.triageCategory = next?.suggestion || null;
-            this.triageRuleMode = null;
+            this.triageCreateRule = true;
           }
         });
       },
@@ -1456,6 +1463,7 @@ monthStats() {
           originalCategoryName: row.mappedCategory || ''
         };
         this.tableDialogTransaction = row;
+        this.tableDialogSimilarityData = findSimilarTransactions(row, store.state.transactions);
         this.tableDialogOpen = true;
       },
       async applyBulkCategory() {

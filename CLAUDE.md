@@ -19,7 +19,7 @@ These apply to every task, every session, including after context compaction.
 
 ### Before building any new component or UI pattern
 5. **Check existing shared components first:**
-   `RuleEditorDialog`, `RuleModeSelector`, `EmptyState`, `SkeletonBudget`, `dialogs.css`.
+   `RuleEditorDialog`, `EmptyState`, `SkeletonBudget`, `dialogs.css`.
    Reuse over rebuild. One-off implementations that duplicate existing abstractions
    will be flagged for refactor.
 
@@ -67,7 +67,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/views/ApiDir.vue` | Admin toolbox (dedupe, seed, map unmapped, clear manual overrides, etc.) |
 | `frontend/src/components/DialogComponent.vue` | Edit transaction / category dialog |
 | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit dialog |
-| `frontend/src/components/RuleModeSelector.vue` | Shared rule mode radio group (used in triage + dialog) |
+| `frontend/src/utils/ruleUtils.js → findSimilarTransactions()` | Auto-detects similar transactions and determines best rule strategy |
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
 | `frontend/src/store.js` | Vuex store (user, session, transactions, categories, rules) |
 | `frontend/src/firebase.js` | All fetch calls to backend API + Firebase auth helpers |
@@ -105,14 +105,14 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `sweepStore(store, conditions, categoryName, note, toSortOnly)` | `frontend/src/utils/ruleUtils.js` | Applies a rule to all matching transactions in the Vuex store. Used by all rule creation/edit flows. |
 | `sweepCompoundRule(uid, conditions, action)` | `api.js` (module-level helper) | Backend equivalent — runs `updateMany` on `Plaid-Transactions`. Used by both `saveCompoundRule` and `updateCompoundRule` routes. |
 | `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates an array of compound rules against a transaction during batch categorization. |
-| `RuleModeSelector` | `frontend/src/components/RuleModeSelector.vue` | Shared radio group for rule mode selection (no rule / merchant rule / compound rule). |
+| `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Auto-detects similar transactions via 3 strategies (merchant_name → name+account → name). Returns match data + rule type for automatic rule creation. |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Full compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
 | `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/firebase.js` | Set `true` while `ensureAppData` is in-flight. Gate non-Budget view content — show skeleton/spinner while true, `EmptyState` only when false and data empty. See DESIGN.md "Loading states" for the three-state pattern. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
 - **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToMongoFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
-- **Shared components over one-off markup.** `RuleModeSelector`, `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement rule mode radio buttons or empty states inline.
+- **Shared components over one-off markup.** `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement empty states inline.
 - **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations (`updateTransaction`, `updateRule`, `addRule`, etc.) or add a new named mutation.
 - **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `range`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
 
@@ -258,7 +258,7 @@ Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, cr
 - `action`: `{ type: 'categorize', categoryName, note? }`
 - Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
 - Created from: Sort Transactions triage card, Edit Transaction dialog, or RuleEditorDialog
-- Both triage + dialog flows use `RuleModeSelector` component for the radio group + hint text
+- Both triage + dialog flows use `findSimilarTransactions` to auto-detect matching transactions and determine rule type; users see a simple "Also categorize N similar" checkbox
 - Creation sweeps all matching non-`manually_set` transactions (client: `sweepStore`; backend: `sweepCompoundRule`)
 - Duplicate guard: `findExistingRule()` in BudgetView checks store; if found with different category, calls `updateCompoundRule`; backend returns 409
 - Edit/delete in RulesView; edit opens RuleEditorDialog with "Apply to existing transactions" checkbox
@@ -350,7 +350,7 @@ Never create classes starting with `q-` (Quasar's namespace).
 - Added unit tests: `ruleUtils.test.js` (25 tests) + compound rule tests in `categoryMapping.test.js`
 - Type-colored category badges in RulesView (design token pairs, BEM classes)
 - Built compound rules feature: multi-condition rules from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine
-- Built `RuleModeSelector` shared component — used in Sort Transactions triage and Edit Transaction dialog
+- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine — auto-detects matching transactions and creates the right rule type behind the scenes
 - Built Merchant Browser, rules management iterations 1–3, transaction search/filter
 - Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)
 - Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded

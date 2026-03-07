@@ -645,10 +645,21 @@
   margin-top: var(--basil-space-1);
 }
 
+.basil-triage__institution {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
 .basil-triage__date {
   font-size: 0.8125rem;
   color: var(--basil-text-muted);
   margin-top: 2px;
+}
+
+/* Institution context in category transaction list */
+.basil-txn-institution {
+  color: var(--basil-text-muted);
 }
 
 .basil-triage__suggestion-area {
@@ -668,8 +679,15 @@
   padding: var(--basil-space-2) var(--basil-space-4);
 }
 
-.basil-triage__toggle-area {
-  padding: var(--basil-space-1) var(--basil-space-4) var(--basil-space-2);
+.basil-triage__similar-area {
+  padding: var(--basil-space-2) var(--basil-space-4);
+}
+
+.basil-triage__similar-hint {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: var(--basil-space-1);
+  padding-left: calc(var(--basil-space-6) + 2px);
 }
 
 .basil-triage__disclosure {

@@ -68,6 +68,85 @@ export function findExistingRule(store, conditions) {
 }
 
 /**
+ * Find transactions similar to an anchor transaction and determine the best
+ * rule strategy for grouping them.
+ *
+ * Strategies (in priority order):
+ * 1. merchant_name — when anchor has a non-null merchant_name
+ * 2. name + account — when merchant_name is null and account is a real value
+ * 3. name only     — fallback when merchant_name and account are both absent
+ *
+ * @param {object}   anchor       - The transaction to find matches for
+ * @param {object[]} transactions - All transactions to search
+ * @returns {object} { matches, toSortCount, allCount, strategy, ruleType, conditions, ruleField, ruleValue, label }
+ */
+export function findSimilarTransactions(anchor, transactions) {
+  const empty = { matches: [], toSortCount: 0, allCount: 0, strategy: null, ruleType: null, conditions: [], ruleField: null, ruleValue: null, label: '' };
+  if (!anchor || !transactions?.length) return empty;
+
+  const hasMerchant = anchor.merchant_name != null && anchor.merchant_name !== '';
+  const hasAccount = anchor.account != null && anchor.account !== '' && anchor.account !== '?';
+  const anchorName = anchor.name || '';
+
+  let strategy, ruleType, conditions, ruleField, ruleValue, label, matchFn;
+
+  if (hasMerchant) {
+    // Strategy 1: merchant_name match
+    const val = anchor.merchant_name;
+    const valLower = val.toLowerCase();
+    strategy = 'merchant_name';
+    ruleType = 'merchant';
+    ruleField = 'merchant_name';
+    ruleValue = val;
+    label = val;
+    conditions = [{ field: 'merchant_name', op: 'eq', value: val }];
+    matchFn = t => t.merchant_name != null && t.merchant_name.toLowerCase() === valLower;
+  } else if (anchorName && hasAccount) {
+    // Strategy 2: name + account compound match
+    const nameLower = anchorName.toLowerCase();
+    strategy = 'name_account';
+    ruleType = 'compound';
+    ruleField = null;
+    ruleValue = null;
+    label = anchorName;
+    conditions = [
+      { field: 'name', op: 'eq', value: anchorName },
+      { field: 'account', op: 'eq', value: anchor.account },
+    ];
+    matchFn = t => (t.name || '').toLowerCase() === nameLower && t.account === anchor.account;
+  } else if (anchorName) {
+    // Strategy 3: name-only fallback
+    const nameLower = anchorName.toLowerCase();
+    strategy = 'name';
+    ruleType = 'merchant';
+    ruleField = 'name';
+    ruleValue = anchorName;
+    label = anchorName;
+    conditions = [{ field: 'name', op: 'eq', value: anchorName }];
+    matchFn = t => (t.name || '').toLowerCase() === nameLower;
+  } else {
+    return empty;
+  }
+
+  const matches = transactions.filter(t =>
+    t.transaction_id !== anchor.transaction_id &&
+    matchFn(t)
+  );
+
+  return {
+    matches,
+    toSortCount: matches.filter(t => t.mappedCategory === 'To Sort' && !t.manually_set).length,
+    allCount: matches.length,
+    strategy,
+    ruleType,
+    conditions,
+    ruleField,
+    ruleValue,
+    label,
+  };
+}
+
+/**
  * Update the store to reflect a merchant rule assignment, handling deduplication:
  * removes the rule from a previous category if it existed there, adds to the new one,
  * and notifies the user appropriately.
