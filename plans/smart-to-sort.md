@@ -1,5 +1,10 @@
 # Plan: Smart To Sort — Suggestion Engine + Triage UX
 
+> **Status: SHIPPED** — Suggestion engine, triage UX (nudge card + bottom sheet flow),
+> and similarity-based auto-learn all live on main (March 2026). V2 ideas (recurring
+> peer payment detection, bill-split inference, note-based disambiguation) tracked in
+> CLAUDE.md backlog under P2P / Venmo intelligence.
+
 ## Context
 Transactions from peer payment apps (Venmo, Cash App, Zelle, PayPal) end up in "To Sort" because the merchant name carries no categorical signal. More broadly, any uncategorized transaction sits there waiting for manual attention. This feature adds: (1) a client-side suggestion engine that detects patterns and proposes categories, and (2) a triage UX — a nudge card on the dashboard + a bottom sheet flow — that lets users rapidly categorize unsorted transactions one at a time.
 

@@ -1,5 +1,10 @@
 # Plan: Compound Rules + Global Rules View
 
+> **Status: SHIPPED** — All core features built and merged to main (March 2026).
+> Compound rules, RulesView, triage flow, RuleEditorDialog, similarity engine, and
+> reactive actionable counts are all live. Remaining ideas (routing rules, `day_of_month`,
+> `personal_finance_category_primary`) tracked in CLAUDE.md backlog.
+
 ## Context
 
 The current rule engine is a blunt instrument. Rules match on a single field — either

@@ -128,6 +128,8 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Bulk categorization in table view (with disclosure note)
 - Charts (`/trends`): Spending (stacked bar), Cash Flow, Cumulative net, Savings rate
 - Recurring transaction detection: badge on category rows, expected amount in Projections card
+- Similarity engine: auto-detects similar transactions (3 strategies: merchant_name → name+account → name), shows reactive "Also categorize N similar" checkbox with count based on selected category
+- Transaction display: prefers `merchant_name` over raw Plaid `name`; shows institution context for null-merchant transactions
 - Admin toolbox: dedupe, seed categories, clean pending, map unmapped, clear manual overrides
 
 ---
@@ -194,6 +196,11 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
 `conditionsToMongoFilter()` helper in `api.js → /saveCompoundRule`.
 
 ### Tech debt
+- [ ] **Database migration: MongoDB → Postgres (Supabase)** — data model is textbook
+      relational but stored in a document DB. Missing referential integrity, manual
+      `userId` filtering on every query, nested documents where flat tables would be
+      simpler. Frontend is untouched (API contract stays the same). See full PRD with
+      schema, migration strategy, and decision framework: `plans/database-migration.md`.
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added.
@@ -321,8 +328,6 @@ cash flow charts — revisit if needed).
 
 ---
 
----
-
 ## Design System
 
 **Full spec:** `DESIGN.md` in the repo root. Read it before writing any new UI.
@@ -363,21 +368,8 @@ Never create classes starting with `q-` (Quasar's namespace).
 ---
 
 ## Recent history (for context)
-- Extracted `sweepStore` + `matchesCondition` to `frontend/src/utils/ruleUtils.js`; removed all inline sweep implementations from BudgetView and RuleEditorDialog
-- Extracted `sweepCompoundRule` backend helper in `api.js`; both save + update routes call it
-- Built `RuleEditorDialog` — full compound rule create/edit UI with condition builder, note field, tags placeholder, and "Apply to existing transactions" checkbox
-- Added `account` (institution) condition type; `transaction.account` stamped at sync time in `plaidTools.js`
-- Fixed `manually_set` intent: only set on pure manual edits (no `ruleMode`); rule-creation flows stay sweepable
-- Added `findExistingRule` (replaces `isDuplicateRule`) — detects duplicate rules and applies category updates when category differs
-- Added unit tests: `ruleUtils.test.js` (25 tests) + compound rule tests in `categoryMapping.test.js`
-- Type-colored category badges in RulesView (design token pairs, BEM classes)
-- Built compound rules feature: multi-condition rules from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine
-- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine — auto-detects matching transactions and creates the right rule type behind the scenes
+- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine — auto-detects matching transactions and creates the right rule type automatically
 - Actionable count in similarity checkbox reactive to selected target category (excludes matches already in target + `manually_set`)
 - Transaction display: category list prefers `merchant_name`; institution context shown in category list, triage card, table, and dialog for null-merchant transactions
-- Built Merchant Browser, rules management iterations 1–3, transaction search/filter
-- Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)
-- Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded
-- Added `savings` category type to schema + dialog dropdown
-- Migrated from Vue CLI / webpack to **Vite 7**
-- Added **helmet**, CORS restriction, rate limiting, MongoDB singleton pool
+- Added pre-push hook (husky): runs backend + frontend test suites before every push (99 tests)
+- Created database migration PRD (`plans/database-migration.md`) with Postgres schema, 3-phase migration strategy, and decision framework
