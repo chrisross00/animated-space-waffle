@@ -9,13 +9,19 @@ export function matchesCondition(txn, c) {
   const { field, op, value, min, max } = c;
   switch (field) {
     case 'merchant_name':
-      return op === 'eq' && txn.merchant_name != null &&
-        txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
+      if (txn.merchant_name == null) return false;
+      if (op === 'eq') return txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
+      if (op === 'contains') return txn.merchant_name.toLowerCase().includes((value || '').toLowerCase());
+      return false;
     case 'name':
-      return op === 'eq' && (txn.name || '').toLowerCase() === (value || '').toLowerCase();
+      if (op === 'eq') return (txn.name || '').toLowerCase() === (value || '').toLowerCase();
+      if (op === 'contains') return (txn.name || '').toLowerCase().includes((value || '').toLowerCase());
+      return false;
     case 'amount': {
       const abs = Math.abs(txn.amount);
       if (op === 'eq')    return abs === value;
+      if (op === 'gt')    return abs > value;
+      if (op === 'lt')    return abs < value;
       if (op === 'range') return abs >= min && abs <= max;
       return false;
     }
@@ -143,6 +149,80 @@ export function findSimilarTransactions(anchor, transactions) {
     ruleValue,
     label,
   };
+}
+
+/**
+ * Determine why a transaction is in its current category.
+ * Checks sources in the same priority order as categoryMapping.js → mapTransactions().
+ *
+ * @param {object}   txn        - The transaction to attribute
+ * @param {object[]} categories - Array of category objects from the store
+ * @param {object[]} rules      - Array of compound rule objects from the store
+ * @returns {object} { type, label, icon, ruleId?, linkable? }
+ */
+export function getAttribution(txn, categories, rules) {
+  // 1. Manual override
+  if (txn.manually_set)
+    return { type: 'manual', label: 'You categorized this', icon: 'edit' };
+
+  // 2. Compound rule (highest priority in engine)
+  if (rules?.length) {
+    const match = rules.find(r =>
+      Array.isArray(r.conditions) && r.conditions.every(c => matchesCondition(txn, c))
+    );
+    if (match)
+      return {
+        type: 'compound_rule',
+        label: `Auto-sorted — rule: ${match.label || 'Compound rule'}`,
+        icon: 'tune',
+        ruleId: match._id,
+        linkable: true,
+      };
+  }
+
+  // 3. Merchant rule
+  if (txn.merchant_name) {
+    const cat = categories.find(c =>
+      (c.rules?.merchant_name || []).some(m =>
+        m.toLowerCase() === txn.merchant_name.toLowerCase()
+      )
+    );
+    if (cat)
+      return {
+        type: 'merchant_rule',
+        label: `Auto-sorted — all ${txn.merchant_name} transactions`,
+        icon: 'store',
+        linkable: true,
+      };
+  }
+
+  // 4. Name rule
+  if (txn.name) {
+    const cat = categories.find(c =>
+      (c.rules?.name || []).some(n => n.toLowerCase() === txn.name.toLowerCase())
+    );
+    if (cat)
+      return {
+        type: 'name_rule',
+        label: `Auto-sorted — all "${txn.name}" transactions`,
+        icon: 'label',
+        linkable: true,
+      };
+  }
+
+  // 5. Plaid PFC mapping
+  const pfc = txn.personal_finance_category?.primary;
+  if (pfc) {
+    const cat = categories.find(c => (c.plaid_pfc || []).includes(pfc));
+    if (cat) return { type: 'plaid_pfc', label: 'Auto-sorted by your bank', icon: 'account_balance' };
+  }
+
+  // 6. Unsorted
+  if (txn.mappedCategory === 'To Sort')
+    return { type: 'unsorted', label: 'Needs sorting', icon: 'help_outline' };
+
+  // 7. Categorized but can't determine source
+  return { type: 'unknown', label: 'Auto-sorted', icon: 'auto_awesome' };
 }
 
 /**

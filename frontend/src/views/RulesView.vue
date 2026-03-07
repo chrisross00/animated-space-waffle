@@ -297,6 +297,14 @@ export default {
 
   async mounted() {
     await ensureAppData(store);
+    const targetRuleId = this.$route.query.rule;
+    if (targetRuleId) {
+      const rule = (store.state.rules || []).find(r => String(r._id) === targetRuleId);
+      if (rule) {
+        this.editingRule = rule;
+        this.ruleEditorOpen = true;
+      }
+    }
   },
 
   methods: {

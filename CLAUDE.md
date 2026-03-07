@@ -166,6 +166,10 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       spend (variable). Could surface in BudgetView as a toggle or summary card, and in
       TrendsView as a stacked breakdown. Needs schema addition (`Basil-Categories`) + UI in
       the category edit dialog.
+- [ ] **`manually_set_at` timestamp** — store `new Date()` alongside `manually_set: true`
+      in the transaction update route (`api.js`). Enables attribution to show *when* the
+      user categorized a transaction ("You categorized this · Mar 3"). Backend-only change;
+      frontend reads the field in `getAttribution()`.
 - [ ] **Spending trend chart: legend improvement** — current ECharts scroll legend
       is awkward on mobile. Consider wrapping HTML legend below chart.
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
@@ -210,6 +214,17 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
       auth locally for faster iteration. Gated by `VITE_DEV_AUTH_BYPASS=true` (frontend) and
       `DEV_AUTH_BYPASS_UID=<firebase-uid>` (backend). Backend guard: only active if
       `NODE_ENV !== 'production'`. Feature is safe—completely absent from production builds.
+
+### Rule editor UX improvements (backlog)
+- [ ] **Rule label placement** — move the "Rule Name" field below the conditions panel
+      so users build conditions first, then see/tweak the auto-generated label. Needs a
+      demo before deciding — may feel worse in practice.
+- [ ] **Rule editor: combobox for merchant name** — replace free-text input with a
+      combobox (type-to-filter + accepts new values) populated from known merchants in
+      `store.state.transactions`. Improves discoverability without locking users in.
+- [ ] **Rule editor: pre-populate name from source transaction** — when creating a rule
+      from a specific transaction, pre-fill the name field with that transaction's name.
+      Full dropdown for name would be too noisy (too many unique values).
 
 ### Maybe / future
 - [ ] **Customizable nav** — user picks which views appear in the bottom toolbar;

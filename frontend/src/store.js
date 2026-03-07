@@ -53,6 +53,9 @@ const store = createStore({
                     transaction.date = updatedTransaction.date
                     transaction.note = updatedTransaction.note
                     transaction.excludeFromTotal = updatedTransaction.excludeFromTotal
+                    if (updatedTransaction.manually_set !== undefined) {
+                        transaction.manually_set = updatedTransaction.manually_set
+                    }
                 }
             }
         console.log('store.js updateTransaction done!', state.transactions)

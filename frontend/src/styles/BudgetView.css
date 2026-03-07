@@ -712,6 +712,16 @@
   padding: var(--basil-space-6) var(--basil-space-4) var(--basil-space-4);
 }
 
+.basil-triage__attribution {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: 2px;
+}
+
 .basil-triage__done-heading {
   font-size: 1.25rem;
   font-weight: 600;

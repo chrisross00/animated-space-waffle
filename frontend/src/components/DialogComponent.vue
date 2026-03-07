@@ -30,6 +30,16 @@
           v-else-if="!dialogBody.merchantName && item?.account && item.account !== '?'"
           class="basil-dialog-txn-subname"
         >{{ item.account }}</div>
+        <div
+          v-if="attribution"
+          class="basil-dialog-txn-attribution"
+          :class="{ 'basil-dialog-txn-attribution--link': attribution.linkable }"
+          @click="attribution.linkable && $emit('view-rule', attribution)"
+        >
+          <q-icon :name="attribution.icon" size="14px" />
+          <span>{{ attribution.label }}</span>
+          <q-icon v-if="attribution.linkable" name="chevron_right" size="14px" />
+        </div>
       </div>
 
       <div class="basil-dialog-fields">
@@ -312,6 +322,24 @@
   color: var(--basil-text-muted);
 }
 
+.basil-dialog-txn-attribution {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: var(--basil-space-1);
+}
+
+.basil-dialog-txn-attribution--link {
+  cursor: pointer;
+  transition: color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-dialog-txn-attribution--link:hover {
+  color: var(--basil-text-secondary);
+}
+
 /* ── Fields ── */
 .basil-dialog-fields {
   display: flex;
@@ -487,6 +515,10 @@
           type: Object,
           default: null,
         },
+        attribution: {
+          type: Object,
+          default: null,
+        },
       },
       data(){
         // console.log('beginning of data log: ', this.item)
@@ -523,7 +555,7 @@
       },
       
 components: {},
-emits: ['update-transaction', 'update-category', 'add-category'],
+emits: ['update-transaction', 'update-category', 'add-category', 'view-rule'],
 computed: {
     dialogSubtitle() {
         if (this.dialogType === 'editCategory') return 'Edit Category';

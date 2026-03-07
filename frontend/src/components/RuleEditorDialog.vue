@@ -42,13 +42,25 @@
               <span class="basil-re__condition-label">Merchant name</span>
               <q-toggle v-model="form.merchantName.active" color="primary" dense size="sm" />
             </div>
-            <q-input
-              v-if="form.merchantName.active"
-              v-model="form.merchantName.value"
-              outlined dense
-              placeholder="e.g. Zelle"
-              class="basil-re__condition-input"
-            />
+            <div v-if="form.merchantName.active" class="basil-re__condition-row">
+              <q-select
+                v-model="form.merchantName.op"
+                :options="textOpOptions"
+                option-value="value" option-label="label"
+                emit-value map-options outlined dense
+                class="basil-re__text-op"
+              />
+              <q-select
+                v-model="form.merchantName.value"
+                :options="filteredMerchants"
+                use-input new-value-mode="add-unique"
+                input-debounce="0"
+                @filter="filterMerchants"
+                outlined dense
+                placeholder="e.g. Zelle"
+                class="basil-re__condition-input"
+              />
+            </div>
           </div>
 
           <!-- Transaction name -->
@@ -57,13 +69,21 @@
               <span class="basil-re__condition-label">Transaction name</span>
               <q-toggle v-model="form.name.active" color="primary" dense size="sm" />
             </div>
-            <q-input
-              v-if="form.name.active"
-              v-model="form.name.value"
-              outlined dense
-              placeholder="e.g. Venmo"
-              class="basil-re__condition-input"
-            />
+            <div v-if="form.name.active" class="basil-re__condition-row">
+              <q-select
+                v-model="form.name.op"
+                :options="textOpOptions"
+                option-value="value" option-label="label"
+                emit-value map-options outlined dense
+                class="basil-re__text-op"
+              />
+              <q-input
+                v-model="form.name.value"
+                outlined dense
+                placeholder="e.g. Venmo"
+                class="basil-re__condition-input"
+              />
+            </div>
           </div>
 
           <!-- Amount -->
@@ -83,7 +103,7 @@
                 class="basil-re__amount-op"
               />
               <q-input
-                v-if="form.amount.op === 'eq'"
+                v-if="['eq', 'gt', 'lt'].includes(form.amount.op)"
                 v-model.number="form.amount.value"
                 outlined dense type="number" min="0"
                 prefix="$"
@@ -322,8 +342,12 @@
   gap: var(--basil-space-2);
 }
 
+.basil-re__text-op {
+  flex: 0 0 100px;
+}
+
 .basil-re__amount-op {
-  flex: 0 0 110px;
+  flex: 0 0 130px;
 }
 
 .basil-re__amount-val {
@@ -488,15 +512,22 @@ import { saveCompoundRule, updateCompoundRule } from '@/firebase';
 import { matchesCondition, sweepStore } from '@/utils/ruleUtils';
 import dayjs from 'dayjs';
 
+const TEXT_OP_OPTIONS = [
+  { label: 'Is',       value: 'eq' },
+  { label: 'Contains', value: 'contains' },
+];
+
 const AMOUNT_OP_OPTIONS = [
-  { label: 'Exactly',  value: 'eq' },
-  { label: 'Between',  value: 'range' },
+  { label: 'Exactly',      value: 'eq' },
+  { label: 'Greater than', value: 'gt' },
+  { label: 'Less than',    value: 'lt' },
+  { label: 'Between',      value: 'range' },
 ];
 
 const EMPTY_FORM = () => ({
   label: '',
-  merchantName: { active: false, value: '' },
-  name:         { active: false, value: '' },
+  merchantName: { active: false, op: 'eq', value: '' },
+  name:         { active: false, op: 'eq', value: '' },
   amount:       { active: false, op: 'eq', value: null, min: null, max: null },
   institution:  { active: false, value: '' },
   categoryName: '',
@@ -520,8 +551,10 @@ export default {
       saving: false,
       reapply: true,
       showMatches: false,
+      textOpOptions: TEXT_OP_OPTIONS,
       amountOpOptions: AMOUNT_OP_OPTIONS,
       userEditedLabel: false,
+      filteredMerchants: [],
     };
   },
 
@@ -535,16 +568,24 @@ export default {
     institutionOptions() {
       return (store.state.user?.accounts || []).slice().sort();
     },
+    merchantOptions() {
+      const names = new Set();
+      for (const t of (store.state.transactions || [])) {
+        if (t.merchant_name) names.add(t.merchant_name);
+      }
+      return [...names].sort();
+    },
     conditions() {
       const out = [];
       if (this.form.merchantName.active && this.form.merchantName.value.trim())
-        out.push({ field: 'merchant_name', op: 'eq', value: this.form.merchantName.value.trim() });
+        out.push({ field: 'merchant_name', op: this.form.merchantName.op, value: this.form.merchantName.value.trim() });
       if (this.form.name.active && this.form.name.value.trim())
-        out.push({ field: 'name', op: 'eq', value: this.form.name.value.trim() });
+        out.push({ field: 'name', op: this.form.name.op, value: this.form.name.value.trim() });
       if (this.form.amount.active) {
-        if (this.form.amount.op === 'eq' && this.form.amount.value != null)
-          out.push({ field: 'amount', op: 'eq', value: Number(this.form.amount.value) });
-        else if (this.form.amount.op === 'range' && this.form.amount.min != null && this.form.amount.max != null)
+        const amtOp = this.form.amount.op;
+        if ((amtOp === 'eq' || amtOp === 'gt' || amtOp === 'lt') && this.form.amount.value != null)
+          out.push({ field: 'amount', op: amtOp, value: Number(this.form.amount.value) });
+        else if (amtOp === 'range' && this.form.amount.min != null && this.form.amount.max != null)
           out.push({ field: 'amount', op: 'range', min: Number(this.form.amount.min), max: Number(this.form.amount.max) });
       }
       if (this.form.institution.active && this.form.institution.value)
@@ -570,9 +611,14 @@ export default {
       else if (this.form.name.active && this.form.name.value.trim())
         parts.push(this.form.name.value.trim());
       if (this.form.amount.active) {
-        if (this.form.amount.op === 'eq' && this.form.amount.value != null)
+        const amtOp = this.form.amount.op;
+        if (amtOp === 'eq' && this.form.amount.value != null)
           parts.push(`$${this.form.amount.value}`);
-        else if (this.form.amount.op === 'range' && this.form.amount.min != null && this.form.amount.max != null)
+        else if (amtOp === 'gt' && this.form.amount.value != null)
+          parts.push(`> $${this.form.amount.value}`);
+        else if (amtOp === 'lt' && this.form.amount.value != null)
+          parts.push(`< $${this.form.amount.value}`);
+        else if (amtOp === 'range' && this.form.amount.min != null && this.form.amount.max != null)
           parts.push(`$${this.form.amount.min}–$${this.form.amount.max}`);
       }
       if (this.form.institution.active && this.form.institution.value)
@@ -600,12 +646,12 @@ export default {
         this.form.note = this.rule.action?.note || '';
         for (const c of (this.rule.conditions || [])) {
           if (c.field === 'merchant_name') {
-            this.form.merchantName = { active: true, value: c.value };
+            this.form.merchantName = { active: true, op: c.op || 'eq', value: c.value };
           } else if (c.field === 'name') {
-            this.form.name = { active: true, value: c.value };
+            this.form.name = { active: true, op: c.op || 'eq', value: c.value };
           } else if (c.field === 'amount') {
-            if (c.op === 'eq')
-              this.form.amount = { active: true, op: 'eq', value: c.value, min: null, max: null };
+            if (c.op === 'eq' || c.op === 'gt' || c.op === 'lt')
+              this.form.amount = { active: true, op: c.op, value: c.value, min: null, max: null };
             else if (c.op === 'range')
               this.form.amount = { active: true, op: 'range', value: null, min: c.min, max: c.max };
           } else if (c.field === 'account') {
@@ -625,6 +671,14 @@ export default {
     },
     onLabelInput() {
       this.userEditedLabel = true;
+    },
+    filterMerchants(val, update) {
+      update(() => {
+        const needle = (val || '').toLowerCase();
+        this.filteredMerchants = needle
+          ? this.merchantOptions.filter(m => m.toLowerCase().includes(needle))
+          : this.merchantOptions;
+      });
     },
     async save() {
       if (!this.isValid) return;

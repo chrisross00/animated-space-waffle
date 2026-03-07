@@ -255,7 +255,9 @@
                         <DialogComponent :dialogType="'transaction'" :item="item"
                         :dropDown="this.categoryMonthlyLimits"
                         :similarity-data="dialogSimilarityData"
-                        @update-transaction="onSubmit"/>
+                        :attribution="getTransactionAttribution(item)"
+                        @update-transaction="onSubmit"
+                        @view-rule="handleViewRule"/>
                       </q-dialog>
                     </q-item>
                 </div>
@@ -423,7 +425,9 @@
             :item="tableDialogTransaction"
             :dropDown="categoryMonthlyLimits"
             :similarity-data="tableDialogSimilarityData"
+            :attribution="getTransactionAttribution(tableDialogTransaction)"
             @update-transaction="onSubmit"
+            @view-rule="handleViewRule"
           />
         </q-dialog>
       </div>
@@ -518,6 +522,13 @@
             <div class="basil-triage__merchant">{{ triageItems[0].merchant_name || triageItems[0].name }}</div>
             <div v-if="!triageItems[0].merchant_name && triageItems[0].account && triageItems[0].account !== '?'" class="basil-triage__institution">{{ triageItems[0].account }}</div>
             <div class="basil-triage__date">{{ formatDate(triageItems[0].date) }}</div>
+            <div
+              v-if="triageAttribution && triageAttribution.type !== 'unsorted'"
+              class="basil-triage__attribution"
+            >
+              <q-icon :name="triageAttribution.icon" size="14px" />
+              {{ triageAttribution.label }}
+            </div>
           </div>
 
           <!-- Suggestion chip -->
@@ -595,7 +606,7 @@
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
-  import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions } from '@/utils/ruleUtils';
+  import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
 
 // import e from 'express';
 
@@ -883,6 +894,10 @@
           t.mappedCategory !== this.triageCategory && !t.manually_set
         ).length;
       },
+      triageAttribution() {
+        if (!this.triageItems?.length) return null;
+        return this.getTransactionAttribution(this.triageItems[0]);
+      },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
       },
@@ -1106,6 +1121,17 @@ monthStats() {
             if (list) this.dialogBody.currentCategoryDetails.merchants = list;
           });
           return this.categoryClickers[category.categoryName];
+      },
+      getTransactionAttribution(txn) {
+        return getAttribution(txn, store.state.categories, store.state.rules);
+      },
+      handleViewRule(attribution) {
+        // Close whichever dialog is open
+        Object.keys(this.transactionClickers).forEach(k => { this.transactionClickers[k] = false; });
+        this.tableDialogOpen = false;
+        // Navigate to RulesView, with ruleId for compound rules
+        const query = attribution.ruleId ? { rule: attribution.ruleId } : {};
+        this.$router.push({ path: '/rules', query });
       },
       buildEditTransactionDialog(e){ // Should this live on DialogComponent?
           let isOriginalCategoryNameSet = false;

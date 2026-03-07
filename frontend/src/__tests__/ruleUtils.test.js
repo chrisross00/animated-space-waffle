@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions } from '@/utils/ruleUtils'
+import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -37,6 +37,25 @@ describe('matchesCondition — merchant_name', () => {
 })
 
 // ---------------------------------------------------------------------------
+// matchesCondition — merchant_name (contains)
+// ---------------------------------------------------------------------------
+
+describe('matchesCondition — merchant_name (contains)', () => {
+  it('matches substring case-insensitively', () => {
+    expect(matchesCondition(txn({ merchant_name: 'Starbucks Coffee' }), cond('merchant_name', 'contains', { value: 'starbucks' }))).toBe(true)
+    expect(matchesCondition(txn({ merchant_name: 'Starbucks Coffee' }), cond('merchant_name', 'contains', { value: 'COFFEE' }))).toBe(true)
+  })
+
+  it('rejects when substring is absent', () => {
+    expect(matchesCondition(txn({ merchant_name: 'Starbucks' }), cond('merchant_name', 'contains', { value: 'Uber' }))).toBe(false)
+  })
+
+  it('rejects null merchant_name', () => {
+    expect(matchesCondition(txn({ merchant_name: null }), cond('merchant_name', 'contains', { value: 'Star' }))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // matchesCondition — name
 // ---------------------------------------------------------------------------
 
@@ -51,6 +70,21 @@ describe('matchesCondition — name', () => {
 
   it('does not match wrong value', () => {
     expect(matchesCondition(txn({ name: 'Zelle' }), cond('name', 'eq', { value: 'Venmo' }))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// matchesCondition — name (contains)
+// ---------------------------------------------------------------------------
+
+describe('matchesCondition — name (contains)', () => {
+  it('matches substring case-insensitively', () => {
+    expect(matchesCondition(txn({ name: 'Zelle Payment From John' }), cond('name', 'contains', { value: 'zelle' }))).toBe(true)
+    expect(matchesCondition(txn({ name: 'Zelle Payment From John' }), cond('name', 'contains', { value: 'PAYMENT' }))).toBe(true)
+  })
+
+  it('rejects when substring is absent', () => {
+    expect(matchesCondition(txn({ name: 'Zelle Payment' }), cond('name', 'contains', { value: 'Venmo' }))).toBe(false)
   })
 })
 
@@ -85,6 +119,52 @@ describe('matchesCondition — amount (range)', () => {
   it('does not match amount outside range', () => {
     expect(matchesCondition(txn({ amount: 5 }), cond('amount', 'range', { min: 10, max: 100 }))).toBe(false)
     expect(matchesCondition(txn({ amount: 101 }), cond('amount', 'range', { min: 10, max: 100 }))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// matchesCondition — amount (gt)
+// ---------------------------------------------------------------------------
+
+describe('matchesCondition — amount (gt)', () => {
+  it('matches when abs amount is greater than value', () => {
+    expect(matchesCondition(txn({ amount: 50 }), cond('amount', 'gt', { value: 25 }))).toBe(true)
+  })
+
+  it('rejects when abs amount equals value', () => {
+    expect(matchesCondition(txn({ amount: 25 }), cond('amount', 'gt', { value: 25 }))).toBe(false)
+  })
+
+  it('rejects when abs amount is less than value', () => {
+    expect(matchesCondition(txn({ amount: 10 }), cond('amount', 'gt', { value: 25 }))).toBe(false)
+  })
+
+  it('works with negative amounts (uses absolute value)', () => {
+    expect(matchesCondition(txn({ amount: -50 }), cond('amount', 'gt', { value: 25 }))).toBe(true)
+    expect(matchesCondition(txn({ amount: -10 }), cond('amount', 'gt', { value: 25 }))).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// matchesCondition — amount (lt)
+// ---------------------------------------------------------------------------
+
+describe('matchesCondition — amount (lt)', () => {
+  it('matches when abs amount is less than value', () => {
+    expect(matchesCondition(txn({ amount: 10 }), cond('amount', 'lt', { value: 25 }))).toBe(true)
+  })
+
+  it('rejects when abs amount equals value', () => {
+    expect(matchesCondition(txn({ amount: 25 }), cond('amount', 'lt', { value: 25 }))).toBe(false)
+  })
+
+  it('rejects when abs amount is greater than value', () => {
+    expect(matchesCondition(txn({ amount: 50 }), cond('amount', 'lt', { value: 25 }))).toBe(false)
+  })
+
+  it('works with negative amounts (uses absolute value)', () => {
+    expect(matchesCondition(txn({ amount: -10 }), cond('amount', 'lt', { value: 25 }))).toBe(true)
+    expect(matchesCondition(txn({ amount: -50 }), cond('amount', 'lt', { value: 25 }))).toBe(false)
   })
 })
 
@@ -498,5 +578,95 @@ describe('findSimilarTransactions', () => {
     const result = findSimilarTransactions(anchor, [anchor])
     expect(result.strategy).toBeNull()
     expect(result.allCount).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// getAttribution
+// ---------------------------------------------------------------------------
+
+describe('getAttribution', () => {
+  const categories = [
+    { _id: 'c1', category: 'Coffee', rules: { merchant_name: ['Starbucks'], name: ['Morning Brew'] }, plaid_pfc: [] },
+    { _id: 'c2', category: 'Transfers', rules: {}, plaid_pfc: ['TRANSFER_IN'] },
+  ]
+
+  const compoundRule = {
+    _id: 'r1',
+    label: 'Uber rides',
+    conditions: [{ field: 'merchant_name', op: 'eq', value: 'Uber' }],
+    action: { categoryName: 'Transport' },
+  }
+
+  it('returns manual attribution for manually_set transactions', () => {
+    const result = getAttribution(txn({ manually_set: true }), categories, [])
+    expect(result.type).toBe('manual')
+    expect(result.label).toBe('You categorized this')
+    expect(result.icon).toBe('edit')
+    expect(result.linkable).toBeUndefined()
+  })
+
+  it('returns compound_rule attribution when a compound rule matches', () => {
+    const result = getAttribution(txn({ merchant_name: 'Uber' }), categories, [compoundRule])
+    expect(result.type).toBe('compound_rule')
+    expect(result.ruleId).toBe('r1')
+    expect(result.linkable).toBe(true)
+    expect(result.label).toContain('Uber rides')
+  })
+
+  it('returns merchant_rule attribution when merchant_name rule matches', () => {
+    const result = getAttribution(txn({ merchant_name: 'Starbucks' }), categories, [])
+    expect(result.type).toBe('merchant_rule')
+    expect(result.linkable).toBe(true)
+    expect(result.label).toContain('Starbucks')
+  })
+
+  it('returns name_rule attribution when name rule matches', () => {
+    const result = getAttribution(txn({ merchant_name: null, name: 'Morning Brew' }), categories, [])
+    expect(result.type).toBe('name_rule')
+    expect(result.linkable).toBe(true)
+    expect(result.label).toContain('Morning Brew')
+  })
+
+  it('returns plaid_pfc attribution when PFC mapping matches', () => {
+    const result = getAttribution(
+      txn({ merchant_name: null, name: 'Bank Transfer', personal_finance_category: { primary: 'TRANSFER_IN' } }),
+      categories, []
+    )
+    expect(result.type).toBe('plaid_pfc')
+    expect(result.label).toBe('Auto-sorted by your bank')
+    expect(result.linkable).toBeUndefined()
+  })
+
+  it('returns unsorted for To Sort transactions with no matching rule', () => {
+    const result = getAttribution(txn({ merchant_name: null, name: 'Random', mappedCategory: 'To Sort' }), categories, [])
+    expect(result.type).toBe('unsorted')
+    expect(result.label).toBe('Needs sorting')
+  })
+
+  it('returns unknown for categorized transactions with no matching rule', () => {
+    const result = getAttribution(txn({ merchant_name: null, name: 'Random', mappedCategory: 'Groceries' }), categories, [])
+    expect(result.type).toBe('unknown')
+    expect(result.label).toBe('Auto-sorted')
+  })
+
+  it('compound rule wins over merchant rule when both match', () => {
+    const starbucksCompound = {
+      _id: 'r2',
+      label: 'Starbucks compound',
+      conditions: [{ field: 'merchant_name', op: 'eq', value: 'Starbucks' }],
+      action: { categoryName: 'Coffee' },
+    }
+    const result = getAttribution(txn({ merchant_name: 'Starbucks' }), categories, [starbucksCompound])
+    expect(result.type).toBe('compound_rule')
+    expect(result.ruleId).toBe('r2')
+  })
+
+  it('manually_set wins over everything', () => {
+    const result = getAttribution(
+      txn({ manually_set: true, merchant_name: 'Starbucks' }),
+      categories, [compoundRule]
+    )
+    expect(result.type).toBe('manual')
   })
 })

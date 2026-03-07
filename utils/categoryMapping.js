@@ -2,13 +2,19 @@ function matchesCondition(txn, condition) {
   const { field, op, value, min, max } = condition;
   switch (field) {
     case 'name':
-      return op === 'eq' && (txn.name || '').toLowerCase() === (value || '').toLowerCase();
+      if (op === 'eq') return (txn.name || '').toLowerCase() === (value || '').toLowerCase();
+      if (op === 'contains') return (txn.name || '').toLowerCase().includes((value || '').toLowerCase());
+      return false;
     case 'merchant_name':
-      return op === 'eq' && txn.merchant_name != null &&
-        txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
+      if (txn.merchant_name == null) return false;
+      if (op === 'eq') return txn.merchant_name.toLowerCase() === (value || '').toLowerCase();
+      if (op === 'contains') return txn.merchant_name.toLowerCase().includes((value || '').toLowerCase());
+      return false;
     case 'amount': {
       const abs = Math.abs(txn.amount);
       if (op === 'eq') return abs === value;
+      if (op === 'gt') return abs > value;
+      if (op === 'lt') return abs < value;
       if (op === 'range') return abs >= min && abs <= max;
       return false;
     }

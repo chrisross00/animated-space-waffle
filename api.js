@@ -430,6 +430,10 @@ router.get('/rules', async (req, res) => {
   }
 });
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function sweepCompoundRule(uid, conditions, action) {
   if (action?.type !== 'categorize' || !Array.isArray(conditions)) return;
   const txnFilter = { userId: uid, manually_set: { $ne: true } };
@@ -437,7 +441,12 @@ async function sweepCompoundRule(uid, conditions, action) {
   for (const c of conditions) {
     if (c.field === 'amount') {
       if (c.op === 'eq')    amountExprs.push({ $eq: [{ $abs: '$amount' }, c.value] });
+      if (c.op === 'gt')    amountExprs.push({ $gt: [{ $abs: '$amount' }, c.value] });
+      if (c.op === 'lt')    amountExprs.push({ $lt: [{ $abs: '$amount' }, c.value] });
       if (c.op === 'range') amountExprs.push({ $gte: [{ $abs: '$amount' }, c.min] }, { $lte: [{ $abs: '$amount' }, c.max] });
+    } else if (c.field === 'merchant_name' || c.field === 'name') {
+      if (c.op === 'eq') txnFilter[c.field] = c.value;
+      if (c.op === 'contains') txnFilter[c.field] = { $regex: escapeRegex(c.value), $options: 'i' };
     } else if (c.op === 'eq') {
       txnFilter[c.field] = c.value;
     }

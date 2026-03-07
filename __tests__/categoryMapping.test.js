@@ -152,6 +152,67 @@ describe('evaluateCompoundRules — merchant_name + amount', () => {
   })
 })
 
+describe('evaluateCompoundRules — merchant_name (contains)', () => {
+  it('matches substring case-insensitively', () => {
+    const rules = [rule([{ field: 'merchant_name', op: 'contains', value: 'star' }], 'Coffee')]
+    expect(evaluateCompoundRules(rules, txn({ merchant_name: 'Starbucks Coffee' }))).not.toBeNull()
+  })
+
+  it('rejects when substring is absent', () => {
+    const rules = [rule([{ field: 'merchant_name', op: 'contains', value: 'uber' }], 'Transport')]
+    expect(evaluateCompoundRules(rules, txn({ merchant_name: 'Starbucks' }))).toBeNull()
+  })
+
+  it('rejects null merchant_name', () => {
+    const rules = [rule([{ field: 'merchant_name', op: 'contains', value: 'star' }], 'Coffee')]
+    expect(evaluateCompoundRules(rules, txn({ merchant_name: null }))).toBeNull()
+  })
+})
+
+describe('evaluateCompoundRules — name (contains)', () => {
+  it('matches substring case-insensitively', () => {
+    const rules = [rule([{ field: 'name', op: 'contains', value: 'zelle' }], 'Transfers')]
+    expect(evaluateCompoundRules(rules, txn({ name: 'Zelle Payment From John' }))).not.toBeNull()
+  })
+
+  it('rejects when substring is absent', () => {
+    const rules = [rule([{ field: 'name', op: 'contains', value: 'venmo' }], 'Transfers')]
+    expect(evaluateCompoundRules(rules, txn({ name: 'Zelle Payment' }))).toBeNull()
+  })
+})
+
+describe('evaluateCompoundRules — amount (gt / lt)', () => {
+  it('gt matches when abs amount exceeds value', () => {
+    const rules = [rule([{ field: 'amount', op: 'gt', value: 50 }], 'Large')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 100 }))).not.toBeNull()
+  })
+
+  it('gt rejects when abs amount equals value', () => {
+    const rules = [rule([{ field: 'amount', op: 'gt', value: 50 }], 'Large')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 50 }))).toBeNull()
+  })
+
+  it('gt works with negative amounts', () => {
+    const rules = [rule([{ field: 'amount', op: 'gt', value: 50 }], 'Large')]
+    expect(evaluateCompoundRules(rules, txn({ amount: -100 }))).not.toBeNull()
+  })
+
+  it('lt matches when abs amount is below value', () => {
+    const rules = [rule([{ field: 'amount', op: 'lt', value: 50 }], 'Small')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 25 }))).not.toBeNull()
+  })
+
+  it('lt rejects when abs amount equals value', () => {
+    const rules = [rule([{ field: 'amount', op: 'lt', value: 50 }], 'Small')]
+    expect(evaluateCompoundRules(rules, txn({ amount: 50 }))).toBeNull()
+  })
+
+  it('lt works with negative amounts', () => {
+    const rules = [rule([{ field: 'amount', op: 'lt', value: 50 }], 'Small')]
+    expect(evaluateCompoundRules(rules, txn({ amount: -25 }))).not.toBeNull()
+  })
+})
+
 describe('evaluateCompoundRules — amount range', () => {
   it('matches amount within range', () => {
     const rules = [rule([{ field: 'amount', op: 'range', min: 100, max: 500 }], 'Large Purchase')]
