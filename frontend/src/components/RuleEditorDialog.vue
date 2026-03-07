@@ -12,6 +12,9 @@
         <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
       </div>
 
+      <!-- Scrollable middle: body + matched transactions -->
+      <div class="basil-re__scroll">
+
       <!-- Body -->
       <div class="basil-re__body">
 
@@ -163,11 +166,54 @@
 
       </div>
 
+      <!-- Matched Transactions -->
+      <div v-if="conditions.length > 0" class="basil-re__matches">
+        <div class="basil-re__matches-toggle" @click="showMatches = !showMatches">
+          <span class="basil-re__match-count" :class="{ 'basil-re__match-count--none': matchCount === 0 }">
+            Matched transactions &middot; {{ matchCount }}
+          </span>
+          <q-icon
+            name="chevron_right"
+            size="18px"
+            class="basil-re__matches-chevron"
+            :class="{ 'basil-re__matches-chevron--open': showMatches }"
+          />
+        </div>
+        <q-slide-transition>
+          <div v-show="showMatches">
+            <div v-if="matchedTransactions.length === 0" class="basil-re__matches-empty">
+              No transactions match these conditions
+            </div>
+            <div v-else class="basil-re__matches-list">
+              <div
+                v-for="t in matchedTransactions"
+                :key="t._id"
+                class="basil-re__matches-row"
+              >
+                <div class="basil-re__matches-left">
+                  <div class="basil-re__matches-name">{{ t.merchant_name || t.name }}</div>
+                  <div class="basil-re__matches-detail">
+                    {{ formatDate(t.date) }}<template v-if="t.account"> &middot; {{ t.account }}</template>
+                  </div>
+                </div>
+                <div class="basil-re__matches-right">
+                  <span class="basil-re__matches-amount basil-mono">${{ Math.abs(t.amount).toFixed(2) }}</span>
+                  <span v-if="t.category" class="basil-re__matches-cat">{{ t.category }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </q-slide-transition>
+      </div>
+
+      </div><!-- /basil-re__scroll -->
+
       <!-- Footer -->
       <div class="basil-re__footer">
-        <span class="basil-re__match-count" :class="{ 'basil-re__match-count--none': matchCount === 0 }">
-          {{ matchCountLabel }}
+        <span v-if="conditions.length === 0" class="basil-re__match-count basil-re__match-count--none">
+          No conditions set
         </span>
+        <span v-else />
         <div class="basil-re__footer-actions">
           <q-checkbox
             v-if="isEdit"
@@ -193,6 +239,17 @@
 .basil-re__card {
   width: 100%;
   max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+/* Scrollable middle section (body + matched transactions) */
+.basil-re__scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  border-top: 1px solid var(--basil-border);
 }
 
 /* Body: side-by-side on md+, stacked on mobile */
@@ -200,11 +257,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  flex: 1;
-  overflow-y: auto;
-  border-top: 1px solid var(--basil-border);
-  border-bottom: 1px solid var(--basil-border);
 }
+
 
 @media (max-width: 599px) {
   .basil-re__body {
@@ -289,6 +343,7 @@
   justify-content: space-between;
   padding: var(--basil-space-3) var(--basil-space-5);
   flex-shrink: 0;
+  border-top: 1px solid var(--basil-border);
 }
 
 .basil-re__footer-actions {
@@ -327,12 +382,111 @@
   border-radius: var(--basil-radius-sm);
   padding: 1px 6px;
 }
+
+/* Matched transactions section */
+.basil-re__matches {
+  border-top: 1px solid var(--basil-border);
+}
+
+.basil-re__matches-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--basil-space-3) var(--basil-space-5);
+  cursor: pointer;
+  user-select: none;
+}
+
+.basil-re__matches-toggle:hover {
+  background: var(--basil-surface-raised);
+}
+
+.basil-re__matches-chevron {
+  color: var(--basil-text-muted);
+  transition: transform 0.2s ease;
+}
+
+.basil-re__matches-chevron--open {
+  transform: rotate(90deg);
+}
+
+.basil-re__matches-list {
+  border-top: 1px solid var(--basil-border);
+}
+
+.basil-re__matches-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--basil-space-2) var(--basil-space-5);
+  gap: var(--basil-space-3);
+}
+
+.basil-re__matches-row:not(:last-child) {
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-re__matches-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.basil-re__matches-name {
+  font-size: 0.875rem;
+  color: var(--basil-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basil-re__matches-detail {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basil-re__matches-right {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  flex-shrink: 0;
+}
+
+.basil-re__matches-amount {
+  font-size: 0.8125rem;
+  color: var(--basil-text);
+}
+
+.basil-re__matches-cat {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--basil-text-muted);
+  background: var(--basil-surface-raised);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-sm);
+  padding: 1px 6px;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.basil-re__matches-empty {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  padding: var(--basil-space-4) var(--basil-space-5);
+  text-align: center;
+  border-top: 1px solid var(--basil-border);
+}
 </style>
 
 <script>
 import store from '../store';
 import { saveCompoundRule, updateCompoundRule } from '@/firebase';
 import { matchesCondition, sweepStore } from '@/utils/ruleUtils';
+import dayjs from 'dayjs';
 
 const AMOUNT_OP_OPTIONS = [
   { label: 'Exactly',  value: 'eq' },
@@ -365,6 +519,7 @@ export default {
       form: EMPTY_FORM(),
       saving: false,
       reapply: true,
+      showMatches: false,
       amountOpOptions: AMOUNT_OP_OPTIONS,
       userEditedLabel: false,
     };
@@ -399,15 +554,14 @@ export default {
     isValid() {
       return this.conditions.length > 0 && !!this.form.categoryName && !!this.form.label.trim();
     },
-    matchCount() {
-      if (this.conditions.length === 0) return 0;
-      return (store.state.transactions || []).filter(t =>
-        this.conditions.every(c => matchesCondition(t, c))
-      ).length;
+    matchedTransactions() {
+      if (this.conditions.length === 0) return [];
+      return (store.state.transactions || [])
+        .filter(t => this.conditions.every(c => matchesCondition(t, c)))
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     },
-    matchCountLabel() {
-      if (this.conditions.length === 0) return 'No conditions set';
-      return this.matchCount === 1 ? 'Matches 1 transaction' : `Matches ${this.matchCount} transactions`;
+    matchCount() {
+      return this.matchedTransactions.length;
     },
     autoLabel() {
       const parts = [];
@@ -464,6 +618,10 @@ export default {
       this.form = EMPTY_FORM();
       this.userEditedLabel = false;
       this.reapply = true;
+      this.showMatches = false;
+    },
+    formatDate(date) {
+      return dayjs(date).format('MMM D, YYYY');
     },
     onLabelInput() {
       this.userEditedLabel = true;
