@@ -78,10 +78,10 @@ export function findExistingRule(store, conditions) {
  *
  * @param {object}   anchor       - The transaction to find matches for
  * @param {object[]} transactions - All transactions to search
- * @returns {object} { matches, toSortCount, allCount, strategy, ruleType, conditions, ruleField, ruleValue, label }
+ * @returns {object} { matches, allCount, strategy, ruleType, conditions, ruleField, ruleValue, label }
  */
 export function findSimilarTransactions(anchor, transactions) {
-  const empty = { matches: [], toSortCount: 0, allCount: 0, strategy: null, ruleType: null, conditions: [], ruleField: null, ruleValue: null, label: '' };
+  const empty = { matches: [], allCount: 0, strategy: null, ruleType: null, conditions: [], ruleField: null, ruleValue: null, label: '' };
   if (!anchor || !transactions?.length) return empty;
 
   const hasMerchant = anchor.merchant_name != null && anchor.merchant_name !== '';
@@ -135,7 +135,6 @@ export function findSimilarTransactions(anchor, transactions) {
 
   return {
     matches,
-    toSortCount: matches.filter(t => t.mappedCategory === 'To Sort' && !t.manually_set).length,
     allCount: matches.length,
     strategy,
     ruleType,

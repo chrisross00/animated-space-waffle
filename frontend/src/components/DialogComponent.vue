@@ -66,8 +66,8 @@
         <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
           <q-checkbox v-model="dialogBody.createRule" dense color="primary">
             <template #default>
-              <span v-if="similarityData.toSortCount > 0">
-                Also categorize {{ similarityData.toSortCount }} similar
+              <span v-if="actionableCount > 0">
+                Also categorize {{ actionableCount }} similar
               </span>
               <span v-else>Remember for future "{{ similarityData.label }}"</span>
             </template>
@@ -509,7 +509,7 @@
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
-                createRule: this.similarityData?.toSortCount > 0,
+                createRule: this.similarityData?.matches?.some(t => t.mappedCategory !== (this.item?.mappedCategory || '') && !t.manually_set) ?? false,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},
@@ -561,6 +561,12 @@ computed: {
         const options = this.dropDown.map(item => item.category);
         options.sort()
         return options
+    },
+    actionableCount() {
+        if (!this.similarityData?.matches) return 0;
+        return this.similarityData.matches.filter(t =>
+            t.mappedCategory !== this.dialogBody.mappedCategory && !t.manually_set
+        ).length;
     },
   },
   methods: {

@@ -393,7 +393,6 @@ describe('findSimilarTransactions', () => {
     expect(result.ruleField).toBe('merchant_name')
     expect(result.ruleValue).toBe('Starbucks')
     expect(result.allCount).toBe(1)
-    expect(result.toSortCount).toBe(1)
     expect(result.label).toBe('Starbucks')
   })
 
@@ -458,29 +457,29 @@ describe('findSimilarTransactions', () => {
     expect(result.matches).toHaveLength(0)
   })
 
-  it('includes manually_set transactions in allCount but excludes from toSortCount', () => {
+  it('includes manually_set transactions in matches', () => {
     const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', merchant_name: 'Starbucks', manually_set: true, mappedCategory: 'To Sort' }),
-      txn({ transaction_id: 'c', merchant_name: 'Starbucks', manually_set: false, mappedCategory: 'To Sort' }),
-      txn({ transaction_id: 'd', merchant_name: 'Starbucks', manually_set: true, mappedCategory: 'Coffee' }),
+      txn({ transaction_id: 'b', merchant_name: 'Starbucks', manually_set: true }),
+      txn({ transaction_id: 'c', merchant_name: 'Starbucks', manually_set: false }),
     ]
     const result = findSimilarTransactions(anchor, all)
-    expect(result.allCount).toBe(3)
-    expect(result.toSortCount).toBe(1)
+    expect(result.allCount).toBe(2)
+    expect(result.matches).toHaveLength(2)
   })
 
-  it('counts toSortCount only for "To Sort" transactions', () => {
+  it('includes matches from all categories', () => {
     const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
     const all = [
       anchor,
       txn({ transaction_id: 'b', merchant_name: 'Starbucks', mappedCategory: 'To Sort' }),
       txn({ transaction_id: 'c', merchant_name: 'Starbucks', mappedCategory: 'Coffee' }),
+      txn({ transaction_id: 'd', merchant_name: 'Starbucks', mappedCategory: 'Food' }),
     ]
     const result = findSimilarTransactions(anchor, all)
-    expect(result.allCount).toBe(2)
-    expect(result.toSortCount).toBe(1)
+    expect(result.allCount).toBe(3)
+    expect(result.matches.map(m => m.mappedCategory)).toEqual(['To Sort', 'Coffee', 'Food'])
   })
 
   it('returns zeroes and null strategy when no matches', () => {
@@ -491,7 +490,6 @@ describe('findSimilarTransactions', () => {
     ]
     const result = findSimilarTransactions(anchor, all)
     expect(result.allCount).toBe(0)
-    expect(result.toSortCount).toBe(0)
     expect(result.strategy).toBe('merchant_name')
   })
 

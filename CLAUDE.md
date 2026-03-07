@@ -153,6 +153,11 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       pin manual overrides so the engine stops second-guessing them, and review/edit
       auto-created rules without opening a full category dialog. Any design work on one
       touches the other.
+- [ ] **Rules view: transaction breakdown per rule** — when viewing or editing a rule in
+      RulesView / RuleEditorDialog, show which transactions it matches and how they're spread
+      across categories (e.g. "15 matched: 10 Coffee, 3 Food, 2 To Sort"). Gives power users
+      visibility into what a rule is doing. Uses `findSimilarTransactions` match data or a
+      dedicated rule-match query. Client-side only (filter `store.state.transactions`).
 - [ ] **Fixed vs variable category dimension** — add a `fixed` / `variable` flag to
       categories (fixed = rent, subscriptions, loan payments; variable = dining, entertainment,
       shopping). Enables a bucketed budget view showing your cost floor (fixed) vs discretionary
@@ -221,6 +226,23 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
 - [ ] **Savings category type** — schema exists, UI exists. Still need to decide
       whether to treat savings transfers as neutral in cash flow or deduct from net.
 
+### P2P / Venmo intelligence (future)
+Venmo/Zelle/Cash App transactions have zero distinguishing data from Plaid (no
+counterparty, no memo, identical `name` field). These ideas tackle that gap:
+
+- [ ] **Split detection** — if a user has a $94 restaurant charge and a $47 Venmo
+      incoming payment shortly after, infer it's a split payback. Present the theory
+      ("Looks like someone paid you back for half of Sushi Palace"), let user confirm
+      with a tap. Turns reconciliation into a satisfying detective game.
+- [ ] **Shared expense circles** — let friend groups opt in. When one user categorizes
+      a shared transaction, auto-suggest the matching category for the other. Small
+      network effect that makes budgeting feel collaborative. Requires multi-user
+      infrastructure (invites, shared context) — significant lift.
+- [ ] **P2P spending insights ("Venmo Wrapped")** — make categorizing P2P transactions
+      unlock insights people want: "You spent $2,400 eating out with friends this year"
+      or "Your most expensive friendship is with Jake ($1,800)." Curiosity about social
+      spending patterns as the motivation loop for manual tagging.
+
 ---
 
 ## Rules Management — implementation notes
@@ -258,11 +280,11 @@ Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, cr
 - `action`: `{ type: 'categorize', categoryName, note? }`
 - Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
 - Created from: Sort Transactions triage card, Edit Transaction dialog, or RuleEditorDialog
-- Both triage + dialog flows use `findSimilarTransactions` to auto-detect matching transactions and determine rule type; users see a simple "Also categorize N similar" checkbox
+- Both triage + dialog flows use `findSimilarTransactions` to auto-detect matching transactions and determine rule type; users see a simple "Also categorize N similar" checkbox with actionable count reactive to the selected target category
 - Creation sweeps all matching non-`manually_set` transactions (client: `sweepStore`; backend: `sweepCompoundRule`)
 - Duplicate guard: `findExistingRule()` in BudgetView checks store; if found with different category, calls `updateCompoundRule`; backend returns 409
 - Edit/delete in RulesView; edit opens RuleEditorDialog with "Apply to existing transactions" checkbox
-- Key helpers in BudgetView: `buildCompoundRule()`, `condKey()`, `findExistingRule()`
+- Key helpers in BudgetView: `triageActionableCount` computed, `triageSimilar` computed
 - Sweep helpers: `sweepStore()` in `ruleUtils.js` (frontend); `sweepCompoundRule()` in `api.js` (backend)
 
 ### Iteration 3.5 — Multi-select in Merchant Browser (maybe)
@@ -351,6 +373,8 @@ Never create classes starting with `q-` (Quasar's namespace).
 - Type-colored category badges in RulesView (design token pairs, BEM classes)
 - Built compound rules feature: multi-condition rules from triage or Edit Transaction dialog, stored in `Basil-Rules`, evaluated first in rule engine
 - Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine — auto-detects matching transactions and creates the right rule type behind the scenes
+- Actionable count in similarity checkbox reactive to selected target category (excludes matches already in target + `manually_set`)
+- Transaction display: category list prefers `merchant_name`; institution context shown in category list, triage card, table, and dialog for null-merchant transactions
 - Built Merchant Browser, rules management iterations 1–3, transaction search/filter
 - Built TrendsView with 4 chart tabs (Spending, Cash Flow, Cumulative, Savings)
 - Fixed Plaid `earliestDate` to be dynamic (30 days back) instead of hardcoded

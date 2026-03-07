@@ -551,8 +551,8 @@
           <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
             <q-checkbox v-model="triageCreateRule" dense color="primary">
               <template #default>
-                <span v-if="triageSimilar.toSortCount > 0">
-                  Also categorize {{ triageSimilar.toSortCount }} similar
+                <span v-if="triageActionableCount > 0">
+                  Also categorize {{ triageActionableCount }} similar
                 </span>
                 <span v-else>Remember for future "{{ triageSimilar.label }}"</span>
               </template>
@@ -876,6 +876,12 @@
         const first = this.triageItems[0];
         if (!first) return null;
         return findSimilarTransactions(first, store.state.transactions);
+      },
+      triageActionableCount() {
+        if (!this.triageSimilar?.matches || !this.triageCategory) return 0;
+        return this.triageSimilar.matches.filter(t =>
+          t.mappedCategory !== this.triageCategory && !t.manually_set
+        ).length;
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
