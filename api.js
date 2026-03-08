@@ -58,18 +58,7 @@ router.get('/getcategories', async (req, res)=>{
   }
 })
 
-const DEFAULT_CATEGORIES = [
-  { category: 'Income',         type: 'income',   monthly_limit: 0, plaid_pfc: ['INCOME', 'TRANSFER_IN'] },
-  { category: 'Housing',        type: 'expense',  monthly_limit: 0, plaid_pfc: ['HOME_IMPROVEMENT'] },
-  { category: 'Food & Dining',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['FOOD_AND_DRINK'] },
-  { category: 'Transportation', type: 'expense',  monthly_limit: 0, plaid_pfc: ['TRANSPORTATION'] },
-  { category: 'Entertainment',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['ENTERTAINMENT', 'TRAVEL'] },
-  { category: 'Shopping',       type: 'expense',  monthly_limit: 0, plaid_pfc: ['GENERAL_MERCHANDISE'] },
-  { category: 'Health',         type: 'expense',  monthly_limit: 0, plaid_pfc: ['MEDICAL', 'PERSONAL_CARE'] },
-  { category: 'Utilities',      type: 'expense',  monthly_limit: 0, plaid_pfc: ['RENT_AND_UTILITIES'] },
-  { category: 'To Sort',        type: 'expense',  monthly_limit: 0, plaid_pfc: [] },
-  { category: 'Payment',        type: 'payment',  monthly_limit: 0, plaid_pfc: ['LOAN_PAYMENTS', 'BANK_FEES'] },
-];
+const { DEFAULT_CATEGORIES } = require('./utils/defaultCategories');
 
 router.get('/seedcategories', async (req, res) => {
   try {
@@ -87,9 +76,53 @@ router.get('/seedcategories', async (req, res) => {
       userId,
     }));
     await insertData('Basil-Categories', toInsert);
+    await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
     res.send(`Seeded ${toInsert.length} categories.`);
   } catch (error) {
     res.status(500).send('Error seeding categories: ' + error);
+  }
+});
+
+router.post('/seedCustomCategories', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.uid;
+    const existing = await findUserData('Basil-Categories', userId);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: `User already has ${existing.length} categories.` });
+    }
+    const { categories } = req.body;
+    if (!Array.isArray(categories) || categories.length === 0) {
+      return res.status(400).json({ error: 'categories must be a non-empty array.' });
+    }
+    if (!categories.some(c => c.category === 'To Sort')) {
+      return res.status(400).json({ error: '"To Sort" category is required.' });
+    }
+    // Check for duplicate PFC assignments
+    const seenPfcs = new Set();
+    for (const cat of categories) {
+      for (const pfc of (cat.plaid_pfc || [])) {
+        if (seenPfcs.has(pfc)) {
+          return res.status(400).json({ error: `Duplicate PFC assignment: ${pfc}` });
+        }
+        seenPfcs.add(pfc);
+      }
+    }
+    const toInsert = categories.map(cat => ({
+      category: cat.category,
+      type: cat.type || 'expense',
+      monthly_limit: cat.monthly_limit || 0,
+      plaid_pfc: cat.plaid_pfc || [],
+      annual_spend: '',
+      rules: {},
+      showOnBudgetPage: true,
+      userId,
+    }));
+    await insertData('Basil-Categories', toInsert);
+    await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
+    res.json({ count: toInsert.length });
+  } catch (error) {
+    res.status(500).json({ error: 'Error seeding custom categories: ' + error });
   }
 });
 
@@ -606,7 +639,8 @@ function createClientSideUser(user, accounts=null) {
     email: user.email,
     name: user.name,
     picture: user.picture,
-    accounts: bankNames
+    accounts: bankNames,
+    onboarded_at: user.onboarded_at || null,
   };
 }
 
@@ -641,15 +675,18 @@ router.post('/nukeAllData', async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
     if (!requireAdmin(uid, res)) return;
-    const [txnResult, catResult, accResult] = await Promise.all([
+    const [txnResult, catResult, accResult, ruleResult] = await Promise.all([
       deleteRemovedData('Plaid-Transactions', { userId: uid }),
       deleteRemovedData('Basil-Categories', { userId: uid }),
       deleteRemovedData('Plaid-Accounts', { userId: uid }),
+      deleteRemovedData('Basil-Rules', { userId: uid }),
     ]);
+    await updateData('Basil-Users', { userId: uid }, { $unset: { onboarded_at: '' } });
     res.json({
       transactions: txnResult.deletedCount,
       categories: catResult.deletedCount,
       accounts: accResult.deletedCount,
+      rules: ruleResult.deletedCount,
     });
   } catch (error) {
     console.error('/nukeAllData error:', error);

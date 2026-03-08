@@ -200,6 +200,19 @@ export async function seedCategories() {
   }
 }
 
+export async function seedCustomCategories(categories) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/seedCustomCategories', {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories }),
+    });
+    if (response.ok) return response.json();
+    else _notify({ type: 'negative', message: `Failed to seed custom categories (${response.status})` });
+  }
+}
+
 export async function cleanPending() {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -341,7 +354,7 @@ export async function nukeAllData() {
     const response = await fetch('/api/nukeAllData', { method: 'POST', headers });
     if (response.ok) {
       const data = await response.json();
-      return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts.`;
+      return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts, ${data.rules} rules.`;
     } else {
       _notify({ type: 'negative', message: `Nuke failed (${response.status})` });
     }
@@ -435,17 +448,20 @@ export async function deleteCompoundRule(ruleId) {
 let _bootstrapPromise = null;
 
 export async function ensureAppData(store) {
+  if (!store.state.user?.onboarded_at) return;       // not onboarded yet
   if (store.state.transactions?.length > 0) return; // already loaded
   if (_bootstrapPromise) return _bootstrapPromise;   // already in flight
 
   store.commit('setBootstrapping', true);
+  const hasAccounts = store.state.user?.accounts?.length > 0;
   _bootstrapPromise = (async () => {
     try {
-      const [txnsResponse, categories, rules] = await Promise.all([
-        fetchTransactions(),
+      const fetches = [
+        hasAccounts ? fetchTransactions() : Promise.resolve(null),
         fetchCategories(),
         fetchRules(),
-      ]);
+      ];
+      const [txnsResponse, categories, rules] = await Promise.all(fetches);
       if (txnsResponse) store.commit('setTransactions', txnsResponse.transactions);
       if (categories)   store.commit('setCategories', categories);
       if (rules)        store.commit('setRules', rules);

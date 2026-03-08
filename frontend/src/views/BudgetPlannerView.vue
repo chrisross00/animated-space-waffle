@@ -15,21 +15,22 @@
 
     <div v-else>
 
-      <!-- No categories yet -->
-      <EmptyState
-        v-if="!hasCategories"
-        icon="category"
-        heading="No categories yet"
-        body="Seed starter categories to begin planning your budget."
-      >
-        <q-btn
-          unelevated color="primary"
-          label="Set up starter categories"
-          :loading="seeding"
-          class="q-mt-sm"
-          @click="handleSeed"
-        />
-      </EmptyState>
+      <!-- Not onboarded — push to onboarding -->
+      <div v-if="!isOnboarded" class="q-mb-md">
+        <q-card class="my-card basil-setup-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Get started</span>
+          </div>
+          <div class="basil-setup-card__body">
+            <q-icon name="auto_awesome" color="primary" size="2rem" />
+            <div>
+              <div class="basil-setup-card__heading">Set up Basil</div>
+              <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
+            </div>
+          </div>
+          <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
+        </q-card>
+      </div>
 
       <div v-else class="basil-planner-content">
 
@@ -139,6 +140,7 @@
                 </template>
               </div>
               <q-icon
+                v-if="isUserCreated(cat)"
                 name="delete_outline"
                 size="16px"
                 class="basil-planner-delete-icon"
@@ -188,10 +190,12 @@
 
 <script>
 import EmptyState from '../components/EmptyState.vue';
-import { seedCategories, fetchCategories, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/firebase';
+import { fetchCategories, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/firebase';
+import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 
 const SECTION_ORDER = ['income', 'expense', 'savings', 'payment'];
+const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
 
 export default {
   name: 'BudgetPlannerView',
@@ -228,13 +232,11 @@ export default {
       addLimit: 0,
       addLoading: false,
 
-      // Seed loading
-      seeding: false,
     };
   },
 
   async mounted() {
-    if (this.isLoggedIn && !this.$store.state.categories?.length) {
+    if (this.isLoggedIn && this.isOnboarded && !this.$store.state.categories?.length) {
       const cats = await fetchCategories();
       if (cats) store.commit('setCategories', cats);
     }
@@ -244,8 +246,8 @@ export default {
     isLoggedIn() {
       return !!this.$store.state.session;
     },
-    hasCategories() {
-      return this.$store.state.categories?.length > 0;
+    isOnboarded() {
+      return !!this.$store.state.user?.onboarded_at;
     },
     categoriesByType() {
       const cats = this.$store.state.categories || [];
@@ -345,6 +347,10 @@ export default {
       if (data) store.commit('updateCategory', data);
     },
 
+    isUserCreated(cat) {
+      return !DEFAULT_NAMES.has(cat.category);
+    },
+
     // ── Delete category ────────────────────────────────
     removeCategory(cat) {
       this.$q.dialog({
@@ -394,17 +400,6 @@ export default {
       }
     },
 
-    // ── Seed categories ───────────────────────────────
-    async handleSeed() {
-      this.seeding = true;
-      try {
-        await seedCategories();
-        const cats = await fetchCategories();
-        if (cats) store.commit('setCategories', cats);
-      } finally {
-        this.seeding = false;
-      }
-    },
   },
 };
 </script>

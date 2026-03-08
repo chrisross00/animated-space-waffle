@@ -360,7 +360,7 @@ export default {
         }
         this.session = await store.state.session
         this.isLoading = false;
-        if (!this.user?.accounts?.length && !store.state.categories?.length) {
+        if (!this.user?.onboarded_at) {
           this.$router.push('/onboarding');
           return;
         }
@@ -382,47 +382,25 @@ export default {
           console.log(error)
           }
       }
-      auth.signOut()
-      .then(store.commit('clearState'))
-      .then(this.userData = null)
+      await auth.signOut();
+      store.commit('clearState');
       window.location.reload();
       // this.$router.push({ name: 'Profile' });
     }
 
   },
-  async mounted() {
-    const auth1 = getAuth()
-    try {
-      this.user = store.state.user
-      auth.onAuthStateChanged(async (user) => {
-        if (user) {
-          console.log("User signed in:", user);
-          console.log('mounting, auth1.currentUser', auth1.currentUser)
-
-          // Your logic to handle the signed-in user
-          const response = await getOrAddUser();
-          this.user = response;
-          console.log("this.user", this.user);
-          console.log("store.state", store.state);
-
-          // Update the Vuex store
-          store.commit("setUser", this.user);
-
-          // Restore session display if it was cleared (e.g. after a data nuke)
-          // Firebase confirms the user is authenticated, so session should be truthy
-          if (!this.session) {
-            const stored = store.state.session;
-            this.session = stored || { isSessionActive: true };
-            if (!stored) store.commit('setSession', this.session);
-          }
-      } else {
-        console.log("User signed out");
-        return;
-      }
-    });
-    } catch (err) {
-      // console.log('external catch', err);
-    }
+  mounted() {
+    // Sync local data from store (main.js onAuthStateChanged handles fetching)
+    this.user = store.state.user;
+    this.session = store.state.session;
+  },
+  watch: {
+    '$store.state.user'(val) {
+      this.user = val;
+    },
+    '$store.state.session'(val) {
+      this.session = val;
+    },
   }
 }
 </script>

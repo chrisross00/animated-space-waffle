@@ -4,6 +4,13 @@
 
 These apply to every task, every session, including after context compaction.
 
+### Before writing ANY new code (universal gate)
+0. **Search for existing patterns first.** Before creating any new file, function,
+   component, or utility, grep/glob the codebase for existing implementations that
+   solve the same or a similar problem. Briefly state what you found and why reuse
+   isn't possible. If an existing abstraction is close, extend it rather than building
+   a parallel one. Code that duplicates existing patterns will be rejected.
+
 ### Before writing any frontend UI
 1. **Read `DESIGN.md`** in full before touching any component or view.
    It is the single source of truth for tokens, typography, spacing, dark mode,

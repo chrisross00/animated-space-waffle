@@ -89,15 +89,17 @@ const TOOLS = [
   {
     key: 'nukealldata',
     label: 'Nuke All Data',
-    description: 'Permanently deletes ALL transactions, categories, and linked accounts. Irreversible.',
+    description: 'Permanently deletes ALL transactions, categories, rules, and linked accounts. Redirects to onboarding.',
     fn: nukeAllData,
     dangerous: true,
-    confirm: 'This will permanently delete all transactions, categories, and linked accounts. Are you sure?',
-    postRun() {
+    confirm: 'This will permanently delete all transactions, categories, rules, and linked accounts. Are you sure?',
+    postRun(vm) {
       store.commit('setTransactions', []);
       store.commit('setCategories', []);
+      store.commit('setRules', []);
       const u = store.state.user;
       if (u) store.commit('setUser', { ...u, accounts: [] });
+      if (vm?.$router) vm.$router.push('/onboarding');
     },
   },
 ];
@@ -122,7 +124,7 @@ export default {
       try {
         const result = await tool.fn();
         this.results[tool.key] = result ?? 'Done.';
-        if (tool.postRun) tool.postRun();
+        if (tool.postRun) tool.postRun(this);
       } catch (err) {
         this.results[tool.key] = `Error: ${err.message}`;
       } finally {

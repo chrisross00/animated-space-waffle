@@ -476,25 +476,7 @@
 
 <script>
   import {ref} from 'vue'
-
-  const PLAID_PFC_OPTIONS = [
-    { label: 'Income',                   value: 'INCOME' },
-    { label: 'Transfer In',              value: 'TRANSFER_IN' },
-    { label: 'Transfer Out',             value: 'TRANSFER_OUT' },
-    { label: 'Loan Payments',            value: 'LOAN_PAYMENTS' },
-    { label: 'Bank Fees',                value: 'BANK_FEES' },
-    { label: 'Food & Drink',             value: 'FOOD_AND_DRINK' },
-    { label: 'General Merchandise',      value: 'GENERAL_MERCHANDISE' },
-    { label: 'Home Improvement',         value: 'HOME_IMPROVEMENT' },
-    { label: 'Medical',                  value: 'MEDICAL' },
-    { label: 'Personal Care',            value: 'PERSONAL_CARE' },
-    { label: 'General Services',         value: 'GENERAL_SERVICES' },
-    { label: 'Government & Non-profit',  value: 'GOVERNMENT_AND_NON_PROFIT' },
-    { label: 'Entertainment',            value: 'ENTERTAINMENT' },
-    { label: 'Travel',                   value: 'TRAVEL' },
-    { label: 'Transportation',           value: 'TRANSPORTATION' },
-    { label: 'Rent & Utilities',         value: 'RENT_AND_UTILITIES' },
-  ];
+  import { PLAID_PFC_OPTIONS } from '@/utils/pfcLabels';
 
   export default {
       name: 'DialogComponent',

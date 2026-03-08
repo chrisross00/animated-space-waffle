@@ -1,5 +1,4 @@
 <style src="../styles/BudgetView.css"></style>
-<style src="../styles/OnboardingView.css"></style>
 
 <template>
   <q-pull-to-refresh @refresh="onPullRefresh" :disable="!$q.screen.lt.sm">
@@ -15,25 +14,27 @@
   </EmptyState>
 
   <div v-show="isLoggedIn">
-    <SkeletonBudget v-if="isLoading" />
-      <div v-show="!isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
-        <!-- Set up Basil card — shown when logged in but no categories yet -->
-        <div v-if="isLoggedIn && !categoryMonthlyLimits.length && !isRefreshing" class="q-mb-md">
-          <q-card class="my-card basil-setup-card">
-            <div class="basil-card-head">
-              <span class="basil-card-label">Get started</span>
-            </div>
-            <div class="basil-setup-card__body">
-              <q-icon name="auto_awesome" color="primary" size="2rem" />
-              <div>
-                <div class="basil-setup-card__heading">Set up Basil</div>
-                <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
-              </div>
-            </div>
-            <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
-          </q-card>
+    <!-- Not onboarded — show only the setup CTA -->
+    <div v-if="!isOnboarded" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+      <q-card class="my-card basil-setup-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Get started</span>
         </div>
+        <div class="basil-setup-card__body">
+          <q-icon name="auto_awesome" color="primary" size="2rem" />
+          <div>
+            <div class="basil-setup-card__heading">Set up Basil</div>
+            <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
+          </div>
+        </div>
+        <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
+      </q-card>
+    </div>
+
+    <!-- Onboarded — full dashboard -->
+    <SkeletonBudget v-if="isOnboarded && isLoading" />
+      <div v-show="isOnboarded && !isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
@@ -117,7 +118,7 @@
 
       <!-- To Sort Nudge Card -->
       <div
-        v-if="toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
+        v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
         class="q-pa-md"
         style="max-width: 800px; margin: 0 auto;"
       >
@@ -139,14 +140,14 @@
       </div>
 
       <!-- Button Container -->
-      <div class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
+      <div v-if="isOnboarded" class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
         <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
         <q-select v-if="!showAll" outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
       </div>
 
-      <!-- If show all is false -->    
-      <div v-show="!showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+      <!-- If show all is false -->
+      <div v-show="isOnboarded && !showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <q-list>
           <div class="categories">
             <div
@@ -227,7 +228,16 @@
             <q-list>
               <Transition name="basil-txn-expand" :duration="{ enter: 800, leave: 150 }">
               <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
-                <!-- <Table :headerLabels="tableHeaders" :tableData="filteredTransactions(groupedTransactions)" /> -->
+
+                <!-- Detailed PFC sub-breakdown -->
+                <div v-if="detailedPfcBreakdown(groupedTransactions).length >= 2" class="basil-pfc-breakdown">
+                  <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
+                       class="basil-pfc-breakdown__row">
+                    <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
+                    <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
+                  </div>
+                </div>
+
                 <div
                   v-for="(item, index) in filteredTransactions(groupedTransactions)"
                   :key="index"
@@ -270,7 +280,7 @@
       </div>
 
       <!-- If show all is true -->
-      <div v-show="showAll" class="q-pa-md all-transactions-table">
+      <div v-show="isOnboarded && showAll" class="q-pa-md all-transactions-table">
 
         <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
         <div class="row items-center q-gutter-sm q-mb-sm">
@@ -462,7 +472,7 @@
     </div>
     
 
-    <q-page-sticky class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
+    <q-page-sticky v-if="isOnboarded" class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
       <q-fab
       v-model="fabRight"
       vertical-actions-align="right"
@@ -607,6 +617,7 @@
   import store from '../store'
   import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
+  import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
 // import e from 'express';
 
@@ -700,6 +711,9 @@
       };
     },
     computed: {
+      isOnboarded() {
+        return !!store.state.user?.onboarded_at;
+      },
       categoryTypeMap() {
         const map = {};
         for (const c of store.state.categories || []) map[c.category] = c.type;
@@ -1009,6 +1023,23 @@ monthStats() {
       },
     },
     methods: {
+      detailedPfcBreakdown(group) {
+        const txns = this.filteredTransactions(group);
+        const map = {};
+        for (const txn of txns) {
+          if (txn.excludeFromTotal) continue;
+          const pfc = txn.personal_finance_category;
+          const detailed = pfc?.detailed;
+          const primary = pfc?.primary;
+          const label = humanizeDetailedPfc(detailed, primary);
+          if (!map[label]) map[label] = 0;
+          map[label] += Math.abs(txn.amount);
+        }
+        return Object.entries(map)
+          .map(([label, total]) => ({ label, total }))
+          .sort((a, b) => b.total - a.total);
+      },
+
       animateStats(from, to) {
         if (!to || !Object.keys(to).length) return;
         const fields = ['expenseSpend', 'incomeAmount', 'savingsAmount', 'netPosition'];

@@ -727,3 +727,52 @@
   font-weight: 600;
   color: var(--basil-text-primary);
 }
+
+/* ---- Detailed PFC sub-breakdown ---- */
+.basil-pfc-breakdown {
+  background-color: var(--basil-surface-alt);
+  border-radius: var(--basil-radius-sm);
+  padding: var(--basil-space-2) var(--basil-space-3);
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-pfc-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--basil-space-1) 0;
+}
+
+.basil-pfc-breakdown__label {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+}
+
+.basil-pfc-breakdown__amount {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Setup card (onboarding prompt in BudgetView) ---- */
+.basil-setup-card {
+  padding: var(--basil-space-5) !important;
+  margin-bottom: var(--basil-space-4);
+}
+
+.basil-setup-card__body {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-4);
+}
+
+.basil-setup-card__heading {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--basil-text);
+}
+
+.basil-setup-card__hint {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: 3px;
+}
