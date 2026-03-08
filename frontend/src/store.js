@@ -16,7 +16,7 @@ const store = createStore({
         // Only persist session (needed for isLoggedIn check on page refresh).
         // User data (email, account names) and financial data are reloaded
         // from the network via auth.onAuthStateChanged + getOrAddUser().
-        reducer: state => ({ session: state.session }),
+        reducer: state => ({ session: state.session, user: state.user }),
     })],
     mutations: {
         setUser(state, user) {
