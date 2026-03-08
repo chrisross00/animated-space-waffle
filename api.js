@@ -3,7 +3,7 @@ const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
 const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers } = require('./db/database');
-const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
+const { getNewPlaidTransactions, getAllUserTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
 const path = require('path');
@@ -165,6 +165,18 @@ router.get('/getOrAddUser', async (req, res) => {
     }
   } catch (error) {
     console.log(error)
+  }
+});
+
+router.post('/refreshBalances', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const balances = await fetchAndStoreBalances(uid);
+    res.json({ balances });
+  } catch (error) {
+    console.error('/refreshBalances error:', error.message);
+    res.status(500).json({ message: 'Failed to refresh balances' });
   }
 });
 
@@ -608,11 +620,24 @@ function createClientSideUser(user, accounts=null) {
   const bankAccounts = accounts?.[0]?.Accounts ?? null;
   console.log('createClientSideUser accounts: ', bankAccounts)
   let bankNames = bankAccounts ? Object.keys(bankAccounts) : [];
+
+  // Extract cached balance data per institution
+  let accountBalances = null;
+  if (bankAccounts) {
+    accountBalances = {};
+    for (const name of bankNames) {
+      if (bankAccounts[name].balances) {
+        accountBalances[name] = bankAccounts[name].balances;
+      }
+    }
+  }
+
   return {
     email: user.email,
     name: user.name,
     picture: user.picture,
     accounts: bankNames,
+    accountBalances,
     onboarded_at: user.onboarded_at || null,
     isAdmin: !!user.isAdmin,
   };

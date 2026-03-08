@@ -1,4 +1,5 @@
 import ApiDr from './views/ApiDir.vue'
+import AccountsView from './views/AccountsView.vue'
 import BudgetView from './views/BudgetView.vue'
 import BudgetPlannerView from './views/BudgetPlannerView.vue'
 import ProfileView from './views/ProfileView.vue'
@@ -17,6 +18,11 @@ const routes = [
     path: '/admin',
     name: 'ApiDr',
     component: ApiDr
+  },
+  {
+    path: '/accounts',
+    name: 'AccountsView',
+    component: AccountsView
   },
   {
     path: '/rules',

@@ -10,8 +10,20 @@ async function connectToDb() {
     await client.connect(); // assign only after successful connect so failures allow retry
     _client = client;
     console.log('DB: connected (pool ready)');
+    ensureIndexes(client.db(process.env.DB_NAME));
   }
   return _client;
+}
+
+/** Idempotent — safe to call on every startup. */
+function ensureIndexes(db) {
+  db.collection('Plaid-Transactions').createIndex({ userId: 1, date: -1 }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Plaid-Transactions').createIndex({ userId: 1, merchant_name: 1 }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Plaid-Transactions').createIndex({ userId: 1, mappedCategory: 1 }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Plaid-Transactions').createIndex({ userId: 1, transaction_id: 1 }, { unique: true }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Basil-Categories').createIndex({ userId: 1 }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Basil-Rules').createIndex({ userId: 1, createdAt: -1 }).catch(e => console.warn('Index error:', e.message));
+  db.collection('Plaid-Accounts').createIndex({ userId: 1 }).catch(e => console.warn('Index error:', e.message));
 }
 
 function getDb() {

@@ -185,10 +185,72 @@ async function updatePlaidAccounts(response, userId){
   return;
 }
 
+async function fetchAndStoreBalances(uid) {
+  const userId = uid.toString();
+  const currentAccounts = await findUserData('Plaid-Accounts', userId);
+  if (!currentAccounts?.length || !currentAccounts[0].Accounts) return {};
+
+  const accountsObj = currentAccounts[0].Accounts;
+  const results = {};
+
+  for (const institution of Object.keys(accountsObj)) {
+    const { token } = accountsObj[institution];
+    if (!token) continue;
+    try {
+      const response = await plaidClient.accountsBalanceGet({ access_token: token });
+      const fetchedAt = Date.now();
+      const balances = response.data.accounts.map(acct => ({
+        account_id: acct.account_id,
+        name: acct.name,
+        official_name: acct.official_name,
+        mask: acct.mask,
+        type: acct.type,
+        subtype: acct.subtype,
+        current: acct.balances.current,
+        available: acct.balances.available,
+        limit: acct.balances.limit,
+        fetchedAt,
+      }));
+
+      await updateData('Plaid-Accounts',
+        { userId },
+        { $set: { [`Accounts.${institution}.balances`]: balances } }
+      );
+
+      results[institution] = balances;
+    } catch (error) {
+      console.error(`fetchAndStoreBalances error for ${institution}:`, error.message);
+      // Return cached balances if available
+      if (accountsObj[institution].balances) {
+        results[institution] = accountsObj[institution].balances;
+      }
+    }
+  }
+
+  return results;
+}
+
+async function getCachedBalances(uid) {
+  const userId = uid.toString();
+  const currentAccounts = await findUserData('Plaid-Accounts', userId);
+  if (!currentAccounts?.length || !currentAccounts[0].Accounts) return {};
+
+  const accountsObj = currentAccounts[0].Accounts;
+  const results = {};
+  for (const institution of Object.keys(accountsObj)) {
+    if (accountsObj[institution].balances) {
+      results[institution] = accountsObj[institution].balances;
+    }
+  }
+  return results;
+}
+
 module.exports = {
   plaidTransactionsSync,
   getAccountData,
   getNewPlaidTransactions,
   getAllUserTransactions,
-  getPlaidCategories
+  getPlaidCategories,
+  fetchAndStoreBalances,
+  getCachedBalances,
 }

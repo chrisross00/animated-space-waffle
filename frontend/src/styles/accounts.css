@@ -1,0 +1,111 @@
+.basil-accounts__institution-name {
+  font-family: var(--basil-font-ui);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--basil-text);
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-accounts__acct-name {
+  font-family: var(--basil-font-ui);
+  font-weight: 500;
+}
+
+.basil-accounts__mask {
+  color: var(--basil-text-secondary);
+  font-size: 0.85em;
+  margin-left: var(--basil-space-1);
+}
+
+.basil-accounts__mask::before {
+  content: '\2022\2022\2022\2022';
+  letter-spacing: 1px;
+  margin-right: 2px;
+}
+
+.basil-accounts__balance {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.basil-accounts__balance--negative {
+  color: var(--basil-negative);
+}
+
+.basil-accounts__utilization {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+}
+
+.basil-accounts__utilization-bar {
+  max-width: 120px;
+}
+
+.basil-accounts__utilization-label {
+  font-size: 0.75rem;
+  color: var(--basil-text-secondary);
+  white-space: nowrap;
+}
+
+/* Cards: Net Worth, Cash Runway */
+.basil-accounts__card {
+  background: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-lg);
+  overflow: hidden;
+}
+
+.basil-accounts__card-body {
+  padding: var(--basil-space-4);
+}
+
+.basil-accounts__net-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--basil-space-1) 0;
+}
+
+.basil-accounts__net-label {
+  font-family: var(--basil-font-ui);
+  color: var(--basil-text-secondary);
+}
+
+.basil-accounts__net-total {
+  font-size: 1.5rem;
+}
+
+/* Cash Runway */
+.basil-accounts__runway {
+  text-align: center;
+}
+
+.basil-accounts__runway-number {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-accounts__runway-detail {
+  display: block;
+  font-family: var(--basil-font-ui);
+  font-size: 0.9rem;
+  color: var(--basil-text-secondary);
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-accounts__runway-note {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--basil-text-secondary);
+  font-style: italic;
+}
+
+/* Last updated footer */
+.basil-accounts__updated {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--basil-text-secondary);
+  padding: var(--basil-space-2) 0;
+}

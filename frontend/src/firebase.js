@@ -436,6 +436,15 @@ export async function deleteCompoundRule(ruleId) {
   else _notify({ type: 'negative', message: `Failed to delete rule (${response.status})` });
 }
 
+export async function refreshBalances() {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/refreshBalances', { method: 'POST', headers });
+  if (response.ok) return response.json();
+  else _notify({ type: 'negative', message: `Failed to refresh balances (${response.status})` });
+}
+
 // export async function updateCategories() {} later...
 
 // ---------------------------------------------------------------------------
