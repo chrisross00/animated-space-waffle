@@ -615,7 +615,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { fetchTransactions, handleDialogSubmit, fetchCategories, bulkCategorize, deleteRule, fetchMerchants, saveRule, fetchRules, saveCompoundRule, updateCompoundRule } from '@/firebase';
+  import { fetchTransactions, ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
@@ -1285,7 +1285,6 @@ monthStats() {
       },
       async onPullRefresh(done) {
         this.isRefreshing = true;
-        this.categoryMonthlyLimits = [];
         await this.buildPage('sync');
         store.commit('setLastPlaidFetch', Date.now());
         this.isRefreshing = false;
@@ -1296,41 +1295,26 @@ monthStats() {
         store.commit("setLastPlaidFetch", now - this.fetchInterval)
       },
       async buildPage (mode){
-        let txns, categoryResponse;
         try {
           if(mode == 'sync'){
-            // Get all user transactions and category monthlyLimit info
-            txns = await fetchTransactions()
-            this.transactions = txns.transactions;
-            categoryResponse = await fetchCategories();
-            this.categoryMonthlyLimits.push(...categoryResponse)
-            const rules = await fetchRules();
-            if (rules) store.commit('setRules', rules);
-          } else if(mode == 'refresh'){
-              this.transactions = store.state.transactions
-              this.categoryMonthlyLimits.push(...store.state.categories)
-          } else if (mode == 'addCategory'){
-              this.transactions = store.state.transactions
-              this.categoryMonthlyLimits.push(this.addedCategory)
+            // Fetch fresh transactions from Plaid; categories + rules come from store
+            const txns = await fetchTransactions();
+            if (txns?.transactions) {
+              store.commit('setTransactions', txns.transactions);
+            }
           }
+          // All modes read from the store
+          this.transactions = store.state.transactions || [];
+          this.categoryMonthlyLimits = [...(store.state.categories || [])];
         } catch (error) {
           console.log('error setting up transactions and categories: ' + error)
         }
         this.groupTransactions();
         this.months = this.buildDateList(this.transactions).reverse()
-        this.monthlyStats = this.monthStats(this.groupedTransactions) // call setMonthlyStats()
+        this.monthlyStats = this.monthStats(this.groupedTransactions)
         this.isLoading = false
         // Flip barsReady after the next paint so bars transition from 0 → value
         this.$nextTick(() => setTimeout(() => { this.barsReady = true; }, 80));
-
-        try {
-          if (mode == 'sync' || mode == 'addCategory'){
-            store.commit("setTransactions", this.transactions);
-            store.commit("setCategories", categoryResponse);
-          }
-        } catch (error) {
-            console.log('error committing transactions and categories to store:', error)
-        }
       },
       onSubmit(e) { 
         let d = {}
@@ -1598,37 +1582,28 @@ monthStats() {
     },
     async mounted() {
       this.isLoading = true;
-      this.isLoggedIn = store.state.session ? store.state.session.isSessionActive ? true : false : false;
+      this.isLoggedIn = !!store.state.session?.isSessionActive;
+      if (!this.isLoggedIn) { this.isLoading = false; return; }
+
       try {
-        if(store.state.session?.isSessionActive) {
-          const now = Date.now();
-          this.lastFetch = store.state.lastPlaidFetch;
-          this.fetchInterval = 1000 * 60 * 10; // 10 minutes in milliseconds, adjust as needed          
-          if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
-            await this.buildPage('sync')
-            store.commit("setLastPlaidFetch", now);
-          }
-          else {
-            // const remainingTime = this.fetchInterval - (now - this.lastFetch);
-            // const minutesRemaining = Math.floor(remainingTime / 60000);
-            // const secondsRemaining = Math.floor((remainingTime % 60000) / 1000);
-            // console.log(`last fetch was too recent, not fetching again. Time until next fetch: ${minutesRemaining} minutes ${secondsRemaining} seconds`);
-            
-            await this.buildPage('refresh')
-          }
-        } else if(!store.state.session?.isSessionActive){
-            this.isLoggedIn = false;
-        } 
+        // Wait for central bootstrap (categories, rules, and possibly transactions)
+        await ensureAppData(store);
+
+        const now = Date.now();
+        this.lastFetch = store.state.lastPlaidFetch;
+        this.fetchInterval = 1000 * 60 * 10; // 10 minutes
+
+        if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
+          await this.buildPage('sync');
+          store.commit('setLastPlaidFetch', now);
+        } else {
+          await this.buildPage('refresh');
+        }
       } catch (error) {
         console.error(error);
         this.resetLastFetch();
         this.isLoading = false;
       }
-      if(this.categoryMonthlyLimits?.length == 0 || this.transactions?.length == 0) {
-        console.log('onMounted if')
-          this.resetLastFetch();
-        }
-      console.log('this.categoryMonthlyLimits', this.categoryMonthlyLimits.length)
     },
   };
 </script>
