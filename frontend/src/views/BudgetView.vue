@@ -160,7 +160,7 @@
 
               <!-- Make a category List Item -->
               <q-item
-                v-show="this.groupedTransactions[category].showOnBudgetPage"
+                v-show="shouldShowCategory(category)"
                 clickable v-ripple
                 @click="toggleCategory(category)"
                 category="category"
@@ -996,7 +996,7 @@ monthStats() {
             if (this.isBudgetRemaining(category) == false && groupedTransactions[category].type !== 'payment'){
               projectedSum += this.categorySum(category)
             }
-            if (this.categorySum(category) && groupedTransactions[category].showOnBudgetPage == true) {
+            if (this.categorySum(category) && this.shouldShowCategory(category)) {
               if(groupedTransactions[category].type == 'expense' || groupedTransactions[category].type == 'income'){
                 monthlySum += this.categorySum(category)
               }
@@ -1093,6 +1093,13 @@ monthStats() {
         return this.isBudgetRemaining(category)
           ? this.formatDollar(this.budgetRemaining(category).toFixed(0)) + ' left'
           : this.formatDollar(Math.abs(this.budgetRemaining(category).toFixed(0))) + ' over';
+      },
+      shouldShowCategory(category) {
+        const group = this.groupedTransactions[category];
+        if (!group) return false;
+        const hasLimit = Number(group.monthly_limit) > 0;
+        const hasActivity = this.categorySum(category) !== 0;
+        return hasLimit || hasActivity;
       },
       formatDollar(value, Prefix = null) {
         let val = (value/1).toFixed(2).replace('.', '.');
