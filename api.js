@@ -73,6 +73,7 @@ router.get('/seedcategories', async (req, res) => {
       annual_spend: '',
       rules: {},
       showOnBudgetPage: true,
+      isDefault: true,
       userId,
     }));
     await insertData('Basil-Categories', toInsert);

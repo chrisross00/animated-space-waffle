@@ -345,6 +345,8 @@ export default {
     },
 
     isUserCreated(cat) {
+      // Prefer isDefault flag (set at seed time); fall back to name matching for older accounts
+      if (cat.isDefault != null) return !cat.isDefault;
       return !DEFAULT_NAMES.has(cat.category);
     },
 

@@ -20,6 +20,7 @@ async function seedCategories(userId) {
     annual_spend: '',
     rules: {},
     showOnBudgetPage: true,
+    isDefault: true,
     userId,
   }));
 
