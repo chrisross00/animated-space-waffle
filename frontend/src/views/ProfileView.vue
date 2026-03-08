@@ -228,14 +228,18 @@ export default {
   },
   data() {
     return {
-      user: store.state.user ? store.state.user : null,
-      session: store.state.session ? store.state.session : null,
       isLoading: false,
       showPlaidLink: false,
       preDelete: {}
     }
   },
   computed: {
+    user() {
+      return this.$store.state.user;
+    },
+    session() {
+      return this.$store.state.session;
+    },
     isDark() {
       return this.$store.state.theme === 'dark';
     },
@@ -258,8 +262,7 @@ export default {
     async deleteAccount(account) {
       try {
         await removeAccount(account);
-        this.user = { ...this.user, accounts: this.user.accounts.filter(a => a !== account) };
-        store.commit('setUser', this.user);
+        store.commit('setUser', { ...this.user, accounts: this.user.accounts.filter(a => a !== account) });
       } catch (error) {
         console.error('deleteAccount error:', error);
       }
@@ -271,9 +274,8 @@ export default {
     async handlePlaidSuccess() {
       this.isLoading = true;
       try {
-        const response = await getOrAddUser();
-        this.user = response;
-        store.commit('setUser', this.user);
+        const user = await getOrAddUser();
+        store.commit('setUser', user);
       } catch (error) {
         console.error('handlePlaidSuccess: getOrAddUser error:', error);
       }
@@ -291,9 +293,8 @@ export default {
     async devTestLogin() {
       this.isLoading = true;
       try {
-        const response = await getOrAddUser();
-        this.user = response;
-        store.commit('setUser', this.user);
+        const user = await getOrAddUser();
+        store.commit('setUser', user);
         store.commit('setSession', { isSessionActive: true });
 
         const [categories, txnResult] = await Promise.all([
@@ -303,7 +304,6 @@ export default {
         if (categories?.length) store.commit('setCategories', categories);
         if (txnResult?.transactions) store.commit('setTransactions', txnResult.transactions);
 
-        this.session = store.state.session;
         this.isLoading = false;
       } catch (error) {
         console.error('devTestLogin error:', error);
@@ -345,9 +345,8 @@ export default {
           
         // check if user exists in mongodb. If it does add it to the store
         try {
-          const response = await getOrAddUser()
-          this.user = response
-          store.commit('setUser', this.user)
+          const appUser = await getOrAddUser()
+          store.commit('setUser', appUser)
         } catch (error) {
           console.log(error)
         }
@@ -358,7 +357,6 @@ export default {
         } catch (error) {
           console.log(error)
         }
-        this.session = await store.state.session
         this.isLoading = false;
         if (!this.user?.onboarded_at) {
           this.$router.push('/onboarding');
@@ -372,9 +370,8 @@ export default {
     },
     // sign out should log out the user using firebase.auth().signOut() and clear the store state
     async signOut() {
-      if(this.session.docId){
+      if(this.session?.docId){
         try {
-          // update the collection('sessions') with the endAt timestamp
           await firestore.collection('sessions').doc(this.session.docId).update({
             endAt: Date.now().toString()
           })
@@ -389,18 +386,5 @@ export default {
     }
 
   },
-  mounted() {
-    // Sync local data from store (main.js onAuthStateChanged handles fetching)
-    this.user = store.state.user;
-    this.session = store.state.session;
-  },
-  watch: {
-    '$store.state.user'(val) {
-      this.user = val;
-    },
-    '$store.state.session'(val) {
-      this.session = val;
-    },
-  }
 }
 </script>
