@@ -116,21 +116,6 @@
           :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
           @change="isFormSubmittable()"
         />
-        <q-select
-          outlined
-          v-model="dialogBody.plaid_pfc"
-          label="Auto-map Plaid transaction types"
-          :options="plaidPfcOptions"
-          option-value="value"
-          option-label="label"
-          emit-value
-          map-options
-          multiple
-          use-chips
-          hint="Transactions Plaid labels with these types will be auto-assigned to this category."
-          class="q-mt-xs"
-          @update:model-value="isFormSubmittable()"
-        />
       </div>
 
       <!-- Existing rules -->
@@ -254,20 +239,6 @@
           <span v-else-if="dialogBody.type === 'Savings'">Tracked separately as money saved. Excluded from spending totals.</span>
           <span v-else-if="dialogBody.type === 'Payment'">Excluded from all totals. Use for credit card payments and transfers to avoid double-counting money you've already tracked as expenses.</span>
         </div>
-        <q-select
-          outlined
-          v-model="dialogBody.plaid_pfc"
-          label="Auto-map Plaid transaction types"
-          :options="plaidPfcOptions"
-          option-value="value"
-          option-label="label"
-          emit-value
-          map-options
-          multiple
-          use-chips
-          hint="Transactions Plaid labels with these types will be auto-assigned to this category."
-          class="q-mt-xs"
-        />
       </div>
 
       <div class="basil-dialog-actions">
@@ -476,7 +447,6 @@
 
 <script>
   import {ref} from 'vue'
-  import { PLAID_PFC_OPTIONS } from '@/utils/pfcLabels';
 
   export default {
       name: 'DialogComponent',
@@ -508,7 +478,6 @@
             maximizedToggle: ref(true),
             editedTransaction: {},
             type: ['Expense', 'Income', 'Savings', 'Payment'],
-            plaidPfcOptions: PLAID_PFC_OPTIONS,
             dialogBody:{
                 amount: this.item?.amount ? this.item.amount : 0 ,
                 name: this.item?.name ? this.item.name : '',
@@ -666,7 +635,6 @@ computed: {
             if (this.dialogType == 'editCategory'){
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
                 || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit
-                || JSON.stringify(this.dialogBody.plaid_pfc) !== JSON.stringify(this.originalDialogBody.plaid_pfc)
                 || this.pendingRuleRemovals.length > 0
                 || this.pendingRuleAdditions.length > 0){
                     this.formSubmittable = true;
@@ -697,9 +665,6 @@ computed: {
     },
     watch: {
         "dialogBody.mappedCategory": function (){
-            this.isFormSubmittable()
-        },
-        "dialogBody.plaid_pfc": function (){
             this.isFormSubmittable()
         },
         "dialogBody.createRule": function (){
