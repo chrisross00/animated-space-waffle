@@ -98,7 +98,7 @@ const TOOLS = [
       store.commit('setCategories', []);
       store.commit('setRules', []);
       const u = store.state.user;
-      if (u) store.commit('setUser', { ...u, accounts: [] });
+      if (u) store.commit('setUser', { ...u, accounts: [], onboarded_at: null });
       if (vm?.$router) vm.$router.push('/onboarding');
     },
   },
