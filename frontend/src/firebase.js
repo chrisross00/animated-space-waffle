@@ -32,6 +32,13 @@ export const auth = app.auth()
 export const firestore = firebase.firestore()
 export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
 
+// Resolves once onAuthStateChanged fires for the first time, meaning
+// auth.currentUser is available. On hard refresh, views mount before
+// Firebase resolves, so any code that needs auth should await this first.
+let _authReadyResolve;
+export const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
+auth.onAuthStateChanged(() => { _authReadyResolve(); });
+
 export async function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
@@ -423,6 +430,13 @@ export async function ensureAppData(store) {
   if (!store.state.user?.onboarded_at) return;       // not onboarded yet
   if (store.state.transactions?.length > 0) return; // already loaded
   if (_bootstrapPromise) return _bootstrapPromise;   // already in flight
+
+  // On hard refresh, views call ensureAppData before Firebase auth resolves
+  // (sessionStorage has the user, but auth.currentUser is still null).
+  // Wait for auth so getAuthHeaders() can provide a valid token.
+  if (import.meta.env.VITE_DEV_AUTH_BYPASS !== 'true') {
+    await authReady;
+  }
 
   store.commit('setBootstrapping', true);
   const hasAccounts = store.state.user?.accounts?.length > 0;

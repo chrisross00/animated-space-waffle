@@ -604,12 +604,17 @@ function createClientSideUser(user, accounts=null) {
   };
 }
 
+// Shared admin helpers — used by nuke routes below
+async function nukeTransactions(uid) {
+  return deleteRemovedData('Plaid-Transactions', { userId: uid });
+}
+
 router.post('/nukeTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
     if (!requireAdmin(uid, res)) return;
-    const result = await deleteRemovedData('Plaid-Transactions', { userId: uid });
+    const result = await nukeTransactions(uid);
     res.json({ deletedCount: result.deletedCount });
   } catch (error) {
     console.error('/nukeTransactions error:', error);
@@ -636,7 +641,7 @@ router.post('/nukeAllData', async (req, res) => {
     const uid = decodedToken.uid;
     if (!requireAdmin(uid, res)) return;
     const [txnResult, catResult, accResult, ruleResult] = await Promise.all([
-      deleteRemovedData('Plaid-Transactions', { userId: uid }),
+      nukeTransactions(uid),
       deleteRemovedData('Basil-Categories', { userId: uid }),
       deleteRemovedData('Plaid-Accounts', { userId: uid }),
       deleteRemovedData('Basil-Rules', { userId: uid }),
