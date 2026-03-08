@@ -4,27 +4,23 @@ const bodyParser = require('body-parser')
 const { findUserData, insertData, updateData } = require('./db/database');
 const {validateIdToken} = require('./utils/authentication');
 
-const { Configuration, PlaidApi, PlaidEnvironments } = require("plaid");
+const { forUser } = require('./utils/plaidClient');
 
 const router = express.Router();
 router.use(bodyParser.json());
 
-const config = new Configuration({
-  basePath: PlaidEnvironments[process.env.PLAID_ENV],
-  baseOptions: {
-    headers: {
-      "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID,
-      "PLAID-SECRET": process.env.PLAID_SECRET,
-      "Plaid-Version": "2020-09-14",
-    },
-  },
-});
-
-const client = new PlaidApi(config);
+// Resolve whether the authenticated user is an admin (production) or not (sandbox).
+async function getUserPlaidEnv(uid) {
+  const users = await findUserData('Basil-Users', uid);
+  const isAdmin = !!(users.length && users[0].isAdmin);
+  return { isAdmin, plaidEnv: isAdmin ? 'production' : 'sandbox' };
+}
 
 router.get("/create_link_token", async (req, res, next) => {
     try {
       const decodedToken = await validateIdToken(req);
+      const { isAdmin } = await getUserPlaidEnv(decodedToken.uid);
+      const client = forUser(isAdmin);
       const tokenResponse = await client.linkTokenCreate({
         user: { client_user_id: decodedToken.uid },
         client_name: "Basil Budgeting",
@@ -74,6 +70,9 @@ router.post("/exchange_public_token", async (req, res, next) => {
 });
 
 async function addInstitution(req, decodedToken, type='new'){
+  const { isAdmin, plaidEnv } = await getUserPlaidEnv(decodedToken.uid);
+  const client = forUser(isAdmin);
+
   let exchangeResponse;
   try {
     exchangeResponse = await client.itemPublicTokenExchange({
@@ -87,29 +86,25 @@ async function addInstitution(req, decodedToken, type='new'){
     const institutionName = req.body.metadata.institution.name;
     const userId = decodedToken.uid;
     const earliestDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const updateObject = {
-      Accounts: {
-        [institutionName]: {
-          token: exchangeResponseData.access_token,
-          next_cursor: '',
-          earliestDate: earliestDate,
-        }
-      },
-      userId: userId,
+    const accountData = {
+      token: exchangeResponseData.access_token,
+      next_cursor: '',
+      earliestDate: earliestDate,
+      plaidEnv,
     };
     if (type === 'addToExisting'){
-      const filter = { 
+      const filter = {
         userId: userId
       };
       const update = {
-        $set: { [`Accounts.${institutionName}`]: {
-          token: exchangeResponseData.access_token,
-          next_cursor: '',
-          earliestDate: earliestDate,
-        } },
+        $set: { [`Accounts.${institutionName}`]: accountData },
       };
       await updateData('Plaid-Accounts', filter, update);
     } else {
+      const updateObject = {
+        Accounts: { [institutionName]: accountData },
+        userId: userId,
+      };
       await insertData('Plaid-Accounts', updateObject);
     }
     return;
@@ -134,4 +129,3 @@ router.post("/remove_account", async (req, res) => {
 });
 
 module.exports = router;
-

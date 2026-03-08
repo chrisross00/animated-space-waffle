@@ -96,9 +96,14 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   sweepable. Rule sweeps skip `manually_set: true` transactions.
 - **`ruleMode` request field:** Sent in transaction update payloads to signal intent.
   Values: `null` (pure manual edit → sets `manually_set`), `'merchant'`, `'compound'`.
-- **DNS fix:** `index.js` sets `dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4'])`
-  at startup — required on Node 24 + Windows because c-ares uses TCP for SRV queries
-  and home routers only support DNS over UDP.
+- **Admin system:** `isAdmin` flag stored on `Basil-Users` document in MongoDB — no
+  env vars needed. `requireAdmin(uid, res)` does an async DB lookup. All ApiDir tools
+  use `resolveTargetUser(req, res)` which extracts `targetUserId` from request body
+  (POST) or query param (GET), defaults to authenticated user, and requires admin only
+  when targeting another user. ApiDir shows a user picker dropdown for admins.
+- **Plaid credentials:** `utils/plaidClient.js` reads `PLAID_ENV` (sandbox/production)
+  and picks `PLAID_{SANDBOX|PRODUCTION}_CLIENT_ID` + `SECRET`. Both sets of credentials
+  can coexist uncommented in `.env` — just change `PLAID_ENV` and restart.
 - **Firebase usage:** Only two services are used: (1) **Authentication** — Google Sign-In
   via `firebase.auth()` + `GoogleAuthProvider` on the frontend, verified by
   `firebase-admin.auth().verifyIdToken()` on the backend. (2) **Firestore** — a single
@@ -108,8 +113,10 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   be consolidated to Supabase Auth at the same time — it supports Google OAuth natively,
   and Postgres RLS would replace the manual `userId` filtering on every query. Don't
   switch auth independently; bundle it with the database migration.
-- **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend).
+- **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend),
+  `PLAID_ENV`, `PLAID_SANDBOX_*`, `PLAID_PRODUCTION_*` (Plaid credentials).
   `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
+  Admin identity is in MongoDB (`isAdmin` on `Basil-Users`), not in env vars.
 
 ## Shared utilities — check before building
 

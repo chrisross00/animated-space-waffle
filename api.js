@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule } = require('./db/database');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers } = require('./db/database');
 const { getNewPlaidTransactions, getAllUserTransactions } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
@@ -13,14 +13,27 @@ const { rateLimit } = require('express-rate-limit');
 // Tighter per-endpoint limiter for expensive Plaid sync operations
 const plaidSyncLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
 
-// Admin-only endpoints: uid must be in ADMIN_UIDS env var (comma-separated)
-const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
-function requireAdmin(uid, res) {
-  if (!ADMIN_UIDS.includes(uid)) {
+// Admin check: looks up isAdmin flag on the user's Basil-Users document.
+// No env vars needed — set isAdmin: true on your user doc in MongoDB once.
+async function requireAdmin(uid, res) {
+  const users = await findUserData('Basil-Users', uid);
+  if (!users.length || !users[0].isAdmin) {
     res.status(403).json({ message: 'Forbidden' });
     return false;
   }
   return true;
+}
+
+// Resolves the target user for admin routes. Defaults to the authenticated
+// user's own UID. If targetUserId is provided, requires admin privileges.
+async function resolveTargetUser(req, res) {
+  const decodedToken = await validateIdToken(req);
+  const uid = decodedToken.uid;
+  const targetUserId = req.body?.targetUserId || req.query?.targetUserId || uid;
+  if (targetUserId !== uid) {
+    if (!(await requireAdmin(uid, res))) return null;
+  }
+  return targetUserId;
 }
 
 function isStr(val, max = 500) {
@@ -36,8 +49,8 @@ router.get('/', (req, res) => {
 
 router.post('/dedupe', async (req,res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
+    const userId = await resolveTargetUser(req, res);
+    if (!userId) return;
     await deduplicateData('Plaid-Transactions', userId);
     res.send('De-duplication complete');
   } catch (err) {
@@ -62,8 +75,8 @@ const { DEFAULT_CATEGORIES } = require('./utils/defaultCategories');
 
 router.get('/seedcategories', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
+    const userId = await resolveTargetUser(req, res);
+    if (!userId) return;
     const existing = await findUserData('Basil-Categories', userId);
     if (existing.length > 0) {
       // Categories already exist — still ensure onboarded_at is stamped
@@ -88,8 +101,8 @@ router.get('/seedcategories', async (req, res) => {
 
 router.get('/addplaidpfc', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
+    const userId = await resolveTargetUser(req, res);
+    if (!userId) return;
     const categories = await findUserData('Basil-Categories', userId);
     const pfcByName = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.category, c.plaid_pfc]));
     let updated = 0;
@@ -157,8 +170,8 @@ router.get('/getOrAddUser', async (req, res) => {
 
 router.get('/cleanPendingTransactions', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
+    const userId = await resolveTargetUser(req, res);
+    if (!userId) return;
     const transactions = await cleanPendingTransactions('Plaid-Transactions', userId);
     res.send(transactions);
   } catch (error) {
@@ -532,8 +545,8 @@ router.post('/bulkCategorize', async (req, res) => {
 
 router.get('/mapunmapped', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
+    const userId = await resolveTargetUser(req, res);
+    if (!userId) return;
     const unmappedTransactions = await findUnmappedData('Plaid-Transactions', userId);
     const categories = await findUserData('Basil-Categories', userId);
     const ruleList = await getMappingRuleList(categories);
@@ -601,8 +614,22 @@ function createClientSideUser(user, accounts=null) {
     picture: user.picture,
     accounts: bankNames,
     onboarded_at: user.onboarded_at || null,
+    isAdmin: !!user.isAdmin,
   };
 }
+
+// Admin-only: list all users for the user picker in ApiDir
+router.get('/users', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    if (!(await requireAdmin(decodedToken.uid, res))) return;
+    const users = await findAllUsers();
+    res.json(users);
+  } catch (error) {
+    console.error('/users error:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+});
 
 // Shared admin helpers — used by nuke routes below
 async function nukeTransactions(uid) {
@@ -611,9 +638,8 @@ async function nukeTransactions(uid) {
 
 router.post('/nukeTransactions', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
     const result = await nukeTransactions(uid);
     res.json({ deletedCount: result.deletedCount });
   } catch (error) {
@@ -624,9 +650,8 @@ router.post('/nukeTransactions', async (req, res) => {
 
 router.post('/clearManualOverrides', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
     const result = await updateManyData('Plaid-Transactions', { userId: uid, manually_set: true }, { $unset: { manually_set: '' } });
     res.json({ clearedCount: result.modifiedCount });
   } catch (error) {
@@ -637,9 +662,8 @@ router.post('/clearManualOverrides', async (req, res) => {
 
 router.post('/nukeAllData', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
     const [txnResult, catResult, accResult, ruleResult] = await Promise.all([
       nukeTransactions(uid),
       deleteRemovedData('Basil-Categories', { userId: uid }),
@@ -678,9 +702,8 @@ const SYNTHETIC_TRANSACTIONS = [
 
 router.post('/addVenmoTransactions', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
 
     const ts = Date.now();
     const categories = await findUserData('Basil-Categories', uid);
@@ -730,9 +753,8 @@ router.post('/addVenmoTransactions', async (req, res) => {
 
 router.post('/addTestTransactions', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
     const today = new Date().toISOString().slice(0, 10);
     const ts = Date.now();
     const categories = await findUserData('Basil-Categories', uid);

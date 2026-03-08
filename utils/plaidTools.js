@@ -1,20 +1,6 @@
-const { Configuration, PlaidApi, PlaidEnvironments } = require( 'plaid');
+const { forEnv } = require('./plaidClient');
 const { findUserData, updateData, insertData, deleteRemovedData, findUserRules } = require('../db/database');
-const { getMappingRuleList, mapTransactions } = require('./categoryMapping')
-
-
-// maybe put this in an internal function to initialize the client object
-
-const configuration = new Configuration({
-  basePath: PlaidEnvironments[process.env.PLAID_ENV],
-  baseOptions: {
-    headers: {
-      'PLAID-CLIENT-ID': process.env.PLAID_CLIENT_ID,
-      'PLAID-SECRET': process.env.PLAID_SECRET,
-    },
-  },
-});
-const plaidClient = new PlaidApi(configuration);
+const { getMappingRuleList, mapTransactions } = require('./categoryMapping');
 
 async function getAccountData (uid) {
   const userId = uid.toString();
@@ -26,7 +12,7 @@ async function getAccountData (uid) {
     for (const account in currentAccounts[0].Accounts) { // `currentAccounts[0].Accounts` has what we need
       if (Object.hasOwnProperty.call(currentAccounts[0].Accounts, account)) { 
         const element = currentAccounts[0].Accounts[account];
-        response.push({'token': element.token, 'next_cursor': element.next_cursor, 'account': account})
+        response.push({'token': element.token, 'next_cursor': element.next_cursor, 'account': account, 'plaidEnv': element.plaidEnv || 'production'})
       }
     }
   } catch (error) {
@@ -37,7 +23,7 @@ async function getAccountData (uid) {
   
   async function getPlaidCategories() {
     try {
-      const response = await plaidClient.categoriesGet({});
+      const response = await forEnv('sandbox').categoriesGet({});
       const categories = response.data.categories;
       return categories
     } catch (error) {
@@ -45,12 +31,11 @@ async function getAccountData (uid) {
     }
   }
 
-async function plaidTransactionsSync (access_token, cursor=null, uid){
+async function plaidTransactionsSync (access_token, cursor=null, uid, plaidEnv='production'){
   const userId = uid.toString();
-  // console.log('access_token and cursor = ', access_token, cursor)
   try {
-    // console.log('plaidTransactionsSync() Messages:\n     Access Token:', access_token, '\n     Cursor:', cursor, '\n');
-    const response = await plaidClient.transactionsSync({
+    const client = forEnv(plaidEnv);
+    const response = await client.transactionsSync({
       access_token,
       cursor,
     })
@@ -91,7 +76,7 @@ async function getNewPlaidTransactions(uid) {
         const updatedTxns = [];
         
         while (hasMore) {
-          const newTxns = await plaidTransactionsSync(token, next_cursor, userId);
+          const newTxns = await plaidTransactionsSync(token, next_cursor, userId, response.plaidEnv);
           // console.log(' api.js: plaidTransactionsSync : \n', newTxns, '\nnewTxns end');
           if (typeof newTxns === 'string') {
             hasMore = false;

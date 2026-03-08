@@ -163,52 +163,66 @@ export async function removeAccount(institution) {
   }
 }
 
-export async function addPlaidPfc() {
+export async function addPlaidPfc(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
-    const response = await fetch('/api/addplaidpfc', { headers });
+    const url = targetUserId ? `/api/addplaidpfc?targetUserId=${targetUserId}` : '/api/addplaidpfc';
+    const response = await fetch(url, { headers });
     if (response.ok) return response.text();
     else _notify({ type: 'negative', message: `Failed to add Plaid PFC (${response.status})` });
   }
 }
 
-export async function dedupe() {
+export async function dedupe(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/dedupe', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/dedupe', { method: 'POST', headers, body });
     if (response.ok) return response.text();
     else _notify({ type: 'negative', message: `Dedupe failed (${response.status})` });
   }
 }
 
-export async function seedCategories() {
+export async function seedCategories(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
-    const response = await fetch('/api/seedcategories', { headers });
+    const url = targetUserId ? `/api/seedcategories?targetUserId=${targetUserId}` : '/api/seedcategories';
+    const response = await fetch(url, { headers });
     if (response.ok) return response.text();
     else _notify({ type: 'negative', message: `Failed to seed categories (${response.status})` });
   }
 }
 
 
-export async function cleanPending() {
+export async function cleanPending(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
-    const response = await fetch('/api/cleanPendingTransactions', { headers });
+    const url = targetUserId ? `/api/cleanPendingTransactions?targetUserId=${targetUserId}` : '/api/cleanPendingTransactions';
+    const response = await fetch(url, { headers });
     if (response.ok) return response.text();
     else _notify({ type: 'negative', message: `Failed to clean pending transactions (${response.status})` });
   }
 }
 
-export async function mapUnmapped() {
+export async function mapUnmapped(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
-    const response = await fetch('/api/mapunmapped', { headers });
+    const url = targetUserId ? `/api/mapunmapped?targetUserId=${targetUserId}` : '/api/mapunmapped';
+    const response = await fetch(url, { headers });
     if (response.ok) return response.json();
     else _notify({ type: 'negative', message: `Failed to map unmapped transactions (${response.status})` });
   } else {
     console.log('headers are null, therefore user is not logged in');
+  }
+}
+
+export async function fetchUsers() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/users', { headers });
+    if (response.ok) return response.json();
+    else _notify({ type: 'negative', message: `Failed to fetch users (${response.status})` });
   }
 }
 
@@ -298,11 +312,12 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
   return response.ok;
 }
 
-export async function nukeTransactions() {
+export async function nukeTransactions(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/nukeTransactions', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/nukeTransactions', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Deleted ${data.deletedCount} transaction${data.deletedCount !== 1 ? 's' : ''}.`;
@@ -312,11 +327,12 @@ export async function nukeTransactions() {
   }
 }
 
-export async function clearManualOverrides() {
+export async function clearManualOverrides(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/clearManualOverrides', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/clearManualOverrides', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Cleared manual override on ${data.clearedCount} transaction${data.clearedCount !== 1 ? 's' : ''}.`;
@@ -326,11 +342,12 @@ export async function clearManualOverrides() {
   }
 }
 
-export async function nukeAllData() {
+export async function nukeAllData(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/nukeAllData', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/nukeAllData', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts, ${data.rules} rules.`;
@@ -340,11 +357,12 @@ export async function nukeAllData() {
   }
 }
 
-export async function addVenmoTransactions() {
+export async function addVenmoTransactions(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/addVenmoTransactions', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/addVenmoTransactions', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Inserted ${data.inserted} transactions (5 historical seeded as "${data.foodCat}" / "${data.housingCat}", 5 current month in To Sort).`;
@@ -354,11 +372,12 @@ export async function addVenmoTransactions() {
   }
 }
 
-export async function addTestTransactions() {
+export async function addTestTransactions(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/addTestTransactions', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/addTestTransactions', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Inserted ${data.inserted} test transactions dated today.`;

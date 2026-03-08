@@ -1,7 +1,20 @@
 <template>
   <div class="page-padder p-3">
     <h1>API Toolbox</h1>
-    <p>Admin tools for managing your Plaid data. Each button runs the operation and shows the result below.</p>
+    <p>Admin tools for managing Plaid data. Each button runs the operation and shows the result below.</p>
+
+    <div v-if="isAdmin && users.length > 0" class="basil-user-picker">
+      <q-select
+        v-model="selectedUser"
+        :options="userOptions"
+        label="Target user"
+        emit-value
+        map-options
+        dense
+        outlined
+        style="max-width: 400px"
+      />
+    </div>
 
     <div class="tool-list">
       <div v-for="tool in tools" :key="tool.key" class="tool-row">
@@ -9,6 +22,7 @@
           :label="tool.label"
           :color="tool.dangerous ? 'negative' : 'primary'"
           :loading="loading[tool.key]"
+          :disable="isAdmin && !selectedUser"
           @click="run(tool)"
           class="q-mr-md"
         />
@@ -20,7 +34,7 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions, fetchUsers } from '../firebase';
 import store from '../store';
 
 const TOOLS = [
@@ -80,19 +94,19 @@ const TOOLS = [
   {
     key: 'nuketransactions',
     label: 'Nuke Transactions',
-    description: 'Permanently deletes ALL of your transactions. Irreversible.',
+    description: 'Permanently deletes ALL transactions for the target user. Irreversible.',
     fn: nukeTransactions,
     dangerous: true,
-    confirm: 'This will permanently delete all of your transactions. Are you sure?',
+    confirm: 'This will permanently delete all transactions for the target user. Are you sure?',
     postRun() { store.commit('setTransactions', []); },
   },
   {
     key: 'nukealldata',
     label: 'Nuke All Data',
-    description: 'Permanently deletes ALL transactions, categories, rules, and linked accounts. Redirects to onboarding.',
+    description: 'Permanently deletes ALL transactions, categories, rules, and linked accounts for the target user. Redirects to onboarding if targeting self.',
     fn: nukeAllData,
     dangerous: true,
-    confirm: 'This will permanently delete all transactions, categories, rules, and linked accounts. Are you sure?',
+    confirm: 'This will permanently delete all transactions, categories, rules, and linked accounts for the target user. Are you sure?',
     postRun(vm) {
       store.commit('setTransactions', []);
       store.commit('setCategories', []);
@@ -111,7 +125,30 @@ export default {
       tools: TOOLS,
       loading: {},
       results: {},
+      users: [],
+      selectedUser: null,
     };
+  },
+  computed: {
+    isAdmin() {
+      return !!store.state.user?.isAdmin;
+    },
+    userOptions() {
+      return this.users.map(u => ({
+        label: `${u.name || u.email || u.userId}${u.isAdmin ? ' (admin)' : ''}`,
+        value: u.userId,
+      }));
+    },
+  },
+  async mounted() {
+    if (this.isAdmin) {
+      try {
+        const users = await fetchUsers();
+        if (users) this.users = users;
+      } catch (e) {
+        console.error('Failed to load users:', e);
+      }
+    }
   },
   methods: {
     run(tool) {
@@ -122,9 +159,12 @@ export default {
       this.loading[tool.key] = true;
       this.results[tool.key] = null;
       try {
-        const result = await tool.fn();
+        // Pass selectedUser (null = self) to all tool functions
+        const targetUserId = this.selectedUser || undefined;
+        const result = await tool.fn(targetUserId);
         this.results[tool.key] = result ?? 'Done.';
-        if (tool.postRun) tool.postRun(this);
+        // Only run postRun side-effects when targeting self
+        if (tool.postRun && !this.selectedUser) tool.postRun(this);
       } catch (err) {
         this.results[tool.key] = `Error: ${err.message}`;
       } finally {
@@ -136,6 +176,9 @@ export default {
 </script>
 
 <style scoped>
+.basil-user-picker {
+  margin-bottom: var(--basil-space-4);
+}
 .tool-list {
   display: flex;
   flex-direction: column;

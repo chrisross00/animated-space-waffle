@@ -194,6 +194,13 @@ async function deleteCompoundRule(userId, ruleId) {
   return db.collection('Basil-Rules').deleteOne({ _id: new ObjectId(ruleId), userId });
 }
 
+async function findAllUsers() {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  return db.collection('Basil-Users').find({}, {
+    projection: { userId: 1, email: 1, name: 1, picture: 1, isAdmin: 1 },
+  }).toArray();
+}
+
 module.exports = {
   connectToDb,
   insertData,
@@ -214,4 +221,5 @@ module.exports = {
   insertRule,
   updateCompoundRule,
   deleteCompoundRule,
+  findAllUsers,
 };
