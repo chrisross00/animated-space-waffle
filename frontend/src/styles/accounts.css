@@ -1,14 +1,18 @@
-.basil-accounts__institution-name {
-  font-family: var(--basil-font-ui);
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--basil-text);
+/* =====================================================
+   AccountsView — institution list + summary cards
+   ===================================================== */
+
+.basil-accounts__institution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--basil-space-2);
 }
 
-.basil-accounts__acct-name {
-  font-family: var(--basil-font-ui);
-  font-weight: 500;
+.basil-accounts__institution-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--basil-text);
 }
 
 .basil-accounts__mask {
@@ -32,6 +36,7 @@
   color: var(--basil-negative);
 }
 
+/* Credit utilization bar */
 .basil-accounts__utilization {
   display: flex;
   align-items: center;
@@ -48,18 +53,29 @@
   white-space: nowrap;
 }
 
-/* Cards: Net Worth, Cash Runway */
+/* No balance data hint */
+.basil-accounts__no-balances {
+  font-size: 0.85rem;
+  color: var(--basil-text-muted);
+  font-style: italic;
+  padding: var(--basil-space-2) 0;
+}
+
+/* Net worth sparkline */
+.basil-accounts__sparkline {
+  height: 100px;
+  width: 100%;
+  margin: var(--basil-space-2) 0;
+}
+
+/* ---- Summary cards (Net Worth, Cash Runway) ----
+   Uses q-card + shared basil-card-head / basil-card-label / basil-card-rule
+   from BudgetView.css. Only view-specific layout below. */
 .basil-accounts__card {
-  background: var(--basil-surface);
-  border: 1px solid var(--basil-border);
-  border-radius: var(--basil-radius-lg);
-  overflow: hidden;
+  padding: var(--basil-space-5) !important;
 }
 
-.basil-accounts__card-body {
-  padding: var(--basil-space-4);
-}
-
+/* Net Worth rows */
 .basil-accounts__net-row {
   display: flex;
   justify-content: space-between;
@@ -68,12 +84,7 @@
 }
 
 .basil-accounts__net-label {
-  font-family: var(--basil-font-ui);
   color: var(--basil-text-secondary);
-}
-
-.basil-accounts__net-total {
-  font-size: 1.5rem;
 }
 
 /* Cash Runway */
@@ -81,31 +92,17 @@
   text-align: center;
 }
 
-.basil-accounts__runway-number {
-  display: block;
-  font-size: 2rem;
-  margin-bottom: var(--basil-space-2);
-}
-
-.basil-accounts__runway-detail {
-  display: block;
-  font-family: var(--basil-font-ui);
-  font-size: 0.9rem;
-  color: var(--basil-text-secondary);
-  margin-bottom: var(--basil-space-2);
-}
-
 .basil-accounts__runway-note {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--basil-text-secondary);
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
   font-style: italic;
+  margin-top: var(--basil-space-2);
 }
 
 /* Last updated footer */
 .basil-accounts__updated {
   text-align: center;
-  font-size: 0.8rem;
-  color: var(--basil-text-secondary);
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
   padding: var(--basil-space-2) 0;
 }

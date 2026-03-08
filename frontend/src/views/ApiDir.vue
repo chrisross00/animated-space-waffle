@@ -34,7 +34,7 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions, fetchUsers } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, resetBalanceSnapshots, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions, fetchUsers } from '../firebase';
 import store from '../store';
 
 const TOOLS = [
@@ -79,6 +79,13 @@ const TOOLS = [
     label: 'Add Test Transactions',
     description: 'Inserts 14 realistic synthetic transactions dated today (groceries, transport, income, etc.) — no existing data needed.',
     fn: addTestTransactions,
+  },
+  {
+    key: 'resetsnapshots',
+    label: 'Reset Balance Snapshots',
+    description: 'Clears all stored net worth snapshots (estimated + real). Refresh balances on the Accounts tab to regenerate.',
+    fn: resetBalanceSnapshots,
+    postRun() { store.commit('setBalanceSnapshots', null); },
   },
   {
     key: 'clearmanuals',

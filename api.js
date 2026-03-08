@@ -173,7 +173,17 @@ router.post('/refreshBalances', async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
     const balances = await fetchAndStoreBalances(uid);
-    res.json({ balances });
+    // Read back snapshots for the chart
+    const accounts = await findUserData('Plaid-Accounts', uid);
+    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const allSnapshots = [];
+    for (const name of Object.keys(accountsObj)) {
+      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
+        allSnapshots.push(snap);
+      }
+    }
+    const balanceSnapshots = aggregateSnapshots(allSnapshots);
+    res.json({ balances, balanceSnapshots });
   } catch (error) {
     console.error('/refreshBalances error:', error.message);
     res.status(500).json({ message: 'Failed to refresh balances' });
@@ -616,20 +626,50 @@ async function getOrAddUser(decodedToken) {
   }
 }
 
+/** Aggregate balance snapshots by date, preserving the `estimated` flag. */
+function aggregateSnapshots(snapshots) {
+  if (!snapshots?.length) return null;
+  const byDate = {};
+  for (const snap of snapshots) {
+    if (!byDate[snap.date]) {
+      byDate[snap.date] = { net: 0, estimated: !!snap.estimated };
+    }
+    byDate[snap.date].net += snap.net;
+    // A date is only estimated if ALL snapshots for that date are estimated
+    if (!snap.estimated) byDate[snap.date].estimated = false;
+  }
+  const result = Object.entries(byDate)
+    .map(([date, { net, estimated }]) => {
+      const entry = { date, net: Math.round(net * 100) / 100 };
+      if (estimated) entry.estimated = true;
+      return entry;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return result.length ? result : null;
+}
+
 function createClientSideUser(user, accounts=null) {
   const bankAccounts = accounts?.[0]?.Accounts ?? null;
   console.log('createClientSideUser accounts: ', bankAccounts)
   let bankNames = bankAccounts ? Object.keys(bankAccounts) : [];
 
-  // Extract cached balance data per institution
+  // Extract cached balance data and snapshots per institution
   let accountBalances = null;
+  let balanceSnapshots = null;
   if (bankAccounts) {
     accountBalances = {};
+    balanceSnapshots = [];
     for (const name of bankNames) {
       if (bankAccounts[name].balances) {
         accountBalances[name] = bankAccounts[name].balances;
       }
+      if (bankAccounts[name].balanceSnapshots) {
+        for (const snap of bankAccounts[name].balanceSnapshots) {
+          balanceSnapshots.push(snap);
+        }
+      }
     }
+    balanceSnapshots = aggregateSnapshots(balanceSnapshots);
   }
 
   return {
@@ -638,6 +678,7 @@ function createClientSideUser(user, accounts=null) {
     picture: user.picture,
     accounts: bankNames,
     accountBalances,
+    balanceSnapshots: balanceSnapshots?.length ? balanceSnapshots : null,
     onboarded_at: user.onboarded_at || null,
     isAdmin: !!user.isAdmin,
   };
@@ -682,6 +723,27 @@ router.post('/clearManualOverrides', async (req, res) => {
   } catch (error) {
     console.error('/clearManualOverrides error:', error);
     res.status(500).json({ message: 'Failed to clear manual overrides' });
+  }
+});
+
+router.post('/resetBalanceSnapshots', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    if (!requireAdmin(uid, res)) return;
+    const accounts = await findUserData('Plaid-Accounts', uid);
+    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const unset = {};
+    for (const name of Object.keys(accountsObj)) {
+      unset[`Accounts.${name}.balanceSnapshots`] = '';
+    }
+    if (Object.keys(unset).length) {
+      await updateData('Plaid-Accounts', { userId: uid }, { $unset: unset });
+    }
+    res.json({ cleared: Object.keys(unset).length });
+  } catch (error) {
+    console.error('/resetBalanceSnapshots error:', error);
+    res.status(500).json({ message: 'Failed to reset snapshots' });
   }
 });
 

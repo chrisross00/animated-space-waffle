@@ -312,6 +312,20 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
   return response.ok;
 }
 
+export async function resetBalanceSnapshots() {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/resetBalanceSnapshots', { method: 'POST', headers });
+    if (response.ok) {
+      const data = await response.json();
+      return `Cleared snapshots from ${data.cleared} institution${data.cleared !== 1 ? 's' : ''}. Refresh balances to regenerate.`;
+    } else {
+      _notify({ type: 'negative', message: `Failed to reset snapshots (${response.status})` });
+    }
+  }
+}
+
 export async function nukeTransactions(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {

@@ -52,12 +52,6 @@
   margin-top: 2px;
 }
 
-/* ---- Account list ---- */
-.basil-account-item {
-  padding-left: 0;
-  padding-right: 0;
-}
-
 /* ---- Settings row ---- */
 .basil-settings-row {
   display: flex;
@@ -93,11 +87,6 @@
             <q-skeleton type="text" width="40%" />
           </div>
         </div>
-      </q-card>
-      <q-card class="my-card profile-card basil-profile-card">
-        <div class="basil-card-head"><span class="basil-card-label">Linked Accounts</span></div>
-        <q-skeleton type="text" width="60%" class="q-mt-sm" />
-        <q-skeleton type="text" width="45%" class="q-mt-xs" />
       </q-card>
     </div>
 
@@ -136,51 +125,6 @@
         </div>
       </q-card>
 
-      <!-- Linked Accounts card -->
-      <q-card class="my-card profile-card basil-profile-card">
-        <div class="basil-card-head">
-          <span class="basil-card-label">Linked Accounts</span>
-        </div>
-
-        <EmptyState
-          v-if="!user.accounts || user.accounts.length === 0"
-          icon="account_balance"
-          heading="No accounts linked"
-          body="Connect a bank account to start importing your transactions."
-        />
-
-        <q-list v-else separator>
-          <q-item v-for="account in user.accounts" :key="account" class="basil-account-item">
-            <q-item-section avatar>
-              <q-icon name="account_balance" color="primary" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ account }}</q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <template v-if="!preDelete[account]">
-                <q-btn flat round dense icon="delete" color="negative" size="sm"
-                  @click.stop="preDeleteAccount(account)" />
-              </template>
-              <template v-else>
-                <div class="row q-gutter-xs">
-                  <q-btn flat round dense icon="check" color="positive" size="sm"
-                    @click.stop="deleteAccount(account)" />
-                  <q-btn flat round dense icon="close" color="negative" size="sm"
-                    @click.stop="cancelPreDeleteAccount(account)" />
-                </div>
-              </template>
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <div class="q-mt-md">
-          <q-btn unelevated color="primary" icon="add" label="Add account"
-            @click="handleAddNewAccountClick" />
-          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
-        </div>
-      </q-card>
-
     </div>
 
     <!-- Login screen — only when definitively not signed in -->
@@ -214,23 +158,19 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, removeAccount, fetchTransactions, fetchCategories } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchTransactions, fetchCategories } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
-import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
 
 
 export default {
   components: {
-    PlaidLinkHandler,
     EmptyState,
   },
   data() {
     return {
       isLoading: false,
-      showPlaidLink: false,
-      preDelete: {}
     }
   },
   computed: {
@@ -250,45 +190,6 @@ export default {
   methods: {
     toggleTheme() {
       this.$store.commit('setTheme', this.isDark ? '' : 'dark');
-    },
-    preDeleteAccount(account){
-      // set preDelete to true
-    this.preDelete[account] = true;
-    },
-    cancelPreDeleteAccount(account) {
-      // account.preDelete = false;
-      this.preDelete[account] = false;
-    },
-    async deleteAccount(account) {
-      try {
-        await removeAccount(account);
-        store.commit('setUser', { ...this.user, accounts: this.user.accounts.filter(a => a !== account) });
-      } catch (error) {
-        console.error('deleteAccount error:', error);
-      }
-      this.cancelPreDeleteAccount(account);
-    },
-    handleAddNewAccountClick() {
-      this.showPlaidLink = true;
-    },
-    async handlePlaidSuccess() {
-      this.isLoading = true;
-      try {
-        const user = await getOrAddUser();
-        store.commit('setUser', user);
-      } catch (error) {
-        console.error('handlePlaidSuccess: getOrAddUser error:', error);
-      }
-      try {
-        const result = await fetchTransactions();
-        if (result?.transactions) {
-          store.commit('setTransactions', result.transactions);
-        }
-      } catch (error) {
-        console.error('handlePlaidSuccess: fetchTransactions error:', error);
-      }
-      this.isLoading = false;
-      this.showPlaidLink = false;
     },
     async devTestLogin() {
       this.isLoading = true;
