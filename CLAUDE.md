@@ -130,7 +130,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToMongoFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
 - **Shared components over one-off markup.** `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement empty states inline.
 - **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations (`updateTransaction`, `updateRule`, `addRule`, etc.) or add a new named mutation.
-- **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `range`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
+- **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `contains`, `range`, `gt`, `lt`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
 
 ## What works end-to-end
 - Google Sign-In → Plaid bank link → transaction sync → budget dashboard
@@ -147,6 +147,8 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Similarity engine: auto-detects similar transactions (3 strategies: merchant_name → name+account → name), shows reactive "Also categorize N similar" checkbox with count based on selected category
 - Transaction display: prefers `merchant_name` over raw Plaid `name`; shows institution context for null-merchant transactions
 - Admin toolbox: dedupe, seed categories, clean pending, map unmapped, clear manual overrides
+- Onboarding: 3-step flow (connect bank → seed defaults → done) gated by `onboarded_at`
+- Rule attribution: shows who created a rule and why (auto-learn, manual, compound)
 
 ---
 
@@ -171,11 +173,9 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       pin manual overrides so the engine stops second-guessing them, and review/edit
       auto-created rules without opening a full category dialog. Any design work on one
       touches the other.
-- [ ] **Rules view: transaction breakdown per rule** — when viewing or editing a rule in
-      RulesView / RuleEditorDialog, show which transactions it matches and how they're spread
-      across categories (e.g. "15 matched: 10 Coffee, 3 Food, 2 To Sort"). Gives power users
-      visibility into what a rule is doing. Uses `findSimilarTransactions` match data or a
-      dedicated rule-match query. Client-side only (filter `store.state.transactions`).
+- [x] **Rules view: transaction breakdown per rule** — expandable matched transactions
+      list in RuleEditorDialog shows which transactions a rule matches. Client-side,
+      filters `store.state.transactions`.
 - [ ] **Fixed vs variable category dimension** — add a `fixed` / `variable` flag to
       categories (fixed = rent, subscriptions, loan payments; variable = dining, entertainment,
       shopping). Enables a bucketed budget view showing your cost floor (fixed) vs discretionary
@@ -208,12 +208,10 @@ These should be resolved before building the Accounts view. See `plans/accounts-
       a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
       vs moves to Accounts before building the new view.
 
-### Rule editor future operators (not yet built)
-When the rule editor condition fields are extended, these operators should be added:
-- **Name / Merchant name:** `contains` (currently exact-match only)
-- **Amount:** `>` (greater than), `<` (less than), `between` (range with min + max)
-These require changes to `utils/categoryMapping.js → matchesCondition()` and the
-`conditionsToMongoFilter()` helper in `api.js → /saveCompoundRule`.
+### Rule editor future operators
+Shipped: `contains` (name/merchant), `gt` / `lt` (amount) — implemented in all three
+layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
+- **Amount:** `between` (range with min + max) — not yet built
 
 ### Tech debt
 - [ ] **Database migration: MongoDB → Postgres (Supabase)** — data model is textbook
@@ -235,11 +233,10 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
       after browser close, so users stay "logged in" until explicit sign-out (which matches
       Firebase's default auth persistence anyway). Verify `clearState` properly clears
       localStorage on sign-out before switching.
-- [ ] **BudgetView: eliminate local data arrays** — BudgetView maintains `this.transactions`
-      and `this.categoryMonthlyLimits` locally alongside `store.state.*`, with manual sync.
-      Replace with store-derived computed properties to eliminate dual-source-of-truth bugs.
-      Significant internal refactor — test thoroughly (fresh login, hard refresh, pull-to-refresh,
-      Sync FAB, tab switching, add category, edit transaction).
+- [ ] **BudgetView: eliminate local transaction array** — `this.transactions` is still
+      copied locally from `store.state.transactions` with manual sync. Categories and rules
+      were moved to store computeds (d25f086). Remaining: replace `this.transactions` with
+      a store-derived computed. Significant refactor — test thoroughly.
 
 ### Dev tools
 - [x] **Dev auth bypass** — "Login as test user" button on ProfileView login screen. Skips Google
@@ -330,7 +327,7 @@ Top-down table: Merchant | Txns | Current category | Assign (inline q-select + A
 
 ### Compound rules ✓ — multi-condition rules (triage + dialog + RuleEditorDialog)
 Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, createdAt, createdFrom }`.
-- `conditions`: array of `{ field, op, value }` — supported fields: `merchant_name`, `name`, `amount` (`eq`|`range`), `account` (`eq`)
+- `conditions`: array of `{ field, op, value }` — supported fields: `merchant_name` (`eq`|`contains`), `name` (`eq`|`contains`), `amount` (`eq`|`range`|`gt`|`lt`), `account` (`eq`)
 - `action`: `{ type: 'categorize', categoryName, note? }`
 - Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
 - Created from: Sort Transactions triage card, Edit Transaction dialog, or RuleEditorDialog
@@ -415,8 +412,13 @@ Never create classes starting with `q-` (Quasar's namespace).
 ---
 
 ## Recent history (for context)
-- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine — auto-detects matching transactions and creates the right rule type automatically
-- Actionable count in similarity checkbox reactive to selected target category (excludes matches already in target + `manually_set`)
-- Transaction display: category list prefers `merchant_name`; institution context shown in category list, triage card, table, and dialog for null-merchant transactions
-- Added pre-push hook (husky): runs backend + frontend test suites before every push (99 tests)
-- Created database migration PRD (`plans/database-migration.md`) with Postgres schema, 3-phase migration strategy, and decision framework
+- Simplified onboarding to 3-step flow; removed custom category seeding + `OnboardingCategoryEditor`
+- Replaced `showOnBudgetPage` with dynamic category visibility; added `isDefault` flag to seeds
+- Removed PFC mapping UI from category dialogs
+- Fixed hard-refresh auth race; deduplicated nuke logic; fixed `onboarded_at` edge case
+- Consolidated view-level data fetching to `ensureAppData`; BudgetView categories/rules now from store
+- Added rule attribution + new condition operators (`contains`, `gt`, `lt`) to all three layers
+- Expandable matched transactions list in RuleEditorDialog
+- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine
+- Added pre-push hook (husky): runs backend + frontend test suites before every push
+- Created data-layer rearchitecture plan (`plans/data-layer-rearchitecture.md`)

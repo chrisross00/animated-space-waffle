@@ -35,6 +35,9 @@ router.get("/create_link_token", async (req, res, next) => {
       res.json(tokenResponse.data);
     } catch (error) {
       console.error('/create_link_token error:', error.message);
+      if (error.response) {
+        console.error('Plaid error details:', JSON.stringify(error.response.data, null, 2));
+      }
       res.status(500).json({ message: 'Failed to create link token' });
     }
 });
