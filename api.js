@@ -66,6 +66,8 @@ router.get('/seedcategories', async (req, res) => {
     const userId = decodedToken.uid;
     const existing = await findUserData('Basil-Categories', userId);
     if (existing.length > 0) {
+      // Categories already exist — still ensure onboarded_at is stamped
+      await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
       return res.send(`User already has ${existing.length} categories. Skipping.`);
     }
     const toInsert = DEFAULT_CATEGORIES.map(cat => ({

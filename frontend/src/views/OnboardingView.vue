@@ -166,6 +166,16 @@ export default {
 
     async runSeed() {
       if (store.state.categories?.length) {
+        // Categories exist (e.g. returning user who nuked data) — still ensure
+        // onboarded_at is set so downstream views know onboarding is complete.
+        if (!store.state.user?.onboarded_at) {
+          try {
+            const user = await getOrAddUser();
+            if (user) store.commit('setUser', user);
+          } catch (err) {
+            console.error('runSeed: refresh user error:', err);
+          }
+        }
         this.seeded = true;
         return;
       }
