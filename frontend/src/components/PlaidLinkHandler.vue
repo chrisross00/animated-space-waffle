@@ -44,6 +44,7 @@ export default {
         },
         onExit: (error, metadata) => {
           console.log(error, metadata);
+          this.$emit('onPlaidExit');
         },
       });
       this.linkHandler.open();

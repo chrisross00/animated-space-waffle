@@ -36,25 +36,36 @@
 
       <!-- Step 2: Quick flow — Connect bank -->
       <div v-if="currentStep === 2 && flow === 'quick'" class="basil-onboarding-step">
-        <h2 class="basil-onboarding-heading">Connect your bank</h2>
-        <p class="basil-onboarding-body">
-          Link your accounts to automatically import transactions.
-        </p>
-        <q-btn
-          unelevated
-          color="primary"
-          label="Connect account"
-          icon="account_balance"
-          class="basil-onboarding-cta"
-          @click="showPlaidLink = true"
-        />
-        <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccess" />
-        <div class="basil-onboarding-skip">
-          <a href="#" @click.prevent="goToStep3Quick">Skip for now →</a>
-        </div>
-        <div class="basil-onboarding-skip">
-          <a href="#" @click.prevent="currentStep = 1">← Back</a>
-        </div>
+        <template v-if="!linking">
+          <h2 class="basil-onboarding-heading">Connect your bank</h2>
+          <p class="basil-onboarding-body">
+            Link your accounts to automatically import transactions.
+          </p>
+          <q-btn
+            unelevated
+            color="primary"
+            label="Connect account"
+            icon="account_balance"
+            class="basil-onboarding-cta"
+            @click="startPlaidLink"
+          />
+          <div class="basil-onboarding-skip">
+            <a href="#" @click.prevent="goToStep3Quick">Skip for now →</a>
+          </div>
+          <div class="basil-onboarding-skip">
+            <a href="#" @click.prevent="currentStep = 1">← Back</a>
+          </div>
+        </template>
+        <template v-else>
+          <div class="basil-onboarding-linking">
+            <q-spinner color="primary" size="2.5rem" />
+            <h2 class="basil-onboarding-heading">Connecting your account</h2>
+            <p class="basil-onboarding-body">
+              Syncing your account details — this may take a moment.
+            </p>
+          </div>
+        </template>
+        <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccess" @onPlaidExit="onPlaidExit" />
       </div>
 
       <!-- Step 2: Custom flow — Checklist hub -->
@@ -82,19 +93,20 @@
           </div>
           <div
             class="basil-onboarding-checklist-card"
-            :class="{ 'basil-onboarding-checklist-card--done': bankDone }"
-            @click="showPlaidLink = true"
+            :class="{ 'basil-onboarding-checklist-card--done': bankDone, 'basil-onboarding-checklist-card--linking': linking }"
+            @click="!linking && !bankDone && startPlaidLink()"
           >
-            <q-icon :name="bankDone ? 'check_circle' : 'account_balance'" size="1.5rem"
+            <q-spinner v-if="linking" color="primary" size="1.5rem" />
+            <q-icon v-else :name="bankDone ? 'check_circle' : 'account_balance'" size="1.5rem"
               :color="bankDone ? 'positive' : 'primary'" />
             <div>
               <div class="basil-onboarding-checklist-card__title">Connect your bank</div>
               <div class="basil-onboarding-checklist-card__sub">
-                {{ bankDone ? 'Connected' : 'Link accounts to import transactions' }}
+                {{ linking ? 'Syncing account details…' : bankDone ? 'Connected' : 'Link accounts to import transactions' }}
               </div>
             </div>
           </div>
-          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccessCustom" />
+          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccessCustom" @onPlaidExit="onPlaidExit" />
           <q-btn
             unelevated
             color="primary"
@@ -216,6 +228,7 @@ export default {
       currentStep: 1,
       flow: null,
       showPlaidLink: false,
+      linking: false,
       showCategoryEditor: false,
       // Quick flow
       seeding: false,
@@ -255,15 +268,27 @@ export default {
       this.currentStep = 2;
     },
 
+    startPlaidLink() {
+      this.showPlaidLink = true;
+    },
+
+    onPlaidExit() {
+      this.showPlaidLink = false;
+      this.linking = false;
+    },
+
     // Quick flow: plaid success → step 3
     async onPlaidSuccess() {
+      // Plaid modal closed — now show our spinner while we sync
+      this.linking = true;
+      this.showPlaidLink = false;
       try {
         const user = await getOrAddUser();
         store.commit('setUser', user);
       } catch (err) {
         console.error('onPlaidSuccess error:', err);
       }
-      this.showPlaidLink = false;
+      this.linking = false;
       this.currentStep = 3;
     },
 
@@ -292,6 +317,8 @@ export default {
 
     // Custom flow: plaid success (stay on hub)
     async onPlaidSuccessCustom() {
+      this.linking = true;
+      this.showPlaidLink = false;
       try {
         const user = await getOrAddUser();
         store.commit('setUser', user);
@@ -299,7 +326,7 @@ export default {
       } catch (err) {
         console.error('onPlaidSuccessCustom error:', err);
       }
-      this.showPlaidLink = false;
+      this.linking = false;
     },
 
     onCategoriesDone(categories) {

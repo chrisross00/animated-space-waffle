@@ -197,4 +197,23 @@
   margin-top: 2px;
 }
 
+/* ---- Linking state ---- */
+.basil-onboarding-linking {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--basil-space-3);
+  text-align: center;
+  padding: var(--basil-space-5) 0;
+}
+
+.basil-onboarding-linking .basil-onboarding-heading {
+  margin-bottom: 0;
+}
+
+.basil-onboarding-checklist-card--linking {
+  pointer-events: none;
+  border-color: var(--basil-green);
+}
+
 /* Setup card styles moved to BudgetView.css */
