@@ -275,8 +275,8 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
       assign all to the same category in one Apply. See details below.
 - [ ] **Iteration 4** — Bulk rule creation from transaction table: select rows →
       "Create rule for selected" alongside "Move to category".
-- [ ] **Onboarding wizard** — connect account → seed categories → set budgets in one
-      guided flow. Polish item; app already works end-to-end.
+- [x] **Onboarding wizard** — simplified to 3-step flow: connect bank → seed defaults → done.
+      Custom category flow removed (see `plans/category-simplification.md`).
 - [ ] **Savings category type** — schema exists, UI exists. Still need to decide
       whether to treat savings transfers as neutral in cash flow or deduct from net.
 
