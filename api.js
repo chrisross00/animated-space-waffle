@@ -84,49 +84,6 @@ router.get('/seedcategories', async (req, res) => {
   }
 });
 
-router.post('/seedCustomCategories', async (req, res) => {
-  try {
-    const decodedToken = await validateIdToken(req);
-    const userId = decodedToken.uid;
-    const existing = await findUserData('Basil-Categories', userId);
-    if (existing.length > 0) {
-      return res.status(400).json({ error: `User already has ${existing.length} categories.` });
-    }
-    const { categories } = req.body;
-    if (!Array.isArray(categories) || categories.length === 0) {
-      return res.status(400).json({ error: 'categories must be a non-empty array.' });
-    }
-    if (!categories.some(c => c.category === 'To Sort')) {
-      return res.status(400).json({ error: '"To Sort" category is required.' });
-    }
-    // Check for duplicate PFC assignments
-    const seenPfcs = new Set();
-    for (const cat of categories) {
-      for (const pfc of (cat.plaid_pfc || [])) {
-        if (seenPfcs.has(pfc)) {
-          return res.status(400).json({ error: `Duplicate PFC assignment: ${pfc}` });
-        }
-        seenPfcs.add(pfc);
-      }
-    }
-    const toInsert = categories.map(cat => ({
-      category: cat.category,
-      type: cat.type || 'expense',
-      monthly_limit: cat.monthly_limit || 0,
-      plaid_pfc: cat.plaid_pfc || [],
-      annual_spend: '',
-      rules: {},
-      showOnBudgetPage: true,
-      userId,
-    }));
-    await insertData('Basil-Categories', toInsert);
-    await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
-    res.json({ count: toInsert.length });
-  } catch (error) {
-    res.status(500).json({ error: 'Error seeding custom categories: ' + error });
-  }
-});
-
 router.get('/addplaidpfc', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);

@@ -184,18 +184,6 @@ export async function seedCategories() {
   }
 }
 
-export async function seedCustomCategories(categories) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const response = await fetch('/api/seedCustomCategories', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ categories }),
-    });
-    if (response.ok) return response.json();
-    else _notify({ type: 'negative', message: `Failed to seed custom categories (${response.status})` });
-  }
-}
 
 export async function cleanPending() {
   const headers = await getAuthHeaders();
