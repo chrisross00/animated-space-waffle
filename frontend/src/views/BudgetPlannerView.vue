@@ -190,7 +190,7 @@
 
 <script>
 import EmptyState from '../components/EmptyState.vue';
-import { fetchCategories, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/firebase';
+import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/firebase';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 
@@ -236,10 +236,7 @@ export default {
   },
 
   async mounted() {
-    if (this.isLoggedIn && this.isOnboarded && !this.$store.state.categories?.length) {
-      const cats = await fetchCategories();
-      if (cats) store.commit('setCategories', cats);
-    }
+    await ensureAppData(store);
   },
 
   computed: {

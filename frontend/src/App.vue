@@ -268,7 +268,6 @@
 
 <script>
 import { ref } from 'vue'
-import { ensureAppData } from '@/firebase'
 import store from './store'
 
 export default {
@@ -315,10 +314,7 @@ export default {
     },
   },
 
-  created() {
-    // Bootstrap is now handled centrally by onAuthStateChanged in main.js
-    // after fetching the real app user. No need to call ensureAppData here.
-  },
+  created() {},
 
   mounted() {
     window.addEventListener('scroll', this.onScroll, { passive: true });
