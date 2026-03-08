@@ -92,6 +92,15 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - **DNS fix:** `index.js` sets `dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4'])`
   at startup — required on Node 24 + Windows because c-ares uses TCP for SRV queries
   and home routers only support DNS over UDP.
+- **Firebase usage:** Only two services are used: (1) **Authentication** — Google Sign-In
+  via `firebase.auth()` + `GoogleAuthProvider` on the frontend, verified by
+  `firebase-admin.auth().verifyIdToken()` on the backend. (2) **Firestore** — a single
+  `sessions` collection storing login/logout timestamps (legacy/informational; all real
+  app data lives in MongoDB). No Cloud Functions, Storage, Hosting, Analytics, or other
+  Firebase services are in use. If the Supabase database migration happens, auth should
+  be consolidated to Supabase Auth at the same time — it supports Google OAuth natively,
+  and Postgres RLS would replace the manual `userId` filtering on every query. Don't
+  switch auth independently; bundle it with the database migration.
 - **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend).
   `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
 
@@ -203,8 +212,12 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
 - [ ] **Database migration: MongoDB → Postgres (Supabase)** — data model is textbook
       relational but stored in a document DB. Missing referential integrity, manual
       `userId` filtering on every query, nested documents where flat tables would be
-      simpler. Frontend is untouched (API contract stays the same). See full PRD with
-      schema, migration strategy, and decision framework: `plans/database-migration.md`.
+      simpler. Frontend is untouched (API contract stays the same). Should include
+      migrating Firebase Auth → Supabase Auth at the same time (Firebase is only used
+      for Google Sign-In + a legacy Firestore `sessions` collection — no other Firebase
+      services). Supabase Auth supports Google OAuth natively, and Postgres RLS replaces
+      manual `userId` filtering. See full PRD with schema, migration strategy, and
+      decision framework: `plans/database-migration.md`.
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added.
