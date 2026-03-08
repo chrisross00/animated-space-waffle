@@ -529,7 +529,7 @@ router.post('/bulkCategorize', async (req, res) => {
     }
     await updateManyData('Plaid-Transactions',
       { transaction_id: { $in: transaction_ids }, userId: uid },
-      { $set: { mappedCategory } }
+      { $set: { mappedCategory, manually_set: true } }
     );
     res.json({ updated: transaction_ids.length, mappedCategory });
   } catch (error) {

@@ -1506,7 +1506,10 @@ monthStats() {
           await bulkCategorize(ids, this.bulkCategory);
           this.selectedRows.forEach(row => {
             const txn = this.transactions.find(t => t.transaction_id === row.transaction_id);
-            if (txn) txn.mappedCategory = this.bulkCategory;
+            if (txn) {
+              txn.mappedCategory = this.bulkCategory;
+              txn.manually_set = true;
+            }
           });
           store.commit('setTransactions', this.transactions);
           this.groupTransactions();
