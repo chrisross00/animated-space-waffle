@@ -228,6 +228,18 @@ These require changes to `utils/categoryMapping.js → matchesCondition()` and t
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added.
+- [ ] **Switch persisted state from sessionStorage to localStorage** — currently session +
+      user are stored in `sessionStorage` (tab-scoped), so opening a new tab loses auth
+      state and shows the login screen even though Firebase still has the user authenticated.
+      Switching to `localStorage` would fix cross-tab state. Tradeoff: localStorage persists
+      after browser close, so users stay "logged in" until explicit sign-out (which matches
+      Firebase's default auth persistence anyway). Verify `clearState` properly clears
+      localStorage on sign-out before switching.
+- [ ] **BudgetView: eliminate local data arrays** — BudgetView maintains `this.transactions`
+      and `this.categoryMonthlyLimits` locally alongside `store.state.*`, with manual sync.
+      Replace with store-derived computed properties to eliminate dual-source-of-truth bugs.
+      Significant internal refactor — test thoroughly (fresh login, hard refresh, pull-to-refresh,
+      Sync FAB, tab switching, add category, edit transaction).
 
 ### Dev tools
 - [x] **Dev auth bypass** — "Login as test user" button on ProfileView login screen. Skips Google
