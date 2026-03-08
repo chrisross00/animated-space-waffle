@@ -121,82 +121,6 @@
   color: var(--basil-text-secondary);
 }
 
-/* ---- Flow picker cards ---- */
-.basil-onboarding-flow-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--basil-space-3);
-}
-
-.basil-onboarding-flow-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--basil-space-2);
-  padding: var(--basil-space-5);
-  background-color: var(--basil-surface-alt);
-  border: 2px solid var(--basil-border);
-  border-radius: var(--basil-radius-md);
-  cursor: pointer;
-  transition: border-color var(--basil-t-fast), box-shadow var(--basil-t-fast);
-}
-
-.basil-onboarding-flow-card:hover {
-  border-color: var(--basil-green);
-  box-shadow: var(--basil-shadow-sm);
-}
-
-.basil-onboarding-flow-card__title {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  color: var(--basil-text);
-}
-
-.basil-onboarding-flow-card__sub {
-  font-size: 0.875rem;
-  color: var(--basil-text-secondary);
-}
-
-/* ---- Checklist hub ---- */
-.basil-onboarding-checklist {
-  display: flex;
-  flex-direction: column;
-  gap: var(--basil-space-3);
-}
-
-.basil-onboarding-checklist-card {
-  display: flex;
-  align-items: center;
-  gap: var(--basil-space-3);
-  padding: var(--basil-space-4);
-  background-color: var(--basil-surface-alt);
-  border: 2px solid var(--basil-border);
-  border-radius: var(--basil-radius-md);
-  cursor: pointer;
-  transition: border-color var(--basil-t-fast);
-}
-
-.basil-onboarding-checklist-card:hover {
-  border-color: var(--basil-green);
-}
-
-.basil-onboarding-checklist-card--done {
-  border-color: var(--basil-green);
-  opacity: 0.8;
-}
-
-.basil-onboarding-checklist-card__title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--basil-text);
-}
-
-.basil-onboarding-checklist-card__sub {
-  font-size: 0.8125rem;
-  color: var(--basil-text-secondary);
-  margin-top: 2px;
-}
-
 /* ---- Linking state ---- */
 .basil-onboarding-linking {
   display: flex;
@@ -210,10 +134,3 @@
 .basil-onboarding-linking .basil-onboarding-heading {
   margin-bottom: 0;
 }
-
-.basil-onboarding-checklist-card--linking {
-  pointer-events: none;
-  border-color: var(--basil-green);
-}
-
-/* Setup card styles moved to BudgetView.css */

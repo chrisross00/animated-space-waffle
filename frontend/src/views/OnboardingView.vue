@@ -4,7 +4,7 @@
   <div class="basil-onboarding-page">
     <div class="basil-onboarding-card">
 
-      <!-- Progress dots — shown on steps 1–3 only -->
+      <!-- Progress dots — shown on steps 1–3 -->
       <div v-if="currentStep <= 3" class="basil-onboarding-dots">
         <div
           v-for="n in 3"
@@ -14,30 +14,10 @@
         />
       </div>
 
-      <!-- Step 1: Flow picker -->
+      <!-- Step 1: Welcome + Connect bank -->
       <div v-if="currentStep === 1" class="basil-onboarding-step">
-        <h1 class="basil-onboarding-heading">Welcome to Basil</h1>
-        <p class="basil-onboarding-body">
-          How would you like to get started?
-        </p>
-        <div class="basil-onboarding-flow-cards">
-          <div class="basil-onboarding-flow-card" @click="pickFlow('quick')">
-            <q-icon name="flash_on" size="2rem" color="primary" />
-            <div class="basil-onboarding-flow-card__title">Quick setup</div>
-            <div class="basil-onboarding-flow-card__sub">We'll create categories for you</div>
-          </div>
-          <div class="basil-onboarding-flow-card" @click="pickFlow('custom')">
-            <q-icon name="tune" size="2rem" color="primary" />
-            <div class="basil-onboarding-flow-card__title">Custom setup</div>
-            <div class="basil-onboarding-flow-card__sub">Choose your own categories first</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 2: Quick flow — Connect bank -->
-      <div v-if="currentStep === 2 && flow === 'quick'" class="basil-onboarding-step">
         <template v-if="!linking">
-          <h2 class="basil-onboarding-heading">Connect your bank</h2>
+          <h1 class="basil-onboarding-heading">Welcome to Basil</h1>
           <p class="basil-onboarding-body">
             Link your accounts to automatically import transactions.
           </p>
@@ -50,10 +30,7 @@
             @click="startPlaidLink"
           />
           <div class="basil-onboarding-skip">
-            <a href="#" @click.prevent="goToStep3Quick">Skip for now →</a>
-          </div>
-          <div class="basil-onboarding-skip">
-            <a href="#" @click.prevent="currentStep = 1">← Back</a>
+            <a href="#" @click.prevent="currentStep = 2">Skip for now →</a>
           </div>
         </template>
         <template v-else>
@@ -68,73 +45,8 @@
         <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccess" @onPlaidExit="onPlaidExit" />
       </div>
 
-      <!-- Step 2: Custom flow — Checklist hub -->
-      <div v-if="currentStep === 2 && flow === 'custom'" class="basil-onboarding-step">
-        <h2 class="basil-onboarding-heading">Set up your account</h2>
-        <p class="basil-onboarding-body">
-          Complete these in any order.
-        </p>
-
-        <!-- Checklist cards (when editor is not open) -->
-        <div v-if="!showCategoryEditor" class="basil-onboarding-checklist">
-          <div
-            class="basil-onboarding-checklist-card"
-            :class="{ 'basil-onboarding-checklist-card--done': categoriesDone }"
-            @click="showCategoryEditor = true"
-          >
-            <q-icon :name="categoriesDone ? 'check_circle' : 'category'" size="1.5rem"
-              :color="categoriesDone ? 'positive' : 'primary'" />
-            <div>
-              <div class="basil-onboarding-checklist-card__title">Customize categories</div>
-              <div class="basil-onboarding-checklist-card__sub">
-                {{ categoriesDone ? 'Done' : 'Rename, add, or remove categories' }}
-              </div>
-            </div>
-          </div>
-          <div
-            class="basil-onboarding-checklist-card"
-            :class="{ 'basil-onboarding-checklist-card--done': bankDone, 'basil-onboarding-checklist-card--linking': linking }"
-            @click="!linking && !bankDone && startPlaidLink()"
-          >
-            <q-spinner v-if="linking" color="primary" size="1.5rem" />
-            <q-icon v-else :name="bankDone ? 'check_circle' : 'account_balance'" size="1.5rem"
-              :color="bankDone ? 'positive' : 'primary'" />
-            <div>
-              <div class="basil-onboarding-checklist-card__title">Connect your bank</div>
-              <div class="basil-onboarding-checklist-card__sub">
-                {{ linking ? 'Syncing account details…' : bankDone ? 'Connected' : 'Link accounts to import transactions' }}
-              </div>
-            </div>
-          </div>
-          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccessCustom" @onPlaidExit="onPlaidExit" />
-          <q-btn
-            unelevated
-            color="primary"
-            label="Continue"
-            icon-right="arrow_forward"
-            class="basil-onboarding-cta q-mt-md"
-            :disable="!categoriesDone"
-            @click="finishCustom"
-          />
-          <div v-if="!categoriesDone" class="basil-onboarding-skip" style="margin-top: var(--basil-space-2)">
-            <span style="font-size: 0.8125rem; color: var(--basil-text-muted)">Customize categories to continue</span>
-          </div>
-          <div class="basil-onboarding-skip">
-            <a href="#" @click.prevent="currentStep = 1">← Back</a>
-          </div>
-        </div>
-
-        <!-- Inline category editor -->
-        <div v-if="showCategoryEditor">
-          <OnboardingCategoryEditor @done="onCategoriesDone" />
-          <div class="basil-onboarding-skip">
-            <a href="#" @click.prevent="showCategoryEditor = false">← Back to checklist</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Step 3: Quick flow — seed + done summary -->
-      <div v-if="currentStep === 3 && flow === 'quick'" class="basil-onboarding-step">
+      <!-- Step 2: Seed categories -->
+      <div v-if="currentStep === 2" class="basil-onboarding-step">
         <h2 class="basil-onboarding-heading">Set up your categories</h2>
         <p class="basil-onboarding-body">
           We'll create a starter set you can customize any time.
@@ -154,34 +66,12 @@
           label="Continue"
           icon-right="arrow_forward"
           class="basil-onboarding-cta q-mt-md"
-          @click="currentStep = 4"
+          @click="currentStep = 3"
         />
       </div>
 
-      <!-- Step 3: Custom flow — done summary -->
-      <div v-if="currentStep === 3 && flow === 'custom'" class="basil-onboarding-step">
-        <h2 class="basil-onboarding-heading">Set up your categories</h2>
-        <div v-if="seedingCustom" class="basil-onboarding-seeding">
-          <q-spinner color="primary" size="2rem" />
-          <span>Setting up your categories…</span>
-        </div>
-        <div v-else-if="seededCustom" class="basil-onboarding-seeded">
-          <q-icon name="check_circle" color="positive" size="2rem" />
-          <span>{{ categorySummary }} created.</span>
-        </div>
-        <q-btn
-          v-if="!seedingCustom"
-          unelevated
-          color="primary"
-          label="Continue"
-          icon-right="arrow_forward"
-          class="basil-onboarding-cta q-mt-md"
-          @click="currentStep = 4"
-        />
-      </div>
-
-      <!-- Step 4: Done -->
-      <div v-if="currentStep === 4" class="basil-onboarding-step">
+      <!-- Step 3: Done -->
+      <div v-if="currentStep === 3" class="basil-onboarding-step">
         <h2 class="basil-onboarding-heading">You're all set</h2>
         <div class="basil-onboarding-summary">
           <div class="basil-onboarding-summary__row">
@@ -215,30 +105,20 @@
 
 <script>
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
-import OnboardingCategoryEditor from '../components/OnboardingCategoryEditor.vue';
-import { getOrAddUser, seedCategories, seedCustomCategories, fetchCategories } from '@/firebase';
+import { getOrAddUser, seedCategories, fetchCategories } from '@/firebase';
 import store from '../store';
 
 export default {
   name: 'OnboardingView',
-  components: { PlaidLinkHandler, OnboardingCategoryEditor },
+  components: { PlaidLinkHandler },
 
   data() {
     return {
       currentStep: 1,
-      flow: null,
       showPlaidLink: false,
       linking: false,
-      showCategoryEditor: false,
-      // Quick flow
       seeding: false,
       seeded: false,
-      // Custom flow
-      customCategories: null,
-      categoriesDone: false,
-      bankDone: false,
-      seedingCustom: false,
-      seededCustom: false,
     };
   },
 
@@ -257,17 +137,11 @@ export default {
 
   watch: {
     currentStep(val) {
-      if (val === 3 && this.flow === 'quick') this.runSeed();
-      if (val === 3 && this.flow === 'custom') this.runCustomSeed();
+      if (val === 2) this.runSeed();
     },
   },
 
   methods: {
-    pickFlow(flow) {
-      this.flow = flow;
-      this.currentStep = 2;
-    },
-
     startPlaidLink() {
       this.showPlaidLink = true;
     },
@@ -277,9 +151,7 @@ export default {
       this.linking = false;
     },
 
-    // Quick flow: plaid success → step 3
     async onPlaidSuccess() {
-      // Plaid modal closed — now show our spinner while we sync
       this.linking = true;
       this.showPlaidLink = false;
       try {
@@ -289,11 +161,7 @@ export default {
         console.error('onPlaidSuccess error:', err);
       }
       this.linking = false;
-      this.currentStep = 3;
-    },
-
-    goToStep3Quick() {
-      this.currentStep = 3;
+      this.currentStep = 2;
     },
 
     async runSeed() {
@@ -312,49 +180,6 @@ export default {
         console.error('runSeed error:', err);
       } finally {
         this.seeding = false;
-      }
-    },
-
-    // Custom flow: plaid success (stay on hub)
-    async onPlaidSuccessCustom() {
-      this.linking = true;
-      this.showPlaidLink = false;
-      try {
-        const user = await getOrAddUser();
-        store.commit('setUser', user);
-        this.bankDone = true;
-      } catch (err) {
-        console.error('onPlaidSuccessCustom error:', err);
-      }
-      this.linking = false;
-    },
-
-    onCategoriesDone(categories) {
-      this.customCategories = categories;
-      this.categoriesDone = true;
-      this.showCategoryEditor = false;
-    },
-
-    finishCustom() {
-      this.currentStep = 3;
-    },
-
-    async runCustomSeed() {
-      if (store.state.categories?.length) {
-        this.seededCustom = true;
-        return;
-      }
-      this.seedingCustom = true;
-      try {
-        await seedCustomCategories(this.customCategories);
-        const [cats, user] = await Promise.all([fetchCategories(), getOrAddUser()]);
-        if (cats) store.commit('setCategories', cats);
-        if (user) store.commit('setUser', user);
-        this.seededCustom = true;
-      } catch (err) {
-        console.error('runCustomSeed error:', err);
-      } finally {
-        this.seedingCustom = false;
       }
     },
   },
