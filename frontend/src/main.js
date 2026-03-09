@@ -88,6 +88,8 @@ router.beforeEach((to, _from, next) => {
     !ONBOARDING_ALLOWED.includes(to.path)
   ) {
     next('/onboarding');
+  } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
+    next('/');
   } else {
     next();
   }
