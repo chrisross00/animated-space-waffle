@@ -222,27 +222,6 @@ export async function removeAccount(institution) {
   }
 }
 
-export async function addPlaidPfc(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const url = targetUserId ? `/api/addplaidpfc?targetUserId=${targetUserId}` : '/api/addplaidpfc';
-    const response = await fetch(url, { headers });
-    if (response.ok) return response.text();
-    else _notify({ type: 'negative', message: `Failed to add Plaid PFC (${response.status})` });
-  }
-}
-
-export async function dedupe(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/dedupe', { method: 'POST', headers, body });
-    if (response.ok) return response.text();
-    else _notify({ type: 'negative', message: `Dedupe failed (${response.status})` });
-  }
-}
-
 export async function seedCategories(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -253,37 +232,6 @@ export async function seedCategories(targetUserId) {
   }
 }
 
-
-export async function cleanPending(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const url = targetUserId ? `/api/cleanPendingTransactions?targetUserId=${targetUserId}` : '/api/cleanPendingTransactions';
-    const response = await fetch(url, { headers });
-    if (response.ok) return response.text();
-    else _notify({ type: 'negative', message: `Failed to clean pending transactions (${response.status})` });
-  }
-}
-
-export async function mapUnmapped(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const url = targetUserId ? `/api/mapunmapped?targetUserId=${targetUserId}` : '/api/mapunmapped';
-    const response = await fetch(url, { headers });
-    if (response.ok) return response.json();
-    else _notify({ type: 'negative', message: `Failed to map unmapped transactions (${response.status})` });
-  } else {
-    console.log('headers are null, therefore user is not logged in');
-  }
-}
-
-export async function fetchUsers() {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const response = await fetch('/api/users', { headers });
-    if (response.ok) return response.json();
-    else _notify({ type: 'negative', message: `Failed to fetch users (${response.status})` });
-  }
-}
 
 export async function fetchMerchantStats() {
   const headers = await getAuthHeaders();
@@ -371,96 +319,6 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
   return response.ok;
 }
 
-export async function resetBalanceSnapshots(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/resetBalanceSnapshots', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Cleared snapshots from ${data.cleared} institution${data.cleared !== 1 ? 's' : ''}. Refresh balances to regenerate.`;
-    } else {
-      _notify({ type: 'negative', message: `Failed to reset snapshots (${response.status})` });
-    }
-  }
-}
-
-export async function nukeTransactions(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/nukeTransactions', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Deleted ${data.deletedCount} transaction${data.deletedCount !== 1 ? 's' : ''}.`;
-    } else {
-      _notify({ type: 'negative', message: `Nuke failed (${response.status})` });
-    }
-  }
-}
-
-export async function clearManualOverrides(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/clearManualOverrides', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Cleared manual override on ${data.clearedCount} transaction${data.clearedCount !== 1 ? 's' : ''}.`;
-    } else {
-      _notify({ type: 'negative', message: `Failed to clear overrides (${response.status})` });
-    }
-  }
-}
-
-export async function nukeAllData(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/nukeAllData', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Deleted ${data.transactions} transactions, ${data.categories} categories, ${data.accounts} accounts, ${data.rules} rules.`;
-    } else {
-      _notify({ type: 'negative', message: `Nuke failed (${response.status})` });
-    }
-  }
-}
-
-export async function addVenmoTransactions(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/addVenmoTransactions', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Inserted ${data.inserted} transactions (5 historical seeded as "${data.foodCat}" / "${data.housingCat}", 5 current month in To Sort).`;
-    } else {
-      _notify({ type: 'negative', message: `Failed to add Venmo test transactions (${response.status})` });
-    }
-  }
-}
-
-export async function addTestTransactions(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/addTestTransactions', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Inserted ${data.inserted} test transactions dated today.`;
-    } else {
-      _notify({ type: 'negative', message: `Failed to add test transactions (${response.status})` });
-    }
-  }
-}
-
 export async function fetchRules() {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -517,21 +375,6 @@ export async function refreshBalances() {
   const response = await fetch('/api/sync/balances', { method: 'POST', headers });
   if (response.ok) return response.json();
   else _notify({ type: 'negative', message: `Failed to refresh balances (${response.status})` });
-}
-
-export async function clearVenmoEnrichment(targetUserId) {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    headers['Content-Type'] = 'application/json';
-    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
-    const response = await fetch('/api/clearVenmoEnrichment', { method: 'POST', headers, body });
-    if (response.ok) {
-      const data = await response.json();
-      return `Cleared Venmo details from ${data.clearedCount} transaction${data.clearedCount !== 1 ? 's' : ''}.`;
-    } else {
-      _notify({ type: 'negative', message: `Failed to clear Venmo details (${response.status})` });
-    }
-  }
 }
 
 export async function venmoEnrichmentPreview(csvText) {
