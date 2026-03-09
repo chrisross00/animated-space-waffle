@@ -340,7 +340,7 @@
               flat
               label="Clear"
               :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null"
-              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tableServerResults = null"
             />
           </template>
 
@@ -370,7 +370,7 @@
           :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
-          :filter="tableSearch"
+          :filter="tableServerResults !== null ? '' : tableSearch"
           :rows-per-page-options="[0]"
           selection="multiple"
           v-model:selected="selectedRows"
@@ -624,7 +624,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { fetchTransactions, ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth } from '@/firebase';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, searchTransactions } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
@@ -710,6 +710,8 @@
         tableMonth: null,
         amountMin: null,
         amountMax: null,
+        tableServerResults: null,
+        tableSearchDebounce: null,
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
@@ -735,7 +737,9 @@
         return Object.keys(this.groupedTransactions).some(cat => this.shouldShowCategory(cat));
       },
       tableTransactions() {
-        let rows = this.transactions;
+        let rows = this.tableServerResults !== null
+          ? this.tableServerResults
+          : this.transactions;
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
           rows = rows.filter(t =>
@@ -1032,6 +1036,19 @@ monthStats() {
             netPosition: incomeAmount - expenseSpend - savingsAmount,
           }
         }
+      },
+    },
+    watch: {
+      tableSearch(val) {
+        clearTimeout(this.tableSearchDebounce);
+        if (!val || !val.trim()) {
+          this.tableServerResults = null;
+          return;
+        }
+        this.tableSearchDebounce = setTimeout(async () => {
+          const result = await searchTransactions(val.trim());
+          if (result) this.tableServerResults = result.transactions;
+        }, 300);
       },
     },
     methods: {

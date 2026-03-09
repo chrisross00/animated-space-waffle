@@ -48,22 +48,6 @@ export async function getAuthHeaders() {
   const idToken = await user.getIdToken();
   return { Authorization: `Bearer ${idToken}` };
 }
-export async function fetchTransactions() {
-  const headers = await getAuthHeaders();
-  if (headers) {
-    const response = await fetch('/api/getNewAuth', { headers });
-    if (response.ok) {
-      const transactions = await response.json();
-      return transactions;
-    } else {
-      _notify({ type: 'negative', message: `Failed to fetch transactions (${response.status})` });
-    }
-  } else {
-    // User is not signed in
-    console.log('headers are null, therefore user is not logged in');
-  }
-}
-
 // ---- Data layer v2: separate sync from read ----
 
 /** Trigger Plaid transaction sync (no transaction data returned). */
@@ -109,6 +93,17 @@ export async function fetchMonthRange(store, startMonth, endMonth) {
       store.commit('setMonthTransactions', { month: missing[i], transactions: results[i].transactions });
     }
   }
+}
+
+/** Search transactions server-side (for "Show all" table). */
+export async function searchTransactions(search, page = 1, limit = 500) {
+  const headers = await getAuthHeaders();
+  if (!headers) return null;
+  const params = new URLSearchParams({ page, limit });
+  if (search) params.set('search', search);
+  const response = await fetch(`/api/transactions?${params}`, { headers });
+  if (response.ok) return response.json();
+  return null;
 }
 
 /** Fetch historical category map (lightweight, for suggestion engine). */
@@ -511,7 +506,7 @@ export async function refreshBalances() {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
-  const response = await fetch('/api/refreshBalances', { method: 'POST', headers });
+  const response = await fetch('/api/sync/balances', { method: 'POST', headers });
   if (response.ok) return response.json();
   else _notify({ type: 'negative', message: `Failed to refresh balances (${response.status})` });
 }

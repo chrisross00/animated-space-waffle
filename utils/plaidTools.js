@@ -154,21 +154,6 @@ async function getNewPlaidTransactions(uid) {
   } 
 }
 
-async function getAllUserTransactions(uid) {
-  const userId = uid? uid : null;
-  if(userId){
-    try {
-      const transactions = await findUserData('Plaid-Transactions', userId);
-      return transactions;
-    } catch (err) {
-        console.error(err);
-        // res.status(500).send('Error getting transactions');
-    }
-  } else {
-    console.log('getAllUserTransactions(): no userId provided')
-  }
-}
-
 async function updatePlaidAccounts(response, userId){
   const key = `Accounts.${response.account}.token`;
   const filter = { 
@@ -272,7 +257,6 @@ module.exports = {
   plaidTransactionsSync,
   getAccountData,
   getNewPlaidTransactions,
-  getAllUserTransactions,
   getPlaidCategories,
   fetchAndStoreBalances,
   getCachedBalances,

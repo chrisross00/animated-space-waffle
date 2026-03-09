@@ -158,7 +158,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchTransactions, fetchCategories } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchCategories, fetchMonthRange } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
@@ -198,12 +198,14 @@ export default {
         store.commit('setUser', user);
         store.commit('setSession', { isSessionActive: true });
 
-        const [categories, txnResult] = await Promise.all([
-          fetchCategories(),
-          fetchTransactions(),
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+        await Promise.all([
+          fetchCategories().then(c => { if (c?.length) store.commit('setCategories', c); }),
+          fetchMonthRange(store, startMonth, currentMonth),
         ]);
-        if (categories?.length) store.commit('setCategories', categories);
-        if (txnResult?.transactions) store.commit('setTransactions', txnResult.transactions);
 
         this.isLoading = false;
       } catch (error) {
