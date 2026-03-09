@@ -127,21 +127,28 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.uid;
-    if (await rejectTestUser(userId, res)) return;
-    await getNewPlaidTransactions(userId);
+    // No rejectTestUser guard — sandbox items are safe to sync
+    const syncResult = await getNewPlaidTransactions(userId);
     // Also refresh balances + snapshot in the same sync
-    const balances = await fetchAndStoreBalances(userId);
+    const balanceResult = await fetchAndStoreBalances(userId);
     const accounts = await findUserData('Plaid-Accounts', userId);
     const accountsObj = accounts?.[0]?.Accounts ?? {};
     const allSnapshots = [];
+    const itemErrors = {};
     for (const name of Object.keys(accountsObj)) {
       for (const snap of (accountsObj[name].balanceSnapshots || [])) {
         allSnapshots.push(snap);
       }
+      if (accountsObj[name].itemError) itemErrors[name] = accountsObj[name].itemError;
     }
     const balanceSnapshots = aggregateSnapshots(allSnapshots);
     await updateData('Basil-Users', { userId }, { $set: { lastSyncedAt: new Date() } });
-    res.json({ syncedAt: new Date().toISOString(), balances, balanceSnapshots });
+    res.json({
+      syncedAt: new Date().toISOString(),
+      balances: balanceResult.balances,
+      balanceSnapshots,
+      itemErrors: Object.keys(itemErrors).length ? itemErrors : null,
+    });
   } catch (error) {
     console.error('/sync error:', error.message);
     res.status(500).json({ message: 'Sync failed' });
@@ -153,8 +160,8 @@ router.post('/sync/balances', plaidSyncLimiter, async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
-    if (await rejectTestUser(uid, res)) return;
-    const balances = await fetchAndStoreBalances(uid);
+    // No rejectTestUser guard — sandbox items are safe to sync
+    const balanceResult = await fetchAndStoreBalances(uid);
     // Read back snapshots for the chart
     const accounts = await findUserData('Plaid-Accounts', uid);
     const accountsObj = accounts?.[0]?.Accounts ?? {};
@@ -166,7 +173,7 @@ router.post('/sync/balances', plaidSyncLimiter, async (req, res) => {
     }
     const balanceSnapshots = aggregateSnapshots(allSnapshots);
     await updateData('Basil-Users', { userId: uid }, { $set: { lastSyncedAt: new Date() } });
-    res.json({ balances, balanceSnapshots });
+    res.json({ balances: balanceResult.balances, balanceSnapshots });
   } catch (error) {
     console.error('/sync/balances error:', error.message);
     res.status(500).json({ message: 'Failed to refresh balances' });
@@ -687,9 +694,10 @@ function createClientSideUser(user, accounts=null) {
   console.log('createClientSideUser accounts: ', bankAccounts)
   let bankNames = bankAccounts ? Object.keys(bankAccounts) : [];
 
-  // Extract cached balance data and snapshots per institution
+  // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
   let balanceSnapshots = null;
+  let itemErrors = null;
   if (bankAccounts) {
     accountBalances = {};
     balanceSnapshots = [];
@@ -702,6 +710,10 @@ function createClientSideUser(user, accounts=null) {
           balanceSnapshots.push(snap);
         }
       }
+      if (bankAccounts[name].itemError) {
+        if (!itemErrors) itemErrors = {};
+        itemErrors[name] = bankAccounts[name].itemError;
+      }
     }
     balanceSnapshots = aggregateSnapshots(balanceSnapshots);
   }
@@ -713,6 +725,7 @@ function createClientSideUser(user, accounts=null) {
     accounts: bankNames,
     accountBalances,
     balanceSnapshots: balanceSnapshots?.length ? balanceSnapshots : null,
+    itemErrors,
     onboarded_at: user.onboarded_at || null,
     isAdmin: !!user.isAdmin,
   };

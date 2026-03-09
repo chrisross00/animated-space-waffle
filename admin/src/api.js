@@ -93,3 +93,11 @@ export function clearVenmoEnrichment(targetUserId) { return toolPost('/api/clear
 export function clearManualOverrides(targetUserId) { return toolPost('/api/clearManualOverrides', targetUserId); }
 export function nukeTransactions(targetUserId) { return toolPost('/api/nukeTransactions', targetUserId); }
 export function nukeAllData(targetUserId) { return toolPost('/api/nukeAllData', targetUserId); }
+
+export function sandboxResetLogin(institution) {
+  return request('/plaid-api/sandbox_reset_login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ institution }),
+  });
+}

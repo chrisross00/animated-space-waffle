@@ -56,33 +56,51 @@ async function plaidTransactionsSync (access_token, cursor=null, uid, plaidEnv='
     }
     } 
   catch (err) {
-      // console.log('error with plaidTransactionsSync, `err.response.data`: ', err.response.data)
+      const plaidError = err?.response?.data;
+      if (plaidError?.error_type === 'ITEM_ERROR') {
+        return { itemError: true, error_code: plaidError.error_code, error_message: plaidError.error_message };
+      }
+      console.error('plaidTransactionsSync error:', plaidError || err.message);
     }
 }
 
 async function getNewPlaidTransactions(uid) {
   const userId = uid? uid : null;
-  try { 
+  const itemErrors = {};
+  try {
     console.log('     /getnew: checking for new transactions for userId...', userId);
     const responses = await getAccountData(userId);
     console.log(`accounts received for userId: ${userId} \n, ${responses}`);
     const updatedResponses = [];
-    
+
     for (const response of responses) {
       let token = response.token;
       let next_cursor = response.next_cursor;
       let hasMore = true;
-      // console.log(`response.token and response.next_cursor: ${response.token} \n, ${response.next_cursor}`);
         const updatedTxns = [];
-        
+
         while (hasMore) {
           const newTxns = await plaidTransactionsSync(token, next_cursor, userId, response.plaidEnv);
-          // console.log(' api.js: plaidTransactionsSync : \n', newTxns, '\nnewTxns end');
-          if (typeof newTxns === 'string') {
+
+          // Item error — persist on the account doc, skip this institution
+          if (newTxns?.itemError) {
+            const errorData = { error_code: newTxns.error_code, error_message: newTxns.error_message, detectedAt: new Date() };
+            await updateData('Plaid-Accounts', { userId },
+              { $set: { [`Accounts.${response.account}.itemError`]: errorData } });
+            itemErrors[response.account] = errorData;
+            hasMore = false;
+            break;
+          }
+
+          if (typeof newTxns === 'string' || !newTxns) {
             hasMore = false;
             response.newTxns = false;
             break;
           }
+
+          // Successful sync — clear any previous item error
+          await updateData('Plaid-Accounts', { userId },
+            { $unset: { [`Accounts.${response.account}.itemError`]: '' } });
 
           response.newTxns = true;
           const additionalData = {
@@ -148,10 +166,11 @@ async function getNewPlaidTransactions(uid) {
     }
 
     console.log('/getnew: done checking for new Plaid transactions...');
-    return;
+    return { errors: Object.keys(itemErrors).length ? itemErrors : null };
   } catch (err) {
       console.log('error in /getnew', err);
-  } 
+      return { errors: Object.keys(itemErrors).length ? itemErrors : null };
+  }
 }
 
 async function updatePlaidAccounts(response, userId){
@@ -177,6 +196,7 @@ async function fetchAndStoreBalances(uid) {
 
   const accountsObj = currentAccounts[0].Accounts;
   const results = {};
+  const balanceErrors = {};
 
   for (const institution of Object.keys(accountsObj)) {
     const { token } = accountsObj[institution];
@@ -228,7 +248,15 @@ async function fetchAndStoreBalances(uid) {
 
       results[institution] = balances;
     } catch (error) {
-      console.error(`fetchAndStoreBalances error for ${institution}:`, error.message);
+      const plaidError = error?.response?.data;
+      if (plaidError?.error_type === 'ITEM_ERROR') {
+        const errorData = { error_code: plaidError.error_code, error_message: plaidError.error_message, detectedAt: new Date() };
+        await updateData('Plaid-Accounts', { userId },
+          { $set: { [`Accounts.${institution}.itemError`]: errorData } });
+        balanceErrors[institution] = errorData;
+      } else {
+        console.error(`fetchAndStoreBalances error for ${institution}:`, error.message);
+      }
       // Return cached balances if available
       if (accountsObj[institution].balances) {
         results[institution] = accountsObj[institution].balances;
@@ -236,7 +264,7 @@ async function fetchAndStoreBalances(uid) {
     }
   }
 
-  return results;
+  return { balances: results, errors: Object.keys(balanceErrors).length ? balanceErrors : null };
 }
 
 async function getCachedBalances(uid) {

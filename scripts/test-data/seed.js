@@ -12,7 +12,84 @@ const {
   generateCompoundRules, enrichP2PTransactions,
 } = require('./generators');
 
+const { sandbox } = require('../../utils/plaidClient');
+
+// Plaid sandbox institution IDs (these are Plaid's built-in test institutions)
+const SANDBOX_INSTITUTIONS = {
+  'First Platypus Bank': 'ins_109508',
+  'Platypus OAuth Bank': 'ins_127287',
+  'First Gingham Credit Union': 'ins_109509',
+  'Tattersall Federal Credit Union': 'ins_109510',
+  'Tartan Bank': 'ins_109511',
+  'Houndstooth Bank': 'ins_109512',
+};
+
 const COLLECTIONS = ['Basil-Users', 'Plaid-Transactions', 'Plaid-Accounts', 'Basil-Categories', 'Basil-Rules'];
+
+/**
+ * Create real Plaid sandbox items for a persona.
+ * Groups accounts by institution, creates one sandbox item per institution,
+ * then optionally resets login for institutions with itemErrors.
+ */
+async function createSandboxAccounts(uid, persona) {
+  const accountsDoc = { userId: uid, Accounts: {} };
+
+  // Group account definitions by institution
+  const byInstitution = {};
+  for (const def of persona.accounts) {
+    if (!byInstitution[def.institution]) byInstitution[def.institution] = [];
+    byInstitution[def.institution].push(def);
+  }
+
+  for (const [institution, defs] of Object.entries(byInstitution)) {
+    const sandboxInstId = persona.sandboxInstitutions?.[institution] || SANDBOX_INSTITUTIONS['First Platypus Bank'];
+
+    // Create a sandbox public token
+    const publicTokenResp = await sandbox.sandboxPublicTokenCreate({
+      institution_id: sandboxInstId,
+      initial_products: ['transactions'],
+    });
+    const publicToken = publicTokenResp.data.public_token;
+
+    // Exchange for a real access token
+    const exchangeResp = await sandbox.itemPublicTokenExchange({ public_token: publicToken });
+    const accessToken = exchangeResp.data.access_token;
+
+    // Fetch the actual accounts from Plaid to get real account IDs
+    const accountsResp = await sandbox.accountsGet({ access_token: accessToken });
+    const plaidAccounts = accountsResp.data.accounts;
+
+    // Build balances array from real Plaid accounts
+    const balances = plaidAccounts.map(acct => ({
+      account_id: acct.account_id,
+      name: acct.name,
+      official_name: acct.official_name || acct.name,
+      mask: acct.mask || '0000',
+      type: acct.type,
+      subtype: acct.subtype,
+      current: acct.balances.current,
+      available: acct.balances.available,
+      limit: acct.balances.limit || null,
+      fetchedAt: Date.now(),
+    }));
+
+    accountsDoc.Accounts[institution] = {
+      token: accessToken,
+      next_cursor: '',
+      earliestDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      plaidEnv: 'sandbox',
+      balances,
+    };
+
+    // Reset login if this institution should have an item error
+    if (persona.itemErrors?.[institution]) {
+      await sandbox.sandboxItemResetLogin({ access_token: accessToken });
+      accountsDoc.Accounts[institution].itemError = persona.itemErrors[institution];
+    }
+  }
+
+  return accountsDoc;
+}
 
 /**
  * Seed a single persona. Wipes existing data for that UID first.
@@ -44,10 +121,32 @@ async function seedPersona(db, personaName) {
   // 3. Accounts
   let accountMap = {};
   if (persona.accounts && persona.accounts.length > 0) {
-    const result = generateAccounts(uid, persona.accounts);
-    accountMap = result.accountMap;
-    result.accountsDoc.insertDate = Date.now();
-    await db.collection('Plaid-Accounts').insertOne(result.accountsDoc);
+    if (persona.useSandbox) {
+      // Create real Plaid sandbox items via the sandbox API
+      const accountsDoc = await createSandboxAccounts(uid, persona);
+      accountMap = {};
+      for (const [inst, data] of Object.entries(accountsDoc.Accounts)) {
+        const firstBalance = data.balances?.[0];
+        if (firstBalance) {
+          accountMap[inst] = { account_id: firstBalance.account_id, subtype: firstBalance.subtype };
+        }
+      }
+      accountsDoc.insertDate = Date.now();
+      await db.collection('Plaid-Accounts').insertOne(accountsDoc);
+    } else {
+      const result = generateAccounts(uid, persona.accounts);
+      accountMap = result.accountMap;
+      // Inject item errors if the persona defines them
+      if (persona.itemErrors) {
+        for (const [inst, errorData] of Object.entries(persona.itemErrors)) {
+          if (result.accountsDoc.Accounts[inst]) {
+            result.accountsDoc.Accounts[inst].itemError = errorData;
+          }
+        }
+      }
+      result.accountsDoc.insertDate = Date.now();
+      await db.collection('Plaid-Accounts').insertOne(result.accountsDoc);
+    }
     counts.accounts = persona.accounts.length;
   }
 

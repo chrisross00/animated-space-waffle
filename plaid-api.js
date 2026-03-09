@@ -115,6 +115,51 @@ async function addInstitution(req, decodedToken, type='new'){
   }
 }
 
+// Update-mode link token for reconnecting a stale institution
+router.get("/create_update_link_token", async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    // No rejectTestUser guard — reconnecting is safe (read-only from Plaid's perspective)
+    const institution = req.query.institution;
+    if (!institution) return res.status(400).json({ message: 'institution required' });
+
+    const accounts = await findUserData('Plaid-Accounts', uid);
+    const accountData = accounts?.[0]?.Accounts?.[institution];
+    if (!accountData?.token) return res.status(404).json({ message: 'Institution not found' });
+
+    const { isAdmin } = await getUserPlaidEnv(uid);
+    const client = forUser(isAdmin);
+    const tokenResponse = await client.linkTokenCreate({
+      user: { client_user_id: uid },
+      client_name: "Basil Budgeting",
+      language: "en",
+      country_codes: ["US"],
+      access_token: accountData.token,
+    });
+    res.json(tokenResponse.data);
+  } catch (error) {
+    console.error('/create_update_link_token error:', error.message);
+    res.status(500).json({ message: 'Failed to create update link token' });
+  }
+});
+
+// Clear a persisted item error after successful reconnect
+router.post("/clear_item_error", async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { institution } = req.body;
+    if (!institution) return res.status(400).json({ message: 'institution required' });
+    await updateData('Plaid-Accounts', { userId: uid },
+      { $unset: { [`Accounts.${institution}.itemError`]: '' } });
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/clear_item_error error:', error.message);
+    res.status(500).json({ message: 'Failed to clear item error' });
+  }
+});
+
 router.post("/remove_account", async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
@@ -130,5 +175,35 @@ router.post("/remove_account", async (req, res) => {
     res.status(500).json({ message: 'Failed to remove account' });
   }
 });
+
+// DEV ONLY: Force a sandbox item into an error state for testing reconnect flow
+if (process.env.NODE_ENV !== 'production') {
+  router.post("/sandbox_reset_login", async (req, res) => {
+    try {
+      const decodedToken = await validateIdToken(req);
+      const uid = decodedToken.uid;
+      const { institution } = req.body;
+      if (!institution) return res.status(400).json({ message: 'institution required' });
+
+      const accounts = await findUserData('Plaid-Accounts', uid);
+      const accountData = accounts?.[0]?.Accounts?.[institution];
+      if (!accountData?.token) return res.status(404).json({ message: 'Institution not found' });
+      if (accountData.plaidEnv === 'production') return res.status(400).json({ message: 'Cannot reset production items' });
+
+      const { sandbox } = require('./utils/plaidClient');
+      await sandbox.sandboxItemResetLogin({ access_token: accountData.token });
+
+      // Persist a synthetic item error so UI shows it immediately
+      const errorData = { error_code: 'ITEM_LOGIN_REQUIRED', error_message: 'Sandbox login reset for testing', detectedAt: new Date() };
+      await updateData('Plaid-Accounts', { userId: uid },
+        { $set: { [`Accounts.${institution}.itemError`]: errorData } });
+
+      res.json({ ok: true, message: `Reset login for ${institution}. Next sync will fail with ITEM_LOGIN_REQUIRED.` });
+    } catch (error) {
+      console.error('/sandbox_reset_login error:', error.message);
+      res.status(500).json({ message: 'Failed to reset login' });
+    }
+  });
+}
 
 module.exports = router;

@@ -305,6 +305,42 @@ const PERSONAS = {
       merchantPool: MERCHANTS,
     },
   },
+  error: {
+    uid: 'test-user-error',
+    user: {
+      email: 'error@basil.test',
+      name: 'Test Error',
+      picture: null,
+      firebase: false,
+      isTestUser: true,
+      onboarded_at: new Date(),
+    },
+    // Real Plaid sandbox items — allows full reconnect flow testing
+    useSandbox: true,
+    accounts: [
+      { institution: 'First Platypus Bank', type: 'depository', subtype: 'checking' },
+      { institution: 'Tartan Bank', type: 'depository', subtype: 'checking' },
+    ],
+    // Map persona institution names to Plaid sandbox institution IDs
+    sandboxInstitutions: {
+      'First Platypus Bank': 'ins_109508',
+      'Tartan Bank': 'ins_109511',
+    },
+    // Simulate a stale Plaid token on Tartan Bank
+    itemErrors: {
+      'Tartan Bank': { error_code: 'ITEM_LOGIN_REQUIRED', error_message: 'the login details of this item have changed', detectedAt: new Date() },
+    },
+    categoryCustomizations: [
+      { category: 'Food & Dining', monthly_limit: 500 },
+      { category: 'Shopping', monthly_limit: 300 },
+    ],
+    compoundRules: [],
+    transactionConfig: {
+      months: 3,
+      density: 'normal',
+      merchantPool: MERCHANTS,
+    },
+  },
 };
 
 module.exports = { PERSONAS };

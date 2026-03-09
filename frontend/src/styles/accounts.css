@@ -5,7 +5,7 @@
 .basil-accounts__institution-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--basil-space-1);
   margin-bottom: var(--basil-space-2);
 }
 
@@ -94,6 +94,19 @@
   color: var(--basil-text-muted);
   font-style: italic;
   margin-top: var(--basil-space-2);
+}
+
+/* Item error banner */
+.basil-accounts__error-banner {
+  background-color: var(--basil-surface-alt);
+  border: 1px solid var(--basil-warning);
+  color: var(--basil-text);
+}
+
+.basil-accounts__error-detail {
+  font-size: 0.85rem;
+  color: var(--basil-text-secondary);
+  margin-top: var(--basil-space-1);
 }
 
 /* Last updated footer */
