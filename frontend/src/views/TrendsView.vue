@@ -263,20 +263,8 @@ export default {
       return {
         ...ANIMATION,
         tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'shadow' },
-          formatter: (params) => {
-            let total = 0;
-            let html = `<strong>${params[0].axisValue}</strong><br/>`;
-            params.forEach(p => {
-              if (p.value > 0) {
-                html += `${p.marker}${p.seriesName}: $${p.value.toFixed(2)}<br/>`;
-                total += p.value;
-              }
-            });
-            html += `<strong>Total: $${total.toFixed(2)}</strong>`;
-            return html;
-          },
+          trigger: 'item',
+          formatter: (p) => `<strong>${p.name}</strong><br/>${p.marker}${p.seriesName}: $${p.value.toFixed(2)}`,
         },
         legend: { show: false },
         grid: { left: '3%', right: '4%', top: '3%', bottom: '3%', containLabel: true },

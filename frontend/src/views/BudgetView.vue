@@ -486,24 +486,9 @@
     </div>
     
 
-    <q-page-sticky v-if="isOnboarded" class="floating-button gt-xs" position="bottom-right" :offset="[25,25]">
-      <q-fab
-      v-model="fabRight"
-      vertical-actions-align="right"
-      color="primary"
-      glossy
-      icon="keyboard_arrow_up"
-      direction="up"
-      >
-      <q-fab-action label-position="right" color="primary" @click="addCategoryDialog" icon="add" label="Add Category" />
-      <q-fab-action label-position="right" color="secondary" @click="forceSync" icon="sync" label="Sync" />
-      <!-- <q-fab-action label-position="right" color="orange" @click="onClick" icon="airplay" label="Airplay" />
-      <q-fab-action label-position="right" color="accent" @click="onClick" icon="room" label="Map" />  -->
-    </q-fab>
     <q-dialog v-model="newCategory" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
       <DialogComponent :dialogType="'addCategory'" @add-category="onSubmit"/>
     </q-dialog>
-    </q-page-sticky>
 
     <!-- Triage Flow Dialog -->
     <q-dialog
@@ -677,7 +662,6 @@
         clicker2: ref(false),
         transactionClickers: {},
         newCategory: false,
-        fabRight: false,
         categoryClickers: {},
         maximizedToggle: ref(true),
         transactionDetails: {},
@@ -1145,13 +1129,7 @@ monthStats() {
         return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
       addCategoryDialog(){
-        if(!this.newCategory){
-          this.newCategory = true
-          this.fabRight = true
-        } else{
-          this.newCategory = !this.newCategory;
-          this.fabRight = !this.fabRight;
-        }
+        this.newCategory = !this.newCategory;
         return this.newCategory
       },
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
@@ -1319,9 +1297,6 @@ monthStats() {
           }
         });
 
-      },
-      async forceSync(){
-        await this.buildPage('sync');
       },
       async onPullRefresh(done) {
         this.isRefreshing = true;

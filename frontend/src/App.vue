@@ -20,13 +20,15 @@
           <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
         </div>
 
-        <!-- Theme toggle -->
+        <!-- Sync button -->
         <q-btn
+          v-if="$store.state.session"
           flat round dense
-          :icon="isDark ? 'light_mode' : 'dark_mode'"
-          class="basil-theme-btn q-ml-sm"
-          :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-          @click="toggleTheme"
+          icon="sync"
+          class="basil-sync-btn q-ml-sm"
+          :class="{ 'basil-sync-btn--spinning': syncing }"
+          title="Sync with bank"
+          @click="handleSync"
         />
       </q-toolbar>
 
@@ -186,13 +188,20 @@
   color: var(--basil-text-secondary) !important;
 }
 
-/* ---- Theme toggle button ---- */
-.basil-theme-btn {
+/* ---- Sync button ---- */
+.basil-sync-btn {
   color: var(--basil-text-secondary) !important;
   transition: color var(--basil-t-fast) var(--basil-ease);
 }
-.basil-theme-btn:hover {
+.basil-sync-btn:hover {
   color: var(--basil-text) !important;
+}
+.basil-sync-btn--spinning .q-icon {
+  animation: basil-spin 0.8s linear infinite;
+}
+@keyframes basil-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
 }
 
 /* ---- Summary stat pill ---- */
@@ -283,6 +292,7 @@
 <script>
 import { ref } from 'vue'
 import store from './store'
+import { triggerSync, fetchTransactionsForMonth } from './firebase'
 import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
 
 export default {
@@ -292,13 +302,11 @@ export default {
     return {
       leftDrawerOpen: ref(false),
       headerScrolled: false,
+      syncing: false,
     }
   },
 
   computed: {
-    isDark() {
-      return this.$store.state.theme === 'dark';
-    },
     headerStats() {
       const txns = this.$store?.state?.transactions;
       const cats = this.$store?.state?.categories;
@@ -346,8 +354,23 @@ export default {
     onScroll() {
       this.headerScrolled = window.scrollY > 4;
     },
-    toggleTheme() {
-      this.$store.commit('setTheme', this.isDark ? '' : 'dark');
+    async handleSync() {
+      if (this.syncing) return;
+      this.syncing = true;
+      try {
+        const result = await triggerSync();
+        if (result) {
+          store.commit('setLastSyncedAt', result.syncedAt);
+          const now = new Date();
+          const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const result = await fetchTransactionsForMonth(month);
+          if (result?.transactions) store.commit('setMonthTransactions', { month, transactions: result.transactions });
+        }
+      } catch (err) {
+        console.error('Sync failed:', err);
+      } finally {
+        this.syncing = false;
+      }
     },
     openVenmoEnrichment() {
       this.leftDrawerOpen = false;

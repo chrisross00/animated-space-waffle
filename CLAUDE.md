@@ -166,6 +166,14 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       months get an `autorenew` badge on their category row.
 - [x] **Budget forecast** — Projections card shows expected amount from recurring merchants
       not yet seen this month, with merchant name (if one) or count (if multiple).
+- [ ] **Test data seed script** — `node scripts/seed-test-user.js` to create/reset test
+      users with realistic synthetic data. Supports personas: `--persona=new` (fresh user,
+      triggers onboarding), `--persona=active` (6 months of transactions, categories, rules),
+      `--persona=sparse` (1 month, few transactions, tests empty states). Each persona gets
+      a deterministic UID (e.g. `test-user-active-001`) — switch between accounts by changing
+      `DEV_AUTH_BYPASS_UID` in `.env`. Idempotent: re-run to blow away and recreate. Generates
+      realistic merchants, amounts, multiple accounts (checking, credit, savings), and
+      pre-configured category rules. Works with existing dev auth bypass.
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
 - [ ] **Rules & suggestion engine: user control + intent clarification** — two related

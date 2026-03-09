@@ -8,7 +8,7 @@
   /* ---- Backgrounds / Surfaces ---- */
   --basil-bg:             #faf7f2;  /* warm ivory — page */
   --basil-surface:        #ffffff;  /* card / panel */
-  --basil-surface-alt:    #f5f1eb;  /* section dividers, zebra rows */
+  --basil-surface-alt:    #f3efe8;  /* section dividers, zebra rows */
   --basil-surface-raised: #fffefb;  /* hover / elevated state */
   --basil-surface-dialog: #faf7f2;  /* modal / dialog */
 

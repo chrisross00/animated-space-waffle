@@ -67,8 +67,10 @@ const store = createStore({
         },
         setMonthTransactions(state, { month, transactions }) {
             state.transactionsByMonth = { ...state.transactionsByMonth, [month]: transactions };
-            // Rebuild flat compatibility array from all loaded months
-            state.transactions = Object.values(state.transactionsByMonth).flat();
+            // Rebuild flat compatibility array from all loaded months, newest first
+            state.transactions = Object.keys(state.transactionsByMonth)
+                .sort().reverse()
+                .flatMap(k => state.transactionsByMonth[k]);
         },
         setLastSyncedAt(state, timestamp) {
             state.lastSyncedAt = timestamp;
@@ -120,8 +122,10 @@ const store = createStore({
                         if (txn.mappedCategory === oldName) txn.mappedCategory = newName;
                     }
                 }
-                // Rebuild flat array
-                state.transactions = Object.values(state.transactionsByMonth).flat();
+                // Rebuild flat array, newest first
+                state.transactions = Object.keys(state.transactionsByMonth)
+                    .sort().reverse()
+                    .flatMap(k => state.transactionsByMonth[k]);
             }
             console.log('store.js updateCategory done!', state.categories)
         },
