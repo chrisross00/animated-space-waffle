@@ -377,6 +377,7 @@
           v-model:selected="selectedRows"
           virtual-scroll
           :virtual-scroll-item-size="52"
+          @virtual-scroll="onTableVirtualScroll"
           style="max-height: calc(100vh - 220px)"
           class="basil-txn-table"
         >
@@ -441,6 +442,14 @@
             </q-tr>
           </template>
         </q-table>
+
+        <div v-if="tableLoadingMore" class="basil-table-load-more">
+          <q-spinner size="20px" color="primary" />
+          <span>Loading older transactions...</span>
+        </div>
+        <div v-else-if="tableNoMoreMonths && showAll" class="basil-table-load-more basil-table-load-more--done">
+          All transactions loaded
+        </div>
 
         <q-dialog v-model="tableDialogOpen" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
           <DialogComponent
@@ -614,7 +623,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, searchTransactions } from '@/firebase';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
@@ -701,6 +710,8 @@
         amountMax: null,
         tableServerResults: null,
         tableSearchDebounce: null,
+        tableLoadingMore: false,
+        tableNoMoreMonths: false,
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
@@ -1028,6 +1039,11 @@ monthStats() {
       },
     },
     watch: {
+      showAll(val) {
+        if (!val) {
+          this.tableNoMoreMonths = false;
+        }
+      },
       tableSearch(val) {
         clearTimeout(this.tableSearchDebounce);
         if (!val || !val.trim()) {
@@ -1521,6 +1537,44 @@ monthStats() {
           '#b58b4a', '#6a7ab5',
         ];
         return palette[Math.abs(hash) % palette.length];
+      },
+      async onTableVirtualScroll({ to }) {
+        // Only fetch more when viewing all transactions (not searching), not already loading,
+        // and user has scrolled near the bottom of the list
+        if (this.tableServerResults !== null) return;
+        if (this.tableLoadingMore || this.tableNoMoreMonths) return;
+        const total = this.tableTransactions.length;
+        if (total === 0 || to < total - 20) return;
+
+        // Determine the oldest loaded month and fetch 3 months before it
+        const loadedMonths = Object.keys(store.state.transactionsByMonth).sort();
+        if (loadedMonths.length === 0) return;
+        const oldestLoaded = loadedMonths[0]; // e.g. "2025-10"
+        const [y, m] = oldestLoaded.split('-').map(Number);
+        const endDate = new Date(y, m - 2, 1); // month before oldest (0-indexed)
+        const startDate = new Date(y, m - 4, 1); // 3 months before oldest
+        const endMonth = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
+        const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+
+        this.tableLoadingMore = true;
+        try {
+          const beforeCount = Object.keys(store.state.transactionsByMonth).length;
+          await fetchMonthRange(store, startMonth, endMonth);
+          const afterCount = Object.keys(store.state.transactionsByMonth).length;
+
+          // Re-sync local transactions array from store
+          this.transactions = store.state.transactions || [];
+          this.months = this.buildDateList(this.transactions).reverse();
+
+          // If no new months were added, we've reached the end
+          if (afterCount === beforeCount) {
+            this.tableNoMoreMonths = true;
+          }
+        } catch (err) {
+          console.error('Failed to load more transactions:', err);
+        } finally {
+          this.tableLoadingMore = false;
+        }
       },
       openTableDialog(evt, row) {
         this.dialogBody.currentTransactionDetails = {

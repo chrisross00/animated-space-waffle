@@ -776,3 +776,16 @@
   color: var(--basil-text-secondary);
   margin-top: 3px;
 }
+
+.basil-table-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--basil-space-2);
+  padding: var(--basil-space-3) 0;
+  font-size: 13px;
+  color: var(--basil-text-secondary);
+}
+.basil-table-load-more--done {
+  color: var(--basil-text-muted);
+}

@@ -62,7 +62,10 @@ export async function triggerSync() {
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/sync', { method: 'POST', headers });
   if (response.ok) return response.json();
-  else _notify({ type: 'negative', message: `Sync failed (${response.status})` });
+  // 403 = test user or unauthorized — don't show error toast (expected for test users)
+  if (response.status !== 403) {
+    _notify({ type: 'negative', message: `Sync failed (${response.status})` });
+  }
   return null;
 }
 
