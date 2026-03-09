@@ -2,8 +2,8 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers } = require('./db/database');
-const { getNewPlaidTransactions, getAllUserTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
+const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers, findUserTransactionsByMonth, findUserTransactionsPaginated, findHistoricalCategoryMap } = require('./db/database');
+const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken} = require('./utils/authentication');
 const path = require('path');
@@ -120,35 +120,86 @@ router.get('/addplaidpfc', async (req, res) => {
   }
 });
 
-router.get('/getNewAuth', plaidSyncLimiter, async (req, res) => {
-  console.log('/getNewAuth starting...');
+// ---- Data layer v2: separate sync from read ----
+// POST /api/sync — trigger Plaid transaction sync (expensive, rate-limited)
+// Does NOT return transactions — just a summary of what changed.
+router.post('/sync', plaidSyncLimiter, async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req)
-    if(decodedToken.uid){
-      try {
-        console.log('   beginning IdToken Verification...');
-        const userId = decodedToken.uid;
-
-        await getNewPlaidTransactions(userId);
-        const transactions = await getAllUserTransactions(userId);
-                
-        // Send a response back to the client
-        console.log('/getNewAuth complete, sending status 200 and returning transactions...');
-        res.status(200).json({ message: 'Authorization successful', transactions: transactions });
-        return transactions;
-      } catch (error) {
-        // Handle invalid ID token
-        console.error('Error verifying ID token:', error);
-        res.status(401).json({ message: 'Authorization failed' });
-      }
-    } else {
-      // Handle missing or malformed Authorization header
-      console.error('Missing or malformed Authorization header');
-      res.status(400).json({ message: 'Bad request' });
-    }
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.uid;
+    await getNewPlaidTransactions(userId);
+    await updateData('Basil-Users', { userId }, { $set: { lastSyncedAt: new Date() } });
+    res.json({ syncedAt: new Date().toISOString() });
   } catch (error) {
-    console.error('Error processing request:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('/sync error:', error.message);
+    res.status(500).json({ message: 'Sync failed' });
+  }
+});
+
+// POST /api/sync/balances — trigger Plaid balance refresh (separate from transaction sync)
+router.post('/sync/balances', plaidSyncLimiter, async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const balances = await fetchAndStoreBalances(uid);
+    // Read back snapshots for the chart
+    const accounts = await findUserData('Plaid-Accounts', uid);
+    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const allSnapshots = [];
+    for (const name of Object.keys(accountsObj)) {
+      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
+        allSnapshots.push(snap);
+      }
+    }
+    const balanceSnapshots = aggregateSnapshots(allSnapshots);
+    await updateData('Basil-Users', { userId: uid }, { $set: { lastSyncedAt: new Date() } });
+    res.json({ balances, balanceSnapshots });
+  } catch (error) {
+    console.error('/sync/balances error:', error.message);
+    res.status(500).json({ message: 'Failed to refresh balances' });
+  }
+});
+
+// GET /api/transactions — read from MongoDB (cheap, no Plaid call)
+// Query params: ?month=2026-03 OR ?page=1&limit=100&search=coffee
+router.get('/transactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const userId = decodedToken.uid;
+    const { month, page, limit, search } = req.query;
+
+    if (month) {
+      // Month-based fetch (primary use case)
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ message: 'month must be YYYY-MM format' });
+      }
+      const transactions = await findUserTransactionsByMonth(userId, month);
+      return res.json({ transactions, total: transactions.length });
+    }
+
+    // Paginated fetch (for table view / search)
+    const result = await findUserTransactionsPaginated(userId, {
+      page: parseInt(page) || 1,
+      limit: Math.min(parseInt(limit) || 100, 500),
+      search: search || undefined,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('/transactions error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch transactions' });
+  }
+});
+
+// GET /api/historicalCategoryMap — lightweight merchant→category mapping
+// Powers the suggestion engine without loading 12 months of full transactions.
+router.get('/historicalCategoryMap', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const map = await findHistoricalCategoryMap(decodedToken.uid);
+    res.json(map);
+  } catch (error) {
+    console.error('/historicalCategoryMap error:', error.message);
+    res.status(500).json({ message: 'Failed to fetch historical category map' });
   }
 });
 
@@ -165,28 +216,6 @@ router.get('/getOrAddUser', async (req, res) => {
     }
   } catch (error) {
     console.log(error)
-  }
-});
-
-router.post('/refreshBalances', async (req, res) => {
-  try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    const balances = await fetchAndStoreBalances(uid);
-    // Read back snapshots for the chart
-    const accounts = await findUserData('Plaid-Accounts', uid);
-    const accountsObj = accounts?.[0]?.Accounts ?? {};
-    const allSnapshots = [];
-    for (const name of Object.keys(accountsObj)) {
-      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
-        allSnapshots.push(snap);
-      }
-    }
-    const balanceSnapshots = aggregateSnapshots(allSnapshots);
-    res.json({ balances, balanceSnapshots });
-  } catch (error) {
-    console.error('/refreshBalances error:', error.message);
-    res.status(500).json({ message: 'Failed to refresh balances' });
   }
 });
 

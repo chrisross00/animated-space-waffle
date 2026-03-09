@@ -191,7 +191,7 @@
 </template>
 
 <script>
-import { ensureAppData, refreshBalances, getOrAddUser, removeAccount, fetchTransactions } from '@/firebase';
+import { ensureAppData, refreshBalances, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth } from '@/firebase';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import VChart from 'vue-echarts';
@@ -455,12 +455,13 @@ export default {
         console.error('handlePlaidSuccess error:', error);
       }
       try {
-        const result = await fetchTransactions();
-        if (result?.transactions) {
-          this.$store.commit('setTransactions', result.transactions);
-        }
+        await triggerSync();
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const result = await fetchTransactionsForMonth(currentMonth);
+        if (result) this.$store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
       } catch (error) {
-        console.error('handlePlaidSuccess: fetchTransactions error:', error);
+        console.error('handlePlaidSuccess: sync error:', error);
       }
       this.showPlaidLink = false;
       // Fetch fresh balances for the newly linked account

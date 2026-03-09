@@ -89,10 +89,10 @@ describe('updateCategory', () => {
 
   it('renames mappedCategory on matching transactions when name changes', () => {
     store.state.categories = [{ _id: '1', category: 'Groceries', plaid_pfc: [] }]
-    store.state.transactions = [
-      { transaction_id: 'a', mappedCategory: 'Groceries' },
-      { transaction_id: 'b', mappedCategory: 'Dining' },
-    ]
+    store.commit('setTransactions', [
+      { transaction_id: 'a', mappedCategory: 'Groceries', date: '2026-03-01' },
+      { transaction_id: 'b', mappedCategory: 'Dining', date: '2026-03-01' },
+    ])
     store.commit('updateCategory', {
       _id: '1',
       originalCategoryName: 'Groceries',
@@ -107,7 +107,7 @@ describe('updateCategory', () => {
 
   it('does not rename transactions when category name is unchanged', () => {
     store.state.categories = [{ _id: '1', category: 'Groceries', plaid_pfc: [] }]
-    store.state.transactions = [{ transaction_id: 'a', mappedCategory: 'Groceries' }]
+    store.commit('setTransactions', [{ transaction_id: 'a', mappedCategory: 'Groceries', date: '2026-03-01' }])
     store.commit('updateCategory', {
       _id: '1',
       originalCategoryName: 'Groceries',

@@ -340,7 +340,7 @@
               flat
               label="Clear"
               :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null"
-              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tableServerResults = null"
             />
           </template>
 
@@ -370,7 +370,7 @@
           :rows="tableTransactions"
           :columns="columns"
           row-key="transaction_id"
-          :filter="tableSearch"
+          :filter="tableServerResults !== null ? '' : tableSearch"
           :rows-per-page-options="[0]"
           selection="multiple"
           v-model:selected="selectedRows"
@@ -624,7 +624,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { fetchTransactions, ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule } from '@/firebase';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, searchTransactions } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
@@ -710,6 +710,8 @@
         tableMonth: null,
         amountMin: null,
         amountMax: null,
+        tableServerResults: null,
+        tableSearchDebounce: null,
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
@@ -735,7 +737,9 @@
         return Object.keys(this.groupedTransactions).some(cat => this.shouldShowCategory(cat));
       },
       tableTransactions() {
-        let rows = this.transactions;
+        let rows = this.tableServerResults !== null
+          ? this.tableServerResults
+          : this.transactions;
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
           rows = rows.filter(t =>
@@ -1034,6 +1038,19 @@ monthStats() {
         }
       },
     },
+    watch: {
+      tableSearch(val) {
+        clearTimeout(this.tableSearchDebounce);
+        if (!val || !val.trim()) {
+          this.tableServerResults = null;
+          return;
+        }
+        this.tableSearchDebounce = setTimeout(async () => {
+          const result = await searchTransactions(val.trim());
+          if (result) this.tableServerResults = result.transactions;
+        }, 300);
+      },
+    },
     methods: {
       detailedPfcBreakdown(group) {
         const txns = this.filteredTransactions(group);
@@ -1299,8 +1316,7 @@ monthStats() {
 
       },
       async forceSync(){
-        this.resetLastFetch();
-        window.location.reload();
+        await this.buildPage('sync');
       },
       async onPullRefresh(done) {
         this.isRefreshing = true;
@@ -1316,11 +1332,13 @@ monthStats() {
       async buildPage (mode){
         try {
           if(mode == 'sync'){
-            // Fetch fresh transactions from Plaid; categories + rules come from store
-            const txns = await fetchTransactions();
-            if (txns?.transactions) {
-              store.commit('setTransactions', txns.transactions);
-            }
+            // Trigger Plaid sync (updates DB), then re-fetch current month from DB
+            await triggerSync();
+            store.commit('setLastSyncedAt', new Date().toISOString());
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const result = await fetchTransactionsForMonth(currentMonth);
+            if (result) store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
           }
           // All modes read from the store
           this.transactions = store.state.transactions || [];
@@ -1605,22 +1623,31 @@ monthStats() {
       if (!this.isLoggedIn) { this.isLoading = false; return; }
 
       try {
-        // Wait for central bootstrap (categories, rules, and possibly transactions)
+        // Bootstrap: fetches categories, rules, and current + 3 prior months from DB (no Plaid call)
         await ensureAppData(store);
+        // Render from cached DB data immediately
+        await this.buildPage('refresh');
 
-        const now = Date.now();
-        this.lastFetch = store.state.lastPlaidFetch;
-        this.fetchInterval = 1000 * 60 * 10; // 10 minutes
-
-        if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
-          await this.buildPage('sync');
-          store.commit('setLastPlaidFetch', now);
-        } else {
-          await this.buildPage('refresh');
+        // Background sync: if data is stale (>4 hours), sync with Plaid without blocking the UI
+        const STALE_MS = 4 * 60 * 60 * 1000;
+        const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;
+        if (Date.now() - lastSync > STALE_MS && store.state.user?.accounts?.length > 0) {
+          triggerSync().then(async (result) => {
+            if (!result) return;
+            store.commit('setLastSyncedAt', result.syncedAt);
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const fresh = await fetchTransactionsForMonth(currentMonth);
+            if (fresh) {
+              store.commit('setMonthTransactions', { month: currentMonth, transactions: fresh.transactions });
+              this.transactions = store.state.transactions || [];
+              this.groupTransactions();
+              this.monthlyStats = this.monthStats(this.groupedTransactions);
+            }
+          }).catch(err => console.error('Background sync failed:', err));
         }
       } catch (error) {
         console.error(error);
-        this.resetLastFetch();
         this.isLoading = false;
       }
     },
