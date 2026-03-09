@@ -8,7 +8,9 @@
 import { getOrAddUserAccount, getAuthHeaders }  from '@/firebase'
 
 export default {
-  props: {},
+  props: {
+    linkToken: { type: String, default: null },
+  },
   data() {
     return {
       linkHandler: null
@@ -24,12 +26,17 @@ export default {
     },
     async initializePlaid() {
       console.log('initializing plaid')
-      // call get Or Add User
 
-      const linkToken = await this.createLinkToken();
+      const linkToken = this.linkToken || await this.createLinkToken();
       this.linkHandler = window.Plaid.create({
         token: linkToken,
         onSuccess: async (publicToken, metadata) => {
+          // Update mode (reconnect) — no token exchange needed, Plaid already
+          // updated the credentials. Just emit success so the caller can sync.
+          if (this.linkToken) {
+            this.$emit("onPlaidSuccess", publicToken, metadata);
+            return;
+          }
           const response = await getOrAddUserAccount(publicToken, metadata)
           if (response.ok) {
             console.log("Public token exchanged successfully.");

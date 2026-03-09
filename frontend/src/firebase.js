@@ -69,6 +69,29 @@ export async function triggerSync() {
   return null;
 }
 
+/** Create a Plaid Link token in update mode for reconnecting a stale institution. */
+export async function createUpdateLinkToken(institution) {
+  const headers = await getAuthHeaders();
+  if (!headers) return null;
+  const response = await fetch(`/plaid-api/create_update_link_token?institution=${encodeURIComponent(institution)}`, { headers });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to create reconnect token (${response.status})` });
+  return null;
+}
+
+/** Clear a persisted item error after successful reconnect. */
+export async function clearItemError(institution) {
+  const headers = await getAuthHeaders();
+  if (!headers) return null;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/plaid-api/clear_item_error', {
+    method: 'POST', headers,
+    body: JSON.stringify({ institution }),
+  });
+  if (response.ok) return response.json();
+  return null;
+}
+
 /** Fetch a single month's transactions from the database (no Plaid call). */
 export async function fetchTransactionsForMonth(month) {
   const headers = await getAuthHeaders();

@@ -1334,6 +1334,7 @@ monthStats() {
               store.commit('setLastSyncedAt', syncResult.syncedAt);
               if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
               if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+              store.commit('setItemErrors', syncResult.itemErrors);
             }
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1670,11 +1671,14 @@ monthStats() {
         const STALE_MS = 4 * 60 * 60 * 1000;
         const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;
         if (Date.now() - lastSync > STALE_MS && store.state.user?.accounts?.length > 0) {
+          // Set immediately so rapid refreshes don't trigger duplicate syncs
+          store.commit('setLastSyncedAt', new Date().toISOString());
           triggerSync().then(async (syncResult) => {
             if (!syncResult) return;
             store.commit('setLastSyncedAt', syncResult.syncedAt);
             if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
             if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+            store.commit('setItemErrors', syncResult.itemErrors);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const fresh = await fetchTransactionsForMonth(currentMonth);

@@ -34,6 +34,27 @@
     <!-- Main content: accounts linked -->
     <template v-else>
 
+      <!-- Item error banner -->
+      <q-banner v-if="hasItemErrors" rounded class="basil-accounts__error-banner q-mb-md">
+        <template v-slot:avatar>
+          <q-icon name="warning" color="warning" />
+        </template>
+        <div>
+          <strong>Account{{ Object.keys(itemErrors).length > 1 ? 's need' : ' needs' }} attention</strong>
+          <div class="basil-accounts__error-detail">
+            {{ Object.keys(itemErrors).join(', ') }} — tap Reconnect below to re-authorize.
+          </div>
+        </div>
+      </q-banner>
+
+      <!-- Reconnect Plaid Link (update mode) -->
+      <PlaidLinkHandler
+        v-if="reconnectToken"
+        :link-token="reconnectToken"
+        @onPlaidSuccess="handleReconnectSuccess"
+        @onPlaidExit="reconnectToken = null; reconnecting = null"
+      />
+
       <!-- Net Worth hero card (only when balances loaded) -->
       <q-card v-if="hasBalances" class="my-card basil-accounts__card q-mb-md">
         <div class="basil-card-head">
@@ -79,6 +100,21 @@
           >
             <div class="basil-accounts__institution-header">
               <span class="basil-accounts__institution-name">{{ institution.name }}</span>
+              <q-chip
+                v-if="institution.error"
+                dense size="sm" icon="warning" color="warning" text-color="dark"
+                class="q-ml-xs"
+              >
+                Needs reconnect
+              </q-chip>
+              <q-space />
+              <q-btn
+                v-if="institution.error"
+                flat dense no-caps color="warning" icon="refresh" label="Reconnect"
+                :loading="reconnecting === institution.name"
+                class="q-mr-xs"
+                @click="reconnect(institution.name)"
+              />
               <template v-if="!preDelete[institution.name]">
                 <q-btn flat round dense icon="link_off" size="xs" color="negative"
                   @click="preDelete[institution.name] = true" />
@@ -184,7 +220,8 @@
 </template>
 
 <script>
-import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth } from '@/firebase';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError } from '@/firebase';
+import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import VChart from 'vue-echarts';
@@ -206,6 +243,8 @@ export default {
     return {
       showPlaidLink: false,
       preDelete: {},
+      reconnecting: null,       // institution name currently reconnecting
+      reconnectToken: null,     // link token for update mode
     };
   },
 
@@ -223,11 +262,19 @@ export default {
       return Object.values(this.balances).some(arr => arr?.length > 0);
     },
 
+    itemErrors() {
+      return this.$store.state.itemErrors || {};
+    },
+
+    hasItemErrors() {
+      return Object.keys(this.itemErrors).length > 0;
+    },
+
     institutions() {
       const names = this.$store.state.user?.accounts || [];
       const balances = this.balances || {};
       return names
-        .map(name => ({ name, accounts: balances[name] || [] }))
+        .map(name => ({ name, accounts: balances[name] || [], error: this.itemErrors[name] || null }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
 
@@ -424,6 +471,46 @@ export default {
       return 'positive';
     },
 
+    async reconnect(institution) {
+      this.reconnecting = institution;
+      try {
+        const data = await createUpdateLinkToken(institution);
+        if (data?.link_token) {
+          this.reconnectToken = data.link_token;
+        } else {
+          this.reconnecting = null;
+        }
+      } catch (err) {
+        console.error('reconnect error:', err);
+        this.reconnecting = null;
+      }
+    },
+
+    async handleReconnectSuccess() {
+      const institution = this.reconnecting;
+      this.reconnectToken = null;
+      try {
+        await clearItemError(institution);
+        store.commit('clearItemError', institution);
+        // Trigger a full sync to refresh balances + transactions
+        const syncResult = await triggerSync();
+        if (syncResult) {
+          store.commit('setLastSyncedAt', syncResult.syncedAt);
+          if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
+          if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+          store.commit('setItemErrors', syncResult.itemErrors);
+          const now = new Date();
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const result = await fetchTransactionsForMonth(currentMonth);
+          if (result) store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
+        }
+      } catch (err) {
+        console.error('handleReconnectSuccess error:', err);
+      } finally {
+        this.reconnecting = null;
+      }
+    },
+
     async handlePlaidSuccess() {
       try {
         const user = await getOrAddUser();
@@ -437,6 +524,7 @@ export default {
           this.$store.commit('setLastSyncedAt', syncResult.syncedAt);
           if (syncResult.balances) this.$store.commit('setAccountBalances', syncResult.balances);
           if (syncResult.balanceSnapshots) this.$store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+          this.$store.commit('setItemErrors', syncResult.itemErrors);
           const now = new Date();
           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
           const result = await fetchTransactionsForMonth(currentMonth);
@@ -456,10 +544,11 @@ export default {
           ...user,
           accounts: user.accounts.filter(a => a !== institution),
         });
-        // Remove balances for the unlinked institution
+        // Remove balances and clear any item error for the unlinked institution
         const balances = { ...this.$store.state.accountBalances };
         delete balances[institution];
         this.$store.commit('setAccountBalances', balances);
+        this.$store.commit('clearItemError', institution);
       } catch (error) {
         console.error('unlinkAccount error:', error);
       }

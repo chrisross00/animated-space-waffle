@@ -11,6 +11,7 @@ const store = createStore({
         rules: [],
         accountBalances: null,
         balanceSnapshots: null,
+        itemErrors: {},
         bootstrapping: false,
         transactionsByMonth: {},
         transactions: [],            // compatibility — derived from transactionsByMonth
@@ -32,6 +33,12 @@ const store = createStore({
             if (user?.balanceSnapshots) {
                 state.balanceSnapshots = user.balanceSnapshots;
             }
+            if (user?.itemErrors) {
+                state.itemErrors = user.itemErrors;
+            }
+            if (user?.lastSyncedAt && !state.lastSyncedAt) {
+                state.lastSyncedAt = user.lastSyncedAt;
+            }
             state.user = user;
         },
         clearState(state) {
@@ -44,6 +51,7 @@ const store = createStore({
           state.rules = [];
           state.accountBalances = null;
           state.balanceSnapshots = null;
+          state.itemErrors = {};
           state.lastSyncedAt = null;
         },
         setSession(state, session) {
@@ -163,6 +171,14 @@ const store = createStore({
         },
         setBalanceSnapshots(state, snapshots) {
             state.balanceSnapshots = snapshots;
+        },
+        setItemErrors(state, errors) {
+            state.itemErrors = errors || {};
+        },
+        clearItemError(state, institution) {
+            const copy = { ...state.itemErrors };
+            delete copy[institution];
+            state.itemErrors = copy;
         },
         enrichTransactions(state, enrichments) {
             if (!Array.isArray(enrichments) || !state.transactions) return;

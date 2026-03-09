@@ -83,6 +83,43 @@
         </div>
       </div>
 
+      <!-- Plaid Sandbox Testing -->
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <h6 class="admin-section-title">Plaid Sandbox Testing</h6>
+        </div>
+        <div class="admin-tool-list">
+          <div class="admin-tool-row">
+            <div class="admin-tool-info">
+              <div class="admin-tool-name">Reset Item Login</div>
+              <div class="admin-tool-desc">
+                Forces a sandbox Plaid item into ITEM_LOGIN_REQUIRED state.
+                Next sync will fail, showing the reconnect flow. Runs against your own account.
+              </div>
+              <q-input
+                v-model="sandboxInstitution"
+                outlined dense
+                label="Institution name (exact match)"
+                class="q-mt-sm"
+                style="max-width: 300px"
+              />
+            </div>
+            <q-btn
+              flat dense
+              label="Reset Login"
+              icon="lock_reset"
+              color="warning"
+              :loading="running.sandboxReset"
+              :disable="!sandboxInstitution"
+              @click="runSandboxReset"
+            />
+            <div v-if="results.sandboxReset" class="admin-tool-result">
+              <pre>{{ results.sandboxReset }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Danger Zone -->
       <div class="admin-section">
         <div class="admin-section-header">
@@ -132,6 +169,7 @@ import {
   clearManualOverrides,
   nukeTransactions,
   nukeAllData,
+  sandboxResetLogin,
 } from '../api';
 
 const SELF_OPTION = { label: 'Self (my account)', value: '__self__' };
@@ -142,6 +180,7 @@ export default {
       users: [],
       selectedUser: null,
       loadingUsers: false,
+      sandboxInstitution: '',
       running: {},
       results: {},
 
@@ -227,6 +266,21 @@ export default {
         Notify.create({ type: 'negative', message: `${tool.label} failed: ${err.message}` });
       } finally {
         this.running = { ...this.running, [tool.key]: false };
+      }
+    },
+
+    async runSandboxReset() {
+      this.running = { ...this.running, sandboxReset: true };
+      this.results = { ...this.results, sandboxReset: null };
+      try {
+        const result = await sandboxResetLogin(this.sandboxInstitution);
+        this.results = { ...this.results, sandboxReset: JSON.stringify(result, null, 2) };
+        Notify.create({ type: 'positive', message: `Login reset for ${this.sandboxInstitution}` });
+      } catch (err) {
+        this.results = { ...this.results, sandboxReset: `Error: ${err.message}` };
+        Notify.create({ type: 'negative', message: `Reset failed: ${err.message}` });
+      } finally {
+        this.running = { ...this.running, sandboxReset: false };
       }
     },
 

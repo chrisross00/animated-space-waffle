@@ -27,9 +27,11 @@
           icon="sync"
           class="basil-sync-btn q-ml-sm"
           :class="{ 'basil-sync-btn--spinning': syncing }"
-          title="Sync with bank"
+          :title="hasItemErrors ? 'Account needs attention — tap to sync' : 'Sync with bank'"
           @click="handleSync"
-        />
+        >
+          <q-badge v-if="hasItemErrors" floating color="warning" rounded class="basil-sync-badge" />
+        </q-btn>
       </q-toolbar>
 
       <!-- Desktop tab bar — hidden on mobile -->
@@ -188,6 +190,13 @@
 .basil-sync-btn--spinning .q-icon {
   animation: basil-spin 0.8s linear infinite;
 }
+.basil-sync-badge {
+  min-width: 10px;
+  min-height: 10px;
+  padding: 0;
+  top: 2px;
+  right: 2px;
+}
 @keyframes basil-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(-360deg); }
@@ -324,6 +333,9 @@ export default {
         incomeAmountFmt: Math.round(incomeAmount).toLocaleString(),
       };
     },
+    hasItemErrors() {
+      return Object.keys(this.$store.state.itemErrors || {}).length > 0;
+    },
   },
 
   created() {},
@@ -352,6 +364,7 @@ export default {
           store.commit('setLastSyncedAt', syncResult.syncedAt);
           if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
           if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+          store.commit('setItemErrors', syncResult.itemErrors);
           const now = new Date();
           const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
           const txnResult = await fetchTransactionsForMonth(month);
