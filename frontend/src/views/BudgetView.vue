@@ -1671,6 +1671,8 @@ monthStats() {
         const STALE_MS = 4 * 60 * 60 * 1000;
         const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;
         if (Date.now() - lastSync > STALE_MS && store.state.user?.accounts?.length > 0) {
+          // Set immediately so rapid refreshes don't trigger duplicate syncs
+          store.commit('setLastSyncedAt', new Date().toISOString());
           triggerSync().then(async (syncResult) => {
             if (!syncResult) return;
             store.commit('setLastSyncedAt', syncResult.syncedAt);

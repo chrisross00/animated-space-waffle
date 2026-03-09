@@ -36,6 +36,9 @@ const store = createStore({
             if (user?.itemErrors) {
                 state.itemErrors = user.itemErrors;
             }
+            if (user?.lastSyncedAt && !state.lastSyncedAt) {
+                state.lastSyncedAt = user.lastSyncedAt;
+            }
             state.user = user;
         },
         clearState(state) {

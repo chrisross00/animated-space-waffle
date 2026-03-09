@@ -728,6 +728,7 @@ function createClientSideUser(user, accounts=null) {
     itemErrors,
     onboarded_at: user.onboarded_at || null,
     isAdmin: !!user.isAdmin,
+    lastSyncedAt: user.lastSyncedAt || null,
   };
 }
 
