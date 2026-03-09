@@ -1,4 +1,5 @@
-const { parseVenmoCsv, matchVenmoRows, parseVenmoAmount, dateDiffDays } = require('../utils/venmoEnrichment');
+import { describe, test, expect } from 'vitest'
+import { parseVenmoCsv, matchVenmoRows, parseVenmoAmount, dateDiffDays } from '../utils/venmoEnrichment.js'
 
 // Minimal CSV matching the real Venmo export format
 const SAMPLE_CSV = `Account Statement - (@TestUser) ,,,,,,,,,,,,,,,,,,,,,
