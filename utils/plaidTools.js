@@ -185,10 +185,95 @@ async function updatePlaidAccounts(response, userId){
   return;
 }
 
+async function fetchAndStoreBalances(uid) {
+  const userId = uid.toString();
+  const currentAccounts = await findUserData('Plaid-Accounts', userId);
+  if (!currentAccounts?.length || !currentAccounts[0].Accounts) return {};
+
+  const accountsObj = currentAccounts[0].Accounts;
+  const results = {};
+
+  for (const institution of Object.keys(accountsObj)) {
+    const { token } = accountsObj[institution];
+    if (!token) continue;
+    try {
+      const plaidEnv = accountsObj[institution].plaidEnv || 'production';
+      const client = forEnv(plaidEnv);
+      const response = await client.accountsBalanceGet({ access_token: token });
+      const fetchedAt = Date.now();
+      const balances = response.data.accounts.map(acct => ({
+        account_id: acct.account_id,
+        name: acct.name,
+        official_name: acct.official_name,
+        mask: acct.mask,
+        type: acct.type,
+        subtype: acct.subtype,
+        current: acct.balances.current,
+        available: acct.balances.available,
+        limit: acct.balances.limit,
+        fetchedAt,
+      }));
+
+      // Compute institution net for snapshot dedup
+      const institutionNet = balances.reduce((sum, acct) => {
+        const isLiability = acct.type === 'credit' || acct.type === 'loan';
+        const bal = isLiability ? (acct.current ?? 0) : (acct.available ?? acct.current ?? 0);
+        if (isLiability) return sum - Math.abs(bal);
+        return sum + bal;
+      }, 0);
+
+      // Only snapshot if net value changed from last snapshot
+      const existingSnapshots = accountsObj[institution].balanceSnapshots || [];
+      const lastSnapshot = existingSnapshots[existingSnapshots.length - 1];
+      const shouldSnapshot = !lastSnapshot || Math.round(lastSnapshot.net * 100) !== Math.round(institutionNet * 100);
+
+      const update = { $set: { [`Accounts.${institution}.balances`]: balances } };
+      if (shouldSnapshot) {
+        update.$push = {
+          [`Accounts.${institution}.balanceSnapshots`]: {
+            date: new Date().toISOString().slice(0, 10),
+            net: Math.round(institutionNet * 100) / 100,
+            fetchedAt,
+          },
+        };
+      }
+
+      await updateData('Plaid-Accounts', { userId }, update);
+
+      results[institution] = balances;
+    } catch (error) {
+      console.error(`fetchAndStoreBalances error for ${institution}:`, error.message);
+      // Return cached balances if available
+      if (accountsObj[institution].balances) {
+        results[institution] = accountsObj[institution].balances;
+      }
+    }
+  }
+
+  return results;
+}
+
+async function getCachedBalances(uid) {
+  const userId = uid.toString();
+  const currentAccounts = await findUserData('Plaid-Accounts', userId);
+  if (!currentAccounts?.length || !currentAccounts[0].Accounts) return {};
+
+  const accountsObj = currentAccounts[0].Accounts;
+  const results = {};
+  for (const institution of Object.keys(accountsObj)) {
+    if (accountsObj[institution].balances) {
+      results[institution] = accountsObj[institution].balances;
+    }
+  }
+  return results;
+}
+
 module.exports = {
   plaidTransactionsSync,
   getAccountData,
   getNewPlaidTransactions,
   getAllUserTransactions,
-  getPlaidCategories
+  getPlaidCategories,
+  fetchAndStoreBalances,
+  getCachedBalances,
 }

@@ -312,6 +312,21 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
   return response.ok;
 }
 
+export async function resetBalanceSnapshots(targetUserId) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/resetBalanceSnapshots', { method: 'POST', headers, body });
+    if (response.ok) {
+      const data = await response.json();
+      return `Cleared snapshots from ${data.cleared} institution${data.cleared !== 1 ? 's' : ''}. Refresh balances to regenerate.`;
+    } else {
+      _notify({ type: 'negative', message: `Failed to reset snapshots (${response.status})` });
+    }
+  }
+}
+
 export async function nukeTransactions(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
@@ -434,6 +449,15 @@ export async function deleteCompoundRule(ruleId) {
   });
   if (response.ok) return response.json();
   else _notify({ type: 'negative', message: `Failed to delete rule (${response.status})` });
+}
+
+export async function refreshBalances() {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/refreshBalances', { method: 'POST', headers });
+  if (response.ok) return response.json();
+  else _notify({ type: 'negative', message: `Failed to refresh balances (${response.status})` });
 }
 
 // export async function updateCategories() {} later...

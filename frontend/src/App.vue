@@ -36,6 +36,7 @@
           <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
           <q-route-tab to="/plan" icon="edit_note" label="Plan" />
           <template v-if="$store.state.user?.onboarded_at">
+            <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
             <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
             <q-route-tab to="/rules" icon="rule" label="Rules" />
             <q-route-tab to="/admin" icon="build" label="Toolbox" />
@@ -97,6 +98,7 @@
     <q-footer v-if="$store.state.session" class="lt-sm basil-bottom-nav">
       <q-tabs align="justify" class="basil-bottom-tabs">
         <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
+        <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/trends" icon="bar_chart" label="Trends" />
         <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>

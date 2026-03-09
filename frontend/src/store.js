@@ -9,6 +9,8 @@ const store = createStore({
         session: null,
         theme: localStorage?.getItem?.('basil-theme') || '',
         rules: [],
+        accountBalances: null,
+        balanceSnapshots: null,
         bootstrapping: false,
     },
     plugins: [createPersistedState({
@@ -20,6 +22,13 @@ const store = createStore({
     })],
     mutations: {
         setUser(state, user) {
+            // Extract accountBalances and snapshots if present from getOrAddUser response
+            if (user?.accountBalances) {
+                state.accountBalances = user.accountBalances;
+            }
+            if (user?.balanceSnapshots) {
+                state.balanceSnapshots = user.balanceSnapshots;
+            }
             state.user = user;
         },
         clearState(state) {
@@ -29,6 +38,8 @@ const store = createStore({
           state.transactions = [];
           state.categories = [];
           state.rules = [];
+          state.accountBalances = null;
+          state.balanceSnapshots = null;
         },
         setSession(state, session) {
             state.session = session;
@@ -112,6 +123,12 @@ const store = createStore({
         updateRule(state, { ruleId, label, conditions, action }) {
             const rule = state.rules.find(r => String(r._id) === String(ruleId));
             if (rule) { rule.label = label; rule.conditions = conditions; if (action) rule.action = action; }
+        },
+        setAccountBalances(state, balances) {
+            state.accountBalances = balances;
+        },
+        setBalanceSnapshots(state, snapshots) {
+            state.balanceSnapshots = snapshots;
         },
         setBootstrapping(state, val) {
             state.bootstrapping = val;

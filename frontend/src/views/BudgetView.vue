@@ -276,6 +276,15 @@
               </q-list>
             </div>
           </div>
+          <div v-if="!hasVisibleCategories && !$store.state.bootstrapping" class="basil-budget-empty-month q-pa-lg text-center">
+            <q-icon name="event_busy" size="2rem" color="grey-5" />
+            <div class="q-mt-sm" style="color: var(--basil-text-secondary)">
+              No transactions this month yet.
+            </div>
+            <div class="q-mt-xs" style="color: var(--basil-text-secondary); font-size: 0.85rem">
+              Try selecting a previous month, or sync to pull in new transactions.
+            </div>
+          </div>
         </q-list>
       </div>
 
@@ -721,6 +730,9 @@
       },
       netPositive() {
         return (this.monthlyStats.netPosition || 0) >= 0;
+      },
+      hasVisibleCategories() {
+        return Object.keys(this.groupedTransactions).some(cat => this.shouldShowCategory(cat));
       },
       tableTransactions() {
         let rows = this.transactions;

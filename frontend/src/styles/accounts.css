@@ -1,0 +1,105 @@
+/* =====================================================
+   AccountsView — institution list + summary cards
+   ===================================================== */
+
+.basil-accounts__institution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-accounts__institution-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--basil-text);
+}
+
+.basil-accounts__mask {
+  color: var(--basil-text-secondary);
+  font-size: 0.85em;
+  margin-left: var(--basil-space-1);
+}
+
+.basil-accounts__mask::before {
+  content: '\2022\2022\2022\2022';
+  letter-spacing: 1px;
+  margin-right: 2px;
+}
+
+.basil-accounts__balance {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+
+/* Credit utilization bar */
+.basil-accounts__utilization {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+}
+
+.basil-accounts__utilization-bar {
+  max-width: 120px;
+}
+
+.basil-accounts__utilization-label {
+  font-size: 0.75rem;
+  color: var(--basil-text-secondary);
+  white-space: nowrap;
+}
+
+/* No balance data hint */
+.basil-accounts__no-balances {
+  font-size: 0.85rem;
+  color: var(--basil-text-muted);
+  font-style: italic;
+  padding: var(--basil-space-2) 0;
+}
+
+/* Net worth sparkline */
+.basil-accounts__sparkline {
+  height: 100px;
+  width: 100%;
+  margin: var(--basil-space-2) 0;
+}
+
+/* ---- Summary cards (Net Worth, Cash Runway) ----
+   Uses q-card + shared basil-card-head / basil-card-label / basil-card-rule
+   from BudgetView.css. Only view-specific layout below. */
+.basil-accounts__card {
+  padding: var(--basil-space-5) !important;
+}
+
+/* Net Worth rows */
+.basil-accounts__net-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--basil-space-1) 0;
+}
+
+.basil-accounts__net-label {
+  color: var(--basil-text-secondary);
+}
+
+/* Cash Runway */
+.basil-accounts__runway {
+  text-align: center;
+}
+
+.basil-accounts__runway-note {
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  font-style: italic;
+  margin-top: var(--basil-space-2);
+}
+
+/* Last updated footer */
+.basil-accounts__updated {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--basil-text-muted);
+  padding: var(--basil-space-2) 0;
+}
