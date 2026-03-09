@@ -90,6 +90,18 @@
               <q-item-label caption>Admin tools</q-item-label>
             </q-item-section>
           </q-item>
+
+          <q-separator class="q-my-sm" />
+          <q-item-label header class="basil-drawer-section-label">Tools</q-item-label>
+          <q-item clickable @click="openVenmoEnrichment">
+            <q-item-section avatar>
+              <q-icon name="sync_alt" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Venmo Import</q-item-label>
+              <q-item-label caption>Add names and notes to Venmo transactions</q-item-label>
+            </q-item-section>
+          </q-item>
         </template>
       </q-list>
     </q-drawer>
@@ -271,6 +283,7 @@
 <script>
 import { ref } from 'vue'
 import store from './store'
+import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
 
 export default {
   name: 'LayoutDefault',
@@ -335,6 +348,10 @@ export default {
     },
     toggleTheme() {
       this.$store.commit('setTheme', this.isDark ? '' : 'dark');
+    },
+    openVenmoEnrichment() {
+      this.leftDrawerOpen = false;
+      this.$q.dialog({ component: VenmoEnrichmentDialog });
     },
   },
 }

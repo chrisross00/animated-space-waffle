@@ -511,6 +511,48 @@ export async function refreshBalances() {
   else _notify({ type: 'negative', message: `Failed to refresh balances (${response.status})` });
 }
 
+export async function clearVenmoEnrichment(targetUserId) {
+  const headers = await getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/clearVenmoEnrichment', { method: 'POST', headers, body });
+    if (response.ok) {
+      const data = await response.json();
+      return `Cleared Venmo details from ${data.clearedCount} transaction${data.clearedCount !== 1 ? 's' : ''}.`;
+    } else {
+      _notify({ type: 'negative', message: `Failed to clear Venmo details (${response.status})` });
+    }
+  }
+}
+
+export async function venmoEnrichmentPreview(csvText) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/venmoEnrichment/preview', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ csvText }),
+  });
+  if (response.ok) return response.json();
+  const data = await response.json().catch(() => ({}));
+  _notify({ type: 'negative', message: data.message || `Venmo import failed (${response.status})` });
+}
+
+export async function venmoEnrichmentApply(enrichments) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/venmoEnrichment/apply', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ enrichments }),
+  });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to update Venmo transactions (${response.status})` });
+}
+
 // export async function updateCategories() {} later...
 
 // ---------------------------------------------------------------------------

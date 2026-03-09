@@ -160,6 +160,18 @@ const store = createStore({
         setBalanceSnapshots(state, snapshots) {
             state.balanceSnapshots = snapshots;
         },
+        enrichTransactions(state, enrichments) {
+            if (!Array.isArray(enrichments) || !state.transactions) return;
+            const map = new Map(enrichments.map(e => [e.transaction_id, e]));
+            for (const txn of state.transactions) {
+                const e = map.get(txn.transaction_id);
+                if (e) {
+                    txn.venmo_id = e.venmo_id;
+                    txn.venmo_note = e.venmo_note;
+                    txn.venmo_counterparty = e.venmo_counterparty;
+                }
+            }
+        },
         setBootstrapping(state, val) {
             state.bootstrapping = val;
         },

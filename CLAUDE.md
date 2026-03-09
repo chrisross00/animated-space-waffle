@@ -285,12 +285,22 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 
 ### P2P / Venmo intelligence (future)
 Venmo/Zelle/Cash App transactions have zero distinguishing data from Plaid (no
-counterparty, no memo, identical `name` field). These ideas tackle that gap:
+counterparty, no memo, identical `name` field). The Venmo CSV import feature
+(`utils/venmoEnrichment.js`, hamburger menu → "Venmo Import") is the first step.
+Remaining ideas:
+
+- [ ] **Multi-provider P2P import** — add a provider picker (Venmo, Zelle, Cash App)
+      before the CSV upload step so the parser knows which format to expect. Each
+      provider has a different CSV layout. Currently only Venmo is supported.
 
 - [ ] **Split detection** — if a user has a $94 restaurant charge and a $47 Venmo
       incoming payment shortly after, infer it's a split payback. Present the theory
       ("Looks like someone paid you back for half of Sushi Palace"), let user confirm
-      with a tap. Turns reconciliation into a satisfying detective game.
+      with a tap. Turns reconciliation into a satisfying detective game. Now that Venmo
+      CSV enrichment exists (`utils/venmoEnrichment.js`), the enrichment tool could also
+      detect splits: match Venmo notes against merchant names in non-Venmo transactions
+      (e.g., note "RVR" ↔ merchant "RVR") + amount ratio analysis (50%, 33%, 25%) +
+      date proximity. Show as lower-confidence matches in the enrichment preview.
 - [ ] **Shared expense circles** — let friend groups opt in. When one user categorizes
       a shared transaction, auto-suggest the matching category for the other. Small
       network effect that makes budgeting feel collaborative. Requires multi-user
