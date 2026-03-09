@@ -54,12 +54,12 @@
         </div>
 
         <!-- Cumulative net trend -->
-        <v-chart v-if="snapshots.length > 1" :option="netWorthChartOption" autoresize class="basil-accounts__sparkline" />
+        <v-chart v-if="snapshots.length > 0" :option="netWorthChartOption" autoresize class="basil-accounts__sparkline" />
 
         <div class="basil-card-rule"></div>
         <div class="basil-accounts__net-row">
           <span class="basil-accounts__net-label">Assets</span>
-          <span class="basil-mono">{{ formatCurrency(netWorth.assets) }}</span>
+          <span class="basil-mono" style="color: var(--basil-positive)">{{ formatCurrency(netWorth.assets) }}</span>
         </div>
         <div class="basil-accounts__net-row">
           <span class="basil-accounts__net-label">Liabilities</span>
@@ -128,7 +128,7 @@
                 <q-item-section side>
                   <span
                     class="basil-mono basil-accounts__balance"
-                    :class="balanceClass(acct)"
+                    :style="{ color: balanceColor(acct) }"
                   >
                     {{ formatBalance(acct) }}
                   </span>
@@ -336,85 +336,41 @@ export default {
       const values = data.map(d => d.net);
       const min = Math.min(...values, 0);
       const max = Math.max(...values, 0);
-      const hasEstimates = data.some(d => d.estimated);
 
-      // Find the overlap point where estimated meets real
-      const firstRealIdx = data.findIndex(d => !d.estimated);
-
-      // Estimated series: includes overlap point so lines connect
-      const estimatedValues = data.map((d, i) =>
-        (d.estimated || i === firstRealIdx) ? d.net : null
-      );
-      // Real series: starts at overlap point (last estimated) or beginning
-      const realValues = data.map((d, i) => {
-        if (!hasEstimates) return d.net;
-        if (!d.estimated) return d.net;
-        // Include last estimated point as bridge
-        if (d.estimated && i < data.length - 1 && !data[i + 1].estimated) return d.net;
-        return null;
-      });
-
-      const series = [];
-
-      if (hasEstimates) {
-        series.push({
-          type: 'line',
-          data: estimatedValues,
-          smooth: true,
+      const series = [{
+        type: 'line',
+        data: values,
+        smooth: true,
+        symbol: data.length === 1 ? 'circle' : 'none',
+        symbolSize: 8,
+        areaStyle: { opacity: 0.15 },
+        markLine: {
+          silent: true,
           symbol: 'none',
-          lineStyle: { type: 'dashed', width: 2 },
-          areaStyle: { opacity: 0.08 },
-          connectNulls: false,
-        });
-        series.push({
-          type: 'line',
-          data: realValues,
-          smooth: true,
-          symbol: 'none',
-          areaStyle: { opacity: 0.15 },
-          connectNulls: false,
-        });
-      } else {
-        series.push({
-          type: 'line',
-          data: values,
-          smooth: true,
-          symbol: 'none',
-          areaStyle: { opacity: 0.15 },
-        });
-      }
-
-      // Add zero markLine to first series
-      series[0].markLine = {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { color: '#c8c0b0', type: 'dashed', width: 1 },
-        data: [{ yAxis: 0 }],
-        label: { show: false },
-      };
-
-      // VisualMap applies to all series
-      const visualMaps = series.map((_, i) => ({
-        show: false,
-        type: 'continuous',
-        seriesIndex: i,
-        min,
-        max,
-        inRange: { color: min < 0 ? ['#b83c2b', '#c8c0b0', '#2d7a4f'] : ['#2d7a4f'] },
-      }));
+          lineStyle: { color: '#c8c0b0', type: 'dashed', width: 1 },
+          data: [{ yAxis: 0 }],
+          label: { show: false },
+        },
+      }];
 
       return {
         ...ANIMATION,
         tooltip: {
           trigger: 'axis',
           formatter: (params) => {
-            const p = params.find(p => p.value != null) || params[0];
+            const p = params[0];
             if (p?.value == null) return '';
-            const isEst = data[p.dataIndex]?.estimated;
-            return `<strong>${p.axisValue}</strong><br/>Net worth: ${this.formatCurrency(p.value)}${isEst ? ' (est.)' : ''}`;
+            return `<strong>${p.axisValue}</strong><br/>Net worth: ${this.formatCurrency(p.value)}`;
           },
         },
-        visualMap: visualMaps,
+        visualMap: [{
+          show: false,
+          type: 'continuous',
+          seriesIndex: 0,
+          min,
+          max,
+          inRange: { color: min < 0 ? ['#b83c2b', '#c8c0b0', '#2d7a4f'] : ['#2d7a4f'] },
+        }],
         grid: { left: 0, right: 0, top: 8, bottom: 0, containLabel: false },
         xAxis: { type: 'category', data: labels, show: false },
         yAxis: { type: 'value', show: false },
@@ -473,9 +429,11 @@ export default {
       }).format(display);
     },
 
-    balanceClass(acct) {
+    balanceColor(acct) {
       const isLiability = acct.type === 'credit' || acct.type === 'loan';
-      return isLiability ? 'basil-accounts__balance--negative' : '';
+      if (isLiability) return 'var(--basil-negative)';
+      const bal = acct.available ?? acct.current ?? 0;
+      return bal >= 0 ? 'var(--basil-positive)' : 'var(--basil-negative)';
     },
 
     formatSubtype(subtype) {

@@ -626,24 +626,16 @@ async function getOrAddUser(decodedToken) {
   }
 }
 
-/** Aggregate balance snapshots by date, preserving the `estimated` flag. */
+/** Aggregate balance snapshots by date across institutions. */
 function aggregateSnapshots(snapshots) {
   if (!snapshots?.length) return null;
   const byDate = {};
   for (const snap of snapshots) {
-    if (!byDate[snap.date]) {
-      byDate[snap.date] = { net: 0, estimated: !!snap.estimated };
-    }
-    byDate[snap.date].net += snap.net;
-    // A date is only estimated if ALL snapshots for that date are estimated
-    if (!snap.estimated) byDate[snap.date].estimated = false;
+    if (!byDate[snap.date]) byDate[snap.date] = 0;
+    byDate[snap.date] += snap.net;
   }
   const result = Object.entries(byDate)
-    .map(([date, { net, estimated }]) => {
-      const entry = { date, net: Math.round(net * 100) / 100 };
-      if (estimated) entry.estimated = true;
-      return entry;
-    })
+    .map(([date, net]) => ({ date, net: Math.round(net * 100) / 100 }))
     .sort((a, b) => a.date.localeCompare(b.date));
   return result.length ? result : null;
 }

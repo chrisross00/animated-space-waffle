@@ -193,14 +193,13 @@ async function fetchAndStoreBalances(uid) {
   const accountsObj = currentAccounts[0].Accounts;
   const results = {};
 
-  // Check if ANY institution already has snapshots (backfill is a one-time operation)
-  const hasAnySnapshots = Object.values(accountsObj).some(inst => inst.balanceSnapshots?.length > 0);
-
   for (const institution of Object.keys(accountsObj)) {
     const { token } = accountsObj[institution];
     if (!token) continue;
     try {
-      const response = await plaidClient.accountsBalanceGet({ access_token: token });
+      const plaidEnv = accountsObj[institution].plaidEnv || 'production';
+      const client = forEnv(plaidEnv);
+      const response = await client.accountsBalanceGet({ access_token: token });
       const fetchedAt = Date.now();
       const balances = response.data.accounts.map(acct => ({
         account_id: acct.account_id,
@@ -251,84 +250,7 @@ async function fetchAndStoreBalances(uid) {
     }
   }
 
-  // One-time backfill: estimate historical net worth from transactions
-  if (!hasAnySnapshots && Object.keys(results).length > 0) {
-    try {
-      await backfillEstimatedSnapshots(userId, results);
-    } catch (error) {
-      console.error('backfillEstimatedSnapshots error:', error.message);
-    }
-  }
-
   return results;
-}
-
-/**
- * One-time backfill: estimate historical net worth by working backwards from
- * the current real net worth using monthly transaction nets.
- * Snapshots are marked `estimated: true` so the frontend can render them differently.
- */
-async function backfillEstimatedSnapshots(userId, currentBalances) {
-  const transactions = await findUserData('Plaid-Transactions', userId);
-  const categories = await findUserData('Basil-Categories', userId);
-  if (!transactions?.length || !categories?.length) return;
-
-  // Current total net worth across all institutions
-  const currentNet = Object.values(currentBalances).flat().reduce((sum, acct) => {
-    const isLiability = acct.type === 'credit' || acct.type === 'loan';
-    const bal = isLiability ? (acct.current ?? 0) : (acct.available ?? acct.current ?? 0);
-    if (isLiability) return sum - Math.abs(bal);
-    return sum + bal;
-  }, 0);
-
-  // Build last 6 complete months (excluding current)
-  const now = new Date();
-  const months = [];
-  for (let i = 1; i <= 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.unshift(d.toISOString().slice(0, 7)); // YYYY-MM
-  }
-
-  // Calculate monthly net change from all transactions
-  // Plaid convention: positive amount = money out (debit), negative = money in (credit)
-  const monthlyNets = months.map(m => {
-    let net = 0;
-    for (const txn of transactions) {
-      if (txn.excludeFromTotal) continue;
-      if (!txn.date?.startsWith(m)) continue;
-      net -= txn.amount; // subtract because Plaid positive = debit (money leaving)
-    }
-    return net;
-  });
-
-  // Work backwards from current net worth
-  const estimates = new Array(months.length);
-  let running = currentNet;
-  for (let i = months.length - 1; i >= 0; i--) {
-    running -= monthlyNets[i];
-    estimates[i] = Math.round(running * 100) / 100;
-  }
-
-  // Only backfill months that had transaction activity
-  const snapshots = [];
-  for (let i = 0; i < months.length; i++) {
-    if (monthlyNets[i] === 0) continue; // no activity = skip
-    snapshots.push({
-      date: months[i] + '-01',
-      net: estimates[i],
-      estimated: true,
-      fetchedAt: Date.now(),
-    });
-  }
-
-  if (snapshots.length === 0) return;
-
-  // Store on the first institution (snapshots are aggregated across institutions on read)
-  const firstInstitution = Object.keys(currentBalances)[0];
-  await updateData('Plaid-Accounts',
-    { userId },
-    { $push: { [`Accounts.${firstInstitution}.balanceSnapshots`]: { $each: snapshots, $position: 0 } } }
-  );
 }
 
 async function getCachedBalances(uid) {

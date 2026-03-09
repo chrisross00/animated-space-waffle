@@ -32,9 +32,6 @@
   font-weight: 500;
 }
 
-.basil-accounts__balance--negative {
-  color: var(--basil-negative);
-}
 
 /* Credit utilization bar */
 .basil-accounts__utilization {

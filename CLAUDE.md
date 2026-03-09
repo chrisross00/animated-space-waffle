@@ -166,19 +166,6 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       months get an `autorenew` badge on their category row.
 - [x] **Budget forecast** — Projections card shows expected amount from recurring merchants
       not yet seen this month, with merchant name (if one) or count (if multiple).
-- [ ] **Fix balance snapshot backfill estimates** — the one-time backfill in
-      `plaidTools.js → backfillEstimatedSnapshots` produces inaccurate historical net worth
-      estimates. The current approach (sum all Plaid transaction amounts backwards from
-      current net worth) doesn't account for transactions across multiple linked institutions
-      properly — inter-account transfers (credit card payments, savings moves) double-count
-      because both sides appear as separate transactions. Needs investigation: compare
-      backfill output against TrendsView Cumulative chart values for the same months, log
-      intermediate monthly nets to find where divergence starts. Possible fixes: deduplicate
-      transfer pairs, use per-institution transaction sums, or take a simpler approach like
-      only using the Cumulative chart's existing `monthlyNet` logic. The snapshot storage,
-      chart rendering, and estimated/real line distinction all work correctly — only the
-      backfill calculation is wrong.
-
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
 - [ ] **Rules & suggestion engine: user control + intent clarification** — two related
