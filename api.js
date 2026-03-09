@@ -5,7 +5,7 @@ const router = express.Router();
 const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers, findUserTransactionsByMonth, findUserTransactionsPaginated, findHistoricalCategoryMap } = require('./db/database');
 const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
-const {validateIdToken} = require('./utils/authentication');
+const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
 const ObjectID = require('mongodb').ObjectId;
 const { rateLimit } = require('express-rate-limit');
@@ -127,6 +127,7 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.uid;
+    if (await rejectTestUser(userId, res)) return;
     await getNewPlaidTransactions(userId);
     await updateData('Basil-Users', { userId }, { $set: { lastSyncedAt: new Date() } });
     res.json({ syncedAt: new Date().toISOString() });
@@ -141,6 +142,7 @@ router.post('/sync/balances', plaidSyncLimiter, async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
+    if (await rejectTestUser(uid, res)) return;
     const balances = await fetchAndStoreBalances(uid);
     // Read back snapshots for the chart
     const accounts = await findUserData('Plaid-Accounts', uid);

@@ -40,6 +40,11 @@ export const authReady = new Promise(resolve => { _authReadyResolve = resolve; }
 auth.onAuthStateChanged(() => { _authReadyResolve(); });
 
 export async function getAuthHeaders() {
+  // Impersonation token from admin portal "Login As" flow
+  const impersonateToken = sessionStorage.getItem('impersonate-token');
+  if (impersonateToken) {
+    return { Authorization: `Bearer impersonate:${impersonateToken}` };
+  }
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
   }
@@ -570,7 +575,7 @@ export async function ensureAppData(store) {
   // On hard refresh, views call ensureAppData before Firebase auth resolves
   // (sessionStorage has the user, but auth.currentUser is still null).
   // Wait for auth so getAuthHeaders() can provide a valid token.
-  if (import.meta.env.VITE_DEV_AUTH_BYPASS !== 'true') {
+  if (import.meta.env.VITE_DEV_AUTH_BYPASS !== 'true' && !sessionStorage.getItem('impersonate-token')) {
     await authReady;
   }
 

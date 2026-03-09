@@ -282,6 +282,7 @@ export default {
           console.log(error)
           }
       }
+      sessionStorage.removeItem('impersonate-token');
       await auth.signOut();
       store.commit('clearState');
       window.location.reload();

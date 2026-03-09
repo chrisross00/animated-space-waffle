@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const { findUserData, insertData, updateData } = require('./db/database');
-const {validateIdToken} = require('./utils/authentication');
+const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 
 const { forUser } = require('./utils/plaidClient');
 
@@ -19,6 +19,7 @@ async function getUserPlaidEnv(uid) {
 router.get("/create_link_token", async (req, res, next) => {
     try {
       const decodedToken = await validateIdToken(req);
+      if (await rejectTestUser(decodedToken.uid, res)) return;
       const { isAdmin } = await getUserPlaidEnv(decodedToken.uid);
       const client = forUser(isAdmin);
       const tokenResponse = await client.linkTokenCreate({
@@ -45,6 +46,7 @@ router.post("/exchange_public_token", async (req, res, next) => {
   } catch (error) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
+  if (await rejectTestUser(decodedToken.uid, res)) return;
 
   try {
     const institution = req.body?.metadata?.institution?.name;
@@ -117,6 +119,7 @@ router.post("/remove_account", async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.uid;
+    if (await rejectTestUser(userId, res)) return;
     const { institution } = req.body;
     const filter = { userId };
     const update = { $unset: { [`Accounts.${institution}`]: '' } };
