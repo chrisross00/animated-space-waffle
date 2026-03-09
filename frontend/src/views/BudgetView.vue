@@ -1543,11 +1543,12 @@ monthStats() {
         ];
         return palette[Math.abs(hash) % palette.length];
       },
-      async onTableVirtualScroll({ to }) {
+      async onTableVirtualScroll({ to, direction }) {
         // Only fetch more when viewing all transactions (not searching), not already loading,
-        // and user has scrolled near the bottom of the list
+        // scrolling downward, and near the bottom of the list
         if (this.tableServerResults !== null) return;
         if (this.tableLoadingMore || this.tableNoMoreMonths) return;
+        if (direction === 'decrease') return;
         const total = this.tableTransactions.length;
         if (total === 0 || to < total - 20) return;
 

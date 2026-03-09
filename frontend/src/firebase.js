@@ -120,7 +120,7 @@ export async function fetchMonthRange(store, startMonth, endMonth) {
   if (missing.length === 0) return;
   const results = await Promise.all(missing.map(m => fetchTransactionsForMonth(m)));
   for (let i = 0; i < missing.length; i++) {
-    if (results[i]) {
+    if (results[i]?.transactions?.length > 0) {
       store.commit('setMonthTransactions', { month: missing[i], transactions: results[i].transactions });
     }
   }
