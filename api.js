@@ -747,6 +747,21 @@ router.post('/clearManualOverrides', async (req, res) => {
   }
 });
 
+router.post('/clearVenmoEnrichment', async (req, res) => {
+  try {
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
+    const result = await updateManyData('Plaid-Transactions',
+      { userId: uid, venmo_id: { $exists: true } },
+      { $unset: { venmo_id: '', venmo_note: '', venmo_counterparty: '' } }
+    );
+    res.json({ clearedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('/clearVenmoEnrichment error:', error);
+    res.status(500).json({ message: 'Failed to clear Venmo enrichment' });
+  }
+});
+
 router.post('/resetBalanceSnapshots', async (req, res) => {
   try {
     const uid = await resolveTargetUser(req, res);
@@ -920,6 +935,66 @@ router.post('/updateBudgetLimit', async (req, res) => {
   } catch (error) {
     console.error('/updateBudgetLimit error:', error);
     res.status(500).json({ message: 'Failed to update budget limit' });
+  }
+});
+
+// ---- Venmo CSV enrichment ----
+
+const { parseVenmoCsv, matchVenmoRows } = require('./utils/venmoEnrichment');
+
+router.post('/venmoEnrichment/preview', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { csvText } = req.body;
+    if (typeof csvText !== 'string' || csvText.length === 0) {
+      return res.status(400).json({ message: 'csvText must be a non-empty string' });
+    }
+    if (csvText.length > 1024 * 1024) {
+      return res.status(400).json({ message: 'CSV file too large (max 1MB)' });
+    }
+    const venmoRows = parseVenmoCsv(csvText);
+    if (venmoRows.length === 0) {
+      return res.status(400).json({ message: 'No valid Venmo transactions found in CSV' });
+    }
+    const transactions = await findUserData('Plaid-Transactions', uid);
+    const result = matchVenmoRows(venmoRows, transactions);
+    res.json(result);
+  } catch (error) {
+    console.error('/venmoEnrichment/preview error:', error.message);
+    res.status(500).json({ message: 'Failed to preview Venmo enrichment' });
+  }
+});
+
+router.post('/venmoEnrichment/apply', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { enrichments } = req.body;
+    if (!Array.isArray(enrichments) || enrichments.length === 0) {
+      return res.status(400).json({ message: 'enrichments must be a non-empty array' });
+    }
+    if (enrichments.length > 500) {
+      return res.status(400).json({ message: 'Cannot enrich more than 500 transactions at once' });
+    }
+    let enriched = 0;
+    for (const e of enrichments) {
+      if (!e.transaction_id || !e.venmo_id) continue;
+      const filter = { transaction_id: e.transaction_id, userId: uid };
+      const update = {
+        $set: {
+          venmo_id: e.venmo_id,
+          venmo_note: e.venmo_note || '',
+          venmo_counterparty: e.venmo_counterparty || '',
+        },
+      };
+      await updateData('Plaid-Transactions', filter, update);
+      enriched++;
+    }
+    res.json({ enriched });
+  } catch (error) {
+    console.error('/venmoEnrichment/apply error:', error.message);
+    res.status(500).json({ message: 'Failed to apply Venmo enrichment' });
   }
 });
 

@@ -247,10 +247,11 @@
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
-                        <q-item-label lines="1">{{ item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</q-item-label>
+                        <q-item-label lines="1">{{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</q-item-label>
                         <q-item-label caption lines="2">
                           {{ item.date }}
-                          <span v-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
+                          <span v-if="item.venmo_counterparty" class="basil-txn-institution"> · Venmo · {{ item.venmo_counterparty }}</span>
+                          <span v-else-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
                         </q-item-label>
                       </q-item-section>
                       <div class="transaction-decoration">
@@ -396,9 +397,13 @@
                     {{ merchantInitials(props.row) }}
                   </div>
                   <div class="basil-txn-label">
-                    <div class="basil-txn-label__primary">{{ props.row.merchant_name || props.row.name }}</div>
+                    <div class="basil-txn-label__primary">{{ props.row.venmo_note || props.row.merchant_name || props.row.name }}</div>
                     <div
-                      v-if="props.row.merchant_name && props.row.merchant_name !== props.row.name"
+                      v-if="props.row.venmo_counterparty"
+                      class="basil-txn-label__secondary"
+                    >Venmo · {{ props.row.venmo_counterparty }}</div>
+                    <div
+                      v-else-if="props.row.merchant_name && props.row.merchant_name !== props.row.name"
                       class="basil-txn-label__secondary"
                     >{{ props.row.name }}</div>
                     <div

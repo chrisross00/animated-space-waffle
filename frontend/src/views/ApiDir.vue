@@ -34,7 +34,7 @@
 </template>
 
 <script>
-import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, resetBalanceSnapshots, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions, fetchUsers } from '../firebase';
+import { addPlaidPfc, dedupe, seedCategories, cleanPending, mapUnmapped, clearManualOverrides, clearVenmoEnrichment, resetBalanceSnapshots, nukeTransactions, nukeAllData, addTestTransactions, addVenmoTransactions, fetchUsers } from '../firebase';
 import store from '../store';
 
 const TOOLS = [
@@ -85,13 +85,31 @@ const TOOLS = [
     label: 'Reset Balance Snapshots',
     description: 'Clears all stored net worth snapshots (estimated + real). Refresh balances on the Accounts tab to regenerate.',
     fn: resetBalanceSnapshots,
+    dangerous: true,
     postRun() { store.commit('setBalanceSnapshots', null); },
+  },
+  {
+    key: 'clearvenmoenrichment',
+    label: 'Clear Venmo Import',
+    description: 'Removes imported Venmo details (names, notes) from all transactions so you can re-upload a CSV.',
+    fn: clearVenmoEnrichment,
+    dangerous: true,
+    postRun() {
+      (store.state.transactions || []).forEach(t => {
+        if (t.venmo_id) {
+          delete t.venmo_id;
+          delete t.venmo_note;
+          delete t.venmo_counterparty;
+        }
+      });
+    },
   },
   {
     key: 'clearmanuals',
     label: 'Clear Manual Overrides',
     description: 'Removes the manually_set flag from all transactions, allowing rules to re-categorize them.',
     fn: clearManualOverrides,
+    dangerous: true,
     postRun() {
       store.state.transactions.forEach(t => {
         if (t.manually_set) store.commit('updateTransaction', { ...t, manually_set: false });

@@ -21,9 +21,13 @@
         >
           {{ item.amount < 0 ? `-$${Math.abs(item.amount).toFixed(2)}` : `$${Number(item.amount).toFixed(2)}` }}
         </div>
-        <div class="basil-dialog-txn-name">{{ dialogBody.merchantName || dialogBody.name }}</div>
+        <div class="basil-dialog-txn-name">{{ item.venmo_note ? item.venmo_note + ' · Venmo' : (dialogBody.merchantName || dialogBody.name) }}</div>
         <div
-          v-if="dialogBody.merchantName && dialogBody.merchantName !== dialogBody.name"
+          v-if="item.venmo_counterparty"
+          class="basil-dialog-txn-subname"
+        >To {{ item.venmo_counterparty }}</div>
+        <div
+          v-else-if="dialogBody.merchantName && dialogBody.merchantName !== dialogBody.name"
           class="basil-dialog-txn-subname"
         >{{ dialogBody.name }}</div>
         <div
