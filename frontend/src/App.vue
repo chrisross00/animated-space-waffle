@@ -41,7 +41,6 @@
             <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
             <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
             <q-route-tab to="/rules" icon="rule" label="Rules" />
-            <q-route-tab to="/admin" icon="build" label="Toolbox" />
           </template>
         </template>
         <q-route-tab to="/profile" icon="person" label="Profile" />
@@ -83,16 +82,6 @@
               <q-item-label caption>Manage categorization rules</q-item-label>
             </q-item-section>
           </q-item>
-          <q-item clickable to="/admin" @click="leftDrawerOpen = false">
-            <q-item-section avatar>
-              <q-icon name="build" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Toolbox</q-item-label>
-              <q-item-label caption>Admin tools</q-item-label>
-            </q-item-section>
-          </q-item>
-
           <q-separator class="q-my-sm" />
           <q-item-label header class="basil-drawer-section-label">Tools</q-item-label>
           <q-item clickable @click="openVenmoEnrichment">

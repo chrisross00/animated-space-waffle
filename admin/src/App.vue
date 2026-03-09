@@ -3,6 +3,18 @@
     <q-header class="admin-header">
       <q-toolbar>
         <q-toolbar-title class="admin-title">Basil Admin</q-toolbar-title>
+        <q-tabs
+          v-if="user && isAdmin"
+          v-model="activeTab"
+          shrink
+          active-color="white"
+          indicator-color="white"
+          class="admin-nav-tabs"
+        >
+          <q-route-tab name="test-users" label="Test Users" to="/test-users" />
+          <q-route-tab name="toolbox" label="Toolbox" to="/toolbox" />
+        </q-tabs>
+        <q-space />
         <template v-if="user">
           <span class="admin-user-name">{{ user.displayName || user.email }}</span>
           <q-btn flat dense icon="logout" @click="handleSignOut" />
@@ -64,6 +76,7 @@ export default {
       loading: true,
       signingIn: false,
       authError: null,
+      activeTab: 'test-users',
     };
   },
   async created() {
@@ -124,6 +137,20 @@ body {
   font-weight: 400;
   font-size: 20px;
   letter-spacing: 0.01em;
+  flex: 0 0 auto;
+}
+.admin-nav-tabs {
+  margin-left: var(--basil-space-4);
+}
+.admin-nav-tabs .q-tab {
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: none;
+  font-weight: 500;
+  min-width: 0;
+  padding: 0 var(--basil-space-3);
+}
+.admin-nav-tabs .q-tab--active {
+  color: #ffffff;
 }
 .admin-user-name {
   font-size: 14px;

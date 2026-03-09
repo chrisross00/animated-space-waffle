@@ -14,7 +14,8 @@ async function request(path, options = {}) {
     throw new Error(body.message || `Request failed (${res.status})`);
   }
 
-  return res.json();
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : res.text();
 }
 
 export function getPersonas() {
@@ -58,3 +59,37 @@ export async function checkAdmin() {
     return false;
   }
 }
+
+// ── Toolbox API ──────────────────────────────────────────────
+
+export function fetchUsers() {
+  return request('/api/users');
+}
+
+// GET tools — targetUserId as query param
+function toolGet(path, targetUserId) {
+  const url = targetUserId ? `${path}?targetUserId=${targetUserId}` : path;
+  return request(url);
+}
+
+// POST tools — targetUserId in body
+function toolPost(path, targetUserId) {
+  return request(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(targetUserId ? { targetUserId } : {}),
+  });
+}
+
+export function addPlaidPfc(targetUserId) { return toolGet('/api/addplaidpfc', targetUserId); }
+export function seedCategories(targetUserId) { return toolGet('/api/seedcategories', targetUserId); }
+export function mapUnmapped(targetUserId) { return toolGet('/api/mapunmapped', targetUserId); }
+export function dedupe(targetUserId) { return toolPost('/api/dedupe', targetUserId); }
+export function cleanPending(targetUserId) { return toolGet('/api/cleanPendingTransactions', targetUserId); }
+export function addVenmoTransactions(targetUserId) { return toolPost('/api/addVenmoTransactions', targetUserId); }
+export function addTestTransactions(targetUserId) { return toolPost('/api/addTestTransactions', targetUserId); }
+export function resetBalanceSnapshots(targetUserId) { return toolPost('/api/resetBalanceSnapshots', targetUserId); }
+export function clearVenmoEnrichment(targetUserId) { return toolPost('/api/clearVenmoEnrichment', targetUserId); }
+export function clearManualOverrides(targetUserId) { return toolPost('/api/clearManualOverrides', targetUserId); }
+export function nukeTransactions(targetUserId) { return toolPost('/api/nukeTransactions', targetUserId); }
+export function nukeAllData(targetUserId) { return toolPost('/api/nukeAllData', targetUserId); }

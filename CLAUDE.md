@@ -71,7 +71,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/views/MerchantBrowser.vue` | Top-down merchant rule assignment |
 | `frontend/src/views/RulesView.vue` | View/edit/delete all compound rules |
 | `frontend/src/views/ProfileView.vue` | Auth (Google sign-in) + linked accounts |
-| `frontend/src/views/ApiDir.vue` | Admin toolbox (dedupe, seed, map unmapped, clear manual overrides, etc.) |
+| `admin/src/views/ToolboxView.vue` | Admin toolbox (dedupe, seed, map unmapped, clear overrides, nuke, etc.) |
 | `frontend/src/components/DialogComponent.vue` | Edit transaction / category dialog |
 | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit dialog |
 | `frontend/src/utils/ruleUtils.js → findSimilarTransactions()` | Auto-detects similar transactions and determines best rule strategy |
@@ -169,7 +169,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Recurring transaction detection: badge on category rows, expected amount in Projections card
 - Similarity engine: auto-detects similar transactions (3 strategies: merchant_name → name+account → name), shows reactive "Also categorize N similar" checkbox with count based on selected category
 - Transaction display: prefers `merchant_name` over raw Plaid `name`; shows institution context for null-merchant transactions
-- Admin toolbox: dedupe, seed categories, clean pending, map unmapped, clear manual overrides
+- Admin portal (`:8081`): test user seed/nuke/login-as, toolbox (dedupe, seed, map unmapped, clear overrides, nuke)
 - Onboarding: 3-step flow (connect bank → seed defaults → done) gated by `onboarded_at`
 - Rule attribution: shows who created a rule and why (auto-learn, manual, compound)
 - Venmo CSV import: enriches P2P transactions with counterparty names and notes
@@ -185,14 +185,8 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       months get an `autorenew` badge on their category row.
 - [x] **Budget forecast** — Projections card shows expected amount from recurring merchants
       not yet seen this month, with merchant name (if one) or count (if multiple).
-- [ ] **Test data seed script** — `node scripts/seed-test-user.js` to create/reset test
-      users with realistic synthetic data. Supports personas: `--persona=new` (fresh user,
-      triggers onboarding), `--persona=active` (6 months of transactions, categories, rules),
-      `--persona=sparse` (1 month, few transactions, tests empty states). Each persona gets
-      a deterministic UID (e.g. `test-user-active-001`) — switch between accounts by changing
-      `DEV_AUTH_BYPASS_UID` in `.env`. Idempotent: re-run to blow away and recreate. Generates
-      realistic merchants, amounts, multiple accounts (checking, credit, savings), and
-      pre-configured category rules. Works with existing dev auth bypass.
+- [x] **Test data seed script** — `node scripts/seed-test-user.js` with 5 personas
+      (fresh, connected, active, p2p, rules). Admin portal at `:8081` provides seed/nuke/login-as UI.
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
 - [ ] **Rules & suggestion engine: user control + intent clarification** — two related
@@ -265,7 +259,8 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       decision framework: `plans/database-migration.md`.
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
-      route with a `type` parameter if more test-data tools are added.
+      route with a `type` parameter if more test-data tools are added. (Toolbox UI now in
+      admin portal — `admin/src/views/ToolboxView.vue`.)
 - [ ] **Switch persisted state from sessionStorage to localStorage** — Mostly mitigated
       by data layer rearchitecture (transactions no longer persisted, 5MB cap no longer
       an issue). Only `session`, `user`, and `lastSyncedAt` remain in sessionStorage.
