@@ -1328,9 +1328,13 @@ monthStats() {
       async buildPage (mode){
         try {
           if(mode == 'sync'){
-            // Trigger Plaid sync (updates DB), then re-fetch current month from DB
-            await triggerSync();
-            store.commit('setLastSyncedAt', new Date().toISOString());
+            // Trigger Plaid sync (updates DB + balances), then re-fetch current month from DB
+            const syncResult = await triggerSync();
+            if (syncResult) {
+              store.commit('setLastSyncedAt', syncResult.syncedAt);
+              if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
+              if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+            }
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const result = await fetchTransactionsForMonth(currentMonth);
@@ -1666,9 +1670,11 @@ monthStats() {
         const STALE_MS = 4 * 60 * 60 * 1000;
         const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;
         if (Date.now() - lastSync > STALE_MS && store.state.user?.accounts?.length > 0) {
-          triggerSync().then(async (result) => {
-            if (!result) return;
-            store.commit('setLastSyncedAt', result.syncedAt);
+          triggerSync().then(async (syncResult) => {
+            if (!syncResult) return;
+            store.commit('setLastSyncedAt', syncResult.syncedAt);
+            if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
+            if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
             const fresh = await fetchTransactionsForMonth(currentMonth);

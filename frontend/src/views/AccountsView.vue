@@ -4,13 +4,6 @@
     <!-- Header -->
     <div class="basil-card-head q-mb-sm">
       <span class="basil-card-label">Accounts</span>
-      <q-btn
-        flat dense round
-        icon="refresh"
-        size="sm"
-        :loading="refreshing"
-        @click="handleRefresh"
-      />
     </div>
 
     <!-- Loading skeleton -->
@@ -191,7 +184,7 @@
 </template>
 
 <script>
-import { ensureAppData, refreshBalances, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth } from '@/firebase';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth } from '@/firebase';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import VChart from 'vue-echarts';
@@ -211,7 +204,6 @@ export default {
 
   data() {
     return {
-      refreshing: false,
       showPlaidLink: false,
       preDelete: {},
     };
@@ -394,21 +386,6 @@ export default {
   },
 
   methods: {
-    async handleRefresh() {
-      this.refreshing = true;
-      try {
-        const result = await refreshBalances();
-        if (result?.balances) {
-          this.$store.commit('setAccountBalances', result.balances);
-        }
-        if (result?.balanceSnapshots) {
-          this.$store.commit('setBalanceSnapshots', result.balanceSnapshots);
-        }
-      } finally {
-        this.refreshing = false;
-      }
-    },
-
     formatCurrency(val) {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -455,17 +432,20 @@ export default {
         console.error('handlePlaidSuccess error:', error);
       }
       try {
-        await triggerSync();
-        const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const result = await fetchTransactionsForMonth(currentMonth);
-        if (result) this.$store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
+        const syncResult = await triggerSync();
+        if (syncResult) {
+          this.$store.commit('setLastSyncedAt', syncResult.syncedAt);
+          if (syncResult.balances) this.$store.commit('setAccountBalances', syncResult.balances);
+          if (syncResult.balanceSnapshots) this.$store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
+          const now = new Date();
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const result = await fetchTransactionsForMonth(currentMonth);
+          if (result) this.$store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
+        }
       } catch (error) {
         console.error('handlePlaidSuccess: sync error:', error);
       }
       this.showPlaidLink = false;
-      // Fetch fresh balances for the newly linked account
-      this.handleRefresh();
     },
 
     async unlinkAccount(institution) {
@@ -489,10 +469,6 @@ export default {
 
   async mounted() {
     await ensureAppData(this.$store);
-    // Auto-fetch balances if none cached
-    if (this.hasAccounts && !this.hasBalances) {
-      this.handleRefresh();
-    }
   },
 };
 </script>
