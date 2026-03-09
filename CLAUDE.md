@@ -223,10 +223,9 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       is awkward on mobile. Consider wrapping HTML legend below chart.
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
       Needs a delivery mechanism decision (in-app banner vs email).
-- [ ] **"Show all" table: fetch older months on scroll** — the table only shows
-      transactions already in the store (current + 3 prior months). Should fetch
-      additional months as the user scrolls or provide a "load more" trigger so all
-      historical transactions are accessible without switching to TrendsView first.
+- [x] **"Show all" table: fetch older months on scroll** — infinite scroll on the
+      virtual-scroll QTable fetches 3 more months when user nears the bottom. Stops
+      when no more data exists.
 - [ ] **User switching: clear store on identity change** — swapping users (via dev
       auth bypass or future admin portal "Login as") requires a hard refresh because
       sessionStorage + Vuex store retain the previous user's data. The "Login as" flow
