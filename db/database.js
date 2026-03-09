@@ -206,6 +206,66 @@ async function deleteCompoundRule(userId, ruleId) {
   return db.collection('Basil-Rules').deleteOne({ _id: new ObjectId(ruleId), userId });
 }
 
+async function findUserTransactionsByMonth(userId, month) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  // month is "YYYY-MM" — match transactions where date starts with that prefix
+  return db.collection('Plaid-Transactions')
+    .find({ userId, date: { $regex: `^${month}` } })
+    .sort({ date: -1 })
+    .toArray();
+}
+
+async function findUserTransactionsPaginated(userId, { page = 1, limit = 100, search } = {}) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const filter = { userId };
+  if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    filter.$or = [
+      { name: { $regex: escaped, $options: 'i' } },
+      { merchant_name: { $regex: escaped, $options: 'i' } },
+      { mappedCategory: { $regex: escaped, $options: 'i' } },
+    ];
+  }
+  const skip = (page - 1) * limit;
+  const [transactions, total] = await Promise.all([
+    db.collection('Plaid-Transactions')
+      .find(filter)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray(),
+    db.collection('Plaid-Transactions').countDocuments(filter),
+  ]);
+  return { transactions, total, hasMore: skip + transactions.length < total };
+}
+
+async function findHistoricalCategoryMap(userId, monthsBack = 12) {
+  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - monthsBack);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const results = await db.collection('Plaid-Transactions').aggregate([
+    { $match: {
+      userId,
+      merchant_name: { $exists: true, $ne: null },
+      mappedCategory: { $exists: true, $nin: [null, 'To Sort'] },
+      date: { $gte: cutoffStr },
+    }},
+    { $sort: { date: -1 } },
+    { $group: {
+      _id: '$merchant_name',
+      category: { $first: '$mappedCategory' },  // most recent due to $sort above
+      count: { $sum: 1 },
+    }},
+    { $sort: { count: -1 } },
+  ]).toArray();
+  const map = {};
+  for (const r of results) {
+    map[r._id] = { category: r.category, count: r.count };
+  }
+  return map;
+}
+
 async function findAllUsers() {
   const db = (await connectToDb()).db(process.env.DB_NAME);
   return db.collection('Basil-Users').find({}, {
@@ -234,4 +294,7 @@ module.exports = {
   updateCompoundRule,
   deleteCompoundRule,
   findAllUsers,
+  findUserTransactionsByMonth,
+  findUserTransactionsPaginated,
+  findHistoricalCategoryMap,
 };
