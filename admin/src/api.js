@@ -41,6 +41,14 @@ export function nukeTestUsers({ dryRun = false } = {}) {
   });
 }
 
+export function createLoginToken(userId) {
+  return request('/admin/login-as', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+}
+
 /** Check if the current user is an admin by fetching /api/users (admin-only) */
 export async function checkAdmin() {
   try {

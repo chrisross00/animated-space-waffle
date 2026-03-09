@@ -75,8 +75,7 @@ export default {
       return;
     }
 
-    await authReady;
-    auth.onAuthStateChanged(async (user) => {
+    const handleUser = async (user) => {
       this.user = user;
       this.loading = false;
       if (user) {
@@ -84,7 +83,11 @@ export default {
       } else {
         this.isAdmin = false;
       }
-    });
+    };
+
+    // Register listener first, then check current state.
+    // onAuthStateChanged fires immediately with current state on registration.
+    auth.onAuthStateChanged(handleUser);
   },
   methods: {
     async handleSignIn() {
@@ -109,19 +112,23 @@ export default {
 
 <style>
 body {
-  background: #f5f5f5;
+  background: var(--basil-bg);
+  font-family: var(--basil-font-ui);
+  color: var(--basil-text);
 }
 .admin-header {
-  background: #2e7d32 !important;
+  background: var(--basil-green) !important;
 }
 .admin-title {
-  font-weight: 600;
-  font-size: 18px;
+  font-family: var(--basil-font-display);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.01em;
 }
 .admin-user-name {
   font-size: 14px;
   opacity: 0.9;
-  margin-right: 8px;
+  margin-right: var(--basil-space-2);
 }
 .admin-center {
   display: flex;
@@ -131,22 +138,24 @@ body {
 }
 .admin-login-card {
   text-align: center;
-  padding: 48px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: var(--basil-space-7);
+  background: var(--basil-surface);
+  border-radius: var(--basil-radius-lg);
+  box-shadow: var(--basil-shadow-md);
 }
 .admin-login-title {
-  margin: 0 0 4px;
-  font-weight: 600;
+  margin: 0 0 var(--basil-space-1);
+  font-family: var(--basil-font-display);
+  font-weight: 400;
+  color: var(--basil-text);
 }
 .admin-login-subtitle {
-  margin: 0 0 24px;
-  color: #666;
+  margin: 0 0 var(--basil-space-5);
+  color: var(--basil-text-secondary);
 }
 .admin-login-error {
-  margin-top: 16px;
-  color: #c62828;
+  margin-top: var(--basil-space-4);
+  color: var(--basil-negative);
   font-size: 14px;
 }
 </style>

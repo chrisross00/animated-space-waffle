@@ -6,7 +6,7 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const { validateIdToken } = require('./utils/authentication');
+const { validateIdToken, createImpersonationToken } = require('./utils/authentication');
 const { findUserData } = require('./db/database');
 const { seedPersona, listTestUsers, nukeTestUsers, getPersonaList } = require('./scripts/test-data/seed');
 
@@ -97,6 +97,21 @@ router.post('/nuke-test-users', devOnly, async (req, res) => {
   } catch (err) {
     console.error('/admin/nuke-test-users error:', err.message);
     res.status(500).json({ message: 'Failed to nuke test users' });
+  }
+});
+
+/** Create an impersonation token for "Login As" flow */
+router.post('/login-as', devOnly, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'Missing "userId" in request body' });
+    }
+    const result = createImpersonationToken(userId);
+    res.json(result);
+  } catch (err) {
+    console.error('/admin/login-as error:', err.message);
+    res.status(500).json({ message: 'Failed to create impersonation token' });
   }
 });
 

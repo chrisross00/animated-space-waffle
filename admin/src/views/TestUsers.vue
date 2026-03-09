@@ -130,7 +130,7 @@
 
 <script>
 import { Notify } from 'quasar';
-import { getPersonas, getTestUsers, seedTestUser, nukeTestUsers } from '../api';
+import { getPersonas, getTestUsers, seedTestUser, nukeTestUsers, createLoginToken } from '../api';
 
 export default {
   data() {
@@ -219,13 +219,14 @@ export default {
       }
     },
 
-    loginAs(uid) {
-      // Phase 4: proper token handoff. For now, show instructions.
-      Notify.create({
-        type: 'info',
-        timeout: 10000,
-        message: `Set DEV_AUTH_BYPASS_UID=${uid} in .env and restart the backend, then login via the main app.`,
-      });
+    async loginAs(uid) {
+      try {
+        const { token } = await createLoginToken(uid);
+        const mainAppUrl = `http://localhost:8080/?impersonate=${token}`;
+        window.open(mainAppUrl, '_blank');
+      } catch (err) {
+        Notify.create({ type: 'negative', message: `Login-as failed: ${err.message}` });
+      }
     },
   },
 };
@@ -237,36 +238,41 @@ export default {
   margin: 0 auto;
 }
 .admin-section {
-  margin-bottom: 32px;
+  margin-bottom: var(--basil-space-6);
 }
 .admin-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--basil-space-3);
 }
 .admin-section-title {
   margin: 0;
+  font-family: var(--basil-font-ui);
   font-weight: 600;
   font-size: 16px;
+  color: var(--basil-text);
 }
 .admin-persona-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: var(--basil-space-3);
 }
 .admin-persona-card {
-  border-radius: 8px;
+  border-radius: var(--basil-radius-md);
+  border-color: var(--basil-border);
+  background: var(--basil-surface);
 }
 .admin-persona-name {
   font-weight: 600;
   font-size: 15px;
   text-transform: capitalize;
+  color: var(--basil-text);
 }
 .admin-persona-uid {
   font-size: 12px;
-  color: #888;
-  font-family: monospace;
+  color: var(--basil-text-muted);
+  font-family: var(--basil-font-mono);
 }
 .admin-seed-result {
   padding-top: 0;
@@ -278,33 +284,44 @@ export default {
   padding: 2px 0;
 }
 .admin-seed-stat-label {
-  color: #666;
+  color: var(--basil-text-secondary);
   text-transform: capitalize;
 }
 .admin-seed-stat-value {
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--basil-font-mono);
+  color: var(--basil-text);
 }
 .admin-user-list {
-  border-radius: 8px;
+  border-radius: var(--basil-radius-md);
+  border-color: var(--basil-border);
 }
 .admin-empty {
-  color: #888;
+  color: var(--basil-text-muted);
   font-size: 14px;
-  padding: 16px 0;
+  padding: var(--basil-space-4) 0;
 }
 .admin-danger-card {
-  border-color: #ef9a9a;
-  border-radius: 8px;
+  border-color: var(--basil-negative);
+  border-radius: var(--basil-radius-md);
+  background: var(--basil-surface);
 }
 .admin-danger-text {
   margin: 0;
   font-size: 14px;
-  color: #666;
+  color: var(--basil-text-secondary);
+}
+.admin-danger-text code {
+  font-family: var(--basil-font-mono);
+  font-size: 13px;
+  background: var(--basil-surface-alt);
+  padding: 2px 6px;
+  border-radius: var(--basil-radius-sm);
 }
 .admin-nuke-label {
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: var(--basil-space-1);
+  color: var(--basil-text);
 }
 </style>
