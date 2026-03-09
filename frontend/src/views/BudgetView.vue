@@ -624,7 +624,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { fetchTransactions, ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule } from '@/firebase';
+  import { fetchTransactions, ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 
@@ -1299,8 +1299,7 @@ monthStats() {
 
       },
       async forceSync(){
-        this.resetLastFetch();
-        window.location.reload();
+        await this.buildPage('sync');
       },
       async onPullRefresh(done) {
         this.isRefreshing = true;
@@ -1316,11 +1315,13 @@ monthStats() {
       async buildPage (mode){
         try {
           if(mode == 'sync'){
-            // Fetch fresh transactions from Plaid; categories + rules come from store
-            const txns = await fetchTransactions();
-            if (txns?.transactions) {
-              store.commit('setTransactions', txns.transactions);
-            }
+            // Trigger Plaid sync (updates DB), then re-fetch current month from DB
+            await triggerSync();
+            store.commit('setLastSyncedAt', new Date().toISOString());
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const result = await fetchTransactionsForMonth(currentMonth);
+            if (result) store.commit('setMonthTransactions', { month: currentMonth, transactions: result.transactions });
           }
           // All modes read from the store
           this.transactions = store.state.transactions || [];
@@ -1605,22 +1606,12 @@ monthStats() {
       if (!this.isLoggedIn) { this.isLoading = false; return; }
 
       try {
-        // Wait for central bootstrap (categories, rules, and possibly transactions)
+        // Bootstrap: fetches categories, rules, and current + 3 prior months from DB (no Plaid call)
         await ensureAppData(store);
-
-        const now = Date.now();
-        this.lastFetch = store.state.lastPlaidFetch;
-        this.fetchInterval = 1000 * 60 * 10; // 10 minutes
-
-        if (!this.lastFetch || now - this.lastFetch > this.fetchInterval) {
-          await this.buildPage('sync');
-          store.commit('setLastPlaidFetch', now);
-        } else {
-          await this.buildPage('refresh');
-        }
+        // Render from cached DB data — no Plaid sync on page load
+        await this.buildPage('refresh');
       } catch (error) {
         console.error(error);
-        this.resetLastFetch();
         this.isLoading = false;
       }
     },

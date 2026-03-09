@@ -167,7 +167,7 @@ import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, Vi
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
 import store from '../store'
-import { ensureAppData } from '@/firebase'
+import { ensureAppData, fetchMonthRange } from '@/firebase'
 import EmptyState from '../components/EmptyState.vue'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
@@ -505,8 +505,26 @@ export default {
     },
   },
 
+  watch: {
+    async monthCount() {
+      // When user switches range (3→6→12), fetch any newly needed months
+      await this.ensureMonthRange();
+    },
+  },
+
+  methods: {
+    async ensureMonthRange() {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const startDate = new Date(now.getFullYear(), now.getMonth() - (this.monthCount - 1), 1);
+      const startMonth = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+      await fetchMonthRange(store, startMonth, currentMonth);
+    },
+  },
+
   async mounted() {
     await ensureAppData(store);
+    await this.ensureMonthRange();
   },
 };
 </script>

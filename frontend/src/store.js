@@ -12,6 +12,9 @@ const store = createStore({
         accountBalances: null,
         balanceSnapshots: null,
         bootstrapping: false,
+        transactionsByMonth: {},
+        transactions: [],            // compatibility — derived from transactionsByMonth
+        lastSyncedAt: null,
     },
     plugins: [createPersistedState({
         storage: window.sessionStorage,
@@ -35,11 +38,13 @@ const store = createStore({
           state.user = null;
           state.session = null;
           state.lastPlaidFetch = null;
+          state.transactionsByMonth = {};
           state.transactions = [];
           state.categories = [];
           state.rules = [];
           state.accountBalances = null;
           state.balanceSnapshots = null;
+          state.lastSyncedAt = null;
         },
         setSession(state, session) {
             state.session = session;
@@ -48,28 +53,49 @@ const store = createStore({
             state.lastPlaidFetch = timestamp;
         },
         setTransactions(state, transactions) {
+            // Legacy setter — also populate month-keyed cache
             state.transactions = transactions;
+            const byMonth = {};
+            for (const txn of transactions) {
+                const month = txn.date?.substring(0, 7);
+                if (month) {
+                    if (!byMonth[month]) byMonth[month] = [];
+                    byMonth[month].push(txn);
+                }
+            }
+            state.transactionsByMonth = byMonth;
+        },
+        setMonthTransactions(state, { month, transactions }) {
+            state.transactionsByMonth = { ...state.transactionsByMonth, [month]: transactions };
+            // Rebuild flat compatibility array from all loaded months
+            state.transactions = Object.values(state.transactionsByMonth).flat();
+        },
+        setLastSyncedAt(state, timestamp) {
+            state.lastSyncedAt = timestamp;
         },
         setCategories(state, categories) {
             state.categories = categories;
         },
         updateTransaction(state, updatedTransaction) {
-            console.log('store.js.updateTransaction, ', updatedTransaction)
-            console.log('store.js.state.transactions, ', state.transactions)
-            for (let transaction of state.transactions) {
-                console.log('state.transactions.transaction_id', state.transactions.transaction_id)
-                if(transaction.transaction_id === updatedTransaction.transaction_id) {
-                    console.log('store.js.updatedTransaction() found a match!', transaction, updatedTransaction)
-                    transaction.mappedCategory = updatedTransaction.mappedCategory
-                    transaction.date = updatedTransaction.date
-                    transaction.note = updatedTransaction.note
-                    transaction.excludeFromTotal = updatedTransaction.excludeFromTotal
-                    if (updatedTransaction.manually_set !== undefined) {
-                        transaction.manually_set = updatedTransaction.manually_set
-                    }
+            // Update in both transactionsByMonth and the flat compatibility array
+            const update = (txn) => {
+                txn.mappedCategory = updatedTransaction.mappedCategory;
+                txn.date = updatedTransaction.date;
+                txn.note = updatedTransaction.note;
+                txn.excludeFromTotal = updatedTransaction.excludeFromTotal;
+                if (updatedTransaction.manually_set !== undefined) {
+                    txn.manually_set = updatedTransaction.manually_set;
                 }
+            };
+            // Search in month buckets
+            for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                const txn = monthTxns.find(t => t.transaction_id === updatedTransaction.transaction_id);
+                if (txn) { update(txn); break; }
             }
-        console.log('store.js updateTransaction done!', state.transactions)
+            // Also update flat array (shares object references with month buckets,
+            // but update explicitly in case they diverge)
+            const flatTxn = state.transactions.find(t => t.transaction_id === updatedTransaction.transaction_id);
+            if (flatTxn) update(flatTxn);
         },
         updateCategory(state, updatedCategory) {
             console.log('updateCategory store:', updatedCategory)
@@ -88,10 +114,14 @@ const store = createStore({
                 }
             });
             // If name changed, update transactions in store to match
-            if (oldName && newName !== oldName && state.transactions) {
-                state.transactions.forEach(txn => {
-                    if (txn.mappedCategory === oldName) txn.mappedCategory = newName;
-                });
+            if (oldName && newName !== oldName) {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    for (const txn of monthTxns) {
+                        if (txn.mappedCategory === oldName) txn.mappedCategory = newName;
+                    }
+                }
+                // Rebuild flat array
+                state.transactions = Object.values(state.transactionsByMonth).flat();
             }
             console.log('store.js updateCategory done!', state.categories)
         },
