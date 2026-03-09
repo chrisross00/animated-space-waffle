@@ -1625,8 +1625,27 @@ monthStats() {
       try {
         // Bootstrap: fetches categories, rules, and current + 3 prior months from DB (no Plaid call)
         await ensureAppData(store);
-        // Render from cached DB data — no Plaid sync on page load
+        // Render from cached DB data immediately
         await this.buildPage('refresh');
+
+        // Background sync: if data is stale (>4 hours), sync with Plaid without blocking the UI
+        const STALE_MS = 4 * 60 * 60 * 1000;
+        const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;
+        if (Date.now() - lastSync > STALE_MS && store.state.user?.accounts?.length > 0) {
+          triggerSync().then(async (result) => {
+            if (!result) return;
+            store.commit('setLastSyncedAt', result.syncedAt);
+            const now = new Date();
+            const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const fresh = await fetchTransactionsForMonth(currentMonth);
+            if (fresh) {
+              store.commit('setMonthTransactions', { month: currentMonth, transactions: fresh.transactions });
+              this.transactions = store.state.transactions || [];
+              this.groupTransactions();
+              this.monthlyStats = this.monthStats(this.groupedTransactions);
+            }
+          }).catch(err => console.error('Background sync failed:', err));
+        }
       } catch (error) {
         console.error(error);
         this.isLoading = false;
