@@ -347,13 +347,15 @@ export default {
       if (this.syncing) return;
       this.syncing = true;
       try {
-        const result = await triggerSync();
-        if (result) {
-          store.commit('setLastSyncedAt', result.syncedAt);
+        const syncResult = await triggerSync();
+        if (syncResult) {
+          store.commit('setLastSyncedAt', syncResult.syncedAt);
+          if (syncResult.balances) store.commit('setAccountBalances', syncResult.balances);
+          if (syncResult.balanceSnapshots) store.commit('setBalanceSnapshots', syncResult.balanceSnapshots);
           const now = new Date();
           const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-          const result = await fetchTransactionsForMonth(month);
-          if (result?.transactions) store.commit('setMonthTransactions', { month, transactions: result.transactions });
+          const txnResult = await fetchTransactionsForMonth(month);
+          if (txnResult?.transactions) store.commit('setMonthTransactions', { month, transactions: txnResult.transactions });
         }
       } catch (err) {
         console.error('Sync failed:', err);

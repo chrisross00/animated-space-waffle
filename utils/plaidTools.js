@@ -207,10 +207,11 @@ async function fetchAndStoreBalances(uid) {
         return sum + bal;
       }, 0);
 
-      // Only snapshot if net value changed from last snapshot
+      // One snapshot per calendar day (even if value unchanged — keeps the graph continuous)
       const existingSnapshots = accountsObj[institution].balanceSnapshots || [];
       const lastSnapshot = existingSnapshots[existingSnapshots.length - 1];
-      const shouldSnapshot = !lastSnapshot || Math.round(lastSnapshot.net * 100) !== Math.round(institutionNet * 100);
+      const today = new Date().toISOString().slice(0, 10);
+      const shouldSnapshot = !lastSnapshot || lastSnapshot.date !== today;
 
       const update = { $set: { [`Accounts.${institution}.balances`]: balances } };
       if (shouldSnapshot) {

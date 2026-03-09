@@ -129,8 +129,19 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
     const userId = decodedToken.uid;
     if (await rejectTestUser(userId, res)) return;
     await getNewPlaidTransactions(userId);
+    // Also refresh balances + snapshot in the same sync
+    const balances = await fetchAndStoreBalances(userId);
+    const accounts = await findUserData('Plaid-Accounts', userId);
+    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const allSnapshots = [];
+    for (const name of Object.keys(accountsObj)) {
+      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
+        allSnapshots.push(snap);
+      }
+    }
+    const balanceSnapshots = aggregateSnapshots(allSnapshots);
     await updateData('Basil-Users', { userId }, { $set: { lastSyncedAt: new Date() } });
-    res.json({ syncedAt: new Date().toISOString() });
+    res.json({ syncedAt: new Date().toISOString(), balances, balanceSnapshots });
   } catch (error) {
     console.error('/sync error:', error.message);
     res.status(500).json({ message: 'Sync failed' });
