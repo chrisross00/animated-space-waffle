@@ -1,5 +1,15 @@
 # Data Layer Rearchitecture
 
+**Status: SHIPPED** (PR #10, merged 2026-03-09)
+
+All 4 phases implemented. Key outcomes:
+- Plaid sync decoupled from DB reads (`POST /api/sync` vs `GET /api/transactions`)
+- Month-based frontend loading (current + 3 prior months on mount)
+- Background auto-sync when data >4 hours stale
+- Server-side search for table view
+- Legacy `/getNewAuth` and `/refreshBalances` removed
+- `state.transactions` kept as compatibility layer (flat array rebuilt from month buckets)
+
 ## Problem statement
 
 The app currently treats transaction data as a monolith: one endpoint (`/getNewAuth`) both syncs from Plaid and returns every transaction the user has ever had. The frontend stores the entire dataset in Vuex and persists it to sessionStorage. This creates cascading problems:

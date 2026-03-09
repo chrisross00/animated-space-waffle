@@ -76,12 +76,24 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit dialog |
 | `frontend/src/utils/ruleUtils.js → findSimilarTransactions()` | Auto-detects similar transactions and determines best rule strategy |
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
-| `frontend/src/store.js` | Vuex store (user, session, transactions, categories, rules) |
+| `frontend/src/store.js` | Vuex store (user, session, transactionsByMonth, categories, rules) |
 | `frontend/src/firebase.js` | All fetch calls to backend API + Firebase auth helpers |
+| `utils/venmoEnrichment.js` | Venmo CSV parser + transaction enrichment matching |
 | `frontend/src/utils/ruleUtils.js` | Shared condition matching + store sweep utilities |
 | `utils/categoryMapping.js` | Transaction categorization rule engine |
 
 ## Architecture notes
+- **Data layer: sync vs read separation.** Plaid API calls (expensive, rate-limited)
+  are decoupled from MongoDB reads (cheap, frequent). `POST /api/sync` triggers Plaid;
+  `GET /api/transactions?month=YYYY-MM` reads from DB. Frontend loads current + 3 prior
+  months on mount, fetches more on demand (TrendsView 3→6→12). Background auto-sync
+  fires only when data is >4 hours stale. `lastSyncedAt` persisted in sessionStorage.
+- **Month-based transaction loading.** `store.state.transactionsByMonth` is the source
+  of truth. `store.state.transactions` is a flat compatibility array rebuilt on every
+  month update (sorted newest-first). All 26+ consumers of `state.transactions` work
+  unchanged.
+- **Sync button** lives in the App.vue header toolbar (replaces old FAB). Spins while
+  syncing. Pull-to-refresh on mobile still triggers sync via BudgetView.
 - **Auth:** Firebase ID token sent as `Authorization: Bearer <token>` header on every
   backend request. Backend verifies with `firebase-admin`.
 - **MongoDB collections:** `Basil-Users`, `Plaid-Transactions`, `Plaid-Accounts`,
@@ -131,6 +143,10 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Auto-detects similar transactions via 3 strategies (merchant_name → name+account → name). Returns match data + rule type for automatic rule creation. |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Full compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
 | `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/firebase.js` | Set `true` while `ensureAppData` is in-flight. Gate non-Budget view content — show skeleton/spinner while true, `EmptyState` only when false and data empty. See DESIGN.md "Loading states" for the three-state pattern. |
+| `triggerSync()` | `frontend/src/firebase.js` | `POST /api/sync` — triggers Plaid sync. Returns `{ syncedAt }`. Only call on explicit user action or stale-data check. |
+| `fetchTransactionsForMonth(month)` | `frontend/src/firebase.js` | `GET /api/transactions?month=YYYY-MM` — cheap DB read. Returns `{ transactions, total }`. |
+| `fetchMonthRange(store, start, end)` | `frontend/src/firebase.js` | Fetches missing months in parallel, skipping cached ones. Commits `setMonthTransactions` for each. |
+| `searchTransactions(search, page, limit)` | `frontend/src/firebase.js` | `GET /api/transactions?search=&page=&limit=` — server-side paginated search across all months. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
@@ -147,7 +163,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Rules management: view/delete/add merchant rules from Edit Category dialog
 - **Compound rules**: multi-condition rules (merchant name, transaction name, amount, institution) created from triage, Edit Transaction dialog, or RuleEditorDialog; stored in `Basil-Rules`; evaluated before simple rules; retroactively sweep all matching transactions on creation or reapply; edit/delete in RulesView
 - Merchant Browser (`/merchants`): top-down table, inline rule assignment per merchant
-- Transaction search/filter: text search + month sync + amount range in "Show all" table
+- Transaction search/filter: server-side search + amount range in "Show all" table
 - Bulk categorization in table view (with disclosure note)
 - Charts (`/trends`): Spending (stacked bar), Cash Flow, Cumulative net, Savings rate
 - Recurring transaction detection: badge on category rows, expected amount in Projections card
@@ -156,6 +172,9 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 - Admin toolbox: dedupe, seed categories, clean pending, map unmapped, clear manual overrides
 - Onboarding: 3-step flow (connect bank → seed defaults → done) gated by `onboarded_at`
 - Rule attribution: shows who created a rule and why (auto-learn, manual, compound)
+- Venmo CSV import: enriches P2P transactions with counterparty names and notes
+- Month-based data loading: loads current + 3 prior months from DB on mount, more on demand
+- Background auto-sync: syncs with Plaid when data >4 hours stale, non-blocking
 
 ---
 
@@ -240,13 +259,13 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added.
-- [ ] **Switch persisted state from sessionStorage to localStorage** — currently session +
-      user are stored in `sessionStorage` (tab-scoped), so opening a new tab loses auth
-      state and shows the login screen even though Firebase still has the user authenticated.
-      Switching to `localStorage` would fix cross-tab state. Tradeoff: localStorage persists
-      after browser close, so users stay "logged in" until explicit sign-out (which matches
-      Firebase's default auth persistence anyway). Verify `clearState` properly clears
-      localStorage on sign-out before switching.
+- [ ] **Switch persisted state from sessionStorage to localStorage** — currently session,
+      user, and lastSyncedAt are stored in `sessionStorage` (tab-scoped), so opening a new
+      tab loses auth state and shows the login screen even though Firebase still has the
+      user authenticated. Switching to `localStorage` would fix cross-tab state. Tradeoff:
+      localStorage persists after browser close, so users stay "logged in" until explicit
+      sign-out (which matches Firebase's default auth persistence anyway). Verify `clearState`
+      properly clears localStorage on sign-out before switching.
 - [ ] **BudgetView: eliminate local transaction array** — `this.transactions` is still
       copied locally from `store.state.transactions` with manual sync. Categories and rules
       were moved to store computeds (d25f086). Remaining: replace `this.transactions` with
@@ -436,13 +455,18 @@ Never create classes starting with `q-` (Quasar's namespace).
 ---
 
 ## Recent history (for context)
+- **Data layer rearchitecture**: separated Plaid sync from DB reads; month-based loading;
+  background auto-sync when stale (>4h); server-side table search; removed `/getNewAuth`
+  and `/refreshBalances`; `lastSyncedAt` persisted in sessionStorage
+- **Venmo CSV import**: `utils/venmoEnrichment.js` + `VenmoEnrichmentDialog.vue`;
+  enriches P2P transactions with counterparty names and notes from Venmo statement CSV
+- **UI polish**: replaced FAB with sync button in header toolbar; fixed transaction sort
+  order (newest-first); spending chart tooltip shows only hovered category; nudged
+  `--basil-surface-alt` for better light mode contrast
 - Simplified onboarding to 3-step flow; removed custom category seeding + `OnboardingCategoryEditor`
 - Replaced `showOnBudgetPage` with dynamic category visibility; added `isDefault` flag to seeds
 - Removed PFC mapping UI from category dialogs
 - Fixed hard-refresh auth race; deduplicated nuke logic; fixed `onboarded_at` edge case
 - Consolidated view-level data fetching to `ensureAppData`; BudgetView categories/rules now from store
 - Added rule attribution + new condition operators (`contains`, `gt`, `lt`) to all three layers
-- Expandable matched transactions list in RuleEditorDialog
-- Replaced `RuleModeSelector` with `findSimilarTransactions` similarity engine
 - Added pre-push hook (husky): runs backend + frontend test suites before every push
-- Created data-layer rearchitecture plan (`plans/data-layer-rearchitecture.md`)
