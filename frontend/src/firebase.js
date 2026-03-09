@@ -312,11 +312,12 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
   return response.ok;
 }
 
-export async function resetBalanceSnapshots() {
+export async function resetBalanceSnapshots(targetUserId) {
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/api/resetBalanceSnapshots', { method: 'POST', headers });
+    const body = targetUserId ? JSON.stringify({ targetUserId }) : undefined;
+    const response = await fetch('/api/resetBalanceSnapshots', { method: 'POST', headers, body });
     if (response.ok) {
       const data = await response.json();
       return `Cleared snapshots from ${data.cleared} institution${data.cleared !== 1 ? 's' : ''}. Refresh balances to regenerate.`;

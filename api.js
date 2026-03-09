@@ -720,9 +720,8 @@ router.post('/clearManualOverrides', async (req, res) => {
 
 router.post('/resetBalanceSnapshots', async (req, res) => {
   try {
-    const decodedToken = await validateIdToken(req);
-    const uid = decodedToken.uid;
-    if (!requireAdmin(uid, res)) return;
+    const uid = await resolveTargetUser(req, res);
+    if (!uid) return;
     const accounts = await findUserData('Plaid-Accounts', uid);
     const accountsObj = accounts?.[0]?.Accounts ?? {};
     const unset = {};
