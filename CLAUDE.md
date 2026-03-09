@@ -223,6 +223,14 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
       is awkward on mobile. Consider wrapping HTML legend below chart.
 - [ ] **Notification / alerts** — warn when a category approaches its budget limit.
       Needs a delivery mechanism decision (in-app banner vs email).
+- [ ] **"Show all" table: fetch older months on scroll** — the table only shows
+      transactions already in the store (current + 3 prior months). Should fetch
+      additional months as the user scrolls or provide a "load more" trigger so all
+      historical transactions are accessible without switching to TrendsView first.
+- [ ] **User switching: clear store on identity change** — swapping users (via dev
+      auth bypass or future admin portal "Login as") requires a hard refresh because
+      sessionStorage + Vuex store retain the previous user's data. The "Login as" flow
+      should clear the store and sessionStorage before authenticating as the new user.
 
 ### Prerequisites for Accounts & Balances feature
 These should be resolved before building the Accounts view. See `plans/accounts-balances.md`.
@@ -259,17 +267,14 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added.
-- [ ] **Switch persisted state from sessionStorage to localStorage** — currently session,
-      user, and lastSyncedAt are stored in `sessionStorage` (tab-scoped), so opening a new
-      tab loses auth state and shows the login screen even though Firebase still has the
-      user authenticated. Switching to `localStorage` would fix cross-tab state. Tradeoff:
-      localStorage persists after browser close, so users stay "logged in" until explicit
-      sign-out (which matches Firebase's default auth persistence anyway). Verify `clearState`
-      properly clears localStorage on sign-out before switching.
+- [ ] **Switch persisted state from sessionStorage to localStorage** — Mostly mitigated
+      by data layer rearchitecture (transactions no longer persisted, 5MB cap no longer
+      an issue). Only `session`, `user`, and `lastSyncedAt` remain in sessionStorage.
+      New-tab auth gap still exists but Firebase `onAuthStateChanged` rehydrates quickly.
+      Low priority.
 - [ ] **BudgetView: eliminate local transaction array** — `this.transactions` is still
-      copied locally from `store.state.transactions` with manual sync. Categories and rules
-      were moved to store computeds (d25f086). Remaining: replace `this.transactions` with
-      a store-derived computed. Significant refactor — test thoroughly.
+      copied locally from `store.state.transactions` with manual sync. Works fine in
+      practice. Low priority — clean up opportunistically if already working in BudgetView.
 
 ### Dev tools
 - [x] **Dev auth bypass** — "Login as test user" button on ProfileView login screen. Skips Google

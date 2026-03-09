@@ -275,6 +275,7 @@ async function findAllUsers() {
 
 module.exports = {
   connectToDb,
+  getDb,
   insertData,
   findDistinctMerchants,
   findMerchantsWithStats,

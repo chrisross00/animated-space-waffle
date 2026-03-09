@@ -64,8 +64,10 @@ app.use(express.static(path.join(__dirname, 'frontend/dist')))
 
 const router = require("./api")
 const plaidApiRouter = require("./plaid-api");
+const adminRouter = require("./admin-api");
 app.use("/api", router);
 app.use("/plaid-api", plaidApiRouter);
+app.use("/admin", adminRouter);
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`)
