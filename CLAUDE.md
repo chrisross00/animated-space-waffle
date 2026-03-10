@@ -130,6 +130,52 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
   Admin identity is in MongoDB (`isAdmin` on `Basil-Users`), not in env vars.
 
+## Large file maps — navigate before reading
+
+These files are the largest in the codebase. Use these maps to jump to the right
+section instead of reading the whole file.
+
+### `BudgetView.vue` (1,700 lines)
+
+| Section | Lines | What's there |
+|---------|-------|--------------|
+| **Template: auth/onboarding gates** | 1–36 | Logged-out EmptyState, not-onboarded setup CTA, SkeletonBudget |
+| **Template: Actuals card** | 37–85 | Spent/earned hero stats, net position, secondary stats |
+| **Template: Projections card** | 86–118 | Budget remaining, forecasted recurring |
+| **Template: To Sort nudge + controls** | 119–160 | Unsorted txn count, month picker, Show All toggle |
+| **Template: Category cards (collapsed view)** | 161–291 | Category rows with progress bars, nested transaction lists, Edit Category dialog |
+| **Template: Show All table** | 292–469 | QTable with virtual scroll, search/filters, bulk category bar, Edit Transaction dialog |
+| **Template: Mobile bulk bar** | 470–501 | Fixed bottom bar for bulk actions on mobile |
+| **Template: Triage dialog** | 502–650 | Bottom-sheet triage flow (card, category picker, similar toggle, actions) |
+| **`data()`** | 658–722 | ~60 fields. Three clusters: *display state* (selectedDate, monthlyStats, barsReady), *dialog state* (clicker, transactionClickers, dialogBody), *triage state* (triageSkipped, triageOpen, triageCategory), *table state* (showAll, tableSearch, selectedRows) |
+| **`computed`** | 724–1057 | `categoryTypeMap`, `tableTransactions`, `triageItems`, `triageSimilar`, `triageActionableCount`, `monthStats`, `forecastedEndOfMonth` |
+| **`methods`** | 1059–1625 | See subsystem breakdown below |
+| **`watch`** | 1626–1657 | `monthlyStats` → animate, `selectedDate` → recalc, `updatedCategory/Transaction` → store commit + regroup |
+| **`mounted()`** | 1659–1697 | `ensureAppData` → `buildPage('refresh')` → background stale sync |
+
+**Method subsystems** (independently understandable):
+
+| Subsystem | Key methods | What it does |
+|-----------|-------------|--------------|
+| Budget display | `groupTransactions`, `categorySum`, `budgetRemaining`, `getProgressRatio`, `monthStats` | Groups txns by category, computes stats |
+| Dialog orchestration | `buildEditCategoryDialog`, `buildEditTransactionDialog`, `onSubmit` | Opens dialogs, handles submit for category/transaction edits + rule creation |
+| Triage flow | `openTriageFlow`, `triageAccept`, `triageSkip`, `triageAdvance` | Self-contained card-by-card categorization flow |
+| Table / infinite scroll | `onTableVirtualScroll`, `openTableDialog`, `applyBulkCategory` | Show All table with scroll-to-load-more + bulk ops |
+| Data lifecycle | `buildPage`, `onPullRefresh` | Sync or refresh from store, regroup, recalc stats |
+| Formatting | `formatDollar`, `formatDate`, `merchantInitials`, `merchantColor` | Pure display helpers |
+
+### `api.js` (1,026 lines)
+
+| Section | Lines | Routes |
+|---------|-------|--------|
+| **Helpers** | 1–43 | `requireAdmin`, `resolveTargetUser`, `isStr` |
+| **Core data** | 45–252 | `GET /` · `POST /dedupe` · `GET /getcategories` · `GET /seedcategories` · `GET /addplaidpfc` · `POST /sync` · `POST /sync/balances` · `GET /transactions` · `GET /historicalCategoryMap` · `GET /getOrAddUser` · `GET /cleanPendingTransactions` |
+| **Dialog submit** | 253–423 | `POST /handleDialogSubmit` — the big one (~170 lines). Handles transaction updates, category edits/adds, rule creation, sweeps |
+| **Merchants & rules** | 424–591 | `GET /merchantStats` · `GET /merchants` · `POST /saveRule` · `POST /deleteRule` · `GET /rules` · `POST /saveCompoundRule` · `POST /updateCompoundRule` · `POST /deleteCompoundRule` |
+| **Bulk ops** | 593–735 | `POST /bulkCategorize` · `GET /mapunmapped` (+ `sweepCompoundRule` helper at ~617) |
+| **Admin / toolbox** | 736–970 | `GET /users` · `POST /nukeTransactions` · `POST /clearManualOverrides` · `POST /clearVenmoEnrichment` · `POST /resetBalanceSnapshots` · `POST /nukeAllData` · `POST /addVenmoTransactions` · `POST /addTestTransactions` · `POST /deleteCategory` · `POST /updateBudgetLimit` |
+| **Venmo enrichment** | 971–1026 | `POST /venmoEnrichment/preview` · `POST /venmoEnrichment/apply` |
+
 ## Shared utilities — check before building
 
 **Before writing any sweep, condition-matching, or rule logic, check these first:**
