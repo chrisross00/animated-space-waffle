@@ -92,6 +92,16 @@
         </div>
       </div>
 
+      <!-- Detected relationship -->
+      <div v-if="relationship" class="basil-dialog-section">
+        <div class="basil-dialog-section__label">Detected relationship</div>
+        <RelationshipCard
+          :relationship="relationship"
+          @confirm="rel => $emit('relationship-confirm', rel)"
+          @dismiss="rel => $emit('relationship-dismiss', rel)"
+        />
+      </div>
+
       <div class="basil-dialog-actions">
         <q-btn flat label="Cancel" v-close-popup />
         <div class="basil-dialog-actions__right">
@@ -451,9 +461,11 @@
 
 <script>
   import {ref} from 'vue'
+  import RelationshipCard from './RelationshipCard.vue'
 
   export default {
       name: 'DialogComponent',
+      components: { RelationshipCard },
       props: {
         dialogType: {
           type: String,
@@ -472,6 +484,10 @@
           default: null,
         },
         attribution: {
+          type: Object,
+          default: null,
+        },
+        relationship: {
           type: Object,
           default: null,
         },
@@ -508,9 +524,8 @@
             filteredMerchants: [],
         };
       },
-      
-components: {},
-emits: ['update-transaction', 'update-category', 'add-category', 'view-rule'],
+
+emits: ['update-transaction', 'update-category', 'add-category', 'view-rule', 'relationship-confirm', 'relationship-dismiss'],
 computed: {
     dialogSubtitle() {
         if (this.dialogType === 'editCategory') return 'Edit Category';

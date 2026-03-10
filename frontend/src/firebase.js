@@ -419,6 +419,58 @@ export async function venmoEnrichmentApply(enrichments) {
   _notify({ type: 'negative', message: `Failed to update Venmo transactions (${response.status})` });
 }
 
+export async function linkTransactions(transactionId, partnerId, type, signals) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/linkTransactions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transactionId, partnerId, type, signals }),
+  });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to link transactions (${response.status})` });
+}
+
+export async function dismissRelationship(transactionId) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/dismissRelationship', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transactionId }),
+  });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to dismiss relationship (${response.status})` });
+}
+
+export async function unlinkTransactions(transactionId, partnerId) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/unlinkTransactions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transactionId, partnerId }),
+  });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to unlink transactions (${response.status})` });
+}
+
+export async function undoDismissRelationship(transactionId) {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/undoDismissRelationship', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transactionId }),
+  });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to undo dismiss (${response.status})` });
+}
+
 // export async function updateCategories() {} later...
 
 // ---------------------------------------------------------------------------

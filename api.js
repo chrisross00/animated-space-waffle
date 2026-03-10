@@ -590,6 +590,112 @@ router.post('/deleteCompoundRule', async (req, res) => {
   }
 });
 
+// --- Transaction relationship routes ---
+
+router.post('/linkTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId, type, signals } = req.body;
+
+    if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
+      return res.status(400).json({ message: 'transactionId and partnerId are required' });
+    }
+    if (type !== 'split' && type !== 'return') {
+      return res.status(400).json({ message: 'type must be "split" or "return"' });
+    }
+
+    const now = new Date().toISOString();
+    const linkData = { type, confirmedAt: now };
+    if (signals) linkData.signals = signals;
+
+    // Link both transactions to each other
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $set: { linkedTransaction: { transaction_id: partnerId, ...linkData } } }
+    );
+    await updateData('Plaid-Transactions',
+      { transaction_id: partnerId, userId: uid },
+      { $set: { linkedTransaction: { transaction_id: transactionId, ...linkData } } }
+    );
+
+    res.json({ linked: true, transactionId, partnerId, type });
+  } catch (error) {
+    console.error('/linkTransactions error:', error.message);
+    res.status(500).json({ message: 'Failed to link transactions' });
+  }
+});
+
+router.post('/unlinkTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId } = req.body;
+
+    if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
+      return res.status(400).json({ message: 'transactionId and partnerId are required' });
+    }
+
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $unset: { linkedTransaction: '' } }
+    );
+    await updateData('Plaid-Transactions',
+      { transaction_id: partnerId, userId: uid },
+      { $unset: { linkedTransaction: '' } }
+    );
+
+    res.json({ unlinked: true, transactionId, partnerId });
+  } catch (error) {
+    console.error('/unlinkTransactions error:', error.message);
+    res.status(500).json({ message: 'Failed to unlink transactions' });
+  }
+});
+
+router.post('/undoDismissRelationship', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId } = req.body;
+
+    if (!isStr(transactionId, 100)) {
+      return res.status(400).json({ message: 'transactionId is required' });
+    }
+
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $unset: { dismissedRelationship: '' } }
+    );
+
+    res.json({ undone: true, transactionId });
+  } catch (error) {
+    console.error('/undoDismissRelationship error:', error.message);
+    res.status(500).json({ message: 'Failed to undo dismiss' });
+  }
+});
+
+router.post('/dismissRelationship', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId } = req.body;
+
+    if (!isStr(transactionId, 100)) {
+      return res.status(400).json({ message: 'transactionId is required' });
+    }
+
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $set: { dismissedRelationship: new Date().toISOString() } }
+    );
+
+    res.json({ dismissed: true, transactionId });
+  } catch (error) {
+    console.error('/dismissRelationship error:', error.message);
+    res.status(500).json({ message: 'Failed to dismiss relationship' });
+  }
+});
+
 router.post('/bulkCategorize', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);

@@ -794,10 +794,56 @@
 }
 
 /* ---- Relationship detection indicators ---- */
-.basil-relationship-icon {
-  color: var(--basil-text-secondary);
+.basil-relationship-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--basil-radius-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
-.basil-relationship-icon--confirmed {
-  color: var(--basil-brand);
+.basil-relationship-badge--pending {
+  background: var(--basil-warning-bg);
+  color: var(--basil-warning-mid);
+  border-color: var(--basil-warning-mid);
+}
+
+.basil-relationship-badge--confirmed {
+  background: var(--basil-positive-bg);
+  color: var(--basil-positive);
+  border-color: var(--basil-positive);
+}
+
+/* ---- Detected Relationships card ---- */
+.basil-relationships-card {
+  cursor: pointer;
+  padding: var(--basil-space-5) !important;
+  transition: box-shadow var(--basil-motion-fast), background-color var(--basil-motion-fast);
+}
+
+.basil-relationships-card--expanded {
+  cursor: default;
+}
+
+.basil-relationships-card:not(.basil-relationships-card--expanded):hover {
+  background-color: var(--basil-surface-raised) !important;
+  box-shadow: var(--basil-shadow-md);
+}
+
+.basil-relationships-card__body {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  cursor: pointer;
+}
+
+.basil-relationships-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-3);
+  padding-top: var(--basil-space-2);
 }

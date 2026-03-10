@@ -107,6 +107,51 @@ const store = createStore({
             const flatTxn = state.transactions.find(t => t.transaction_id === updatedTransaction.transaction_id);
             if (flatTxn) update(flatTxn);
         },
+        linkTransaction(state, { transactionId, partnerId, type }) {
+            const now = new Date().toISOString();
+            const findAndUpdate = (id, partnerId) => {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === id);
+                    if (txn) {
+                        txn.linkedTransaction = { transaction_id: partnerId, type, confirmedAt: now };
+                        break;
+                    }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === id);
+                if (flat) flat.linkedTransaction = { transaction_id: partnerId, type, confirmedAt: now };
+            };
+            findAndUpdate(transactionId, partnerId);
+            findAndUpdate(partnerId, transactionId);
+        },
+        dismissRelationship(state, transactionId) {
+            const now = new Date().toISOString();
+            for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                const txn = monthTxns.find(t => t.transaction_id === transactionId);
+                if (txn) { txn.dismissedRelationship = now; break; }
+            }
+            const flat = state.transactions.find(t => t.transaction_id === transactionId);
+            if (flat) flat.dismissedRelationship = now;
+        },
+        unlinkTransaction(state, { transactionId, partnerId }) {
+            const clear = (id) => {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === id);
+                    if (txn) { delete txn.linkedTransaction; break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === id);
+                if (flat) delete flat.linkedTransaction;
+            };
+            clear(transactionId);
+            clear(partnerId);
+        },
+        undoDismissRelationship(state, transactionId) {
+            for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                const txn = monthTxns.find(t => t.transaction_id === transactionId);
+                if (txn) { delete txn.dismissedRelationship; break; }
+            }
+            const flat = state.transactions.find(t => t.transaction_id === transactionId);
+            if (flat) delete flat.dismissedRelationship;
+        },
         updateCategory(state, updatedCategory) {
             console.log('updateCategory store:', updatedCategory)
             const newPfc = updatedCategory.plaid_pfcBEResponse || [];

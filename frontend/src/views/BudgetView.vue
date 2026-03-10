@@ -130,11 +130,41 @@
           <div class="basil-tosort-card__body">
             <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
             <div>
-              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to review</div>
+              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to sort</div>
               <div v-if="toSortSuggestionStats.withSuggestion > 0" class="basil-tosort-card__hint">
-                {{ toSortSuggestionStats.withSuggestion }} with suggested {{ toSortSuggestionStats.withSuggestion !== 1 ? 'categories' : 'category' }}
+                {{ toSortSuggestionStats.withSuggestion }} suggested
               </div>
             </div>
+          </div>
+        </q-card>
+      </div>
+
+      <!-- Detected Relationships Card -->
+      <div
+        v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
+        class="q-pa-md"
+        style="max-width: 800px; margin: 0 auto; padding-top: 0;"
+      >
+        <q-card :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]">
+          <div class="basil-card-head" @click="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
+            <span class="basil-card-label">Detected Relationships</span>
+            <q-icon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
+          </div>
+          <div v-if="!relationshipsExpanded" class="basil-relationships-card__body" @click="relationshipsExpanded = true" role="button" tabindex="0">
+            <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
+            <div>
+              <div class="basil-tosort-card__headline">possible {{ pendingRelationships.length === 1 ? 'match' : 'matches' }} to review</div>
+            </div>
+          </div>
+          <div v-if="relationshipsExpanded" class="basil-relationships-card__list">
+            <RelationshipCard
+              v-for="rel in pendingRelationships"
+              :key="relKey(rel)"
+              :relationship="rel"
+              :disable="relationshipSaving"
+              @confirm="relationshipConfirm"
+              @dismiss="relationshipDismiss"
+            />
           </div>
         </q-card>
       </div>
@@ -250,14 +280,20 @@
                         <q-item-label lines="1">
                           <span class="basil-txn-label__primary">
                             {{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}
-                            <q-icon
-                              v-if="relationshipMap[item.transaction_id]"
-                              :name="item.linkedTransaction ? 'link' : 'link_off'"
-                              size="14px"
-                              :class="['basil-relationship-icon', { 'basil-relationship-icon--confirmed': item.linkedTransaction }]"
+                            <span
+                              v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction"
+                              class="basil-relationship-badge basil-relationship-badge--pending"
                             >
+                              Possible Match
                               <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
-                            </q-icon>
+                            </span>
+                            <span
+                              v-else-if="relationshipMap[item.transaction_id] && item.linkedTransaction"
+                              class="basil-relationship-badge basil-relationship-badge--confirmed"
+                            >
+                              {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
+                              <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
+                            </span>
                           </span>
                         </q-item-label>
                         <q-item-label caption lines="2">
@@ -279,8 +315,11 @@
                         :dropDown="this.categoryMonthlyLimits"
                         :similarity-data="dialogSimilarityData"
                         :attribution="getTransactionAttribution(item)"
+                        :relationship="!item.linkedTransaction && !item.dismissedRelationship ? relationshipMap[item.transaction_id]?.rel : null"
                         @update-transaction="onSubmit"
-                        @view-rule="handleViewRule"/>
+                        @view-rule="handleViewRule"
+                        @relationship-confirm="relationshipConfirm"
+                        @relationship-dismiss="relationshipDismiss"/>
                       </q-dialog>
                     </q-item>
                 </div>
@@ -412,14 +451,20 @@
                   <div class="basil-txn-label">
                     <div class="basil-txn-label__primary">
                       {{ props.row.venmo_note || props.row.merchant_name || props.row.name }}
-                      <q-icon
-                        v-if="relationshipMap[props.row.transaction_id]"
-                        :name="props.row.linkedTransaction ? 'link' : 'link_off'"
-                        size="14px"
-                        :class="['basil-relationship-icon', { 'basil-relationship-icon--confirmed': props.row.linkedTransaction }]"
+                      <span
+                        v-if="relationshipMap[props.row.transaction_id] && !props.row.linkedTransaction"
+                        class="basil-relationship-badge basil-relationship-badge--pending"
                       >
+                        Possible Match
                         <q-tooltip>{{ relationshipTooltip(props.row) }}</q-tooltip>
-                      </q-icon>
+                      </span>
+                      <span
+                        v-else-if="relationshipMap[props.row.transaction_id] && props.row.linkedTransaction"
+                        class="basil-relationship-badge basil-relationship-badge--confirmed"
+                      >
+                        {{ relationshipMap[props.row.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
+                        <q-tooltip>{{ relationshipTooltip(props.row) }}</q-tooltip>
+                      </span>
                     </div>
                     <div
                       v-if="props.row.venmo_counterparty"
@@ -481,8 +526,11 @@
             :dropDown="categoryMonthlyLimits"
             :similarity-data="tableDialogSimilarityData"
             :attribution="getTransactionAttribution(tableDialogTransaction)"
+            :relationship="!tableDialogTransaction.linkedTransaction && !tableDialogTransaction.dismissedRelationship ? relationshipMap[tableDialogTransaction.transaction_id]?.rel : null"
             @update-transaction="onSubmit"
             @view-rule="handleViewRule"
+            @relationship-confirm="relationshipConfirm"
+            @relationship-dismiss="relationshipDismiss"
           />
         </q-dialog>
       </div>
@@ -642,10 +690,11 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
+  import RelationshipCard from '../components/RelationshipCard.vue'
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions } from '@/firebase';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships } from '@/utils/relationshipDetector';
@@ -675,6 +724,7 @@
   export default {
     components: {
       DialogComponent,
+      RelationshipCard,
       SkeletonBudget,
       EmptyState,
     },
@@ -742,6 +792,8 @@
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,
+        relationshipsExpanded: false,
+        relationshipSaving: false,
       };
     },
     computed: {
@@ -760,13 +812,13 @@
           if (rel.type === 'split') {
             const purchase = rel.purchaseTxn;
             const p2p = rel.p2pTxn;
-            map[purchase.transaction_id] = { type: 'split', confidence: rel.confidence, partner: p2p, role: 'purchase' };
-            map[p2p.transaction_id] = { type: 'split', confidence: rel.confidence, partner: purchase, role: 'p2p' };
+            map[purchase.transaction_id] = { type: 'split', confidence: rel.confidence, partner: p2p, role: 'purchase', rel };
+            map[p2p.transaction_id] = { type: 'split', confidence: rel.confidence, partner: purchase, role: 'p2p', rel };
           } else if (rel.type === 'return') {
             const charge = rel.chargeTxn;
             const refund = rel.refundTxn;
-            map[charge.transaction_id] = { type: 'return', confidence: rel.confidence, partner: refund, role: 'charge' };
-            map[refund.transaction_id] = { type: 'return', confidence: rel.confidence, partner: charge, role: 'refund' };
+            map[charge.transaction_id] = { type: 'return', confidence: rel.confidence, partner: refund, role: 'charge', rel };
+            map[refund.transaction_id] = { type: 'return', confidence: rel.confidence, partner: charge, role: 'refund', rel };
           }
         }
         return map;
@@ -968,6 +1020,18 @@
       triageAttribution() {
         if (!this.triageItems?.length) return null;
         return this.getTransactionAttribution(this.triageItems[0]);
+      },
+      pendingRelationships() {
+        const relationships = detectRelationships(this.transactions);
+        return relationships.filter(rel => {
+          const ids = rel.type === 'split'
+            ? [rel.purchaseTxn.transaction_id, rel.p2pTxn.transaction_id]
+            : [rel.chargeTxn.transaction_id, rel.refundTxn.transaction_id];
+          return !ids.some(id => {
+            const txn = this.transactions.find(t => t.transaction_id === id);
+            return txn?.linkedTransaction || txn?.dismissedRelationship;
+          });
+        });
       },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
@@ -1573,6 +1637,80 @@ monthStats() {
             this.triageCategory = next?.suggestion || null;
             this.triageCreateRule = true;
           }
+        });
+      },
+      relKey(rel) {
+        const ids = rel.type === 'split'
+          ? [rel.purchaseTxn.transaction_id, rel.p2pTxn.transaction_id]
+          : [rel.chargeTxn.transaction_id, rel.refundTxn.transaction_id];
+        return ids.sort().join('::');
+      },
+      relPrimary(rel) {
+        return rel.type === 'split' ? rel.purchaseTxn : rel.chargeTxn;
+      },
+      relSecondary(rel) {
+        return rel.type === 'split' ? rel.p2pTxn : rel.refundTxn;
+      },
+      relationshipConfirm(rel) {
+        const [txnA, txnB] = [this.relPrimary(rel), this.relSecondary(rel)];
+        const signals = { confidence: rel.confidence, type: rel.type };
+        if (rel.ratio) signals.ratio = rel.ratio;
+
+        // Optimistic update
+        store.commit('linkTransaction', {
+          transactionId: txnA.transaction_id,
+          partnerId: txnB.transaction_id,
+          type: rel.type,
+        });
+
+        const label = rel.type === 'split' ? 'Payback confirmed' : 'Return confirmed';
+        let undone = false;
+        this.$q.notify({
+          message: label,
+          timeout: 5000,
+          actions: [{
+            label: 'Undo',
+            color: 'white',
+            handler: () => {
+              undone = true;
+              store.commit('unlinkTransaction', {
+                transactionId: txnA.transaction_id,
+                partnerId: txnB.transaction_id,
+              });
+              unlinkTransactions(txnA.transaction_id, txnB.transaction_id);
+            },
+          }],
+          onDismiss: () => {
+            if (!undone) {
+              linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals);
+            }
+          },
+        });
+      },
+      relationshipDismiss(rel) {
+        const txnA = this.relPrimary(rel);
+
+        // Optimistic update
+        store.commit('dismissRelationship', txnA.transaction_id);
+
+        let undone = false;
+        this.$q.notify({
+          message: 'Relationship dismissed',
+          timeout: 5000,
+          actions: [{
+            label: 'Undo',
+            color: 'white',
+            handler: () => {
+              undone = true;
+              store.commit('undoDismissRelationship', txnA.transaction_id);
+              undoDismissRelationship(txnA.transaction_id);
+            },
+          }],
+          onDismiss: () => {
+            if (!undone) {
+              dismissRelationship(txnA.transaction_id);
+            }
+          },
         });
       },
       formatDate(date) {
