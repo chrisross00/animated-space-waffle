@@ -343,7 +343,7 @@ export default {
       let incomeAmount = 0;
       for (const t of txns) {
         if (t.pending || t.excludeFromTotal) continue;
-        if (!t.date || t.date.substring(0, 7) !== currentYM) continue;
+        if (!(t.effectiveDate || t.date) || (t.effectiveDate || t.date).substring(0, 7) !== currentYM) continue;
         const type = catTypes[t.mappedCategory];
         if (type === 'expense') expenseSpend += Math.abs(t.amount);
         if (type === 'income') incomeAmount += Math.abs(t.amount);

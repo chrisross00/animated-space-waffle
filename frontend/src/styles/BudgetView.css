@@ -847,3 +847,10 @@
   gap: var(--basil-space-3);
   padding-top: var(--basil-space-2);
 }
+
+/* ---- Effective date indicator ---- */
+.basil-effective-date-icon {
+  color: var(--basil-text-muted);
+  margin-left: var(--basil-space-1);
+  vertical-align: middle;
+}

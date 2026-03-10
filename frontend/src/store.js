@@ -65,7 +65,7 @@ const store = createStore({
             state.transactions = transactions;
             const byMonth = {};
             for (const txn of transactions) {
-                const month = txn.date?.substring(0, 7);
+                const month = (txn.effectiveDate || txn.date)?.substring(0, 7);
                 if (month) {
                     if (!byMonth[month]) byMonth[month] = [];
                     byMonth[month].push(txn);
@@ -93,21 +93,51 @@ const store = createStore({
                 txn.date = updatedTransaction.date;
                 txn.note = updatedTransaction.note;
                 txn.excludeFromTotal = updatedTransaction.excludeFromTotal;
+                if (updatedTransaction.effectiveDate !== undefined) {
+                    txn.effectiveDate = updatedTransaction.effectiveDate;
+                }
                 if (updatedTransaction.manually_set !== undefined) {
                     txn.manually_set = updatedTransaction.manually_set;
                 }
             };
+
+            // Detect if effective month is changing — need to re-bucket
+            const oldMonth = (txn) => (txn.effectiveDate || txn.date)?.substring(0, 7);
+            const newMonth = (updatedTransaction.effectiveDate || updatedTransaction.date)?.substring(0, 7);
+            let needsRebucket = false;
+
             // Search in month buckets
-            for (const monthTxns of Object.values(state.transactionsByMonth)) {
-                const txn = monthTxns.find(t => t.transaction_id === updatedTransaction.transaction_id);
-                if (txn) { update(txn); break; }
+            for (const [month, monthTxns] of Object.entries(state.transactionsByMonth)) {
+                const idx = monthTxns.findIndex(t => t.transaction_id === updatedTransaction.transaction_id);
+                if (idx !== -1) {
+                    const txn = monthTxns[idx];
+                    if (oldMonth(txn) !== newMonth) {
+                        // Remove from old bucket
+                        monthTxns.splice(idx, 1);
+                        update(txn);
+                        // Add to new bucket
+                        if (!state.transactionsByMonth[newMonth]) state.transactionsByMonth[newMonth] = [];
+                        state.transactionsByMonth[newMonth].push(txn);
+                        needsRebucket = true;
+                    } else {
+                        update(txn);
+                    }
+                    break;
+                }
             }
-            // Also update flat array (shares object references with month buckets,
-            // but update explicitly in case they diverge)
-            const flatTxn = state.transactions.find(t => t.transaction_id === updatedTransaction.transaction_id);
-            if (flatTxn) update(flatTxn);
+
+            // Rebuild flat array if month changed
+            if (needsRebucket) {
+                state.transactions = Object.keys(state.transactionsByMonth)
+                    .sort().reverse()
+                    .flatMap(k => state.transactionsByMonth[k]);
+            } else {
+                // Update flat array in-place
+                const flatTxn = state.transactions.find(t => t.transaction_id === updatedTransaction.transaction_id);
+                if (flatTxn) update(flatTxn);
+            }
         },
-        linkTransaction(state, { transactionId, partnerId, type }) {
+        linkTransaction(state, { transactionId, partnerId, type, effectiveDate, recategorize }) {
             const now = new Date().toISOString();
             const findAndUpdate = (id, partnerId) => {
                 for (const monthTxns of Object.values(state.transactionsByMonth)) {
@@ -122,35 +152,109 @@ const store = createStore({
             };
             findAndUpdate(transactionId, partnerId);
             findAndUpdate(partnerId, transactionId);
-        },
-        dismissRelationship(state, transactionId) {
-            const now = new Date().toISOString();
-            for (const monthTxns of Object.values(state.transactionsByMonth)) {
-                const txn = monthTxns.find(t => t.transaction_id === transactionId);
-                if (txn) { txn.dismissedRelationship = now; break; }
+
+            // If effectiveDate provided, set it on the partner (secondary) and re-bucket
+            if (effectiveDate) {
+                const newMonth = effectiveDate.substring(0, 7);
+                for (const [month, monthTxns] of Object.entries(state.transactionsByMonth)) {
+                    const idx = monthTxns.findIndex(t => t.transaction_id === partnerId);
+                    if (idx !== -1) {
+                        const txn = monthTxns[idx];
+                        txn.effectiveDate = effectiveDate;
+                        if (month !== newMonth) {
+                            monthTxns.splice(idx, 1);
+                            if (!state.transactionsByMonth[newMonth]) state.transactionsByMonth[newMonth] = [];
+                            state.transactionsByMonth[newMonth].push(txn);
+                            state.transactions = Object.keys(state.transactionsByMonth)
+                                .sort().reverse()
+                                .flatMap(k => state.transactionsByMonth[k]);
+                        }
+                        break;
+                    }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === partnerId);
+                if (flat) flat.effectiveDate = effectiveDate;
             }
-            const flat = state.transactions.find(t => t.transaction_id === transactionId);
-            if (flat) flat.dismissedRelationship = now;
+
+            // Recategorize the partner (secondary) transaction if requested
+            if (recategorize) {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === partnerId);
+                    if (txn) { txn.mappedCategory = recategorize; break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === partnerId);
+                if (flat) flat.mappedCategory = recategorize;
+            }
         },
-        unlinkTransaction(state, { transactionId, partnerId }) {
-            const clear = (id) => {
+        dismissRelationship(state, { transactionId, partnerId }) {
+            const now = new Date().toISOString();
+            const mark = (id) => {
                 for (const monthTxns of Object.values(state.transactionsByMonth)) {
                     const txn = monthTxns.find(t => t.transaction_id === id);
-                    if (txn) { delete txn.linkedTransaction; break; }
+                    if (txn) { txn.dismissedRelationship = now; break; }
                 }
                 const flat = state.transactions.find(t => t.transaction_id === id);
-                if (flat) delete flat.linkedTransaction;
+                if (flat) flat.dismissedRelationship = now;
+            };
+            mark(transactionId);
+            if (partnerId) mark(partnerId);
+        },
+        unlinkTransaction(state, { transactionId, partnerId, revertCategory }) {
+            let needsRebuild = false;
+            const clear = (id) => {
+                for (const [month, monthTxns] of Object.entries(state.transactionsByMonth)) {
+                    const idx = monthTxns.findIndex(t => t.transaction_id === id);
+                    if (idx !== -1) {
+                        const txn = monthTxns[idx];
+                        delete txn.linkedTransaction;
+                        // If effectiveDate was set by the link, clear it and re-bucket
+                        if (txn.effectiveDate) {
+                            const originalMonth = txn.date?.substring(0, 7);
+                            delete txn.effectiveDate;
+                            if (originalMonth && originalMonth !== month) {
+                                monthTxns.splice(idx, 1);
+                                if (!state.transactionsByMonth[originalMonth]) state.transactionsByMonth[originalMonth] = [];
+                                state.transactionsByMonth[originalMonth].push(txn);
+                                needsRebuild = true;
+                            }
+                        }
+                        break;
+                    }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === id);
+                if (flat) {
+                    delete flat.linkedTransaction;
+                    delete flat.effectiveDate;
+                }
             };
             clear(transactionId);
             clear(partnerId);
-        },
-        undoDismissRelationship(state, transactionId) {
-            for (const monthTxns of Object.values(state.transactionsByMonth)) {
-                const txn = monthTxns.find(t => t.transaction_id === transactionId);
-                if (txn) { delete txn.dismissedRelationship; break; }
+            // Revert category on the partner if it was auto-recategorized
+            if (revertCategory) {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === partnerId);
+                    if (txn) { txn.mappedCategory = revertCategory; break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === partnerId);
+                if (flat) flat.mappedCategory = revertCategory;
             }
-            const flat = state.transactions.find(t => t.transaction_id === transactionId);
-            if (flat) delete flat.dismissedRelationship;
+            if (needsRebuild) {
+                state.transactions = Object.keys(state.transactionsByMonth)
+                    .sort().reverse()
+                    .flatMap(k => state.transactionsByMonth[k]);
+            }
+        },
+        undoDismissRelationship(state, { transactionId, partnerId }) {
+            const clear = (id) => {
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === id);
+                    if (txn) { delete txn.dismissedRelationship; break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === id);
+                if (flat) delete flat.dismissedRelationship;
+            };
+            clear(transactionId);
+            if (partnerId) clear(partnerId);
         },
         updateCategory(state, updatedCategory) {
             console.log('updateCategory store:', updatedCategory)

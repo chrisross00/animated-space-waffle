@@ -419,53 +419,53 @@ export async function venmoEnrichmentApply(enrichments) {
   _notify({ type: 'negative', message: `Failed to update Venmo transactions (${response.status})` });
 }
 
-export async function linkTransactions(transactionId, partnerId, type, signals) {
+export async function linkTransactions(transactionId, partnerId, type, signals, effectiveDate, recategorize) {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/linkTransactions', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId, partnerId, type, signals }),
+    body: JSON.stringify({ transactionId, partnerId, type, signals, ...(effectiveDate && { effectiveDate }), ...(recategorize && { recategorize }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to link transactions (${response.status})` });
 }
 
-export async function dismissRelationship(transactionId) {
+export async function dismissRelationship(transactionId, partnerId) {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/dismissRelationship', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId }),
+    body: JSON.stringify({ transactionId, ...(partnerId && { partnerId }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to dismiss relationship (${response.status})` });
 }
 
-export async function unlinkTransactions(transactionId, partnerId) {
+export async function unlinkTransactions(transactionId, partnerId, revertCategory) {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/unlinkTransactions', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId, partnerId }),
+    body: JSON.stringify({ transactionId, partnerId, ...(revertCategory && { revertCategory }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to unlink transactions (${response.status})` });
 }
 
-export async function undoDismissRelationship(transactionId) {
+export async function undoDismissRelationship(transactionId, partnerId) {
   const headers = await getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/undoDismissRelationship', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId }),
+    body: JSON.stringify({ transactionId, ...(partnerId && { partnerId }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to undo dismiss (${response.status})` });

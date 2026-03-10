@@ -224,7 +224,7 @@ export default {
         let income = 0, expenses = 0;
         for (const txn of transactions) {
           if (txn.excludeFromTotal) continue;
-          if (dayjs(txn.date).format('MMM YYYY') !== m) continue;
+          if (dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') !== m) continue;
           if (incomeNames.has(txn.mappedCategory)) income += Math.abs(txn.amount);
           else if (expenseNames.has(txn.mappedCategory)) expenses += Math.abs(txn.amount);
         }
@@ -240,7 +240,7 @@ export default {
       const bucket = {};
       for (const txn of transactions) {
         if (txn.excludeFromTotal) continue;
-        const monthLabel = dayjs(txn.date).format('MMM YYYY');
+        const monthLabel = dayjs(txn.effectiveDate || txn.date).format('MMM YYYY');
         if (!months.includes(monthLabel)) continue;
         const key = `${txn.mappedCategory}|${monthLabel}`;
         bucket[key] = (bucket[key] || 0) + Math.abs(txn.amount);
@@ -369,7 +369,7 @@ export default {
         let savings = 0, income = 0;
         for (const txn of transactions) {
           if (txn.excludeFromTotal) continue;
-          if (dayjs(txn.date).format('MMM YYYY') !== m) continue;
+          if (dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') !== m) continue;
           if (savingsNames.has(txn.mappedCategory)) savings += Math.abs(txn.amount);
           if (incomeNames.has(txn.mappedCategory)) income += Math.abs(txn.amount);
         }
@@ -457,7 +457,7 @@ export default {
         const txns = store.state.transactions || [];
         const catSet = new Set(this.visibleCategories.map(c => c.category));
         const sum = m => txns
-          .filter(t => !t.excludeFromTotal && dayjs(t.date).format('MMM YYYY') === m && catSet.has(t.mappedCategory))
+          .filter(t => !t.excludeFromTotal && dayjs(t.effectiveDate || t.date).format('MMM YYYY') === m && catSet.has(t.mappedCategory))
           .reduce((acc, t) => acc + Math.abs(t.amount), 0);
         return { current: sum(cur), prev: sum(prev) };
       }

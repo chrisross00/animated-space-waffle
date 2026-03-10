@@ -335,7 +335,7 @@ export default {
 
       for (const month of months) {
         const monthTxns = transactions.filter(t => {
-          if (!t.date?.startsWith(month)) return false;
+          if (!(t.effectiveDate || t.date)?.startsWith(month)) return false;
           if (t.excludeFromTotal) return false;
           if (excludedCategories.has(t.mappedCategory)) return false;
           return t.amount > 0; // Plaid: positive = debit

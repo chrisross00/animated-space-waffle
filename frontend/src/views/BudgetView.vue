@@ -145,12 +145,12 @@
         class="q-pa-md"
         style="max-width: 800px; margin: 0 auto; padding-top: 0;"
       >
-        <q-card :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]">
-          <div class="basil-card-head" @click="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
+        <q-card :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]" @click="!relationshipsExpanded && (relationshipsExpanded = true)">
+          <div class="basil-card-head" @click.stop="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
             <span class="basil-card-label">Detected Relationships</span>
             <q-icon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
           </div>
-          <div v-if="!relationshipsExpanded" class="basil-relationships-card__body" @click="relationshipsExpanded = true" role="button" tabindex="0">
+          <div v-if="!relationshipsExpanded" class="basil-relationships-card__body">
             <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
             <div>
               <div class="basil-tosort-card__headline">possible {{ pendingRelationships.length === 1 ? 'match' : 'matches' }} to review</div>
@@ -281,7 +281,7 @@
                           <span class="basil-txn-label__primary">
                             {{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}
                             <span
-                              v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction"
+                              v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
                               class="basil-relationship-badge basil-relationship-badge--pending"
                             >
                               Possible Match
@@ -298,6 +298,14 @@
                         </q-item-label>
                         <q-item-label caption lines="2">
                           {{ item.date }}
+                          <q-icon
+                            v-if="item.effectiveDate && item.effectiveDate !== item.date"
+                            name="event_repeat"
+                            size="12px"
+                            class="basil-effective-date-icon"
+                          >
+                            <q-tooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</q-tooltip>
+                          </q-icon>
                           <span v-if="item.venmo_counterparty" class="basil-txn-institution"> · Venmo · {{ item.venmo_counterparty }}</span>
                           <span v-else-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
                         </q-item-label>
@@ -452,7 +460,7 @@
                     <div class="basil-txn-label__primary">
                       {{ props.row.venmo_note || props.row.merchant_name || props.row.name }}
                       <span
-                        v-if="relationshipMap[props.row.transaction_id] && !props.row.linkedTransaction"
+                        v-if="relationshipMap[props.row.transaction_id] && !props.row.linkedTransaction && !props.row.dismissedRelationship"
                         class="basil-relationship-badge basil-relationship-badge--pending"
                       >
                         Possible Match
@@ -500,6 +508,14 @@
               <!-- Date (desktop only) -->
               <q-td key="date" :props="props" class="gt-xs">
                 {{ formatDate(props.row.date) }}
+                <q-icon
+                  v-if="props.row.effectiveDate && props.row.effectiveDate !== props.row.date"
+                  name="event_repeat"
+                  size="12px"
+                  class="basil-effective-date-icon"
+                >
+                  <q-tooltip>Moved from {{ formatDate(props.row.date) }} to {{ formatDate(props.row.effectiveDate) }}</q-tooltip>
+                </q-icon>
               </q-td>
 
               <!-- Status (desktop only) -->
@@ -836,8 +852,8 @@
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
           rows = rows.filter(t =>
-            dayjs(t.date).year() === m.year() &&
-            dayjs(t.date).month() === m.month()
+            dayjs(t.effectiveDate || t.date).year() === m.year() &&
+            dayjs(t.effectiveDate || t.date).month() === m.month()
           );
         }
         if (this.amountMin !== null && this.amountMin !== '') {
@@ -856,8 +872,8 @@
             ? []
             : groupedTransactions.filter(
                 (transaction) =>
-                  dayjs(transaction.date).year() === selectedDate.year() &&
-                  dayjs(transaction.date).month() === selectedDate.month()
+                  dayjs(transaction.effectiveDate || transaction.date).year() === selectedDate.year() &&
+                  dayjs(transaction.effectiveDate || transaction.date).month() === selectedDate.month()
               );
           // console.log('filteredTransactions', filtered)
           return filtered; 
@@ -899,7 +915,7 @@
         for (const txn of allTxns) {
           const key = txn.merchant_name || txn.name;
           if (!key) continue;
-          const m = dayjs(txn.date).format('YYYY-MM');
+          const m = dayjs(txn.effectiveDate || txn.date).format('YYYY-MM');
           if (!merchantMonths[key]) merchantMonths[key] = new Set();
           merchantMonths[key].add(m);
         }
@@ -957,8 +973,8 @@
         const sel = this.selectedDate.actual;
         return (store.state.transactions || []).filter(txn =>
           !txn.pending && txn.mappedCategory === 'To Sort' &&
-          dayjs(txn.date).year() === sel.year() &&
-          dayjs(txn.date).month() === sel.month()
+          dayjs(txn.effectiveDate || txn.date).year() === sel.year() &&
+          dayjs(txn.effectiveDate || txn.date).month() === sel.month()
         );
       },
       toSortWithSuggestions() {
@@ -967,7 +983,7 @@
         const sameDayMap = {};
         for (const txn of store.state.transactions || []) {
           if (txn.pending || !txn.mappedCategory || txn.mappedCategory === 'To Sort') continue;
-          const d = txn.date;
+          const d = txn.effectiveDate || txn.date;
           if (!sameDayMap[d]) sameDayMap[d] = new Set();
           sameDayMap[d].add(txn.mappedCategory);
         }
@@ -989,7 +1005,7 @@
             reason = `Previously categorized (${merchantMatch.count}x)`;
             if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
           } else {
-            const dayCats = sameDayMap[txn.date];
+            const dayCats = sameDayMap[txn.effectiveDate || txn.date];
             if (dayCats && dayCats.size === 1) {
               suggestion = [...dayCats][0];
               confidence = 'low';
@@ -1053,7 +1069,7 @@
           let total = 0, count = 0;
           for (const m of lastThree) {
             const monthTotal = allTxns
-              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.date).format('YYYY-MM') === m)
+              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.effectiveDate || t.date).format('YYYY-MM') === m)
               .reduce((s, t) => s + Math.abs(t.amount), 0);
             if (monthTotal > 0) { total += monthTotal; count++; }
           }
@@ -1062,7 +1078,7 @@
         // Which recurring merchants have already appeared this month?
         const appearedThisMonth = new Set(
           allTxns
-            .filter(t => dayjs(t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
+            .filter(t => dayjs(t.effectiveDate || t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
             .map(t => t.merchant_name || t.name)
         );
         // Sum expected remaining from recurring merchants not yet seen
@@ -1656,15 +1672,32 @@ monthStats() {
         const signals = { confidence: rel.confidence, type: rel.type };
         if (rel.ratio) signals.ratio = rel.ratio;
 
-        // Optimistic update
+        // If months differ, align the secondary transaction to the primary's month
+        const primaryMonth = (txnA.effectiveDate || txnA.date)?.substring(0, 7);
+        const secondaryMonth = (txnB.effectiveDate || txnB.date)?.substring(0, 7);
+        const effectiveDate = (primaryMonth !== secondaryMonth) ? txnA.date : null;
+
+        // Auto-recategorize secondary if it's unsorted
+        const recategorize = (txnB.mappedCategory === 'To Sort') ? txnA.mappedCategory : null;
+
+        // Optimistic update + immediate API call
         store.commit('linkTransaction', {
           transactionId: txnA.transaction_id,
           partnerId: txnB.transaction_id,
           type: rel.type,
+          effectiveDate,
+          recategorize,
         });
+        // Re-sync local transactions from store and regroup
+        this.transactions = store.state.transactions || [];
+        this.groupTransactions();
+        linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals, effectiveDate, recategorize);
 
-        const label = rel.type === 'split' ? 'Payback confirmed' : 'Return confirmed';
-        let undone = false;
+        const details = [];
+        if (effectiveDate) details.push(`moved to ${dayjs(effectiveDate).format('MMM YYYY')}`);
+        if (recategorize) details.push(`filed under ${recategorize}`);
+        const suffix = details.length ? ` · ${details.join(' · ')}` : '';
+        const label = (rel.type === 'split' ? 'Payback confirmed' : 'Return confirmed') + suffix;
         this.$q.notify({
           message: label,
           timeout: 5000,
@@ -1672,28 +1705,26 @@ monthStats() {
             label: 'Undo',
             color: 'white',
             handler: () => {
-              undone = true;
               store.commit('unlinkTransaction', {
                 transactionId: txnA.transaction_id,
                 partnerId: txnB.transaction_id,
+                revertCategory: recategorize ? 'To Sort' : null,
               });
-              unlinkTransactions(txnA.transaction_id, txnB.transaction_id);
+              this.transactions = store.state.transactions || [];
+              this.groupTransactions();
+              unlinkTransactions(txnA.transaction_id, txnB.transaction_id, recategorize ? 'To Sort' : null);
             },
           }],
-          onDismiss: () => {
-            if (!undone) {
-              linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals);
-            }
-          },
         });
       },
       relationshipDismiss(rel) {
         const txnA = this.relPrimary(rel);
+        const txnB = this.relSecondary(rel);
 
-        // Optimistic update
-        store.commit('dismissRelationship', txnA.transaction_id);
+        // Optimistic update + immediate API call — mark both transactions
+        store.commit('dismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+        dismissRelationship(txnA.transaction_id, txnB.transaction_id);
 
-        let undone = false;
         this.$q.notify({
           message: 'Relationship dismissed',
           timeout: 5000,
@@ -1701,16 +1732,10 @@ monthStats() {
             label: 'Undo',
             color: 'white',
             handler: () => {
-              undone = true;
-              store.commit('undoDismissRelationship', txnA.transaction_id);
-              undoDismissRelationship(txnA.transaction_id);
+              store.commit('undoDismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+              undoDismissRelationship(txnA.transaction_id, txnB.transaction_id);
             },
           }],
-          onDismiss: () => {
-            if (!undone) {
-              dismissRelationship(txnA.transaction_id);
-            }
-          },
         });
       },
       formatDate(date) {
