@@ -478,6 +478,9 @@
   font-size: 0.875rem;
   color: var(--basil-text);
   line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--basil-space-2);
 }
 
 .basil-txn-label__secondary {
@@ -788,4 +791,13 @@
 }
 .basil-table-load-more--done {
   color: var(--basil-text-muted);
+}
+
+/* ---- Relationship detection indicators ---- */
+.basil-relationship-icon {
+  color: var(--basil-text-secondary);
+}
+
+.basil-relationship-icon--confirmed {
+  color: var(--basil-brand);
 }

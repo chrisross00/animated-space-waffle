@@ -247,7 +247,19 @@
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
-                        <q-item-label lines="1">{{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</q-item-label>
+                        <q-item-label lines="1">
+                          <span class="basil-txn-label__primary">
+                            {{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}
+                            <q-icon
+                              v-if="relationshipMap[item.transaction_id]"
+                              :name="item.linkedTransaction ? 'link' : 'link_off'"
+                              size="14px"
+                              :class="['basil-relationship-icon', { 'basil-relationship-icon--confirmed': item.linkedTransaction }]"
+                            >
+                              <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
+                            </q-icon>
+                          </span>
+                        </q-item-label>
                         <q-item-label caption lines="2">
                           {{ item.date }}
                           <span v-if="item.venmo_counterparty" class="basil-txn-institution"> · Venmo · {{ item.venmo_counterparty }}</span>
@@ -256,7 +268,7 @@
                       </q-item-section>
                       <div class="transaction-decoration">
                         <q-item-section side top>
-                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}                    
+                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}
                         </q-item-section>
                         <q-item-section side bottom v-if="item.excludeFromTotal">
                           <q-badge label="excluded" />
@@ -398,7 +410,17 @@
                     {{ merchantInitials(props.row) }}
                   </div>
                   <div class="basil-txn-label">
-                    <div class="basil-txn-label__primary">{{ props.row.venmo_note || props.row.merchant_name || props.row.name }}</div>
+                    <div class="basil-txn-label__primary">
+                      {{ props.row.venmo_note || props.row.merchant_name || props.row.name }}
+                      <q-icon
+                        v-if="relationshipMap[props.row.transaction_id]"
+                        :name="props.row.linkedTransaction ? 'link' : 'link_off'"
+                        size="14px"
+                        :class="['basil-relationship-icon', { 'basil-relationship-icon--confirmed': props.row.linkedTransaction }]"
+                      >
+                        <q-tooltip>{{ relationshipTooltip(props.row) }}</q-tooltip>
+                      </q-icon>
+                    </div>
                     <div
                       v-if="props.row.venmo_counterparty"
                       class="basil-txn-label__secondary"
@@ -626,6 +648,7 @@
   import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
+  import { detectRelationships } from '@/utils/relationshipDetector';
 
 // import e from 'express';
 
@@ -728,6 +751,24 @@
       categoryTypeMap() {
         const map = {};
         for (const c of store.state.categories || []) map[c.category] = c.type;
+        return map;
+      },
+      relationshipMap() {
+        const relationships = detectRelationships(this.transactions);
+        const map = {};
+        for (const rel of relationships) {
+          if (rel.type === 'split') {
+            const purchase = rel.purchaseTxn;
+            const p2p = rel.p2pTxn;
+            map[purchase.transaction_id] = { type: 'split', confidence: rel.confidence, partner: p2p, role: 'purchase' };
+            map[p2p.transaction_id] = { type: 'split', confidence: rel.confidence, partner: purchase, role: 'p2p' };
+          } else if (rel.type === 'return') {
+            const charge = rel.chargeTxn;
+            const refund = rel.refundTxn;
+            map[charge.transaction_id] = { type: 'return', confidence: rel.confidence, partner: refund, role: 'charge' };
+            map[refund.transaction_id] = { type: 'return', confidence: rel.confidence, partner: charge, role: 'refund' };
+          }
+        }
         return map;
       },
       netPositive() {
@@ -1057,6 +1098,20 @@ monthStats() {
       },
     },
     methods: {
+      relationshipTooltip(txn) {
+        const rel = this.relationshipMap[txn.transaction_id];
+        if (!rel) return '';
+        const partnerName = rel.partner.merchant_name || rel.partner.name;
+        const partnerAmt = this.formatDollar(Math.abs(rel.partner.amount).toFixed(2));
+        if (txn.linkedTransaction) {
+          return rel.type === 'split'
+            ? `Split with ${partnerName} (${partnerAmt}) · confirmed`
+            : `Return from ${partnerName} (${partnerAmt}) · confirmed`;
+        }
+        return rel.type === 'split'
+          ? `Possible split with ${partnerName} (${partnerAmt})`
+          : `Possible return from ${partnerName} (${partnerAmt})`;
+      },
       detailedPfcBreakdown(group) {
         const txns = this.filteredTransactions(group);
         const map = {};
