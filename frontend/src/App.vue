@@ -284,6 +284,27 @@
   letter-spacing: 0.05em;
 }
 
+/* ========================================
+   Dark mode — Quasar component overrides
+   ======================================== */
+[data-theme="dark"] .q-card {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .basil-tosort-card:hover,
+[data-theme="dark"] .basil-relationships-card:not(.basil-relationships-card--expanded):hover {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control {
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control:hover::before {
+  border-color: var(--basil-text-secondary) !important;
+}
+
 
 </style>
 
