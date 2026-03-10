@@ -1,6 +1,6 @@
 # Transaction Relationship Detection
 
-**Status:** Planning
+**Status:** Phase 2 complete, Phase 3 planned
 
 ## Problem statement
 
@@ -301,7 +301,7 @@ Detected relationships appear as items within the existing triage flow, not a se
 
 ## Implementation phases
 
-### Phase 1: Detection + indicators + triage + persistence (single PR)
+### Phase 1: Detection + indicators + triage + persistence (single PR) ✓
 
 Shipping detection without a way to act on it creates dead ends. Merge the detection
 engine, passive indicators, triage integration, and persistence into one deliverable.
@@ -331,16 +331,39 @@ engine, passive indicators, triage integration, and persistence into one deliver
 **Test personas:**
 - Add `splits` persona to `scripts/test-data/personas.js` (see Test Personas section)
 
-### Phase 2: Effective date (standalone PR)
+### Phase 2: Effective date + auto-recategorization ✓
 - Add `effectiveDate` field to schema
 - Update all month-filtering consumers (store, views, backend query)
-- Offer date alignment on split confirmation
+- Auto-align secondary transaction to primary's budget month on confirm
+- Auto-recategorize secondary from "To Sort" to primary's category on confirm
 - Display indicator when effectiveDate differs from date
+- Single undo reverts link + month move + category change
+- Dismiss marks both transactions in the pair
+- Algorithm improvements: prefer 50/50 splits, exact ratio ranking signal
 
-### Phase 3: Venmo enrichment integration
+### Phase 3: Venmo enrichment integration + outgoing P2P detection
+
+Current detection only handles **incoming** P2P payments (friend pays you back). But the
+bigger user pain point is **outgoing** P2P — "I sent $47 on Venmo... what was that for?"
+
+**Why outgoing is harder:** Plaid shows a single settled Venmo/Zelle outflow that bundles
+multiple individual payments. A $47 dinner split and a $30 utilities split appear as one
+$77 debit. Amount-ratio matching against purchases is unreliable because the aggregate
+amount doesn't correspond to any single purchase.
+
+**Venmo CSV enrichment is the unlock.** The imported CSV (`utils/venmoEnrichment.js`)
+breaks aggregates back into individual payments with notes, counterparties, and amounts.
+With enrichment data, we can:
+- Match individual Venmo payments to purchases by note content (e.g., note "sushi" → Sushi Palace)
+- Match by individual payment amount ratio against purchases
+- Show counterparty context ("You paid Jake $47")
+
+**Phase 3 scope:**
 - Cross-reference `venmo_note` against merchant names for higher-confidence matches
-- Show enrichment data in triage card
+- Extend detection to outgoing P2P when enrichment data is available
+- Show enrichment data in RelationshipCard (counterparty name, note)
 - Counterparty name displayed on confirmed splits
+- Nudge users to import Venmo CSV when outgoing P2P transactions are detected but unenriched
 
 ---
 

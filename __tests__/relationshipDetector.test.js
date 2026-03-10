@@ -3,6 +3,7 @@ import {
   isP2PTransaction,
   isCommonSplitRatio,
   detectSplits,
+  detectOutgoingSplits,
   detectReturns,
   detectRelationships,
 } from '../frontend/src/utils/relationshipDetector.js'
@@ -61,29 +62,41 @@ describe('isP2PTransaction', () => {
 // isCommonSplitRatio
 // ---------------------------------------------------------------------------
 describe('isCommonSplitRatio', () => {
-  it('detects 1/2 split', () => {
-    expect(isCommonSplitRatio(-50, 100)).toBe(true)
+  it('detects exact 1/2 split', () => {
+    const result = isCommonSplitRatio(-50, 100)
+    expect(result).toEqual({ n: 2, exact: true })
   })
 
-  it('detects 1/3 split', () => {
-    expect(isCommonSplitRatio(-33.33, 100)).toBe(true)
+  it('detects exact 1/3 split', () => {
+    const result = isCommonSplitRatio(-30, 90)
+    expect(result).toEqual({ n: 3, exact: true })
   })
 
-  it('detects 1/4 split', () => {
-    expect(isCommonSplitRatio(-25, 100)).toBe(true)
+  it('detects exact 1/4 split', () => {
+    const result = isCommonSplitRatio(-25, 100)
+    expect(result).toEqual({ n: 4, exact: true })
   })
 
-  it('allows small tolerance', () => {
-    // 50.50 / 100 = 0.505, within 1% of 0.5
-    expect(isCommonSplitRatio(-50.50, 100)).toBe(true)
+  it('detects approximate 1/3 as non-exact', () => {
+    // 33.33 * 3 = 99.99, not exactly 100
+    const result = isCommonSplitRatio(-33.33, 100)
+    expect(result.n).toBe(3)
+    expect(result.exact).toBe(false)
+  })
+
+  it('allows small tolerance but marks as non-exact', () => {
+    // 50.50 / 100 = 0.505, within 1% of 0.5 but not exact
+    const result = isCommonSplitRatio(-50.50, 100)
+    expect(result.n).toBe(2)
+    expect(result.exact).toBe(false)
   })
 
   it('rejects non-standard ratios', () => {
-    expect(isCommonSplitRatio(-40, 100)).toBe(false)
+    expect(isCommonSplitRatio(-40, 100)).toBeNull()
   })
 
   it('rejects very small ratios', () => {
-    expect(isCommonSplitRatio(-5, 100)).toBe(false)
+    expect(isCommonSplitRatio(-5, 100)).toBeNull()
   })
 })
 
@@ -206,6 +219,42 @@ describe('detectSplits', () => {
     const results = detectSplits(transactions)
     expect(results).toHaveLength(1)
     expect(results[0].confidence).toBe('medium')
+  })
+
+  it('prefers 1/2 split over 1/3 split for the same P2P', () => {
+    const transactions = [
+      // Two purchases: one is a 1/3 match, one is a 1/2 match
+      txn({ amount: 150, date: '2025-03-01', merchant_name: 'Restaurant A' }),
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant B' }),
+      txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+    ]
+    const results = detectSplits(transactions)
+    expect(results).toHaveLength(1)
+    // Should prefer Restaurant B ($100 → $50 = 1/2) over Restaurant A ($150 → $50 = 1/3)
+    expect(results[0].purchaseTxn.merchant_name).toBe('Restaurant B')
+    expect(results[0].ratio).toBe(2)
+  })
+
+  it('includes ratio in results', () => {
+    const transactions = [
+      txn({ amount: 90, date: '2025-03-01', merchant_name: 'Restaurant' }),
+      txn({ amount: -30, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+    ]
+    const results = detectSplits(transactions)
+    expect(results[0].ratio).toBe(3)
+  })
+
+  it('prefers exact ratio over approximate at same confidence and N', () => {
+    const transactions = [
+      // Two purchases: $100 (exact 50) and $101 (approximate 50.50/101 ≈ 0.5)
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant A' }),
+      txn({ amount: 101, date: '2025-03-01', merchant_name: 'Restaurant B' }),
+      txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+    ]
+    const results = detectSplits(transactions)
+    expect(results).toHaveLength(1)
+    // Should prefer Restaurant A ($100 → $50 = exact 1/2)
+    expect(results[0].purchaseTxn.merchant_name).toBe('Restaurant A')
   })
 
   it('prefers high confidence match over medium', () => {
@@ -343,6 +392,102 @@ describe('detectReturns', () => {
 })
 
 // ---------------------------------------------------------------------------
+// detectOutgoingSplits
+// ---------------------------------------------------------------------------
+describe('detectOutgoingSplits', () => {
+  beforeEach(resetIds)
+
+  it('detects outgoing P2P with matching Venmo note', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi', venmo_counterparty: 'Jake' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(1)
+    expect(results[0].type).toBe('split')
+    expect(results[0].confidence).toBe('high')
+    expect(results[0].purchaseTxn.merchant_name).toBe('Sushi Palace')
+    expect(results[0].p2pTxn.venmo_counterparty).toBe('Jake')
+  })
+
+  it('rejects outgoing P2P without enrichment', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(0)
+  })
+
+  it('rejects when note does not match any merchant', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'rent' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(0)
+  })
+
+  it('rejects if outside date window', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-15', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(0)
+  })
+
+  it('matches when P2P date is before purchase (user pre-paid)', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-05', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(1)
+  })
+
+  it('skips dismissed transactions', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi', dismissedRelationship: '2025-03-03T00:00:00Z' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(0)
+  })
+
+  it('skips already linked transactions', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi', linkedTransaction: { transaction_id: 'x' } }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(0)
+  })
+
+  it('prefers match with ratio over match without', () => {
+    const transactions = [
+      txn({ amount: 94, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi House' }),
+      // 47 is exactly 1/2 of 94 but not a ratio of 100
+      txn({ amount: 47, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(1)
+    expect(results[0].purchaseTxn.merchant_name).toBe('Sushi Palace')
+  })
+
+  it('does not require amount ratio (note match is sufficient)', () => {
+    // $30 Venmo for a $100 dinner — not a standard ratio, but note matches
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      txn({ amount: 30, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi' }),
+    ]
+    const results = detectOutgoingSplits(transactions)
+    expect(results).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // detectRelationships (integration)
 // ---------------------------------------------------------------------------
 describe('detectRelationships', () => {
@@ -401,5 +546,39 @@ describe('detectRelationships', () => {
     ]
     const results = detectRelationships(transactions)
     expect(results).toHaveLength(0)
+  })
+
+  it('detects outgoing P2P splits alongside incoming and returns', () => {
+    const transactions = [
+      // Return pair
+      txn({ amount: 89.99, date: '2025-03-01', merchant_name: 'Nike' }),
+      txn({ amount: -89.99, date: '2025-03-10', merchant_name: 'Nike' }),
+      // Incoming split
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant A' }),
+      txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+      // Outgoing split (enriched)
+      txn({ amount: 80, date: '2025-03-03', merchant_name: 'Bar Tab' }),
+      txn({ amount: 40, date: '2025-03-04', name: 'Venmo', account: 'Venmo', venmo_note: 'bar tab', venmo_counterparty: 'Alex' }),
+    ]
+    const results = detectRelationships(transactions)
+    expect(results).toHaveLength(3)
+    expect(results[0].type).toBe('return')
+    expect(results[1].type).toBe('split')  // incoming
+    expect(results[2].type).toBe('split')  // outgoing
+    expect(results[2].p2pTxn.venmo_counterparty).toBe('Alex')
+  })
+
+  it('does not double-match a purchase in both incoming and outgoing', () => {
+    const transactions = [
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Sushi Palace' }),
+      // Incoming split claims this purchase
+      txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+      // Outgoing should NOT also match it
+      txn({ amount: 30, date: '2025-03-02', name: 'Venmo', account: 'Venmo', venmo_note: 'sushi' }),
+    ]
+    const results = detectRelationships(transactions)
+    expect(results).toHaveLength(1)
+    // Only the incoming split should match
+    expect(results[0].p2pTxn.amount).toBe(-50)
   })
 })

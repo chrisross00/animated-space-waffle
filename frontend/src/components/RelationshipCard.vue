@@ -7,15 +7,19 @@
     <div class="basil-rel-pair__row">
       <span class="basil-rel-pair__label">{{ relationship.type === 'split' ? 'Purchase' : 'Charge' }}</span>
       <span class="basil-rel-pair__name">{{ primaryTxn.merchant_name || primaryTxn.name }}</span>
-      <span class="basil-rel-pair__amount basil-rel-pair__amount--negative basil-mono">-${{ fmtAmount(primaryTxn.amount) }}</span>
+      <span :class="['basil-rel-pair__amount', primaryTxn.amount > 0 ? 'basil-rel-pair__amount--negative' : 'basil-rel-pair__amount--positive', 'basil-mono']">{{ primaryTxn.amount > 0 ? '-' : '+' }}${{ fmtAmount(primaryTxn.amount) }}</span>
       <span class="basil-rel-pair__date">{{ fmtDate(primaryTxn.date) }}</span>
     </div>
     <div class="basil-rel-pair__divider"></div>
     <div class="basil-rel-pair__row">
       <span class="basil-rel-pair__label">{{ relationship.type === 'split' ? 'Payment' : 'Refund' }}</span>
-      <span class="basil-rel-pair__name">{{ secondaryTxn.merchant_name || secondaryTxn.name }}</span>
-      <span class="basil-rel-pair__amount basil-rel-pair__amount--positive basil-mono">+${{ fmtAmount(secondaryTxn.amount) }}</span>
+      <span class="basil-rel-pair__name">{{ secondaryName }}</span>
+      <span :class="['basil-rel-pair__amount', secondaryTxn.amount > 0 ? 'basil-rel-pair__amount--negative' : 'basil-rel-pair__amount--positive', 'basil-mono']">{{ secondaryTxn.amount > 0 ? '-' : '+' }}${{ fmtAmount(secondaryTxn.amount) }}</span>
       <span class="basil-rel-pair__date">{{ fmtDate(secondaryTxn.date) }}</span>
+    </div>
+    <div v-if="enrichmentContext" class="basil-rel-pair__enrichment">
+      <q-icon name="person" size="12px" />
+      <span>{{ enrichmentContext }}</span>
     </div>
     <div class="basil-rel-pair__actions">
       <q-btn flat dense size="sm" label="Not related" @click="$emit('dismiss', relationship)" :disable="disable" />
@@ -47,6 +51,17 @@ export default {
       return this.relationship.type === 'split'
         ? this.relationship.p2pTxn
         : this.relationship.refundTxn;
+    },
+    secondaryName() {
+      const txn = this.secondaryTxn;
+      const name = txn.merchant_name || txn.name;
+      if (txn.venmo_counterparty) return `${txn.venmo_counterparty} via ${name}`;
+      return name;
+    },
+    enrichmentContext() {
+      const txn = this.secondaryTxn;
+      // Counterparty is shown in the name line; only show note here
+      return txn.venmo_note ? `"${txn.venmo_note}"` : null;
     },
   },
 
@@ -129,6 +144,16 @@ export default {
 .basil-rel-pair__divider {
   border-top: 1px dashed var(--basil-border);
   margin: var(--basil-space-2) 0;
+}
+
+.basil-rel-pair__enrichment {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-1);
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: var(--basil-space-1);
+  padding-left: calc(5.5em + var(--basil-space-2));
 }
 
 .basil-rel-pair__actions {

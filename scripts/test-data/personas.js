@@ -461,6 +461,76 @@ const PERSONAS = {
     ],
   },
 
+  venmo: {
+    uid: 'test-user-venmo',
+    user: {
+      email: 'venmo@basil.test',
+      name: 'Test Venmo',
+      picture: null,
+      firebase: false,
+      isTestUser: true,
+      onboarded_at: new Date(),
+    },
+    accounts: [
+      { institution: 'Chase', name: 'Chase Checking', officialName: 'TOTAL CHECKING', mask: '4521', type: 'depository', subtype: 'checking', balance: 5500.00, available: 5500.00 },
+      { institution: 'Venmo', name: 'Venmo', officialName: 'VENMO BALANCE', mask: '0000', type: 'depository', subtype: 'checking', balance: 350.00, available: 350.00 },
+    ],
+    categoryCustomizations: [
+      { category: 'Food & Dining', monthly_limit: 600 },
+      { category: 'Entertainment', monthly_limit: 200 },
+      { category: 'Rent & Utilities', monthly_limit: 2200 },
+      { category: 'Shopping', monthly_limit: 300 },
+    ],
+    compoundRules: [
+      {
+        label: 'Venmo payments → To Sort',
+        conditions: [{ field: 'name', op: 'contains', value: 'VENMO' }],
+        categoryName: 'To Sort',
+        createdFrom: 'manual',
+      },
+    ],
+    transactionConfig: {
+      months: 3,
+      density: 'normal',
+      merchantPool: MERCHANTS,
+    },
+    scenarioTransactions: [
+      // --- OUTGOING: enriched Venmo payment with note matching a purchase ---
+      { name: 'SUSHI PALACE NYC', merchant_name: 'Sushi Palace', amount: 94, date: { monthsBack: 0, day: 3 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 47, date: { monthsBack: 0, day: 3 },
+        account: 'checking', venmo_counterparty: 'Jake Miller', venmo_note: 'sushi', venmo_id: 'venmo-out-sushi' },
+
+      // --- OUTGOING: enriched, note matches merchant, no ratio match (Plaid aggregate) ---
+      { name: 'BAR GOTO NYC', merchant_name: 'Bar Goto', amount: 120, date: { monthsBack: 0, day: 6 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_BAR' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 85, date: { monthsBack: 0, day: 7 },
+        account: 'checking', venmo_counterparty: 'Sarah Chen', venmo_note: 'bar goto', venmo_id: 'venmo-out-bar' },
+
+      // --- OUTGOING: enriched but note does NOT match any purchase (no match expected) ---
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 25, date: { monthsBack: 0, day: 10 },
+        account: 'checking', venmo_counterparty: 'Emily Park', venmo_note: 'birthday gift', venmo_id: 'venmo-out-gift' },
+
+      // --- OUTGOING: unenriched Venmo (should trigger CSV import nudge) ---
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 60, date: { monthsBack: 0, day: 12 },
+        account: 'checking' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 35, date: { monthsBack: 0, day: 14 },
+        account: 'checking' },
+
+      // --- INCOMING: standard payback for comparison ---
+      { name: 'SWEETGREEN NYC', merchant_name: 'Sweetgreen', amount: 30, date: { monthsBack: 0, day: 8 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -15, date: { monthsBack: 0, day: 9 },
+        account: 'checking', venmo_counterparty: 'Alex Kim', venmo_note: 'sweetgreen' },
+
+      // --- RETURN: for completeness ---
+      { name: 'NIKE.COM ORDER#12345', merchant_name: 'Nike', amount: 89.99, date: { monthsBack: 0, day: 1 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'NIKE.COM REFUND', merchant_name: 'Nike', amount: -89.99, date: { monthsBack: 0, day: 5 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+    ],
+  },
+
   error: {
     uid: 'test-user-error',
     user: {

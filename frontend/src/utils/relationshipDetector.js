@@ -61,15 +61,22 @@ function daysBetween(dateStrA, dateStrB) {
 
 /**
  * Check if an amount ratio is close to 1/N for N in [2, 3, 4].
- * @returns {boolean}
+ * Returns { n, exact } where n is the matched split (2, 3, or 4) and
+ * exact is true when the math is precise (no rounding tolerance needed).
+ * Returns null if no match.
  */
 function isCommonSplitRatio(p2pAmount, purchaseAmount) {
   const ratio = Math.abs(p2pAmount) / purchaseAmount;
   for (const n of [2, 3, 4]) {
     const target = 1 / n;
-    if (Math.abs(ratio - target) <= RATIO_TOLERANCE) return true;
+    const diff = Math.abs(ratio - target);
+    if (diff <= RATIO_TOLERANCE) {
+      // Exact: p2p * n === purchase (using cents to avoid floating point)
+      const exact = Math.round(Math.abs(p2pAmount) * 100) * n === Math.round(purchaseAmount * 100);
+      return { n, exact };
+    }
   }
-  return false;
+  return null;
 }
 
 /**
@@ -109,7 +116,9 @@ function detectSplits(transactions) {
   for (const p2p of p2pIncoming) {
     for (const purchase of purchases) {
       // Hard filter 1: amount ratio must be close to 1/N
-      if (!isCommonSplitRatio(p2p.amount, purchase.amount)) continue;
+      const ratioMatch = isCommonSplitRatio(p2p.amount, purchase.amount);
+      if (!ratioMatch) continue;
+      const { n: splitN, exact: exactRatio } = ratioMatch;
 
       // Hard filter 2: P2P date must be within SPLIT_DATE_WINDOW days after purchase
       const gap = daysBetween(purchase.date, p2p.date);
@@ -130,14 +139,18 @@ function detectSplits(transactions) {
         p2p,
         purchase,
         confidence,
+        splitN,
+        exactRatio,
         gap,
       });
     }
   }
 
-  // Sort candidates: high confidence first, then by closer date gap
+  // Sort candidates: confidence → exact ratio → lower N (50/50 first) → closer date gap
   candidates.sort((a, b) => {
     if (a.confidence !== b.confidence) return a.confidence === 'high' ? -1 : 1;
+    if (a.exactRatio !== b.exactRatio) return a.exactRatio ? -1 : 1;
+    if (a.splitN !== b.splitN) return a.splitN - b.splitN;
     return a.gap - b.gap;
   });
 
@@ -155,6 +168,90 @@ function detectSplits(transactions) {
     results.push({
       type: 'split',
       confidence: c.confidence,
+      ratio: c.splitN,
+      p2pTxn: c.p2p,
+      purchaseTxn: c.purchase,
+    });
+  }
+
+  return results;
+}
+
+// --- Outgoing P2P split detection (requires Venmo CSV enrichment) ---
+
+/**
+ * Detect splits where the user paid their share via P2P (outgoing).
+ *
+ * Unlike incoming splits (friend pays you back), outgoing P2P amounts from Plaid
+ * are often aggregated (multiple Venmo payments settle as one debit), so amount
+ * ratio matching is unreliable. Instead, match by Venmo note content against
+ * purchase merchant names. Only works when transactions have been enriched via
+ * Venmo CSV import.
+ *
+ * @param {Array} transactions - all loaded transactions
+ * @returns {Array<{type: string, confidence: string, p2pTxn: object, purchaseTxn: object}>}
+ */
+function detectOutgoingSplits(transactions) {
+  // Outgoing P2P with enrichment (amount > 0 = money going out in Plaid)
+  const p2pOutgoing = transactions.filter(t =>
+    t.amount > 0 && isP2PTransaction(t) && t.venmo_note && !t.linkedTransaction && !t.dismissedRelationship
+  );
+
+  // Potential shared purchases (positive amount, not P2P)
+  const purchases = transactions.filter(t =>
+    t.amount > 0 && !isP2PTransaction(t) && !t.linkedTransaction
+  );
+
+  const results = [];
+  const claimedP2P = new Set();
+  const claimedPurchases = new Set();
+
+  // Build candidates scored by match quality
+  const candidates = [];
+
+  for (const p2p of p2pOutgoing) {
+    const note = p2p.venmo_note.toLowerCase();
+
+    for (const purchase of purchases) {
+      // Hard filter 1: note must match merchant name
+      if (!hasMatchingEnrichment(p2p, purchase)) continue;
+
+      // Hard filter 2: date proximity — P2P within window of purchase
+      const gap = Math.abs(daysBetween(purchase.date, p2p.date));
+      if (gap > SPLIT_DATE_WINDOW) continue;
+
+      // Bonus: check if amount ratio also matches (strong confirmation)
+      const ratioMatch = isCommonSplitRatio(-p2p.amount, purchase.amount);
+
+      candidates.push({
+        p2p,
+        purchase,
+        confidence: 'high', // note match + date proximity = high confidence
+        hasRatio: !!ratioMatch,
+        splitN: ratioMatch ? ratioMatch.n : 99,
+        gap,
+      });
+    }
+  }
+
+  // Sort: ratio match first, then lower N, then closer date
+  candidates.sort((a, b) => {
+    if (a.hasRatio !== b.hasRatio) return a.hasRatio ? -1 : 1;
+    if (a.splitN !== b.splitN) return a.splitN - b.splitN;
+    return a.gap - b.gap;
+  });
+
+  // Greedy 1:1 assignment
+  for (const c of candidates) {
+    if (claimedP2P.has(c.p2p.transaction_id)) continue;
+    if (claimedPurchases.has(c.purchase.transaction_id)) continue;
+
+    claimedP2P.add(c.p2p.transaction_id);
+    claimedPurchases.add(c.purchase.transaction_id);
+    results.push({
+      type: 'split',
+      confidence: c.confidence,
+      ratio: c.hasRatio ? c.splitN : null,
       p2pTxn: c.p2p,
       purchaseTxn: c.purchase,
     });
@@ -246,8 +343,18 @@ function detectRelationships(transactions) {
   }
   const remaining = transactions.filter(t => !returnTxnIds.has(t.transaction_id));
 
-  const splits = detectSplits(remaining);
-  return [...returns, ...splits];
+  const incomingSplits = detectSplits(remaining);
+
+  // Exclude transactions claimed by incoming splits from outgoing detection
+  const incomingSplitIds = new Set();
+  for (const s of incomingSplits) {
+    incomingSplitIds.add(s.p2pTxn.transaction_id);
+    incomingSplitIds.add(s.purchaseTxn.transaction_id);
+  }
+  const forOutgoing = remaining.filter(t => !incomingSplitIds.has(t.transaction_id));
+  const outgoingSplits = detectOutgoingSplits(forOutgoing);
+
+  return [...returns, ...incomingSplits, ...outgoingSplits];
 }
 
 export {
@@ -255,6 +362,7 @@ export {
   isHighSplitCategory,
   isCommonSplitRatio,
   detectSplits,
+  detectOutgoingSplits,
   detectReturns,
   detectRelationships,
   // Constants (exported for testing)
