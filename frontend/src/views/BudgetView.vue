@@ -494,9 +494,9 @@
               <q-td key="amount" :props="props" class="text-right">
                 <span
                   class="basil-txn-amount"
-                  :class="`basil-txn-amount--${categoryTypeMap[props.row.mappedCategory] || 'expense'}`"
+                  :class="props.row.amount < 0 ? 'basil-txn-amount--income' : `basil-txn-amount--${categoryTypeMap[props.row.mappedCategory] || 'expense'}`"
                 >
-                  {{ categoryTypeMap[props.row.mappedCategory] === 'income' ? '+' : '' }}${{ Math.abs(props.row.amount).toFixed(2) }}
+                  {{ props.row.amount < 0 ? '+' : '' }}${{ Math.abs(props.row.amount).toFixed(2) }}
                 </span>
               </q-td>
 
@@ -603,6 +603,18 @@
           <div class="basil-triage__done">
             <q-icon name="check_circle" size="48px" color="positive" />
             <div class="basil-triage__done-heading">All caught up!</div>
+          </div>
+          <div v-if="triageVenmoCount > 0" class="basil-triage__venmo-nudge">
+            <div class="basil-triage__venmo-nudge-text">
+              You sorted {{ triageVenmoCount }} Venmo {{ triageVenmoCount === 1 ? 'payment' : 'payments' }} without details.
+            </div>
+            <q-btn
+              outline dense no-caps
+              color="primary"
+              icon="upload_file"
+              label="Import Venmo CSV"
+              @click="triageOpen = false; $nextTick(() => openVenmoImport())"
+            />
           </div>
           <div class="basil-triage__actions">
             <q-btn unelevated color="primary" label="Done" class="full-width" v-close-popup />
@@ -713,7 +725,8 @@
   import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
-  import { detectRelationships } from '@/utils/relationshipDetector';
+  import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
+  import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
 
 // import e from 'express';
 
@@ -808,6 +821,7 @@
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,
+        triageVenmoCount: 0,
         relationshipsExpanded: false,
         relationshipSaving: false,
       };
@@ -1585,6 +1599,7 @@ monthStats() {
         this.triageSkipped = new Set();
         this.triageDone = false;
         this.triageCreateRule = true;
+        this.triageVenmoCount = 0;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
         this.triageCategory = first?.suggestion || null;
@@ -1593,6 +1608,7 @@ monthStats() {
       async triageAccept() {
         const txn = this.triageItems[0];
         if (!txn || !this.triageCategory) return;
+        if (this.isUnenrichedP2P(txn)) this.triageVenmoCount++;
         this.triageSaving = true;
         const sim = this.triageSimilar;
         const wantsRule = this.triageCreateRule && sim?.allCount > 0;
@@ -1639,6 +1655,7 @@ monthStats() {
       triageSkip() {
         const txn = this.triageItems[0];
         if (!txn) return;
+        if (this.isUnenrichedP2P(txn)) this.triageVenmoCount++;
         const newSkipped = new Set(this.triageSkipped);
         newSkipped.add(txn.transaction_id);
         this.triageSkipped = newSkipped;
@@ -1737,6 +1754,12 @@ monthStats() {
             },
           }],
         });
+      },
+      isUnenrichedP2P(txn) {
+        return txn && isP2PTransaction(txn) && !txn.venmo_note;
+      },
+      openVenmoImport() {
+        this.$q.dialog({ component: VenmoEnrichmentDialog });
       },
       formatDate(date) {
         return dayjs(date).format('MMM D, YYYY');

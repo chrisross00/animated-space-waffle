@@ -848,6 +848,21 @@
   padding-top: var(--basil-space-2);
 }
 
+/* ---- Triage: Venmo CSV nudge (done screen) ---- */
+.basil-triage__venmo-nudge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--basil-space-3);
+  padding: var(--basil-space-3) var(--basil-space-4);
+}
+
+.basil-triage__venmo-nudge-text {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+  text-align: center;
+}
+
 /* ---- Effective date indicator ---- */
 .basil-effective-date-icon {
   color: var(--basil-text-muted);

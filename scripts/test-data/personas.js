@@ -512,10 +512,15 @@ const PERSONAS = {
         account: 'checking', venmo_counterparty: 'Emily Park', venmo_note: 'birthday gift', venmo_id: 'venmo-out-gift' },
 
       // --- OUTGOING: unenriched Venmo (should trigger CSV import nudge) ---
+      // After CSV import, notes "Thai Basil" and "bowling" match purchases below → new relationship matches
       { name: 'VENMO PAYMENT', merchant_name: null, amount: 60, date: { monthsBack: 0, day: 12 },
         account: 'checking' },
+      { name: 'THAI BASIL NYC', merchant_name: 'Thai Basil', amount: 120, date: { monthsBack: 0, day: 11 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
       { name: 'VENMO PAYMENT', merchant_name: null, amount: 35, date: { monthsBack: 0, day: 14 },
         account: 'checking' },
+      { name: 'BROOKLYN BOWL', merchant_name: 'Brooklyn Bowl', amount: 70, date: { monthsBack: 0, day: 13 },
+        account: 'checking', mappedCategory: 'Entertainment', pfc: 'ENTERTAINMENT' },
 
       // --- INCOMING: standard payback for comparison ---
       { name: 'SWEETGREEN NYC', merchant_name: 'Sweetgreen', amount: 30, date: { monthsBack: 0, day: 8 },
