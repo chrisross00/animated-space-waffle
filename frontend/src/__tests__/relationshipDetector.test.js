@@ -57,25 +57,37 @@ describe('isP2PTransaction', () => {
 
 describe('isCommonSplitRatio', () => {
   it('detects 50/50 split', () => {
-    expect(isCommonSplitRatio(-47, 94)).toBe(true)
+    const result = isCommonSplitRatio(-47, 94)
+    expect(result).toBeTruthy()
+    expect(result.n).toBe(2)
+    expect(result.exact).toBe(true)
   })
 
   it('detects 3-way split', () => {
-    expect(isCommonSplitRatio(-50, 150)).toBe(true)
+    const result = isCommonSplitRatio(-50, 150)
+    expect(result).toBeTruthy()
+    expect(result.n).toBe(3)
+    expect(result.exact).toBe(true)
   })
 
   it('detects 4-way split', () => {
-    expect(isCommonSplitRatio(-100, 400)).toBe(true)
+    const result = isCommonSplitRatio(-100, 400)
+    expect(result).toBeTruthy()
+    expect(result.n).toBe(4)
+    expect(result.exact).toBe(true)
   })
 
   it('allows 1% tolerance', () => {
     // 50.50/100 = 0.505, target 0.50, diff 0.005 < 0.01
-    expect(isCommonSplitRatio(-50.50, 100)).toBe(true)
+    const result = isCommonSplitRatio(-50.50, 100)
+    expect(result).toBeTruthy()
+    expect(result.n).toBe(2)
+    expect(result.exact).toBe(false)
   })
 
   it('rejects ratios outside tolerance', () => {
     // 15/100 = 0.15, not close to 1/2 (0.50), 1/3 (0.333), or 1/4 (0.25)
-    expect(isCommonSplitRatio(-15, 100)).toBe(false)
+    expect(isCommonSplitRatio(-15, 100)).toBeNull()
   })
 })
 
