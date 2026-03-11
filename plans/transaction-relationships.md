@@ -1,6 +1,6 @@
 # Transaction Relationship Detection
 
-**Status:** Phase 2 complete, Phase 3 planned
+**Status:** Phase 3 complete (all planned phases shipped)
 
 ## Problem statement
 
@@ -341,29 +341,13 @@ engine, passive indicators, triage integration, and persistence into one deliver
 - Dismiss marks both transactions in the pair
 - Algorithm improvements: prefer 50/50 splits, exact ratio ranking signal
 
-### Phase 3: Venmo enrichment integration + outgoing P2P detection
-
-Current detection only handles **incoming** P2P payments (friend pays you back). But the
-bigger user pain point is **outgoing** P2P — "I sent $47 on Venmo... what was that for?"
-
-**Why outgoing is harder:** Plaid shows a single settled Venmo/Zelle outflow that bundles
-multiple individual payments. A $47 dinner split and a $30 utilities split appear as one
-$77 debit. Amount-ratio matching against purchases is unreliable because the aggregate
-amount doesn't correspond to any single purchase.
-
-**Venmo CSV enrichment is the unlock.** The imported CSV (`utils/venmoEnrichment.js`)
-breaks aggregates back into individual payments with notes, counterparties, and amounts.
-With enrichment data, we can:
-- Match individual Venmo payments to purchases by note content (e.g., note "sushi" → Sushi Palace)
-- Match by individual payment amount ratio against purchases
-- Show counterparty context ("You paid Jake $47")
-
-**Phase 3 scope:**
+### Phase 3: Venmo enrichment integration + outgoing P2P detection ✓
 - Cross-reference `venmo_note` against merchant names for higher-confidence matches
 - Extend detection to outgoing P2P when enrichment data is available
 - Show enrichment data in RelationshipCard (counterparty name, note)
 - Counterparty name displayed on confirmed splits
-- Nudge users to import Venmo CSV when outgoing P2P transactions are detected but unenriched
+- Nudge users to import Venmo CSV — surfaces on post-triage "All caught up" screen when unenriched P2P payments were sorted
+- Test data: Venmo persona + CSV file (`scripts/test-data/venmo-statement.csv`) for end-to-end enrichment → relationship detection testing
 
 ---
 
