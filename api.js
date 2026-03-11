@@ -308,6 +308,8 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
     const manualCategoryChange = req.body.mappedCategory !== req.body.originalCategoryName;
     const shouldPin = !req.body.ruleMode && manualCategoryChange;
+    // effectiveDate: user-controlled date override for budget month bucketing
+    const effectiveDate = req.body.effectiveDate || null;
     d = {
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
@@ -315,19 +317,20 @@ router.post('/handleDialogSubmit', async (req, res) => {
       originalCategoryName: req.body.originalCategoryName,
       note: req.body.note ? req.body.note : '',
       excludeFromTotal: req.body.excludeFromTotal? req.body.excludeFromTotal : false,
+      effectiveDate,
       ...(shouldPin && { manually_set: true }),
     }
     const filter = { transaction_id: req.body.transaction_id, userId: uid };
-    const update = {
-      $set: {
-        mappedCategory: req.body.mappedCategory,
-        date: req.body.date,
-        note: req.body.note,
-        excludeFromTotal: req.body.excludeFromTotal,
-        // Only protect from future sweeps if category was manually changed without a rule
-        ...(shouldPin && { manually_set: true }),
-      }
+    const setFields = {
+      mappedCategory: req.body.mappedCategory,
+      date: req.body.date,
+      note: req.body.note,
+      excludeFromTotal: req.body.excludeFromTotal,
+      ...(shouldPin && { manually_set: true }),
     };
+    const update = effectiveDate
+      ? { $set: { ...setFields, effectiveDate } }
+      : { $set: setFields, $unset: { effectiveDate: '' } };
     await updateData('Plaid-Transactions', filter, update);
 
     // Auto-learn: if user opted in, save rule and re-categorize all matching transactions
@@ -587,6 +590,139 @@ router.post('/deleteCompoundRule', async (req, res) => {
   } catch (error) {
     console.error('/deleteCompoundRule error:', error.message);
     res.status(500).json({ message: 'Failed to delete compound rule' });
+  }
+});
+
+// --- Transaction relationship routes ---
+
+router.post('/linkTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId, type, signals, effectiveDate, recategorize } = req.body;
+
+    if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
+      return res.status(400).json({ message: 'transactionId and partnerId are required' });
+    }
+    if (type !== 'split' && type !== 'return') {
+      return res.status(400).json({ message: 'type must be "split" or "return"' });
+    }
+
+    const now = new Date().toISOString();
+    const linkData = { type, confirmedAt: now };
+    if (signals) linkData.signals = signals;
+
+    // Link both transactions to each other
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $set: { linkedTransaction: { transaction_id: partnerId, ...linkData } } }
+    );
+    const partnerUpdate = { $set: { linkedTransaction: { transaction_id: transactionId, ...linkData } } };
+    // Optionally set effectiveDate on the secondary transaction to align budget months
+    if (effectiveDate) {
+      partnerUpdate.$set.effectiveDate = effectiveDate;
+    }
+    // Optionally recategorize the secondary transaction (when it was "To Sort")
+    if (recategorize) {
+      partnerUpdate.$set.mappedCategory = recategorize;
+    }
+    await updateData('Plaid-Transactions',
+      { transaction_id: partnerId, userId: uid },
+      partnerUpdate
+    );
+
+    res.json({ linked: true, transactionId, partnerId, type, effectiveDate: effectiveDate || null, recategorize: recategorize || null });
+  } catch (error) {
+    console.error('/linkTransactions error:', error.message);
+    res.status(500).json({ message: 'Failed to link transactions' });
+  }
+});
+
+router.post('/unlinkTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId, revertCategory } = req.body;
+
+    if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
+      return res.status(400).json({ message: 'transactionId and partnerId are required' });
+    }
+
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $unset: { linkedTransaction: '', effectiveDate: '' } }
+    );
+    const partnerUnlink = { $unset: { linkedTransaction: '', effectiveDate: '' } };
+    // Revert category if it was auto-recategorized on link
+    if (revertCategory) {
+      partnerUnlink.$set = { mappedCategory: revertCategory };
+    }
+    await updateData('Plaid-Transactions',
+      { transaction_id: partnerId, userId: uid },
+      partnerUnlink
+    );
+
+    res.json({ unlinked: true, transactionId, partnerId });
+  } catch (error) {
+    console.error('/unlinkTransactions error:', error.message);
+    res.status(500).json({ message: 'Failed to unlink transactions' });
+  }
+});
+
+router.post('/undoDismissRelationship', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId } = req.body;
+
+    if (!isStr(transactionId, 100)) {
+      return res.status(400).json({ message: 'transactionId is required' });
+    }
+
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $unset: { dismissedRelationship: '' } }
+    );
+    if (partnerId) {
+      await updateData('Plaid-Transactions',
+        { transaction_id: partnerId, userId: uid },
+        { $unset: { dismissedRelationship: '' } }
+      );
+    }
+
+    res.json({ undone: true, transactionId, partnerId });
+  } catch (error) {
+    console.error('/undoDismissRelationship error:', error.message);
+    res.status(500).json({ message: 'Failed to undo dismiss' });
+  }
+});
+
+router.post('/dismissRelationship', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionId, partnerId } = req.body;
+
+    if (!isStr(transactionId, 100)) {
+      return res.status(400).json({ message: 'transactionId is required' });
+    }
+
+    const now = new Date().toISOString();
+    await updateData('Plaid-Transactions',
+      { transaction_id: transactionId, userId: uid },
+      { $set: { dismissedRelationship: now } }
+    );
+    if (partnerId) {
+      await updateData('Plaid-Transactions',
+        { transaction_id: partnerId, userId: uid },
+        { $set: { dismissedRelationship: now } }
+      );
+    }
+
+    res.json({ dismissed: true, transactionId, partnerId });
+  } catch (error) {
+    console.error('/dismissRelationship error:', error.message);
+    res.status(500).json({ message: 'Failed to dismiss relationship' });
   }
 });
 

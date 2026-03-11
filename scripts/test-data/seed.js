@@ -10,6 +10,7 @@ const {
   createRng, hashString, getMonthsBack,
   generateTransactions, generateAccounts, generateCategories,
   generateCompoundRules, enrichP2PTransactions,
+  resolveScenarioTransactions,
 } = require('./generators');
 
 const { sandbox } = require('../../utils/plaidClient');
@@ -199,6 +200,32 @@ async function seedPersona(db, personaName) {
         candidates[idx].manually_set = true;
         candidates.splice(idx, 1);
       }
+    }
+
+    // Inject scenario transactions (hand-crafted split/return test pairs)
+    if (persona.scenarioTransactions) {
+      const scenarioTxns = resolveScenarioTransactions({
+        userId: uid,
+        scenarios: persona.scenarioTransactions,
+        accountMap,
+        months,
+        txnCounterStart: transactions.length,
+      });
+
+      // Resolve cross-references for pre-linked pairs (placeholder → real txn ID).
+      // Find adjacent pairs that both have the placeholder and link them to each other.
+      const placeholder = '__placeholder_linked_partner__';
+      for (let i = 0; i < scenarioTxns.length - 1; i++) {
+        const a = scenarioTxns[i], b = scenarioTxns[i + 1];
+        if (a.linkedTransaction?.transaction_id === placeholder &&
+            b.linkedTransaction?.transaction_id === placeholder) {
+          a.linkedTransaction.transaction_id = b.transaction_id;
+          b.linkedTransaction.transaction_id = a.transaction_id;
+          i++; // Skip the partner we just resolved
+        }
+      }
+
+      transactions.push(...scenarioTxns);
     }
 
     const txnDocs = transactions.map(t => ({ ...t, insertDate: Date.now() }));

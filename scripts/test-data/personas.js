@@ -305,6 +305,237 @@ const PERSONAS = {
       merchantPool: MERCHANTS,
     },
   },
+  splits: {
+    uid: 'test-user-splits',
+    user: {
+      email: 'splits@basil.test',
+      name: 'Test Splits',
+      picture: null,
+      firebase: false,
+      isTestUser: true,
+      onboarded_at: new Date(),
+    },
+    accounts: [
+      { institution: 'Chase', name: 'Chase Checking', officialName: 'TOTAL CHECKING', mask: '4521', type: 'depository', subtype: 'checking', balance: 6000.00, available: 6000.00 },
+      { institution: 'Venmo', name: 'Venmo', officialName: 'VENMO BALANCE', mask: '0000', type: 'depository', subtype: 'checking', balance: 500.00, available: 500.00 },
+    ],
+    categoryCustomizations: [
+      { category: 'Food & Dining', monthly_limit: 600 },
+      { category: 'Entertainment', monthly_limit: 200 },
+      { category: 'Rent & Utilities', monthly_limit: 2200 },
+      { category: 'Shopping', monthly_limit: 300 },
+    ],
+    compoundRules: [
+      {
+        label: 'Venmo payments → To Sort',
+        conditions: [{ field: 'name', op: 'contains', value: 'VENMO' }],
+        categoryName: 'To Sort',
+        createdFrom: 'manual',
+      },
+    ],
+    transactionConfig: {
+      months: 4,
+      density: 'normal',
+      merchantPool: MERCHANTS,
+    },
+    // Injected transaction pairs for split/return detection testing.
+    // Dates use relative format: { monthsBack: N, day: D } resolved at seed time.
+    // account: 'checking' | 'credit' → resolved to first matching account subtype.
+    scenarioTransactions: [
+      // --- HIGH CONFIDENCE: same-day 50/50 dining split ---
+      { name: 'SUSHI PALACE NYC', merchant_name: 'Sushi Palace', amount: 94, date: { monthsBack: 0, day: 5 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -47, date: { monthsBack: 0, day: 5 },
+        account: 'checking', venmo_counterparty: 'Jake Miller', venmo_note: 'sushi', venmo_id: 'venmo-split-sushi' },
+
+      // --- HIGH CONFIDENCE: 3-way concert ticket split (high PFC, no enrichment) ---
+      { name: 'TICKETMASTER*CONCERT', merchant_name: 'Ticketmaster', amount: 150, date: { monthsBack: 0, day: 2 },
+        account: 'checking', mappedCategory: 'Entertainment', pfc: 'ENTERTAINMENT', pfcDetailed: 'ENTERTAINMENT_MUSIC' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -50, date: { monthsBack: 0, day: 3 },
+        account: 'checking' },
+
+      // --- MEDIUM CONFIDENCE: exact 50/50 ratio, but low-tier PFC and no enrichment ---
+      { name: 'IKEA BROOKLYN', merchant_name: 'IKEA', amount: 80, date: { monthsBack: 1, day: 28 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'ZELLE PAYMENT FROM', merchant_name: null, amount: -40, date: { monthsBack: 0, day: 2 },
+        account: 'checking' },
+
+      // --- MEDIUM CONFIDENCE: 4-way Airbnb split (high PFC makes this high actually) ---
+      { name: 'AIRBNB *HM9876XYZ', merchant_name: 'Airbnb', amount: 400, date: { monthsBack: 1, day: 15 },
+        account: 'checking', mappedCategory: 'Travel', pfc: 'TRAVEL', pfcDetailed: 'TRAVEL_LODGING' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -100, date: { monthsBack: 1, day: 18 },
+        account: 'checking' },
+
+      // --- NO MATCH: wrong ratio (15/100 = 0.15, not close to 1/2, 1/3, or 1/4) ---
+      { name: 'AMAZON.COM*XY1234', merchant_name: 'Amazon', amount: 100, date: { monthsBack: 0, day: 1 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -15, date: { monthsBack: 0, day: 2 },
+        account: 'checking' },
+
+      // --- NO MATCH: too far apart (14 days) ---
+      { name: 'SWEETGREEN NYC', merchant_name: 'Sweetgreen', amount: 60, date: { monthsBack: 1, day: 1 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -30, date: { monthsBack: 1, day: 15 },
+        account: 'checking' },
+
+      // --- RETURN: exact refund, same merchant ---
+      { name: 'NIKE.COM ORDER#98765', merchant_name: 'Nike', amount: 89.99, date: { monthsBack: 0, day: 3 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'NIKE.COM REFUND', merchant_name: 'Nike', amount: -89.99, date: { monthsBack: 0, day: 7 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+
+      // --- RETURN: partial refund (within $0.50) ---
+      { name: 'BEST BUY #0456', merchant_name: 'Best Buy', amount: 149.99, date: { monthsBack: 1, day: 20 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'BEST BUY #0456 RETURN', merchant_name: 'Best Buy', amount: -149.50, date: { monthsBack: 1, day: 25 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+
+      // --- EDGE: P2P with no matching purchase ---
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -25, date: { monthsBack: 0, day: 8 },
+        account: 'checking' },
+
+      // --- EDGE: already-linked transactions (should not re-suggest) ---
+      { name: 'BURGER JOINT NYC', merchant_name: 'Burger Joint', amount: 100, date: { monthsBack: 0, day: 1 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK',
+        linkedTransaction: { transaction_id: '__placeholder_linked_partner__', type: 'split', confirmedAt: new Date().toISOString() } },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -50, date: { monthsBack: 0, day: 1 },
+        account: 'checking', venmo_counterparty: 'Dan O\'Brien', venmo_note: 'burgers',
+        linkedTransaction: { transaction_id: '__placeholder_linked_partner__', type: 'split', confirmedAt: new Date().toISOString() } },
+    ],
+  },
+
+  returns: {
+    uid: 'test-user-returns',
+    user: {
+      email: 'returns@basil.test',
+      name: 'Test Returns',
+      picture: null,
+      firebase: false,
+      isTestUser: true,
+      onboarded_at: new Date(),
+    },
+    accounts: [
+      { institution: 'Bank of America', name: 'BoA Checking', officialName: 'ADVANTAGE CHECKING', mask: '7788', type: 'depository', subtype: 'checking', balance: 4000.00, available: 4000.00 },
+      { institution: 'Bank of America', name: 'BoA Credit', officialName: 'CASH REWARDS VISA', mask: '5566', type: 'credit', subtype: 'credit card', balance: 1200.00, available: 3800.00, limit: 5000 },
+    ],
+    categoryCustomizations: [
+      { category: 'Shopping', monthly_limit: 400 },
+      { category: 'Food & Dining', monthly_limit: 500 },
+    ],
+    compoundRules: [],
+    transactionConfig: {
+      months: 3,
+      density: 'normal',
+      merchantPool: MERCHANTS,
+    },
+    scenarioTransactions: [
+      // --- RETURN: exact refund, same merchant ---
+      { name: 'TARGET #5678', merchant_name: 'Target', amount: 45.67, date: { monthsBack: 0, day: 2 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'TARGET #5678 RETURN', merchant_name: 'Target', amount: -45.67, date: { monthsBack: 0, day: 5 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+
+      // --- NO MATCH: partial refund too large ($15 diff, exceeds $0.50) ---
+      { name: 'NORDSTROM #1234', merchant_name: 'Nordstrom', amount: 200, date: { monthsBack: 1, day: 10 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'NORDSTROM #1234 REFUND', merchant_name: 'Nordstrom', amount: -185, date: { monthsBack: 1, day: 18 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+
+      // --- NO MATCH: same merchant, wrong amount (not a refund pattern) ---
+      { name: 'WHOLE FOODS MKT #10234', merchant_name: 'Whole Foods', amount: 92, date: { monthsBack: 0, day: 1 },
+        account: 'credit', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK' },
+      { name: 'WHOLE FOODS MKT #10234', merchant_name: 'Whole Foods', amount: -12.50, date: { monthsBack: 0, day: 3 },
+        account: 'credit', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK' },
+
+      // --- NO MATCH: same amount, different merchant ---
+      { name: 'UNIQLO NYC', merchant_name: 'Uniqlo', amount: 50, date: { monthsBack: 0, day: 1 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'H&M ONLINE', merchant_name: 'H&M', amount: -50, date: { monthsBack: 0, day: 3 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+
+      // --- NO MATCH: refund too late (46 days apart) ---
+      { name: 'REI #789', merchant_name: 'REI', amount: 120, date: { monthsBack: 2, day: 5 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'REI #789 RETURN', merchant_name: 'REI', amount: -120, date: { monthsBack: 1, day: 20 },
+        account: 'credit', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+    ],
+  },
+
+  venmo: {
+    uid: 'test-user-venmo',
+    user: {
+      email: 'venmo@basil.test',
+      name: 'Test Venmo',
+      picture: null,
+      firebase: false,
+      isTestUser: true,
+      onboarded_at: new Date(),
+    },
+    accounts: [
+      { institution: 'Chase', name: 'Chase Checking', officialName: 'TOTAL CHECKING', mask: '4521', type: 'depository', subtype: 'checking', balance: 5500.00, available: 5500.00 },
+      { institution: 'Venmo', name: 'Venmo', officialName: 'VENMO BALANCE', mask: '0000', type: 'depository', subtype: 'checking', balance: 350.00, available: 350.00 },
+    ],
+    categoryCustomizations: [
+      { category: 'Food & Dining', monthly_limit: 600 },
+      { category: 'Entertainment', monthly_limit: 200 },
+      { category: 'Rent & Utilities', monthly_limit: 2200 },
+      { category: 'Shopping', monthly_limit: 300 },
+    ],
+    compoundRules: [
+      {
+        label: 'Venmo payments → To Sort',
+        conditions: [{ field: 'name', op: 'contains', value: 'VENMO' }],
+        categoryName: 'To Sort',
+        createdFrom: 'manual',
+      },
+    ],
+    transactionConfig: {
+      months: 3,
+      density: 'normal',
+      merchantPool: MERCHANTS,
+    },
+    scenarioTransactions: [
+      // --- OUTGOING: enriched Venmo payment with note matching a purchase ---
+      { name: 'SUSHI PALACE NYC', merchant_name: 'Sushi Palace', amount: 94, date: { monthsBack: 0, day: 3 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 47, date: { monthsBack: 0, day: 3 },
+        account: 'checking', venmo_counterparty: 'Jake Miller', venmo_note: 'sushi', venmo_id: 'venmo-out-sushi' },
+
+      // --- OUTGOING: enriched, note matches merchant, no ratio match (Plaid aggregate) ---
+      { name: 'BAR GOTO NYC', merchant_name: 'Bar Goto', amount: 120, date: { monthsBack: 0, day: 6 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_BAR' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 85, date: { monthsBack: 0, day: 7 },
+        account: 'checking', venmo_counterparty: 'Sarah Chen', venmo_note: 'bar goto', venmo_id: 'venmo-out-bar' },
+
+      // --- OUTGOING: enriched but note does NOT match any purchase (no match expected) ---
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 25, date: { monthsBack: 0, day: 10 },
+        account: 'checking', venmo_counterparty: 'Emily Park', venmo_note: 'birthday gift', venmo_id: 'venmo-out-gift' },
+
+      // --- OUTGOING: unenriched Venmo (should trigger CSV import nudge) ---
+      // After CSV import, notes "Thai Basil" and "bowling" match purchases below → new relationship matches
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 60, date: { monthsBack: 0, day: 12 },
+        account: 'checking' },
+      { name: 'THAI BASIL NYC', merchant_name: 'Thai Basil', amount: 120, date: { monthsBack: 0, day: 11 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: 35, date: { monthsBack: 0, day: 14 },
+        account: 'checking' },
+      { name: 'BROOKLYN BOWL', merchant_name: 'Brooklyn Bowl', amount: 70, date: { monthsBack: 0, day: 13 },
+        account: 'checking', mappedCategory: 'Entertainment', pfc: 'ENTERTAINMENT' },
+
+      // --- INCOMING: standard payback for comparison ---
+      { name: 'SWEETGREEN NYC', merchant_name: 'Sweetgreen', amount: 30, date: { monthsBack: 0, day: 8 },
+        account: 'checking', mappedCategory: 'Food & Dining', pfc: 'FOOD_AND_DRINK' },
+      { name: 'VENMO PAYMENT', merchant_name: null, amount: -15, date: { monthsBack: 0, day: 9 },
+        account: 'checking', venmo_counterparty: 'Alex Kim', venmo_note: 'sweetgreen' },
+
+      // --- RETURN: for completeness ---
+      { name: 'NIKE.COM ORDER#12345', merchant_name: 'Nike', amount: 89.99, date: { monthsBack: 0, day: 1 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+      { name: 'NIKE.COM REFUND', merchant_name: 'Nike', amount: -89.99, date: { monthsBack: 0, day: 5 },
+        account: 'checking', mappedCategory: 'Shopping', pfc: 'GENERAL_MERCHANDISE' },
+    ],
+  },
+
   error: {
     uid: 'test-user-error',
     user: {

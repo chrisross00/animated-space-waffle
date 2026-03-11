@@ -268,6 +268,62 @@ function enrichP2PTransactions(rng, transactions) {
   }
 }
 
+// --- Scenario transaction resolver ---
+// Converts relative date specs + logical account refs into real transaction docs
+function resolveScenarioTransactions({ userId, scenarios, accountMap, months, txnCounterStart }) {
+  let counter = txnCounterStart;
+  const accountNames = Object.keys(accountMap);
+  const checkingAcct = accountNames.find(a => accountMap[a].subtype === 'checking') || accountNames[0];
+  const creditAcct = accountNames.find(a => accountMap[a].subtype === 'credit card');
+
+  return scenarios.map(s => {
+    // Resolve relative date: { monthsBack: N, day: D }
+    let date;
+    if (s.date && typeof s.date === 'object' && 'monthsBack' in s.date) {
+      const now = new Date();
+      const d = new Date(now.getFullYear(), now.getMonth() - s.date.monthsBack, s.date.day);
+      date = dateStr(d);
+    } else {
+      date = s.date; // Already a YYYY-MM-DD string
+    }
+
+    // Resolve logical account ref
+    const acctName = s.account === 'credit' ? (creditAcct || checkingAcct) : checkingAcct;
+    const accountId = accountMap[acctName].account_id;
+
+    const txn = {
+      transaction_id: `test-txn-${userId}-${String(counter++).padStart(5, '0')}`,
+      account_id: accountId,
+      name: s.name,
+      merchant_name: s.merchant_name || null,
+      amount: s.amount,
+      date,
+      pending: false,
+      pending_transaction_id: null,
+      transaction_type: s.amount < 0 ? 'credit' : 'debit',
+      category: [],
+      personal_finance_category: {
+        primary: s.pfc || 'GENERAL',
+        detailed: s.pfcDetailed || '',
+      },
+      userId,
+      account: acctName,
+      mappedCategory: s.mappedCategory || 'To Sort',
+      createdDate: Date.now(),
+    };
+
+    // Optional enrichment fields
+    if (s.venmo_counterparty) txn.venmo_counterparty = s.venmo_counterparty;
+    if (s.venmo_note) txn.venmo_note = s.venmo_note;
+    if (s.venmo_id) txn.venmo_id = s.venmo_id;
+
+    // Pre-linked for "already linked" test scenario
+    if (s.linkedTransaction) txn.linkedTransaction = s.linkedTransaction;
+
+    return txn;
+  });
+}
+
 module.exports = {
   createRng,
   hashString,
@@ -280,4 +336,5 @@ module.exports = {
   generateCategories,
   generateCompoundRules,
   enrichP2PTransactions,
+  resolveScenarioTransactions,
 };

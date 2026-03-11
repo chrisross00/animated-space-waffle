@@ -17,6 +17,7 @@
         <q-space />
         <template v-if="user">
           <span class="admin-user-name">{{ user.displayName || user.email }}</span>
+          <q-btn flat dense :icon="darkMode ? 'light_mode' : 'dark_mode'" @click="toggleDarkMode" class="admin-theme-btn" />
           <q-btn flat dense icon="logout" @click="handleSignOut" />
         </template>
       </q-toolbar>
@@ -77,7 +78,13 @@ export default {
       signingIn: false,
       authError: null,
       activeTab: 'test-users',
+      darkMode: localStorage.getItem('basil-admin-theme') === 'dark',
     };
+  },
+  mounted() {
+    if (this.darkMode) {
+      document.documentElement.dataset.theme = 'dark';
+    }
   },
   async created() {
     // Dev bypass: skip Firebase auth, go straight to admin check
@@ -118,6 +125,18 @@ export default {
       await signOut();
       this.user = null;
       this.isAdmin = false;
+    },
+    toggleDarkMode() {
+      this.darkMode = !this.darkMode;
+      if (this.darkMode) {
+        document.documentElement.dataset.theme = 'dark';
+        localStorage.setItem('basil-admin-theme', 'dark');
+      } else {
+        delete document.documentElement.dataset.theme;
+        localStorage.setItem('basil-admin-theme', '');
+      }
+      document.documentElement.classList.add('basil-theme-transitioning');
+      setTimeout(() => document.documentElement.classList.remove('basil-theme-transitioning'), 350);
     },
   },
 };
@@ -184,5 +203,46 @@ body {
   margin-top: var(--basil-space-4);
   color: var(--basil-negative);
   font-size: 14px;
+}
+.admin-theme-btn {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ---- Dark mode: Quasar component overrides ---- */
+[data-theme="dark"] .q-card {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-item {
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-field__control {
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-field__label {
+  color: var(--basil-text-secondary) !important;
+}
+[data-theme="dark"] .q-field--outlined .q-field__control:hover::before {
+  border-color: var(--basil-text-secondary) !important;
+}
+[data-theme="dark"] .q-field__native,
+[data-theme="dark"] .q-field__input {
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-table {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-table thead th {
+  color: var(--basil-text-secondary) !important;
+}
+[data-theme="dark"] .q-table tbody td {
+  color: var(--basil-text) !important;
+}
+[data-theme="dark"] .q-table__bottom {
+  color: var(--basil-text-secondary) !important;
+}
+[data-theme="dark"] .q-separator {
+  background-color: var(--basil-border) !important;
 }
 </style>

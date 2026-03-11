@@ -208,9 +208,16 @@ async function deleteCompoundRule(userId, ruleId) {
 
 async function findUserTransactionsByMonth(userId, month) {
   const db = (await connectToDb()).db(process.env.DB_NAME);
-  // month is "YYYY-MM" — match transactions where date starts with that prefix
+  // month is "YYYY-MM" — match transactions by effectiveDate (if set) or date
   return db.collection('Plaid-Transactions')
-    .find({ userId, date: { $regex: `^${month}` } })
+    .find({
+      userId,
+      $or: [
+        { effectiveDate: { $regex: `^${month}` } },
+        { effectiveDate: null, date: { $regex: `^${month}` } },
+        { effectiveDate: { $exists: false }, date: { $regex: `^${month}` } },
+      ],
+    })
     .sort({ date: -1 })
     .toArray();
 }

@@ -284,6 +284,27 @@
   letter-spacing: 0.05em;
 }
 
+/* ========================================
+   Dark mode — Quasar component overrides
+   ======================================== */
+[data-theme="dark"] .q-card {
+  background-color: var(--basil-surface) !important;
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .basil-tosort-card:hover,
+[data-theme="dark"] .basil-relationships-card:not(.basil-relationships-card--expanded):hover {
+  background-color: var(--basil-surface-raised) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control {
+  color: var(--basil-text) !important;
+}
+
+[data-theme="dark"] .q-field--outlined .q-field__control:hover::before {
+  border-color: var(--basil-text-secondary) !important;
+}
+
 
 </style>
 
@@ -322,7 +343,7 @@ export default {
       let incomeAmount = 0;
       for (const t of txns) {
         if (t.pending || t.excludeFromTotal) continue;
-        if (!t.date || t.date.substring(0, 7) !== currentYM) continue;
+        if (!(t.effectiveDate || t.date) || (t.effectiveDate || t.date).substring(0, 7) !== currentYM) continue;
         const type = catTypes[t.mappedCategory];
         if (type === 'expense') expenseSpend += Math.abs(t.amount);
         if (type === 'income') incomeAmount += Math.abs(t.amount);

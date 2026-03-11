@@ -130,11 +130,41 @@
           <div class="basil-tosort-card__body">
             <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
             <div>
-              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to review</div>
+              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to sort</div>
               <div v-if="toSortSuggestionStats.withSuggestion > 0" class="basil-tosort-card__hint">
-                {{ toSortSuggestionStats.withSuggestion }} with suggested {{ toSortSuggestionStats.withSuggestion !== 1 ? 'categories' : 'category' }}
+                {{ toSortSuggestionStats.withSuggestion }} suggested
               </div>
             </div>
+          </div>
+        </q-card>
+      </div>
+
+      <!-- Detected Relationships Card -->
+      <div
+        v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
+        class="q-pa-md"
+        style="max-width: 800px; margin: 0 auto; padding-top: 0;"
+      >
+        <q-card :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]" @click="!relationshipsExpanded && (relationshipsExpanded = true)">
+          <div class="basil-card-head" @click.stop="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
+            <span class="basil-card-label">Detected Relationships</span>
+            <q-icon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
+          </div>
+          <div v-if="!relationshipsExpanded" class="basil-relationships-card__body">
+            <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
+            <div>
+              <div class="basil-tosort-card__headline">possible {{ pendingRelationships.length === 1 ? 'match' : 'matches' }} to review</div>
+            </div>
+          </div>
+          <div v-if="relationshipsExpanded" class="basil-relationships-card__list">
+            <RelationshipCard
+              v-for="rel in pendingRelationships"
+              :key="relKey(rel)"
+              :relationship="rel"
+              :disable="relationshipSaving"
+              @confirm="relationshipConfirm"
+              @dismiss="relationshipDismiss"
+            />
           </div>
         </q-card>
       </div>
@@ -247,16 +277,42 @@
 
                   <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
                       <q-item-section>
-                        <q-item-label lines="1">{{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</q-item-label>
+                        <q-item-label lines="1">
+                          <span class="basil-txn-label__primary">
+                            {{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}
+                            <span
+                              v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
+                              class="basil-relationship-badge basil-relationship-badge--pending"
+                            >
+                              Possible Match
+                              <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
+                            </span>
+                            <span
+                              v-else-if="relationshipMap[item.transaction_id] && item.linkedTransaction"
+                              class="basil-relationship-badge basil-relationship-badge--confirmed"
+                            >
+                              {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
+                              <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
+                            </span>
+                          </span>
+                        </q-item-label>
                         <q-item-label caption lines="2">
                           {{ item.date }}
+                          <q-icon
+                            v-if="item.effectiveDate && item.effectiveDate !== item.date"
+                            name="event_repeat"
+                            size="12px"
+                            class="basil-effective-date-icon"
+                          >
+                            <q-tooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</q-tooltip>
+                          </q-icon>
                           <span v-if="item.venmo_counterparty" class="basil-txn-institution"> · Venmo · {{ item.venmo_counterparty }}</span>
                           <span v-else-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
                         </q-item-label>
                       </q-item-section>
                       <div class="transaction-decoration">
                         <q-item-section side top>
-                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}                    
+                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}
                         </q-item-section>
                         <q-item-section side bottom v-if="item.excludeFromTotal">
                           <q-badge label="excluded" />
@@ -267,8 +323,11 @@
                         :dropDown="this.categoryMonthlyLimits"
                         :similarity-data="dialogSimilarityData"
                         :attribution="getTransactionAttribution(item)"
+                        :relationship="!item.linkedTransaction && !item.dismissedRelationship ? relationshipMap[item.transaction_id]?.rel : null"
                         @update-transaction="onSubmit"
-                        @view-rule="handleViewRule"/>
+                        @view-rule="handleViewRule"
+                        @relationship-confirm="relationshipConfirm"
+                        @relationship-dismiss="relationshipDismiss"/>
                       </q-dialog>
                     </q-item>
                 </div>
@@ -398,7 +457,23 @@
                     {{ merchantInitials(props.row) }}
                   </div>
                   <div class="basil-txn-label">
-                    <div class="basil-txn-label__primary">{{ props.row.venmo_note || props.row.merchant_name || props.row.name }}</div>
+                    <div class="basil-txn-label__primary">
+                      {{ props.row.venmo_note || props.row.merchant_name || props.row.name }}
+                      <span
+                        v-if="relationshipMap[props.row.transaction_id] && !props.row.linkedTransaction && !props.row.dismissedRelationship"
+                        class="basil-relationship-badge basil-relationship-badge--pending"
+                      >
+                        Possible Match
+                        <q-tooltip>{{ relationshipTooltip(props.row) }}</q-tooltip>
+                      </span>
+                      <span
+                        v-else-if="relationshipMap[props.row.transaction_id] && props.row.linkedTransaction"
+                        class="basil-relationship-badge basil-relationship-badge--confirmed"
+                      >
+                        {{ relationshipMap[props.row.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
+                        <q-tooltip>{{ relationshipTooltip(props.row) }}</q-tooltip>
+                      </span>
+                    </div>
                     <div
                       v-if="props.row.venmo_counterparty"
                       class="basil-txn-label__secondary"
@@ -419,9 +494,9 @@
               <q-td key="amount" :props="props" class="text-right">
                 <span
                   class="basil-txn-amount"
-                  :class="`basil-txn-amount--${categoryTypeMap[props.row.mappedCategory] || 'expense'}`"
+                  :class="props.row.amount < 0 ? 'basil-txn-amount--income' : `basil-txn-amount--${categoryTypeMap[props.row.mappedCategory] || 'expense'}`"
                 >
-                  {{ categoryTypeMap[props.row.mappedCategory] === 'income' ? '+' : '' }}${{ Math.abs(props.row.amount).toFixed(2) }}
+                  {{ props.row.amount < 0 ? '+' : '' }}${{ Math.abs(props.row.amount).toFixed(2) }}
                 </span>
               </q-td>
 
@@ -433,6 +508,14 @@
               <!-- Date (desktop only) -->
               <q-td key="date" :props="props" class="gt-xs">
                 {{ formatDate(props.row.date) }}
+                <q-icon
+                  v-if="props.row.effectiveDate && props.row.effectiveDate !== props.row.date"
+                  name="event_repeat"
+                  size="12px"
+                  class="basil-effective-date-icon"
+                >
+                  <q-tooltip>Moved from {{ formatDate(props.row.date) }} to {{ formatDate(props.row.effectiveDate) }}</q-tooltip>
+                </q-icon>
               </q-td>
 
               <!-- Status (desktop only) -->
@@ -459,8 +542,11 @@
             :dropDown="categoryMonthlyLimits"
             :similarity-data="tableDialogSimilarityData"
             :attribution="getTransactionAttribution(tableDialogTransaction)"
+            :relationship="!tableDialogTransaction.linkedTransaction && !tableDialogTransaction.dismissedRelationship ? relationshipMap[tableDialogTransaction.transaction_id]?.rel : null"
             @update-transaction="onSubmit"
             @view-rule="handleViewRule"
+            @relationship-confirm="relationshipConfirm"
+            @relationship-dismiss="relationshipDismiss"
           />
         </q-dialog>
       </div>
@@ -517,6 +603,18 @@
           <div class="basil-triage__done">
             <q-icon name="check_circle" size="48px" color="positive" />
             <div class="basil-triage__done-heading">All caught up!</div>
+          </div>
+          <div v-if="triageVenmoCount > 0" class="basil-triage__venmo-nudge">
+            <div class="basil-triage__venmo-nudge-text">
+              You sorted {{ triageVenmoCount }} Venmo {{ triageVenmoCount === 1 ? 'payment' : 'payments' }} without details.
+            </div>
+            <q-btn
+              outline dense no-caps
+              color="primary"
+              icon="upload_file"
+              label="Import Venmo CSV"
+              @click="triageOpen = false; $nextTick(() => openVenmoImport())"
+            />
           </div>
           <div class="basil-triage__actions">
             <q-btn unelevated color="primary" label="Done" class="full-width" v-close-popup />
@@ -620,12 +718,15 @@
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
   import customParseFormat from 'dayjs/plugin/customParseFormat'
   import DialogComponent from '../components/DialogComponent.vue'
+  import RelationshipCard from '../components/RelationshipCard.vue'
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions } from '@/firebase';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/firebase';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
+  import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
+  import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
 
 // import e from 'express';
 
@@ -652,6 +753,7 @@
   export default {
     components: {
       DialogComponent,
+      RelationshipCard,
       SkeletonBudget,
       EmptyState,
     },
@@ -719,6 +821,9 @@
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,
+        triageVenmoCount: 0,
+        relationshipsExpanded: false,
+        relationshipSaving: false,
       };
     },
     computed: {
@@ -728,6 +833,24 @@
       categoryTypeMap() {
         const map = {};
         for (const c of store.state.categories || []) map[c.category] = c.type;
+        return map;
+      },
+      relationshipMap() {
+        const relationships = detectRelationships(this.transactions);
+        const map = {};
+        for (const rel of relationships) {
+          if (rel.type === 'split') {
+            const purchase = rel.purchaseTxn;
+            const p2p = rel.p2pTxn;
+            map[purchase.transaction_id] = { type: 'split', confidence: rel.confidence, partner: p2p, role: 'purchase', rel };
+            map[p2p.transaction_id] = { type: 'split', confidence: rel.confidence, partner: purchase, role: 'p2p', rel };
+          } else if (rel.type === 'return') {
+            const charge = rel.chargeTxn;
+            const refund = rel.refundTxn;
+            map[charge.transaction_id] = { type: 'return', confidence: rel.confidence, partner: refund, role: 'charge', rel };
+            map[refund.transaction_id] = { type: 'return', confidence: rel.confidence, partner: charge, role: 'refund', rel };
+          }
+        }
         return map;
       },
       netPositive() {
@@ -743,8 +866,8 @@
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
           rows = rows.filter(t =>
-            dayjs(t.date).year() === m.year() &&
-            dayjs(t.date).month() === m.month()
+            dayjs(t.effectiveDate || t.date).year() === m.year() &&
+            dayjs(t.effectiveDate || t.date).month() === m.month()
           );
         }
         if (this.amountMin !== null && this.amountMin !== '') {
@@ -763,8 +886,8 @@
             ? []
             : groupedTransactions.filter(
                 (transaction) =>
-                  dayjs(transaction.date).year() === selectedDate.year() &&
-                  dayjs(transaction.date).month() === selectedDate.month()
+                  dayjs(transaction.effectiveDate || transaction.date).year() === selectedDate.year() &&
+                  dayjs(transaction.effectiveDate || transaction.date).month() === selectedDate.month()
               );
           // console.log('filteredTransactions', filtered)
           return filtered; 
@@ -806,7 +929,7 @@
         for (const txn of allTxns) {
           const key = txn.merchant_name || txn.name;
           if (!key) continue;
-          const m = dayjs(txn.date).format('YYYY-MM');
+          const m = dayjs(txn.effectiveDate || txn.date).format('YYYY-MM');
           if (!merchantMonths[key]) merchantMonths[key] = new Set();
           merchantMonths[key].add(m);
         }
@@ -864,8 +987,8 @@
         const sel = this.selectedDate.actual;
         return (store.state.transactions || []).filter(txn =>
           !txn.pending && txn.mappedCategory === 'To Sort' &&
-          dayjs(txn.date).year() === sel.year() &&
-          dayjs(txn.date).month() === sel.month()
+          dayjs(txn.effectiveDate || txn.date).year() === sel.year() &&
+          dayjs(txn.effectiveDate || txn.date).month() === sel.month()
         );
       },
       toSortWithSuggestions() {
@@ -874,7 +997,7 @@
         const sameDayMap = {};
         for (const txn of store.state.transactions || []) {
           if (txn.pending || !txn.mappedCategory || txn.mappedCategory === 'To Sort') continue;
-          const d = txn.date;
+          const d = txn.effectiveDate || txn.date;
           if (!sameDayMap[d]) sameDayMap[d] = new Set();
           sameDayMap[d].add(txn.mappedCategory);
         }
@@ -896,7 +1019,7 @@
             reason = `Previously categorized (${merchantMatch.count}x)`;
             if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
           } else {
-            const dayCats = sameDayMap[txn.date];
+            const dayCats = sameDayMap[txn.effectiveDate || txn.date];
             if (dayCats && dayCats.size === 1) {
               suggestion = [...dayCats][0];
               confidence = 'low';
@@ -928,6 +1051,18 @@
         if (!this.triageItems?.length) return null;
         return this.getTransactionAttribution(this.triageItems[0]);
       },
+      pendingRelationships() {
+        const relationships = detectRelationships(this.transactions);
+        return relationships.filter(rel => {
+          const ids = rel.type === 'split'
+            ? [rel.purchaseTxn.transaction_id, rel.p2pTxn.transaction_id]
+            : [rel.chargeTxn.transaction_id, rel.refundTxn.transaction_id];
+          return !ids.some(id => {
+            const txn = this.transactions.find(t => t.transaction_id === id);
+            return txn?.linkedTransaction || txn?.dismissedRelationship;
+          });
+        });
+      },
       isCurrentMonth() {
         return this.selectedDate.actual.format('YYYY-MM') === dayjs().format('YYYY-MM');
       },
@@ -948,7 +1083,7 @@
           let total = 0, count = 0;
           for (const m of lastThree) {
             const monthTotal = allTxns
-              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.date).format('YYYY-MM') === m)
+              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.effectiveDate || t.date).format('YYYY-MM') === m)
               .reduce((s, t) => s + Math.abs(t.amount), 0);
             if (monthTotal > 0) { total += monthTotal; count++; }
           }
@@ -957,7 +1092,7 @@
         // Which recurring merchants have already appeared this month?
         const appearedThisMonth = new Set(
           allTxns
-            .filter(t => dayjs(t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
+            .filter(t => dayjs(t.effectiveDate || t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
             .map(t => t.merchant_name || t.name)
         );
         // Sum expected remaining from recurring merchants not yet seen
@@ -1057,6 +1192,20 @@ monthStats() {
       },
     },
     methods: {
+      relationshipTooltip(txn) {
+        const rel = this.relationshipMap[txn.transaction_id];
+        if (!rel) return '';
+        const partnerName = rel.partner.merchant_name || rel.partner.name;
+        const partnerAmt = this.formatDollar(Math.abs(rel.partner.amount).toFixed(2));
+        if (txn.linkedTransaction) {
+          return rel.type === 'split'
+            ? `Split with ${partnerName} (${partnerAmt}) · confirmed`
+            : `Return from ${partnerName} (${partnerAmt}) · confirmed`;
+        }
+        return rel.type === 'split'
+          ? `Possible split with ${partnerName} (${partnerAmt})`
+          : `Possible return from ${partnerName} (${partnerAmt})`;
+      },
       detailedPfcBreakdown(group) {
         const txns = this.filteredTransactions(group);
         const map = {};
@@ -1450,6 +1599,7 @@ monthStats() {
         this.triageSkipped = new Set();
         this.triageDone = false;
         this.triageCreateRule = true;
+        this.triageVenmoCount = 0;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
         this.triageCategory = first?.suggestion || null;
@@ -1458,6 +1608,7 @@ monthStats() {
       async triageAccept() {
         const txn = this.triageItems[0];
         if (!txn || !this.triageCategory) return;
+        if (this.isUnenrichedP2P(txn)) this.triageVenmoCount++;
         this.triageSaving = true;
         const sim = this.triageSimilar;
         const wantsRule = this.triageCreateRule && sim?.allCount > 0;
@@ -1504,6 +1655,7 @@ monthStats() {
       triageSkip() {
         const txn = this.triageItems[0];
         if (!txn) return;
+        if (this.isUnenrichedP2P(txn)) this.triageVenmoCount++;
         const newSkipped = new Set(this.triageSkipped);
         newSkipped.add(txn.transaction_id);
         this.triageSkipped = newSkipped;
@@ -1519,6 +1671,95 @@ monthStats() {
             this.triageCreateRule = true;
           }
         });
+      },
+      relKey(rel) {
+        const ids = rel.type === 'split'
+          ? [rel.purchaseTxn.transaction_id, rel.p2pTxn.transaction_id]
+          : [rel.chargeTxn.transaction_id, rel.refundTxn.transaction_id];
+        return ids.sort().join('::');
+      },
+      relPrimary(rel) {
+        return rel.type === 'split' ? rel.purchaseTxn : rel.chargeTxn;
+      },
+      relSecondary(rel) {
+        return rel.type === 'split' ? rel.p2pTxn : rel.refundTxn;
+      },
+      relationshipConfirm(rel) {
+        const [txnA, txnB] = [this.relPrimary(rel), this.relSecondary(rel)];
+        const signals = { confidence: rel.confidence, type: rel.type };
+        if (rel.ratio) signals.ratio = rel.ratio;
+
+        // If months differ, align the secondary transaction to the primary's month
+        const primaryMonth = (txnA.effectiveDate || txnA.date)?.substring(0, 7);
+        const secondaryMonth = (txnB.effectiveDate || txnB.date)?.substring(0, 7);
+        const effectiveDate = (primaryMonth !== secondaryMonth) ? txnA.date : null;
+
+        // Auto-recategorize secondary if it's unsorted
+        const recategorize = (txnB.mappedCategory === 'To Sort') ? txnA.mappedCategory : null;
+
+        // Optimistic update + immediate API call
+        store.commit('linkTransaction', {
+          transactionId: txnA.transaction_id,
+          partnerId: txnB.transaction_id,
+          type: rel.type,
+          effectiveDate,
+          recategorize,
+        });
+        // Re-sync local transactions from store and regroup
+        this.transactions = store.state.transactions || [];
+        this.groupTransactions();
+        linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals, effectiveDate, recategorize);
+
+        const details = [];
+        if (effectiveDate) details.push(`moved to ${dayjs(effectiveDate).format('MMM YYYY')}`);
+        if (recategorize) details.push(`filed under ${recategorize}`);
+        const suffix = details.length ? ` · ${details.join(' · ')}` : '';
+        const label = (rel.type === 'split' ? 'Payback confirmed' : 'Return confirmed') + suffix;
+        this.$q.notify({
+          message: label,
+          timeout: 5000,
+          actions: [{
+            label: 'Undo',
+            color: 'white',
+            handler: () => {
+              store.commit('unlinkTransaction', {
+                transactionId: txnA.transaction_id,
+                partnerId: txnB.transaction_id,
+                revertCategory: recategorize ? 'To Sort' : null,
+              });
+              this.transactions = store.state.transactions || [];
+              this.groupTransactions();
+              unlinkTransactions(txnA.transaction_id, txnB.transaction_id, recategorize ? 'To Sort' : null);
+            },
+          }],
+        });
+      },
+      relationshipDismiss(rel) {
+        const txnA = this.relPrimary(rel);
+        const txnB = this.relSecondary(rel);
+
+        // Optimistic update + immediate API call — mark both transactions
+        store.commit('dismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+        dismissRelationship(txnA.transaction_id, txnB.transaction_id);
+
+        this.$q.notify({
+          message: 'Relationship dismissed',
+          timeout: 5000,
+          actions: [{
+            label: 'Undo',
+            color: 'white',
+            handler: () => {
+              store.commit('undoDismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+              undoDismissRelationship(txnA.transaction_id, txnB.transaction_id);
+            },
+          }],
+        });
+      },
+      isUnenrichedP2P(txn) {
+        return txn && isP2PTransaction(txn) && !txn.venmo_note;
+      },
+      openVenmoImport() {
+        this.$q.dialog({ component: VenmoEnrichmentDialog });
       },
       formatDate(date) {
         return dayjs(date).format('MMM D, YYYY');
