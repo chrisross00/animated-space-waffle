@@ -221,6 +221,9 @@ section instead of reading the whole file.
 - Venmo CSV import: enriches P2P transactions with counterparty names and notes
 - Month-based data loading: loads current + 3 prior months from DB on mount, more on demand
 - Background auto-sync: syncs with Plaid when data >4 hours stale, non-blocking
+- Transaction relationships: split detection (incoming + outgoing P2P), return/refund detection, review UI with confirm/dismiss/undo, effective date alignment, auto-recategorization
+- Plaid reconnect: detects stale tokens, surfaces reconnect prompt, launches Link in update mode
+- Post-triage Venmo CSV nudge: prompts import on "All caught up" screen when unenriched P2P payments were sorted
 
 ---
 
@@ -231,8 +234,8 @@ section instead of reading the whole file.
       months get an `autorenew` badge on their category row.
 - [x] **Budget forecast** — Projections card shows expected amount from recurring merchants
       not yet seen this month, with merchant name (if one) or count (if multiple).
-- [x] **Test data seed script** — `node scripts/seed-test-user.js` with 5 personas
-      (fresh, connected, active, p2p, rules). Admin portal at `:8081` provides seed/nuke/login-as UI.
+- [x] **Test data seed script** — `node scripts/seed-test-user.js` with 9 personas
+      (fresh, connected, active, p2p, rules, splits, venmo, error, returns). Admin portal at `:8081` provides seed/nuke/login-as UI.
 ### Medium
 - [ ] **Export to CSV** — low effort, occasionally very useful (taxes, sharing).
 - [ ] **Rules & suggestion engine: user control + intent clarification** — two related
@@ -274,15 +277,11 @@ section instead of reading the whole file.
 ### Prerequisites for Accounts & Balances feature
 These should be resolved before building the Accounts view. See `plans/accounts-balances.md`.
 
-- [ ] **Plaid item error handling + reconnect flow** — the most critical blocker. When a
-      Plaid token goes stale (user changes bank password, institution requires re-auth),
-      the app currently fails silently. Need to detect Plaid error codes (e.g.
-      `ITEM_LOGIN_REQUIRED`) on sync, surface a "reconnect your account" prompt, and
-      launch Plaid Link in update mode. Without this, an Accounts view showing stale/missing
-      balances will look like a broken app.
-- [ ] **Sync failure visibility** — if a transaction sync fails, the user sees stale data
-      with no indication anything is wrong. Add error state handling so failures surface
-      rather than silently disappear.
+- [x] **Plaid item error handling + reconnect flow** — detects Plaid error codes on sync,
+      surfaces "reconnect your account" banner in AccountsView, launches Plaid Link in
+      update mode. Error test persona available for testing.
+- [x] **Sync failure visibility** — error toast on sync failure, orange warning badge
+      on sync button when Plaid items have errors.
 - [x] **Dynamic `earliestDate`** — set to 30 days before today at link time in `plaid-api.js`.
 - [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal. Once
       a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
@@ -365,14 +364,12 @@ Remaining ideas:
       before the CSV upload step so the parser knows which format to expect. Each
       provider has a different CSV layout. Currently only Venmo is supported.
 
-- [ ] **Split detection** — if a user has a $94 restaurant charge and a $47 Venmo
-      incoming payment shortly after, infer it's a split payback. Present the theory
-      ("Looks like someone paid you back for half of Sushi Palace"), let user confirm
-      with a tap. Turns reconciliation into a satisfying detective game. Now that Venmo
-      CSV enrichment exists (`utils/venmoEnrichment.js`), the enrichment tool could also
-      detect splits: match Venmo notes against merchant names in non-Venmo transactions
-      (e.g., note "RVR" ↔ merchant "RVR") + amount ratio analysis (50%, 33%, 25%) +
-      date proximity. Show as lower-confidence matches in the enrichment preview.
+- [x] **Split detection** — transaction relationship detection shipped (3 phases):
+      incoming splits (amount ratio + date proximity), outgoing splits (Venmo note →
+      merchant name matching), and returns/refunds (same merchant + amount). Review UI
+      on budget page, confirm/dismiss/undo in Edit Transaction dialog, effective date
+      alignment, auto-recategorization. Post-triage nudge for Venmo CSV import.
+      See `plans/transaction-relationships.md`.
 - [ ] **Shared expense circles** — let friend groups opt in. When one user categorizes
       a shared transaction, auto-suggest the matching category for the other. Small
       network effect that makes budgeting feel collaborative. Requires multi-user
