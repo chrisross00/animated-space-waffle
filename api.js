@@ -66,7 +66,8 @@ router.get('/getcategories', async (req, res)=>{
     res.send(categories)
     
   } catch (error) {
-    res.status(500).send('Error with /test endpiont');
+    console.error('getcategories error:', error);
+    res.status(500).send('Error fetching categories');
   }
 })
 
@@ -735,7 +736,6 @@ function aggregateSnapshots(snapshots) {
 
 function createClientSideUser(user, items=null) {
   const hasItems = items && items.length > 0;
-  console.log('createClientSideUser items: ', items)
   let bankNames = hasItems ? items.map(item => item.institution) : [];
 
   // Extract cached balance data, snapshots, and item errors per institution

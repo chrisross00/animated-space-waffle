@@ -27,7 +27,9 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const MONGO_URI = process.env.DB_URI;
 const MONGO_DB  = process.env.DB_NAME || 'BudgetApp';
 const PG_URL    = process.env.MIGRATE_PG_URL
-  || `postgresql://basil:${process.env.POSTGRES_PASSWORD || 'rg0unwWNKSxSq4iZXSf9A5bgO0scjyRt'}@localhost:15432/basil`;
+  || `postgresql://basil:${process.env.POSTGRES_PASSWORD}@localhost:15432/basil`;
+if (!MONGO_URI) { console.error('FATAL: DB_URI is not set'); process.exit(1); }
+if (!process.env.MIGRATE_PG_URL && !process.env.POSTGRES_PASSWORD) { console.error('FATAL: MIGRATE_PG_URL or POSTGRES_PASSWORD must be set'); process.exit(1); }
 
 const BATCH_SIZE = 500; // transactions per INSERT batch
 

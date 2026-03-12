@@ -7,3 +7,4 @@ data
 renameCollection.js
 *notes.txt
 admin/dist/
+frontend/.env.production

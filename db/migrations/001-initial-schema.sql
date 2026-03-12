@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS plaid_items (
   error_code      TEXT,
   error_message   TEXT,
   error_detected_at TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ DEFAULT now()
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, institution)
 );
 
 -- Plaid accounts (many per item)
@@ -112,7 +113,8 @@ CREATE TABLE IF NOT EXISTS balance_snapshots (
   item_id         UUID REFERENCES plaid_items(id) ON DELETE CASCADE,
   date            DATE NOT NULL,
   net             DECIMAL(12,2),
-  fetched_at      TIMESTAMPTZ DEFAULT now()
+  fetched_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(item_id, date)
 );
 
 -- Indexes
