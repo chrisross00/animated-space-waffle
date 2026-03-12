@@ -121,10 +121,9 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   `firebase-admin.auth().verifyIdToken()` on the backend. (2) **Firestore** — a single
   `sessions` collection storing login/logout timestamps (legacy/informational; all real
   app data lives in MongoDB). No Cloud Functions, Storage, Hosting, Analytics, or other
-  Firebase services are in use. If the Supabase database migration happens, auth should
-  be consolidated to Supabase Auth at the same time — it supports Google OAuth natively,
-  and Postgres RLS would replace the manual `userId` filtering on every query. Don't
-  switch auth independently; bundle it with the database migration.
+  Firebase services are in use. **Migration plan:** Replace Firebase with direct Google
+  OAuth2 + self-issued JWTs. No Supabase — just Postgres on the same Hetzner VPS. Auth
+  migration bundled with database migration. See `plans/production-go-live.md`.
 - **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend),
   `PLAID_ENV`, `PLAID_SANDBOX_*`, `PLAID_PRODUCTION_*` (Plaid credentials).
   `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
@@ -293,15 +292,13 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - **Amount:** `between` (range with min + max) — not yet built
 
 ### Tech debt
-- [ ] **Database migration: MongoDB → Postgres (Supabase)** — data model is textbook
-      relational but stored in a document DB. Missing referential integrity, manual
-      `userId` filtering on every query, nested documents where flat tables would be
-      simpler. Frontend is untouched (API contract stays the same). Should include
-      migrating Firebase Auth → Supabase Auth at the same time (Firebase is only used
-      for Google Sign-In + a legacy Firestore `sessions` collection — no other Firebase
-      services). Supabase Auth supports Google OAuth natively, and Postgres RLS replaces
-      manual `userId` filtering. See full PRD with schema, migration strategy, and
-      decision framework: `plans/database-migration.md`.
+- [ ] **Database + auth migration: MongoDB → Postgres, Firebase → Google OAuth + JWT** —
+      data model is textbook relational but stored in a document DB. Missing referential
+      integrity, manual `userId` filtering on every query, nested documents where flat
+      tables would be simpler. Auth consolidates to direct Google OAuth2 with self-issued
+      JWTs — no Supabase, no third-party auth service. Everything self-hosted on Hetzner
+      VPS for strongest user data privacy. See `plans/production-go-live.md` (master plan)
+      and `plans/database-migration.md` (schema + migration script).
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added. (Toolbox UI now in

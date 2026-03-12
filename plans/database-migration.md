@@ -201,33 +201,25 @@ No dual-write phase — pre-launch with no real users, so a clean cutover is sim
 faster. One migration, one switch.
 
 ### Phase 1: Setup + schema
-1. Set up self-hosted Supabase on Hetzner VPS via Docker Compose
-   (Postgres, GoTrue auth, Studio dashboard, PostgREST)
-2. Set up Google OAuth in GoTrue (same Google Cloud project, new redirect URI)
-3. Run schema migration (tables, indexes, RLS policies)
-4. Add `@supabase/supabase-js` (frontend) and Supabase service-role client (backend)
+1. Postgres 16 running as Docker container on Hetzner VPS (see `production-go-live.md`)
+2. Run schema migration (tables, indexes, constraints)
+3. Add `pg` npm package (backend)
 
 ### Phase 2: Backend rewrite
 1. Replace `db/database.js` — swap all 17 Mongo functions for Postgres equivalents
-2. Replace Firebase admin auth verification with Supabase JWT verification
-3. Update `api.js` call sites (~59 calls) — function signatures stay similar
-4. Update `plaid-api.js` (5 calls), `plaidTools.js` (9 calls), `seedCategories.js` (3 calls)
-5. Enable RLS policies — remove manual `userId` filtering from all queries
-6. Write data migration script (Mongo → Postgres, one-time, run before cutover)
+2. Update `api.js` call sites (~59 calls) — function signatures stay similar
+3. Update `plaid-api.js` (5 calls), `plaidTools.js` (9 calls), `seedCategories.js` (3 calls)
+4. Write data migration script (Mongo → Postgres, one-time, run before cutover)
 
-### Phase 3: Frontend auth swap
-1. Replace `firebase.js` auth — swap `firebase.auth()` + `GoogleAuthProvider` for
-   `supabase.auth.signInWithOAuth({ provider: 'google' })`
-2. Replace Bearer token handling — Supabase JWT instead of Firebase ID token
-3. Remove Firestore sessions collection (legacy, unused by app logic)
-4. Update `frontend/.env` — replace `VITE_FIREBASE_*` vars with `VITE_SUPABASE_URL`
-   and `VITE_SUPABASE_ANON_KEY`
-5. Update root `.env` — replace `VUE_APP_FIREBASE_*` with `SUPABASE_URL` and
-   `SUPABASE_SERVICE_ROLE_KEY`
+### Phase 3: Auth rewrite (separate from DB, but same freeze window)
+1. Implement Google OAuth → self-issued JWT flow on backend
+2. Replace `firebase-admin.auth().verifyIdToken()` with own JWT verification
+3. Replace Firebase sign-in on frontend with Google OAuth redirect/popup
+4. Remove Firebase + Firestore dependencies entirely
 
 ### Phase 4: Cleanup
 1. Remove `mongodb`, `firebase`, and `firebase-admin` dependencies
-2. Delete or refactor `frontend/src/firebase.js` → `supabase.js`
+2. Refactor `frontend/src/firebase.js` → `api.js` or `client.js`
 3. Update test seed scripts for Postgres
 4. Update admin portal auth
 
@@ -236,31 +228,42 @@ faster. One migration, one switch.
 Run once before cutover to move existing data from Mongo to Postgres.
 
 ```js
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
 async function migrate() {
   // 1. Users
   const users = await mongo.collection('Basil-Users').find().toArray();
-  await supabase.from('users').insert(users.map(u => ({
-    id: u.userId, email: u.email, is_admin: u.isAdmin || false
-  })));
+  for (const u of users) {
+    await pool.query(
+      'INSERT INTO users (id, email, is_admin) VALUES ($1, $2, $3)',
+      [u.userId, u.email, u.isAdmin || false]
+    );
+  }
 
   // 2. Categories + simple rules (flatten embedded rules)
   const categories = await mongo.collection('Basil-Categories').find().toArray();
   for (const cat of categories) {
-    const { data } = await supabase.from('categories').insert({
-      user_id: cat.userId, name: cat.category, type: cat.type || 'expense',
-      monthly_limit: cat.monthly_limit || 0, plaid_pfc: cat.plaid_pfc || [],
-    }).select('id');
+    const { rows } = await pool.query(
+      `INSERT INTO categories (user_id, name, type, monthly_limit, plaid_pfc)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [cat.userId, cat.category, cat.type || 'expense',
+       cat.monthly_limit || 0, cat.plaid_pfc || []]
+    );
+    const categoryId = rows[0].id;
     for (const merchant of cat.rules?.merchant_name || []) {
-      await supabase.from('simple_rules').insert({
-        category_id: data[0].id, user_id: cat.userId,
-        rule_type: 'merchant_name', rule_value: merchant,
-      });
+      await pool.query(
+        `INSERT INTO simple_rules (category_id, user_id, rule_type, rule_value)
+         VALUES ($1, $2, $3, $4)`,
+        [categoryId, cat.userId, 'merchant_name', merchant]
+      );
     }
     for (const name of cat.rules?.name || []) {
-      await supabase.from('simple_rules').insert({
-        category_id: data[0].id, user_id: cat.userId,
-        rule_type: 'name', rule_value: name,
-      });
+      await pool.query(
+        `INSERT INTO simple_rules (category_id, user_id, rule_type, rule_value)
+         VALUES ($1, $2, $3, $4)`,
+        [categoryId, cat.userId, 'name', name]
+      );
     }
   }
 
@@ -268,10 +271,12 @@ async function migrate() {
   const accountDocs = await mongo.collection('Plaid-Accounts').find().toArray();
   for (const doc of accountDocs) {
     for (const [institution, data] of Object.entries(doc.Accounts || {})) {
-      const { data: item } = await supabase.from('plaid_items').insert({
-        user_id: doc.userId, institution, access_token: data.token,
-        next_cursor: data.next_cursor, error_code: data.error?.error_code,
-      }).select('id');
+      const { rows } = await pool.query(
+        `INSERT INTO plaid_items (user_id, institution, access_token, next_cursor, error_code)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [doc.userId, institution, data.token, data.next_cursor,
+         data.error?.error_code || null]
+      );
       // insert individual accounts under this item...
     }
   }
@@ -279,16 +284,32 @@ async function migrate() {
   // 4. Transactions (batch insert, ~1000 at a time)
   const txns = await mongo.collection('Plaid-Transactions').find().toArray();
   for (let i = 0; i < txns.length; i += 1000) {
-    const batch = txns.slice(i, i + 1000).map(t => ({ /* map fields */ }));
-    await supabase.from('transactions').insert(batch);
+    const batch = txns.slice(i, i + 1000);
+    // Use pg COPY or multi-row INSERT for performance
+    for (const t of batch) {
+      await pool.query(
+        `INSERT INTO transactions (transaction_id, user_id, name, merchant_name,
+         amount, date, mapped_category, pending, note, exclude_from_total,
+         manually_set, account, plaid_pfc)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [t.transaction_id, t.userId, t.name, t.merchant_name,
+         t.amount, t.date, t.mappedCategory, t.pending, t.note,
+         t.excludeFromTotal, t.manually_set, t.account,
+         t.personal_finance_category ? [t.personal_finance_category.primary] : []]
+      );
+    }
   }
 
   // 5. Compound rules
   const rules = await mongo.collection('Basil-Rules').find().toArray();
-  await supabase.from('compound_rules').insert(rules.map(r => ({
-    user_id: r.userId, label: r.label, conditions: r.conditions,
-    action: r.action, created_from: r.createdFrom,
-  })));
+  for (const r of rules) {
+    await pool.query(
+      `INSERT INTO compound_rules (user_id, label, conditions, action, created_from)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [r.userId, r.label, JSON.stringify(r.conditions),
+       JSON.stringify(r.action), r.createdFrom]
+    );
+  }
 }
 ```
 
@@ -298,24 +319,25 @@ async function migrate() {
 
 | Phase | Work | Files touched |
 |---|---|---|
-| Schema + Supabase setup | Design tables, create project, set up RLS policies | New migration files |
-| `database.js` rewrite | Replace 17 Mongo functions with Postgres equivalents | `db/database.js` |
+| Schema setup | Create tables, indexes, constraints on Postgres | New SQL migration file |
+| `database.js` rewrite | Replace 17 Mongo functions with Postgres equivalents (`pg`) | `db/database.js` |
 | `api.js` updates | Update ~59 call sites (mostly minor — function signatures stay similar) | `api.js` |
 | `plaid-api.js` updates | 5 call sites for token/account management | `plaid-api.js` |
 | `plaidTools.js` updates | 9 call sites for transaction sync | `utils/plaidTools.js` |
 | `seedCategories.js` | 3 call sites | `utils/seedCategories.js` |
 | Migration script | One-time data migration from Mongo to Postgres | New script |
-| Frontend auth swap | Replace Firebase auth with Supabase auth, update env vars | `frontend/src/firebase.js`, `frontend/.env` |
-| Tests | Update `categoryMapping.test.js` if it mocks DB directly | `__tests__/` |
+| Auth rewrite (backend) | Google OAuth flow + JWT issuing/verification | `utils/authentication.js`, `api.js` |
+| Auth rewrite (frontend) | Replace Firebase sign-in with OAuth redirect, update token handling | `frontend/src/firebase.js` → `api.js` |
+| Tests | Update any that mock the DB layer directly | `__tests__/` |
 
-**Frontend is untouched.** The API contract doesn't change — the frontend sends/receives
-the same JSON. All changes are backend-only.
+**API contract doesn't change.** The frontend sends/receives the same JSON shapes.
+Database and auth changes are behind the same Express routes.
 
 **Estimated scope:** ~1-2 focused weeks. The `database.js` rewrite is the bulk of it.
 Most functions map cleanly from Mongo to Postgres (find → SELECT, updateOne → UPDATE,
 insertOne → INSERT). The tricky parts are the aggregation pipelines
 (`findMerchantsWithStats`, `deduplicateData`, `findSimilarTransactionGroups*`) which
-need to become SQL GROUP BY queries.
+need to become SQL GROUP BY queries. Auth rewrite is ~1-2 days on top.
 
 ---
 
@@ -323,15 +345,14 @@ need to become SQL GROUP BY queries.
 
 - **Referential integrity** — delete a category, its rules cascade. Unlink an account,
   its transactions are cleaned up. No more orphans.
-- **Row-level security** — Supabase RLS replaces manual `{ userId: uid }` on every query.
-  One policy per table, enforced at the database level. Security bug surface area drops
-  dramatically.
 - **Proper joins** — "give me all rules with their category names" is one query, not
   two lookups stitched together in JS.
 - **Schema enforcement** — NOT NULL, UNIQUE, CHECK constraints catch bad data at write
   time instead of producing silent corruption.
-- **Supabase ecosystem** — auth (if you ever want to move off Firebase), realtime
-  subscriptions, edge functions, dashboard for data inspection.
+- **No third-party dependencies** — no Firebase, no Supabase, no vendor lock-in. Users'
+  financial data stays on infrastructure we control.
+- **RLS ready** — Postgres row-level security can be added later to replace manual
+  `{ userId: uid }` filtering. Not required for launch but available when needed.
 - **Accounts view readiness** — the flattened `plaid_items` + `plaid_accounts` tables
   are much easier to query than the current nested Mongo document.
 
@@ -349,15 +370,17 @@ need to become SQL GROUP BY queries.
 
 ## Decisions (resolved)
 
-1. **Self-hosted Supabase on Hetzner VPS** — Docker Compose with Postgres, GoTrue (auth),
-   Studio (dashboard). Full control, no vendor lock-in, RLS is native Postgres. Production
-   hosting is Hetzner VPS, so self-hosting makes more sense than Supabase Cloud.
-2. **Migrate auth with DB** — Firebase is only used for Google Sign-In + a dead Firestore
-   sessions collection. No advantage to keeping it. Supabase Auth (GoTrue) supports Google
-   OAuth natively. One migration, one cutover.
+1. **Postgres on Hetzner VPS, no Supabase** — Docker container running Postgres 16 on
+   the same VPS as the app. No platform dependencies. Full control over data residency,
+   strongest privacy outcome for users handling financial data.
+2. **Google OAuth with self-issued JWTs** — Firebase is only used for Google Sign-In +
+   a dead Firestore sessions collection. Replace with direct Google OAuth2 flow and
+   self-issued JWTs (`jsonwebtoken` package). No third-party auth service.
 3. **Direct cutover** — no dual-write. Pre-launch with no real users, so a clean switch
    is simpler and faster.
 4. **`mapped_category` stays as string** — normalizing to FK touches frontend code.
    Follow-up after core migration if needed.
 5. **Compound rule conditions stay as JSONB** — flexible structure, Postgres can index
    and query it when needed.
+6. **RLS deferred** — manual `userId` filtering stays for now. Postgres RLS can be
+   added later as a hardening step without changing application code.
