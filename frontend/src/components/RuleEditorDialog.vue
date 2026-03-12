@@ -508,7 +508,7 @@
 
 <script>
 import store from '../store';
-import { saveCompoundRule, updateCompoundRule } from '@/firebase';
+import { saveCompoundRule, updateCompoundRule } from '@/api';
 import { matchesCondition, sweepStore } from '@/utils/ruleUtils';
 import dayjs from 'dayjs';
 

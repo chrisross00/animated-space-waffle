@@ -38,9 +38,9 @@ if (!args.persona) {
 }
 
 async function main() {
-  const { connectToDb } = require('../db/database');
-  const client = await connectToDb();
-  const db = client.db(process.env.DB_NAME);
+  const { connectToDb, getPool } = require('../db/database');
+  await connectToDb();
+  const pool = getPool();
 
   const personaNames = args.persona === 'all'
     ? getPersonaList().map(p => p.name)
@@ -48,7 +48,7 @@ async function main() {
 
   for (const name of personaNames) {
     try {
-      const result = await seedPersona(db, name);
+      const result = await seedPersona(pool, name);
       console.log(`\nSeeded "${result.persona}" (${result.uid}):`);
       console.log(`  Users: ${result.counts.users}, Accounts: ${result.counts.accounts}, Categories: ${result.counts.categories}, Rules: ${result.counts.rules}, Transactions: ${result.counts.transactions}`);
     } catch (err) {

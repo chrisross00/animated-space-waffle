@@ -1,37 +1,35 @@
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-
-const app = firebase.initializeApp(firebaseConfig);
-export const auth = app.auth();
-export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
-
-let _authReadyResolve;
-export const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
-auth.onAuthStateChanged(() => { _authReadyResolve(); });
-
-export async function getAuthHeaders() {
+export function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
   }
-  const user = auth.currentUser;
-  if (!user) return null;
-  const idToken = await user.getIdToken();
-  return { Authorization: `Bearer ${idToken}` };
+  const token = sessionStorage.getItem('basil-token');
+  if (!token) return null;
+  return { Authorization: `Bearer ${token}` };
 }
 
-export async function signInWithGoogle() {
-  return auth.signInWithPopup(GoogleAuthProvider);
+export function signInWithGoogle() {
+  // Redirect to backend OAuth — pass redirect hint so callback sends us back to /admin
+  window.location.href = '/auth/google?redirect=/admin';
 }
 
 export function signOut() {
-  return auth.signOut();
+  sessionStorage.removeItem('basil-token');
+}
+
+/**
+ * Consume ?token= from URL after OAuth callback redirect.
+ * @returns {boolean} true if a token was consumed
+ */
+export function consumeAuthToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (!token) return false;
+
+  sessionStorage.setItem('basil-token', token);
+
+  params.delete('token');
+  const clean = params.toString();
+  const url = window.location.pathname + (clean ? `?${clean}` : '');
+  window.history.replaceState({}, '', url);
+  return true;
 }

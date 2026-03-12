@@ -182,7 +182,7 @@
 
 <script>
 import store from '../store';
-import { ensureAppData, fetchMerchantStats, saveRule } from '@/firebase';
+import { ensureAppData, fetchMerchantStats, saveRule } from '@/api';
 import EmptyState from '../components/EmptyState.vue';
 
 const columns = [

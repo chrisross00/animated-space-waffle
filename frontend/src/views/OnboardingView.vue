@@ -105,7 +105,7 @@
 
 <script>
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
-import { getOrAddUser, seedCategories, fetchCategories } from '@/firebase';
+import { getOrAddUser, seedCategories, fetchCategories } from '@/api';
 import store from '../store';
 
 export default {

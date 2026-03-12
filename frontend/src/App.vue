@@ -330,7 +330,7 @@
 <script>
 import { ref } from 'vue'
 import store from './store'
-import { triggerSync, fetchTransactionsForMonth } from './firebase'
+import { triggerSync, fetchTransactionsForMonth } from './api'
 import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
 import EmptyState from './components/EmptyState.vue'
 

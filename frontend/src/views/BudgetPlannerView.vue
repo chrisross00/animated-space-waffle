@@ -190,7 +190,7 @@
 
 <script>
 import EmptyState from '../components/EmptyState.vue';
-import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/firebase';
+import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/api';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 

@@ -167,7 +167,7 @@ import { GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, Vi
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
 import store from '../store'
-import { ensureAppData, fetchMonthRange } from '@/firebase'
+import { ensureAppData, fetchMonthRange } from '@/api'
 import EmptyState from '../components/EmptyState.vue'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])

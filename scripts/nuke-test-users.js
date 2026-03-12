@@ -20,12 +20,12 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 }, {});
 
 async function main() {
-  const { connectToDb } = require('../db/database');
-  const client = await connectToDb();
-  const db = client.db(process.env.DB_NAME);
+  const { connectToDb, getPool } = require('../db/database');
+  await connectToDb();
+  const pool = getPool();
 
   const dryRun = !!args['dry-run'];
-  const result = await nukeTestUsers(db, { dryRun });
+  const result = await nukeTestUsers(pool, { dryRun });
 
   if (result.users.length === 0) {
     console.log('No test users found in database.');

@@ -7,7 +7,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { validateIdToken, createImpersonationToken } = require('./utils/authentication');
-const { findUserData } = require('./db/database');
+const { findUser, getPool } = require('./db/database');
 const { seedPersona, listTestUsers, nukeTestUsers, getPersonaList } = require('./scripts/test-data/seed');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ router.use(bodyParser.json({ limit: '1mb' }));
 async function requireAdmin(req, res, next) {
   try {
     const decodedToken = await validateIdToken(req);
-    const users = await findUserData('Basil-Users', decodedToken.uid);
+    const users = await findUser(decodedToken.uid);
     if (!users.length || !users[0].isAdmin) {
       return res.status(403).json({ message: 'Forbidden' });
     }
@@ -48,9 +48,8 @@ router.get('/personas', devOnly, (req, res) => {
 /** List seeded test users in the database */
 router.get('/test-users', devOnly, async (req, res) => {
   try {
-    const { getDb } = require('./db/database');
-    const db = getDb();
-    const users = await listTestUsers(db);
+    const pool = getPool();
+    const users = await listTestUsers(pool);
     res.json(users);
   } catch (err) {
     console.error('/admin/test-users error:', err.message);
@@ -66,18 +65,17 @@ router.post('/seed-test-user', devOnly, async (req, res) => {
       return res.status(400).json({ message: 'Missing "persona" in request body' });
     }
 
-    const { getDb } = require('./db/database');
-    const db = getDb();
+    const pool = getPool();
 
     if (persona === 'all') {
       const results = [];
       for (const p of getPersonaList()) {
-        results.push(await seedPersona(db, p.name));
+        results.push(await seedPersona(pool, p.name));
       }
       return res.json({ results });
     }
 
-    const result = await seedPersona(db, persona);
+    const result = await seedPersona(pool, persona);
     res.json(result);
   } catch (err) {
     console.error('/admin/seed-test-user error:', err.message);
@@ -89,10 +87,9 @@ router.post('/seed-test-user', devOnly, async (req, res) => {
 /** Nuke all test user data */
 router.post('/nuke-test-users', devOnly, async (req, res) => {
   try {
-    const { getDb } = require('./db/database');
-    const db = getDb();
+    const pool = getPool();
     const dryRun = req.body.dryRun === true;
-    const result = await nukeTestUsers(db, { dryRun });
+    const result = await nukeTestUsers(pool, { dryRun });
     res.json(result);
   } catch (err) {
     console.error('/admin/nuke-test-users error:', err.message);

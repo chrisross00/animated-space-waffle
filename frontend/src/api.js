@@ -1,6 +1,3 @@
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
 import { Notify } from 'quasar'
 
 const _notify = (opts) => {
@@ -10,36 +7,10 @@ const _notify = (opts) => {
     : 0;
   Notify.create({ position: 'bottom', ...(navHeight ? { offset: [0, navHeight] } : {}), ...opts });
 }
-// import 'firebase/GoogleAuthProvider'
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+// --- Auth helpers ---
 
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-
-// Export the Firebase authentication and Firestore objects
-export const auth = app.auth()
-export const firestore = firebase.firestore()
-export const GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
-
-// Resolves once onAuthStateChanged fires for the first time, meaning
-// auth.currentUser is available. On hard refresh, views mount before
-// Firebase resolves, so any code that needs auth should await this first.
-let _authReadyResolve;
-export const authReady = new Promise(resolve => { _authReadyResolve = resolve; });
-auth.onAuthStateChanged(() => { _authReadyResolve(); });
-
-export async function getAuthHeaders() {
+export function getAuthHeaders() {
   // Impersonation token from admin portal "Login As" flow
   const impersonateToken = sessionStorage.getItem('impersonate-token');
   if (impersonateToken) {
@@ -48,16 +19,44 @@ export async function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
   }
-  const user = auth.currentUser;
-  if (!user) return null;
-  const idToken = await user.getIdToken();
-  return { Authorization: `Bearer ${idToken}` };
+  const token = sessionStorage.getItem('basil-token');
+  if (!token) return null;
+  return { Authorization: `Bearer ${token}` };
 }
+
+export function signOut() {
+  sessionStorage.removeItem('basil-token');
+  sessionStorage.removeItem('impersonate-token');
+  sessionStorage.removeItem('session');
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('lastSyncedAt');
+}
+
+/**
+ * Consume ?token= from URL after OAuth callback redirect.
+ * Stores the JWT and strips the param from the URL.
+ * @returns {boolean} true if a token was consumed
+ */
+export function consumeAuthToken() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (!token) return false;
+
+  sessionStorage.setItem('basil-token', token);
+
+  // Strip token from URL without reload
+  params.delete('token');
+  const clean = params.toString();
+  const url = window.location.pathname + (clean ? `?${clean}` : '');
+  window.history.replaceState({}, '', url);
+  return true;
+}
+
 // ---- Data layer v2: separate sync from read ----
 
 /** Trigger Plaid transaction sync (no transaction data returned). */
 export async function triggerSync() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/sync', { method: 'POST', headers });
@@ -71,7 +70,7 @@ export async function triggerSync() {
 
 /** Create a Plaid Link token in update mode for reconnecting a stale institution. */
 export async function createUpdateLinkToken(institution) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   const response = await fetch(`/plaid-api/create_update_link_token?institution=${encodeURIComponent(institution)}`, { headers });
   if (response.ok) return response.json();
@@ -81,7 +80,7 @@ export async function createUpdateLinkToken(institution) {
 
 /** Clear a persisted item error after successful reconnect. */
 export async function clearItemError(institution) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/plaid-api/clear_item_error', {
@@ -94,7 +93,7 @@ export async function clearItemError(institution) {
 
 /** Fetch a single month's transactions from the database (no Plaid call). */
 export async function fetchTransactionsForMonth(month) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   const response = await fetch(`/api/transactions?month=${month}`, { headers });
   if (response.ok) return response.json();
@@ -128,7 +127,7 @@ export async function fetchMonthRange(store, startMonth, endMonth) {
 
 /** Search transactions server-side (for "Show all" table). */
 export async function searchTransactions(search, page = 1, limit = 500) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   const params = new URLSearchParams({ page, limit });
   if (search) params.set('search', search);
@@ -139,7 +138,7 @@ export async function searchTransactions(search, page = 1, limit = 500) {
 
 /** Fetch historical category map (lightweight, for suggestion engine). */
 export async function fetchHistoricalCategoryMap() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return null;
   const response = await fetch('/api/historicalCategoryMap', { headers });
   if (response.ok) return response.json();
@@ -147,7 +146,7 @@ export async function fetchHistoricalCategoryMap() {
 }
 
 export async function fetchCategories() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/getcategories', { headers });
     if (response.ok) {
@@ -160,7 +159,7 @@ export async function fetchCategories() {
 }
 
 export async function getOrAddUser() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/getOrAddUser', { headers });
     const data = await response.json();
@@ -173,7 +172,7 @@ export async function getOrAddUser() {
 }
 
 export async function getOrAddUserAccount(publicToken, metadata) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/plaid-api/exchange_public_token', {
@@ -192,7 +191,7 @@ export async function getOrAddUserAccount(publicToken, metadata) {
 }
 
 export async function handleDialogSubmit(dialogBody) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/handleDialogSubmit', {
@@ -209,7 +208,7 @@ export async function handleDialogSubmit(dialogBody) {
 }
 
 export async function removeAccount(institution) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/plaid-api/remove_account', {
@@ -226,7 +225,7 @@ export async function removeAccount(institution) {
 }
 
 export async function seedCategories(targetUserId) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const url = targetUserId ? `/api/seedcategories?targetUserId=${targetUserId}` : '/api/seedcategories';
     const response = await fetch(url, { headers });
@@ -237,7 +236,7 @@ export async function seedCategories(targetUserId) {
 
 
 export async function fetchMerchantStats() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/merchantStats', { headers });
     if (response.ok) return response.json();
@@ -246,7 +245,7 @@ export async function fetchMerchantStats() {
 }
 
 export async function fetchMerchants() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/merchants', { headers });
     if (response.ok) return response.json();
@@ -255,7 +254,7 @@ export async function fetchMerchants() {
 }
 
 export async function saveRule(categoryId, categoryName, ruleType, ruleValue) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/saveRule', {
@@ -269,7 +268,7 @@ export async function saveRule(categoryId, categoryName, ruleType, ruleValue) {
 }
 
 export async function deleteRule(categoryId, ruleType, ruleValue) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/deleteRule', {
@@ -283,7 +282,7 @@ export async function deleteRule(categoryId, ruleType, ruleValue) {
 }
 
 export async function bulkCategorize(transaction_ids, mappedCategory) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
     const response = await fetch('/api/bulkCategorize', {
@@ -297,7 +296,7 @@ export async function bulkCategorize(transaction_ids, mappedCategory) {
 }
 
 export async function deleteCategory(categoryId) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/deleteCategory', {
@@ -310,7 +309,7 @@ export async function deleteCategory(categoryId) {
 }
 
 export async function updateBudgetLimit(categoryId, monthly_limit) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/updateBudgetLimit', {
@@ -323,7 +322,7 @@ export async function updateBudgetLimit(categoryId, monthly_limit) {
 }
 
 export async function fetchRules() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/rules', { headers });
     if (response.ok) return response.json();
@@ -332,7 +331,7 @@ export async function fetchRules() {
 }
 
 export async function saveCompoundRule(rule) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/saveCompoundRule', {
@@ -346,7 +345,7 @@ export async function saveCompoundRule(rule) {
 }
 
 export async function updateCompoundRule(ruleId, label, conditions, action, reapply = false) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/updateCompoundRule', {
@@ -359,7 +358,7 @@ export async function updateCompoundRule(ruleId, label, conditions, action, reap
 }
 
 export async function deleteCompoundRule(ruleId) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/deleteCompoundRule', {
@@ -373,7 +372,7 @@ export async function deleteCompoundRule(ruleId) {
 
 
 export async function venmoEnrichmentPreview(csvText) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/venmoEnrichment/preview', {
@@ -387,7 +386,7 @@ export async function venmoEnrichmentPreview(csvText) {
 }
 
 export async function venmoEnrichmentApply(enrichments) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/venmoEnrichment/apply', {
@@ -400,7 +399,7 @@ export async function venmoEnrichmentApply(enrichments) {
 }
 
 export async function linkTransactions(transactionId, partnerId, type, signals, effectiveDate, recategorize) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/linkTransactions', {
@@ -413,7 +412,7 @@ export async function linkTransactions(transactionId, partnerId, type, signals, 
 }
 
 export async function dismissRelationship(transactionId, partnerId) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/dismissRelationship', {
@@ -426,7 +425,7 @@ export async function dismissRelationship(transactionId, partnerId) {
 }
 
 export async function unlinkTransactions(transactionId, partnerId, revertCategory) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/unlinkTransactions', {
@@ -439,7 +438,7 @@ export async function unlinkTransactions(transactionId, partnerId, revertCategor
 }
 
 export async function undoDismissRelationship(transactionId, partnerId) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/undoDismissRelationship', {
@@ -452,7 +451,7 @@ export async function undoDismissRelationship(transactionId, partnerId) {
 }
 
 export async function deleteAccount() {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/nukeAllData', { method: 'POST', headers });
@@ -471,13 +470,6 @@ export async function ensureAppData(store) {
   if (!store.state.user?.onboarded_at) return;       // not onboarded yet
   if (Object.keys(store.state.transactionsByMonth).length > 0) return; // already loaded
   if (_bootstrapPromise) return _bootstrapPromise;   // already in flight
-
-  // On hard refresh, views call ensureAppData before Firebase auth resolves
-  // (sessionStorage has the user, but auth.currentUser is still null).
-  // Wait for auth so getAuthHeaders() can provide a valid token.
-  if (import.meta.env.VITE_DEV_AUTH_BYPASS !== 'true' && !sessionStorage.getItem('impersonate-token')) {
-    await authReady;
-  }
 
   store.commit('setBootstrapping', true);
   const hasAccounts = store.state.user?.accounts?.length > 0;

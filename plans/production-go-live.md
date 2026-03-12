@@ -55,22 +55,19 @@ so it must exist first.
 **Stack:** Hetzner CX22 (~$5/month) running Docker Compose with three containers:
 Postgres 16, Express app, and Nginx (reverse proxy + SSL).
 
-- [ ] **Provision Hetzner VPS** — Ubuntu 24.04, SSH key auth (disable password login),
-  UFW firewall (allow 22, 80, 443 only), fail2ban.
-- [ ] **DNS** — Point domain (e.g. `trybasil.app` or similar) to VPS IP. A record +
-  optional www CNAME.
-- [ ] **Docker + Docker Compose** — Install on the VPS. Create `docker-compose.yml`
-  with three services:
-  - `postgres`: Postgres 16 with a mounted volume for data persistence
-  - `app`: Express server (builds from repo Dockerfile)
-  - `nginx`: Reverse proxy, SSL termination via Let's Encrypt (certbot)
-- [ ] **Nginx config** — Proxy `https://yourdomain.com` → `app:3000`. Handle SSL
-  cert auto-renewal with certbot.
-- [ ] **Deployment pipeline** — How code gets from GitHub to the VPS. Start simple:
-  a deploy script that SSHs in, pulls latest, rebuilds the app container, and restarts.
-  CI/CD (GitHub Actions) can come later.
-- [ ] **Verify Postgres is accessible** — Connect from the app container, run test
-  queries. This is the development target for Phase 3.
+- [x] **Provision Hetzner VPS** — Ubuntu 24.04, SSH key auth (password login disabled),
+  UFW firewall (22, 80, 443 only), fail2ban. IP: `178.156.248.108`.
+- [x] **DNS** — `basilbudgeting.com` + `www` → VPS IP via Cloudflare DNS.
+- [x] **Docker + Docker Compose** — Postgres 16 running in Docker container with
+  persistent volume. Config at `/opt/basil/docker-compose.yml`.
+- [x] **Nginx + SSL** — Reverse proxy to `localhost:3000`, Let's Encrypt cert with
+  auto-renewal. HTTP → HTTPS redirect enabled.
+- [x] **Node.js + PM2** — Node 24 + PM2 process manager (auto-restart, survives reboot).
+  App at `/opt/basil/app`.
+- [x] **CI/CD pipeline** — GitHub Actions: push to main → run tests → SSH deploy →
+  pull, install, build frontend, restart PM2. Workflow: `.github/workflows/deploy.yml`.
+- [x] **Verify Postgres is accessible** — Running and accepting connections on
+  `127.0.0.1:5432`. Credentials in `/opt/basil/.env`.
 
 **Why before migration:** You need a running Postgres to develop against and test the
 migration script. Don't write the migration blind.
@@ -83,60 +80,110 @@ Biggest, riskiest piece. See `plans/database-migration.md` for full schema and
 migration script details. Order within the phase matters.
 
 ### 3a: Backend — Postgres rewrite
-- [ ] **Replace `db/database.js`** — Swap 17 Mongo functions for Postgres equivalents
-  (using `pg` or `postgres` npm package). Aggregation pipelines
-  (`findMerchantsWithStats`, `deduplicateData`, `findSimilarTransactionGroups`) become
-  SQL GROUP BY queries.
-- [ ] **Update `api.js` call sites** (~59 calls) — function signatures stay similar.
-- [ ] **Update `plaid-api.js`** (5 calls), **`plaidTools.js`** (9 calls),
-  **`seedCategories.js`** (3 calls).
+- [x] **Replace `db/database.js`** — 22 Mongo functions replaced with 50+ Postgres
+  equivalents using `pg` pool. Domain-specific functions (users, categories, transactions,
+  plaid items, rules) with API-compatible return shapes (column aliases preserve
+  camelCase property names). `conditionsToSqlWhere` replaces `conditionsToMongoFilter`.
+  `sweepTransactionsByConditions` replaces inline sweep logic.
+- [x] **Update `api.js` call sites** (~59 calls) — all `ObjectID`, `$set`/`$unset`/
+  `$pull`/`$addToSet` operators removed. New functions: `updateTransaction`,
+  `updateTransactionsBulk`, `renameTransactionCategory`, `removePfcFromOtherCategories`,
+  `addSimpleRule`/`removeSimpleRule`, `nukeAllUserData`, etc.
+- [x] **Update `plaid-api.js`** (8 calls) — nested `Accounts` document replaced with
+  flat `plaid_items` table. `findPlaidItemByInstitution`, `insertPlaidItem`,
+  `updatePlaidItem`, `deletePlaidItem`.
+- [x] **Update `plaidTools.js`** (12 calls) — `getAccountData` reads flat items array,
+  `fetchAndStoreBalances` uses `updatePlaidAccountBalances` + `insertBalanceSnapshot`,
+  `getCachedBalances` reads from `plaid_accounts` table.
+- [x] **Update `seedCategories.js`** (3 calls), **`admin-api.js`** (5 calls).
+- [x] **Schema migration SQL** — `db/migrations/002-schema-additions.sql` adds missing
+  columns (users.name/picture/onboarded_at/last_synced_at, plaid_items.error_message/
+  error_detected_at/prev_cursor, dismissed_relationship → TIMESTAMPTZ) and new
+  `balance_snapshots` table.
+- [x] **Rewrite `scripts/test-data/seed.js`** — converted from MongoDB `db.collection()`
+  to `pg` pool queries. Updated `generators.js` (`generateAccounts` returns flat items
+  array), `seed-test-user.js`, and `nuke-test-users.js` CLI scripts.
+
+### 3a-verify: Local Postgres testing
+- [x] **Set up local Postgres** — Homebrew PostgreSQL 16, `basil` database.
+- [x] **Add `DATABASE_URL`** to root `.env`.
+- [x] **Start app locally** and test API endpoints: getOrAddUser, getcategories,
+  transactions (month + search), rules, merchantStats, historicalCategoryMap,
+  handleDialogSubmit (transaction + merchant sweep + category CRUD), saveCompoundRule
+  (+ sweep), deleteCompoundRule, bulkCategorize, nukeAllData.
+- [x] **Fix runtime issues** — `Date.now()` → `new Date()` in `saveCompoundRule`
+  (api.js) and compound rule generator (generators.js). Postgres TIMESTAMPTZ rejects
+  raw millisecond timestamps.
+- [x] **Unit tests for SQL helpers** — `buildSetClause` and `conditionsToSqlWhere`
+  (23 tests in `__tests__/database.test.js`).
+- [x] **Run schema migration on Hetzner** — `001-initial-schema.sql` executed on
+  production Postgres. Also applied column additions (last_synced_at, is_test_user,
+  plaid_items error columns, renamed credit_limit → "limit").
+- [ ] **Integration tests against real Postgres** (future) — test DB setup/teardown in
+  CI. Covers real SQL execution, type coercion, constraints. Not blocking for go-live.
 
 ### 3b: Backend — Auth rewrite
-- [ ] **Implement Google OAuth flow** — Use `passport-google-oauth20` or raw OAuth2.
-  Google redirects user to your `/auth/google/callback` endpoint with an auth code,
-  backend exchanges it for Google user info, issues a signed JWT.
-- [ ] **JWT middleware** — Replace `firebase-admin.auth().verifyIdToken()` with your
-  own JWT verification (`jsonwebtoken` package). Sign with a secret stored in `.env`.
-- [ ] **Session management** — Decide on token lifetime + refresh strategy. Options:
-  short-lived access token (15min) + refresh token (cookie), or longer-lived JWT (7d)
-  with re-auth on expiry. For a personal finance app, longer-lived is fine.
-- [ ] **Update `getAuthHeaders()` on frontend** — Send your JWT instead of Firebase
-  ID token. Same `Authorization: Bearer <token>` pattern.
+- [x] **Implement Google OAuth flow** — Raw OAuth2 redirect (no passport). `auth-routes.js`
+  handles `GET /auth/google` (redirect to Google) and `GET /auth/google/callback` (exchange
+  code → upsert user → sign JWT → redirect to `/?token=<jwt>`). CSRF state tokens in memory.
+- [x] **JWT middleware** — `utils/authentication.js` rewritten: `jsonwebtoken.verify()`
+  replaces `firebase-admin.auth().verifyIdToken()`. 7-day JWT signed with `JWT_SECRET`.
+  Dev-bypass and impersonation token paths unchanged.
+- [x] **User ID continuity** — OAuth callback looks up user by email first. Existing users
+  keep their Firebase UID. New users get Google `sub` as their ID.
+- [x] **SPA fallback route** — `index.js` now serves `index.html` for all unmatched routes
+  so Vue Router handles client-side navigation.
+
+### 3b-verify: Auth testing
+- [x] **Dev-bypass auth** — returns user data
+- [x] **JWT auth** — signs token, fetches categories for test user
+- [x] **Invalid/expired JWT** — returns 401 (fixed hanging request bug in getOrAddUser)
+- [x] **OAuth redirect** — 302 to Google with correct params
+- [ ] **Google OAuth credentials** — create in Google Cloud Console, set `GOOGLE_CLIENT_ID`
+  and `GOOGLE_CLIENT_SECRET` in `.env`. Test full end-to-end: click sign in → Google →
+  callback → JWT → app loads.
 
 ### 3c: Data migration
-- [ ] **Write and test migration script** — Mongo → Postgres, one-time. Run against
-  real data. See `plans/database-migration.md` for the script skeleton.
-- [ ] **Run migration** — Execute against the production Postgres instance.
+- [x] **Write and test migration script** — `scripts/migrate-mongo-to-postgres.js`.
+  Connects to MongoDB Atlas via `DB_URI`, writes to Hetzner Postgres via SSH tunnel
+  (port 15432). Handles all transformations: nested Accounts → flat plaid_items/accounts,
+  embedded rules → simple_rules rows, millisecond timestamps → Date objects, boolean
+  dismissed_relationship → TIMESTAMPTZ. Dry-run mode with `--dry-run`. Idempotent via
+  `ON CONFLICT`.
+- [x] **Run migration** — 10 users, 113 categories, 16 simple rules, 31 plaid items,
+  37 accounts, 24 balance snapshots, 2113 transactions, 26 compound rules migrated
+  to production Postgres.
 
-### 3d: Frontend auth swap
-- [ ] **Replace Firebase sign-in** — Redirect to Google OAuth consent screen (or popup).
-  On callback, store the JWT from your backend.
-- [ ] **Remove Firebase SDK** — `firebase`, `firebase/compat/app`, `firebase/compat/auth`,
-  `firebase/compat/firestore`. Replace `firebase.js` with a new `auth.js` or `api.js`.
-- [ ] **Remove Firestore sessions collection** reference (legacy, unused).
-- [ ] **Update env vars** — Remove all `VITE_FIREBASE_*` vars. Add your backend URL
-  if needed (or keep relative `/api` paths behind Nginx proxy).
-
-### 3e: Cleanup
-- [ ] **Remove old dependencies** — `mongodb`, `firebase`, `firebase-admin`.
-- [ ] **Rename `frontend/src/firebase.js`** → `api.js` or `client.js` (it's really
-  just API call helpers + auth, not Firebase-specific).
-- [ ] **Update seed scripts** for Postgres.
-- [ ] **Update admin portal auth** — same JWT flow.
-- [ ] **Update tests** — any that mock the DB layer directly.
-
-**Why this sub-order:** Database first (3a) so you can test API routes against the new
-DB while auth is still Firebase. Auth second (3b) because it's the most user-visible
-change. Data migration (3c) once the backend is ready. Frontend last (3d) because if
-the API layer already works, the frontend swap is clean and isolated.
+### 3d + 3e: Frontend auth swap + cleanup (done alongside 3b)
+- [x] **Replace Firebase sign-in** — `signInWithGoogle()` is now
+  `window.location.href = '/auth/google'`. OAuth callback redirects back with JWT.
+- [x] **Remove Firebase SDK** — `firebase`, `firebase/compat/app`, `firebase/compat/auth`,
+  `firebase/compat/firestore` all uninstalled. `firebase.js` renamed to `api.js`.
+- [x] **Frontend `getAuthHeaders()`** — now synchronous, reads JWT from sessionStorage.
+  `authReady` promise removed (no longer needed). `ensureAppData` simplified.
+- [x] **`main.js` rewritten** — `consumeAuthToken()` reads `?token=` from URL on boot,
+  `hydrateAuth()` restores session from sessionStorage. No `onAuthStateChanged`.
+- [x] **Delete `session.js`** — legacy Firestore sessions module, unused.
+- [x] **Update all imports** — 14 files changed from `@/firebase` to `@/api`.
+- [x] **Update env vars** — removed all `VITE_FIREBASE_*` from frontend + admin `.env`.
+  Removed `FIREBASE_SERVICE_ACCOUNT_JSON` from backend `.env`.
+- [x] **Remove old dependencies** — `mongodb`, `firebase`, `firebase-admin` all removed.
+- [x] **Admin portal auth** — `admin/src/auth.js` rewritten: `signInWithGoogle()` redirects
+  to `/auth/google?redirect=/admin`, `getAuthHeaders()` reads from sessionStorage.
+  `admin/src/App.vue` uses token-based state check instead of `onAuthStateChanged`.
 
 ---
 
 ## Phase 4: Error logging _(after infrastructure exists)_
 
-- [ ] **Set up Sentry** (or equivalent) — needs the production URL, environment, and
-  source maps. Free tier is fine. Especially important with Plaid where failures are
-  silent and intermittent.
+- [x] **Set up Sentry** — `@sentry/node` (backend) + `@sentry/vue` (frontend) installed.
+  Backend: initialized in `index.js` before Express, error handler after routes.
+  Frontend: initialized in `main.js` with `browserTracingIntegration` + router, Vue
+  `errorHandler` forwards to Sentry. CSP updated to allow `*.sentry.io`. Both gated
+  by env vars (`SENTRY_DSN` backend, `VITE_SENTRY_DSN` frontend) — no-ops if unset.
+- [ ] **Create Sentry project + set DSN** — create a project at sentry.io (free tier),
+  add `SENTRY_DSN` to `/opt/basil/.env` on Hetzner and `VITE_SENTRY_DSN` to frontend
+  build env. Verify errors appear in dashboard.
 
 **Why here:** Sentry config is environment-specific. Set it up on the real production
 stack, not before it exists. But it must be live before real users touch the app.

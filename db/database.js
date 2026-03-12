@@ -1,308 +1,1071 @@
-const { MongoClient } = require('mongodb');
+const { Pool } = require('pg');
 
-// Singleton client — MongoClient manages an internal connection pool.
-// Never close this; it lives for the lifetime of the process.
-let _client = null;
+// Parse DECIMAL/NUMERIC as float instead of string
+require('pg').types.setTypeParser(1700, val => parseFloat(val));
+// Parse DATE as string (YYYY-MM-DD) instead of Date object
+require('pg').types.setTypeParser(1082, val => val);
+
+let _pool = null;
+
+function getPool() {
+  if (!_pool) {
+    _pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    _pool.on('error', (err) => console.error('DB pool error:', err));
+  }
+  return _pool;
+}
 
 async function connectToDb() {
-  if (!_client) {
-    const client = new MongoClient(process.env.DB_URI);
-    await client.connect(); // assign only after successful connect so failures allow retry
-    _client = client;
-    console.log('DB: connected (pool ready)');
-    ensureIndexes(client.db(process.env.DB_NAME));
+  const pool = getPool();
+  const client = await pool.connect();
+  client.release();
+  console.log('DB: Postgres pool connected');
+  return pool;
+}
+
+// ---- Column aliases for API-compatible return shapes ----
+
+const TXN_COLUMNS = [
+  'id', 'transaction_id', 'user_id AS "userId"', 'account_id',
+  'name', 'merchant_name', 'amount', 'date',
+  'effective_date AS "effectiveDate"',
+  'mapped_category AS "mappedCategory"',
+  'pending', 'pending_transaction_id',
+  'note', 'exclude_from_total AS "excludeFromTotal"', 'manually_set',
+  'account', 'plaid_pfc',
+  'venmo_id', 'venmo_counterparty', 'venmo_note',
+  'linked_transaction AS "linkedTransaction"',
+  'dismissed_relationship AS "dismissedRelationship"',
+  'inserted_at AS "insertDate"',
+].join(', ');
+
+const TXN_FIELD_MAP = {
+  mappedCategory: 'mapped_category',
+  excludeFromTotal: 'exclude_from_total',
+  manually_set: 'manually_set',
+  effectiveDate: 'effective_date',
+  linkedTransaction: 'linked_transaction',
+  dismissedRelationship: 'dismissed_relationship',
+  name: 'name',
+  merchant_name: 'merchant_name',
+  amount: 'amount',
+  date: 'date',
+  pending: 'pending',
+  note: 'note',
+  account: 'account',
+  venmo_id: 'venmo_id',
+  venmo_note: 'venmo_note',
+  venmo_counterparty: 'venmo_counterparty',
+  personal_finance_category: 'personal_finance_category',
+  category: 'category',
+};
+
+const JSONB_FIELDS = new Set(['linked_transaction']);
+
+/** Build SET clause + params from a fields object using a field map. */
+function buildSetClause(fields, fieldMap, startParam) {
+  const setClauses = [];
+  const params = [];
+  let i = startParam;
+  for (const [jsKey, sqlCol] of Object.entries(fieldMap)) {
+    if (jsKey in fields) {
+      if (JSONB_FIELDS.has(sqlCol) && fields[jsKey] !== null) {
+        setClauses.push(`${sqlCol} = $${i}::jsonb`);
+        params.push(JSON.stringify(fields[jsKey]));
+      } else {
+        setClauses.push(`${sqlCol} = $${i}`);
+        params.push(fields[jsKey]);
+      }
+      i++;
+    }
   }
-  return _client;
+  return { setClauses, params, nextParam: i };
 }
 
-/** Idempotent — safe to call on every startup. */
-function ensureIndexes(db) {
-  db.collection('Plaid-Transactions').createIndex({ userId: 1, date: -1 }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Plaid-Transactions').createIndex({ userId: 1, merchant_name: 1 }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Plaid-Transactions').createIndex({ userId: 1, mappedCategory: 1 }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Plaid-Transactions').createIndex({ userId: 1, transaction_id: 1 }, { unique: true }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Basil-Categories').createIndex({ userId: 1 }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Basil-Rules').createIndex({ userId: 1, createdAt: -1 }).catch(e => console.warn('Index error:', e.message));
-  db.collection('Plaid-Accounts').createIndex({ userId: 1 }).catch(e => console.warn('Index error:', e.message));
+// ========================
+//  USERS
+// ========================
+
+async function findUser(userId, email) {
+  const pool = getPool();
+  const where = userId ? 'id = $1' : 'email = $1';
+  const param = userId || email;
+  const { rows } = await pool.query(
+    `SELECT id, id AS "userId", email, name, picture,
+            is_admin AS "isAdmin", onboarded_at, last_synced_at AS "lastSyncedAt",
+            is_test_user AS "isTestUser", created_at
+     FROM users WHERE ${where}`,
+    [param]
+  );
+  return rows;
 }
 
-function getDb() {
-  if (!_client) throw new Error('DB not connected — call connectToDb() first');
-  return _client.db(process.env.DB_NAME);
+async function insertUser(user) {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO users (id, email, name, picture, is_admin, onboarded_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [user.userId, user.email, user.name || null, user.picture || null,
+     user.isAdmin || false, user.onboarded_at || null]
+  );
 }
 
-async function insertData(collectionName, data) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const collection = db.collection(collectionName);
-  if (Array.isArray(data)) {
-    const dataWithInsertDate = data.map(item => ({ ...item, insertDate: Date.now() }));
-    await collection.insertMany(dataWithInsertDate);
-  } else if (typeof data === 'object') {
-    data.insertDate = Date.now();
-    await collection.insertOne(data);
-  } else {
-    console.error('DB: invalid data type passed to insertData');
+const USER_FIELD_MAP = {
+  onboarded_at: 'onboarded_at',
+  lastSyncedAt: 'last_synced_at',
+  email: 'email',
+  name: 'name',
+  picture: 'picture',
+  isAdmin: 'is_admin',
+};
+
+async function updateUser(userId, fields) {
+  const pool = getPool();
+  const { setClauses, params } = buildSetClause(fields, USER_FIELD_MAP, 2);
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE users SET ${setClauses.join(', ')} WHERE id = $1`,
+    [userId, ...params]
+  );
+}
+
+async function findAllUsers() {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT id AS "userId", email, name, picture, is_admin AS "isAdmin"
+     FROM users ORDER BY created_at`
+  );
+  return rows;
+}
+
+// ========================
+//  CATEGORIES + SIMPLE RULES
+// ========================
+
+async function findCategories(userId) {
+  const pool = getPool();
+  const { rows: categories } = await pool.query(
+    `SELECT id AS "_id", user_id AS "userId", name AS "category", type,
+            monthly_limit, show_on_budget, plaid_pfc, fixed, created_at
+     FROM categories WHERE user_id = $1 ORDER BY created_at`,
+    [userId]
+  );
+  if (categories.length === 0) return [];
+
+  const catIds = categories.map(c => c._id);
+  const { rows: rules } = await pool.query(
+    `SELECT category_id, rule_type, rule_value
+     FROM simple_rules WHERE category_id = ANY($1)`,
+    [catIds]
+  );
+
+  const rulesMap = {};
+  for (const r of rules) {
+    if (!rulesMap[r.category_id]) rulesMap[r.category_id] = { merchant_name: [], name: [] };
+    rulesMap[r.category_id][r.rule_type].push(r.rule_value);
   }
-}
 
-
-async function findUserData(collectionName, uid) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection(collectionName).find({ userId: uid }).sort({ date: -1 }).toArray();
-}
-
-async function findFilterData(collectionName, filter) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const collection = db.collection(collectionName);
-  const results = [];
-  for (const element of filter) {
-    const result = await collection
-      .find({ transaction_id: element.transaction_id, pending: true })
-      .sort({ date: -1 })
-      .toArray();
-    results.push(...result);
-  }
-  return results;
-}
-
-async function findUnmappedData(collectionName, userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const query = userId
-    ? { userId, mappedCategory: { $exists: false } }
-    : { mappedCategory: { $exists: false } };
-  return db.collection(collectionName).find(query).toArray();
-}
-
-async function updateManyData(collectionName, filter, update) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const result = await db.collection(collectionName).updateMany(filter, update);
-  console.log(`DB: updateMany matched ${result.matchedCount}, modified ${result.modifiedCount}`);
-  return result;
-}
-
-async function updateData(collectionName, filter, update, options = null) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  await db.collection(collectionName).updateOne(filter, update, options);
-}
-
-async function deduplicateData(collectionName, userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const collection = db.collection(collectionName);
-  const matchStage = userId ? { $match: { userId } } : { $match: {} };
-  const result = await collection.aggregate([
-    matchStage,
-    { $group: { _id: { transaction_id: '$transaction_id' }, count: { $sum: 1 }, docs: { $push: '$_id' } } },
-    { $match: { count: { $gt: 1 } } },
-    { $sort: { count: -1 } },
-  ]).toArray();
-  for (const docGroup of result) {
-    await collection.deleteMany({ _id: { $in: docGroup.docs.slice(1) } });
-  }
-  console.log('DB: deduplicateData() complete');
-}
-
-async function deleteRemovedData(collectionName, filter) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection(collectionName).deleteMany(filter);
-}
-
-async function cleanPendingTransactions(collectionName, userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const collection = db.collection(collectionName);
-  const findFilter = userId ? { pending: true, userId } : { pending: true };
-  const allPending = await collection.find(findFilter).toArray();
-  if (allPending.length === 0) return { deletedCount: 0 };
-
-  const orClauses = allPending.map(t => ({
-    $and: [{ pending_transaction_id: t.transaction_id }, { pending: false }],
+  return categories.map(cat => ({
+    ...cat,
+    rules: rulesMap[cat._id] || { merchant_name: [], name: [] },
   }));
-  const keepers = await collection.find({ $or: orClauses }).toArray();
-  const idsToRemove = [...new Set(keepers.map(t => t.pending_transaction_id))];
-  return collection.deleteMany({ transaction_id: { $in: idsToRemove } });
 }
 
-async function findMerchantsWithStats(userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const results = await db.collection('Plaid-Transactions').aggregate([
-    { $match: { userId, merchant_name: { $exists: true, $ne: null } } },
-    { $group: {
-        _id: '$merchant_name',
-        count: { $sum: 1 },
-        categories: { $addToSet: '$mappedCategory' }
-    }},
-    { $sort: { _id: 1 } }
-  ]).toArray();
-  return results.map(r => ({
-    merchant_name: r._id,
-    count: r.count,
-    categories: r.categories.filter(Boolean).sort(),
-  }));
+async function insertCategory(cat) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `INSERT INTO categories (user_id, name, type, monthly_limit, show_on_budget, plaid_pfc, fixed)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id AS "_id"`,
+    [cat.userId, cat.category || cat.name, cat.type || 'expense',
+     cat.monthly_limit || 0, cat.show_on_budget !== false, cat.plaid_pfc || null,
+     cat.fixed || null]
+  );
+  return rows[0];
 }
 
-async function findRecentTransactions(userId, limit = 20) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Plaid-Transactions')
-    .find({ userId })
-    .sort({ date: -1 })
-    .limit(limit)
-    .toArray();
+async function insertCategories(cats) {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const cat of cats) {
+      const { rows } = await client.query(
+        `INSERT INTO categories (user_id, name, type, monthly_limit, show_on_budget, plaid_pfc, fixed)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [cat.userId, cat.category || cat.name, cat.type || 'expense',
+         cat.monthly_limit || 0, cat.show_on_budget !== false, cat.plaid_pfc || null,
+         cat.fixed || null]
+      );
+      const categoryId = rows[0].id;
+      for (const merchant of cat.rules?.merchant_name || []) {
+        await client.query(
+          `INSERT INTO simple_rules (category_id, user_id, rule_type, rule_value)
+           VALUES ($1, $2, 'merchant_name', $3) ON CONFLICT DO NOTHING`,
+          [categoryId, cat.userId, merchant]
+        );
+      }
+      for (const name of cat.rules?.name || []) {
+        await client.query(
+          `INSERT INTO simple_rules (category_id, user_id, rule_type, rule_value)
+           VALUES ($1, $2, 'name', $3) ON CONFLICT DO NOTHING`,
+          [categoryId, cat.userId, name]
+        );
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
 }
 
-async function findDistinctMerchants(userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const results = await db.collection('Plaid-Transactions').distinct('merchant_name', {
-    userId,
-    merchant_name: { $exists: true, $ne: null },
-  });
-  return results.sort();
+const CAT_FIELD_MAP = {
+  category: 'name',
+  monthly_limit: 'monthly_limit',
+  type: 'type',
+  plaid_pfc: 'plaid_pfc',
+  show_on_budget: 'show_on_budget',
+  fixed: 'fixed',
+};
+
+async function updateCategory(categoryId, userId, fields) {
+  const pool = getPool();
+  const { setClauses, params } = buildSetClause(fields, CAT_FIELD_MAP, 3);
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE categories SET ${setClauses.join(', ')} WHERE id = $1 AND user_id = $2`,
+    [categoryId, userId, ...params]
+  );
 }
 
-async function findSimilarTransactionGroupsByName(uid) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const pipeline = [
-    { $match: { userId: uid } },
-    { $limit: 1000 },
-    { $group: { _id: '$name', count: { $sum: 1 }, transactions: { $push: '$$ROOT' } } },
-    { $match: { count: { $gte: 2 } } },
-    { $sort: { count: -1 } },
-  ];
-  return db.collection('Plaid-Transactions').aggregate(pipeline, { allowDiskUse: true }).toArray();
+async function deleteCategory(categoryId, userId) {
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM categories WHERE id = $1 AND user_id = $2`,
+    [categoryId, userId]
+  );
+  return { deletedCount: result.rowCount };
 }
 
-async function findSimilarTransactionGroupsByCategory(uid) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const pipeline = [
-    { $match: { userId: uid } },
-    { $group: { _id: '$category', count: { $sum: 1 }, names: { $push: '$name' } } },
-    { $sort: { count: -1 } },
-  ];
-  return db.collection('Plaid-Transactions').aggregate(pipeline, { allowDiskUse: true }).toArray();
+async function removePfcFromOtherCategories(userId, excludeId, pfcValues) {
+  if (!pfcValues || pfcValues.length === 0) return;
+  const pool = getPool();
+  await pool.query(
+    `UPDATE categories SET plaid_pfc = (
+       SELECT ARRAY(SELECT unnest(plaid_pfc) EXCEPT SELECT unnest($3::text[]))
+     ) WHERE user_id = $1 AND id != $2 AND plaid_pfc && $3::text[]`,
+    [userId, excludeId, pfcValues]
+  );
 }
 
-// ---- Compound rules (Basil-Rules collection) ----
+async function removePfcFromAllCategories(userId, pfcValues) {
+  if (!pfcValues || pfcValues.length === 0) return;
+  const pool = getPool();
+  await pool.query(
+    `UPDATE categories SET plaid_pfc = (
+       SELECT ARRAY(SELECT unnest(plaid_pfc) EXCEPT SELECT unnest($2::text[]))
+     ) WHERE user_id = $1 AND plaid_pfc && $2::text[]`,
+    [userId, pfcValues]
+  );
+}
+
+// ---- Simple Rules ----
+
+async function addSimpleRule(categoryId, userId, ruleType, ruleValue) {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO simple_rules (category_id, user_id, rule_type, rule_value)
+     VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+    [categoryId, userId, ruleType, ruleValue]
+  );
+}
+
+async function removeSimpleRule(categoryId, userId, ruleType, ruleValue) {
+  const pool = getPool();
+  await pool.query(
+    `DELETE FROM simple_rules WHERE category_id = $1 AND user_id = $2
+     AND rule_type = $3 AND rule_value = $4`,
+    [categoryId, userId, ruleType, ruleValue]
+  );
+}
+
+async function removeSimpleRuleFromAll(userId, ruleType, ruleValue) {
+  const pool = getPool();
+  await pool.query(
+    `DELETE FROM simple_rules WHERE user_id = $1 AND rule_type = $2 AND rule_value = $3`,
+    [userId, ruleType, ruleValue]
+  );
+}
+
+// ========================
+//  COMPOUND RULES
+// ========================
 
 async function findUserRules(userId) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Basil-Rules').find({ userId }).sort({ createdAt: -1 }).toArray();
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT id AS "_id", user_id AS "userId", label, conditions, action,
+            created_from AS "createdFrom", created_at AS "createdAt"
+     FROM compound_rules WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]
+  );
+  return rows;
 }
 
 async function insertRule(rule) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Basil-Rules').insertOne(rule);
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `INSERT INTO compound_rules (user_id, label, conditions, action, created_from, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [rule.userId, rule.label, JSON.stringify(rule.conditions),
+     JSON.stringify(rule.action), rule.createdFrom || null, rule.createdAt || new Date()]
+  );
+  return { insertedId: rows[0].id };
 }
 
 async function updateCompoundRule(userId, ruleId, updates) {
-  const { ObjectId } = require('mongodb');
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Basil-Rules').updateOne(
-    { _id: new ObjectId(ruleId), userId },
-    { $set: updates }
+  const pool = getPool();
+  const setClauses = [];
+  const params = [userId, ruleId];
+  let i = 3;
+  if ('label' in updates) {
+    setClauses.push(`label = $${i}`); params.push(updates.label); i++;
+  }
+  if ('conditions' in updates) {
+    setClauses.push(`conditions = $${i}::jsonb`);
+    params.push(JSON.stringify(updates.conditions)); i++;
+  }
+  if ('action' in updates) {
+    setClauses.push(`action = $${i}::jsonb`);
+    params.push(JSON.stringify(updates.action)); i++;
+  }
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE compound_rules SET ${setClauses.join(', ')} WHERE user_id = $1 AND id = $2`,
+    params
   );
 }
 
 async function deleteCompoundRule(userId, ruleId) {
-  const { ObjectId } = require('mongodb');
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Basil-Rules').deleteOne({ _id: new ObjectId(ruleId), userId });
+  const pool = getPool();
+  await pool.query(
+    `DELETE FROM compound_rules WHERE user_id = $1 AND id = $2`,
+    [userId, ruleId]
+  );
 }
 
-async function findUserTransactionsByMonth(userId, month) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  // month is "YYYY-MM" — match transactions by effectiveDate (if set) or date
-  return db.collection('Plaid-Transactions')
-    .find({
-      userId,
-      $or: [
-        { effectiveDate: { $regex: `^${month}` } },
-        { effectiveDate: null, date: { $regex: `^${month}` } },
-        { effectiveDate: { $exists: false }, date: { $regex: `^${month}` } },
-      ],
-    })
-    .sort({ date: -1 })
-    .toArray();
+// ========================
+//  TRANSACTIONS
+// ========================
+
+async function findTransactionsByMonth(userId, month) {
+  const pool = getPool();
+  const monthStart = `${month}-01`;
+  const [year, mon] = month.split('-').map(Number);
+  const lastDay = new Date(year, mon, 0).getDate();
+  const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`;
+
+  const { rows } = await pool.query(
+    `SELECT ${TXN_COLUMNS} FROM transactions
+     WHERE user_id = $1 AND (
+       (effective_date IS NOT NULL AND effective_date >= $2 AND effective_date <= $3)
+       OR
+       (effective_date IS NULL AND date >= $2 AND date <= $3)
+     )
+     ORDER BY date DESC`,
+    [userId, monthStart, monthEnd]
+  );
+  return rows;
 }
 
-async function findUserTransactionsPaginated(userId, { page = 1, limit = 100, search } = {}) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  const filter = { userId };
+async function findTransactionsPaginated(userId, { page = 1, limit = 100, search } = {}) {
+  const pool = getPool();
+  const params = [userId];
+  let whereExtra = '';
+  let paramIdx = 2;
+
   if (search) {
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    filter.$or = [
-      { name: { $regex: escaped, $options: 'i' } },
-      { merchant_name: { $regex: escaped, $options: 'i' } },
-      { mappedCategory: { $regex: escaped, $options: 'i' } },
-    ];
+    whereExtra = ` AND (name ILIKE $${paramIdx} OR merchant_name ILIKE $${paramIdx} OR mapped_category ILIKE $${paramIdx})`;
+    params.push(`%${search}%`);
+    paramIdx++;
   }
-  const skip = (page - 1) * limit;
-  const [transactions, total] = await Promise.all([
-    db.collection('Plaid-Transactions')
-      .find(filter)
-      .sort({ date: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray(),
-    db.collection('Plaid-Transactions').countDocuments(filter),
+
+  const offset = (page - 1) * limit;
+  const countParams = [...params];
+  params.push(limit, offset);
+
+  const [txnResult, countResult] = await Promise.all([
+    pool.query(
+      `SELECT ${TXN_COLUMNS} FROM transactions
+       WHERE user_id = $1${whereExtra}
+       ORDER BY date DESC
+       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      params
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS count FROM transactions WHERE user_id = $1${whereExtra}`,
+      countParams
+    ),
   ]);
-  return { transactions, total, hasMore: skip + transactions.length < total };
+
+  const total = countResult.rows[0].count;
+  return {
+    transactions: txnResult.rows,
+    total,
+    hasMore: offset + txnResult.rows.length < total,
+  };
+}
+
+async function insertTransactions(transactions) {
+  if (!transactions || transactions.length === 0) return;
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const t of transactions) {
+      const pfc = t.personal_finance_category
+        ? [t.personal_finance_category.primary]
+        : (t.plaid_pfc || null);
+      await client.query(
+        `INSERT INTO transactions (
+           transaction_id, user_id, account_id, name, merchant_name,
+           amount, date, effective_date, mapped_category, pending,
+           pending_transaction_id, note, exclude_from_total, manually_set,
+           account, plaid_pfc, venmo_id, venmo_counterparty, venmo_note,
+           linked_transaction, dismissed_relationship
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+         ON CONFLICT (transaction_id) DO NOTHING`,
+        [
+          t.transaction_id, t.userId, t.account_id || null,
+          t.name, t.merchant_name || null, t.amount, t.date,
+          t.effectiveDate || t.effective_date || null,
+          t.mappedCategory || t.mapped_category || null,
+          t.pending || false, t.pending_transaction_id || null,
+          t.note || null, t.excludeFromTotal || t.exclude_from_total || false,
+          t.manually_set || false, t.account || null, pfc,
+          t.venmo_id || null, t.venmo_counterparty || null, t.venmo_note || null,
+          t.linkedTransaction ? JSON.stringify(t.linkedTransaction) : null,
+          t.dismissedRelationship || null,
+        ]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateTransaction(userId, transactionId, fields) {
+  const pool = getPool();
+  const { setClauses, params } = buildSetClause(fields, TXN_FIELD_MAP, 3);
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE transactions SET ${setClauses.join(', ')}
+     WHERE user_id = $1 AND transaction_id = $2`,
+    [userId, transactionId, ...params]
+  );
+}
+
+async function updateTransactionsBulk(userId, transactionIds, fields) {
+  if (!transactionIds || transactionIds.length === 0) return { modifiedCount: 0 };
+  const pool = getPool();
+  const { setClauses, params } = buildSetClause(fields, TXN_FIELD_MAP, 3);
+  if (setClauses.length === 0) return { modifiedCount: 0 };
+  const result = await pool.query(
+    `UPDATE transactions SET ${setClauses.join(', ')}
+     WHERE user_id = $1 AND transaction_id = ANY($2)`,
+    [userId, transactionIds, ...params]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+async function updateTransactionsByMerchant(userId, merchantName, fields, excludeManuallySet = true) {
+  const pool = getPool();
+  const manualClause = excludeManuallySet ? ' AND (manually_set IS NULL OR manually_set = false)' : '';
+  const { setClauses, params } = buildSetClause(fields, TXN_FIELD_MAP, 3);
+  if (setClauses.length === 0) return { modifiedCount: 0 };
+  const result = await pool.query(
+    `UPDATE transactions SET ${setClauses.join(', ')}
+     WHERE user_id = $1 AND merchant_name = $2${manualClause}`,
+    [userId, merchantName, ...params]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+async function updateTransactionsByName(userId, txnName, fields, excludeManuallySet = true) {
+  const pool = getPool();
+  const manualClause = excludeManuallySet ? ' AND (manually_set IS NULL OR manually_set = false)' : '';
+  const { setClauses, params } = buildSetClause(fields, TXN_FIELD_MAP, 3);
+  if (setClauses.length === 0) return { modifiedCount: 0 };
+  const result = await pool.query(
+    `UPDATE transactions SET ${setClauses.join(', ')}
+     WHERE user_id = $1 AND name = $2${manualClause}`,
+    [userId, txnName, ...params]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+/** Convert compound rule conditions to SQL WHERE clause + params. */
+function conditionsToSqlWhere(conditions, startParam = 1) {
+  const clauses = [];
+  const params = [];
+  let i = startParam;
+
+  for (const cond of conditions) {
+    const { field, op, value } = cond;
+    if (field === 'merchant_name') {
+      if (op === 'eq') { clauses.push(`merchant_name = $${i}`); params.push(value); i++; }
+      else if (op === 'contains') { clauses.push(`merchant_name ILIKE $${i}`); params.push(`%${value}%`); i++; }
+    } else if (field === 'name') {
+      if (op === 'eq') { clauses.push(`name = $${i}`); params.push(value); i++; }
+      else if (op === 'contains') { clauses.push(`name ILIKE $${i}`); params.push(`%${value}%`); i++; }
+    } else if (field === 'amount') {
+      if (op === 'eq') { clauses.push(`ABS(amount) = $${i}`); params.push(value); i++; }
+      else if (op === 'gt') { clauses.push(`ABS(amount) > $${i}`); params.push(value); i++; }
+      else if (op === 'lt') { clauses.push(`ABS(amount) < $${i}`); params.push(value); i++; }
+      else if (op === 'range') {
+        clauses.push(`ABS(amount) >= $${i} AND ABS(amount) <= $${i + 1}`);
+        params.push(value.min, value.max); i += 2;
+      }
+    } else if (field === 'account') {
+      if (op === 'eq') { clauses.push(`account = $${i}`); params.push(value); i++; }
+    }
+  }
+
+  return { clause: clauses.join(' AND '), params, nextParam: i };
+}
+
+async function sweepTransactionsByConditions(userId, conditions, fields) {
+  const pool = getPool();
+  const { clause, params: condParams } = conditionsToSqlWhere(conditions, 2);
+  if (!clause) return { matchedCount: 0, modifiedCount: 0 };
+
+  const { setClauses, params: setParams } = buildSetClause(fields, TXN_FIELD_MAP, 2 + condParams.length);
+  if (setClauses.length === 0) return { matchedCount: 0, modifiedCount: 0 };
+
+  const where = `user_id = $1 AND ${clause} AND (manually_set IS NULL OR manually_set = false)`;
+  const result = await pool.query(
+    `UPDATE transactions SET ${setClauses.join(', ')} WHERE ${where}`,
+    [userId, ...condParams, ...setParams]
+  );
+  console.log(`DB: sweepTransactionsByConditions matched ${result.rowCount}`);
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+async function deleteTransactions(userId) {
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM transactions WHERE user_id = $1`, [userId]
+  );
+  return { deletedCount: result.rowCount };
+}
+
+async function deleteTransactionsByIds(userId, transactionIds) {
+  if (!transactionIds || transactionIds.length === 0) return { deletedCount: 0 };
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM transactions WHERE user_id = $1 AND transaction_id = ANY($2)`,
+    [userId, transactionIds]
+  );
+  return { deletedCount: result.rowCount };
+}
+
+async function findUnmappedTransactions(userId) {
+  const pool = getPool();
+  const where = userId
+    ? `user_id = $1 AND mapped_category IS NULL`
+    : `mapped_category IS NULL`;
+  const params = userId ? [userId] : [];
+  const { rows } = await pool.query(
+    `SELECT ${TXN_COLUMNS} FROM transactions WHERE ${where}`, params
+  );
+  return rows;
+}
+
+async function cleanPendingTransactions(userId) {
+  const pool = getPool();
+  const whereUser = userId ? ' AND t1.user_id = $1' : '';
+  const params = userId ? [userId] : [];
+  const result = await pool.query(
+    `DELETE FROM transactions t1
+     WHERE t1.pending = true${whereUser}
+     AND EXISTS (
+       SELECT 1 FROM transactions t2
+       WHERE t2.pending_transaction_id = t1.transaction_id
+       AND t2.pending = false
+       AND t2.user_id = t1.user_id
+     )`,
+    params
+  );
+  return { deletedCount: result.rowCount };
+}
+
+async function deduplicateTransactions(userId) {
+  const pool = getPool();
+  const params = userId ? [userId] : [];
+  const whereUser = userId ? ' AND t1.user_id = $1' : '';
+  const result = await pool.query(
+    `DELETE FROM transactions t1
+     USING transactions t2
+     WHERE t1.transaction_id = t2.transaction_id
+     AND t1.user_id = t2.user_id
+     AND t1.id > t2.id${whereUser}`,
+    params
+  );
+  console.log(`DB: deduplicateTransactions removed ${result.rowCount} duplicates`);
+}
+
+async function renameTransactionCategory(userId, oldName, newName) {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE transactions SET mapped_category = $3
+     WHERE user_id = $1 AND mapped_category = $2`,
+    [userId, oldName, newName]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+async function clearManualOverrides(userId) {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE transactions SET manually_set = false
+     WHERE user_id = $1 AND manually_set = true`,
+    [userId]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+async function clearVenmoEnrichment(userId) {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE transactions SET venmo_id = NULL, venmo_note = NULL, venmo_counterparty = NULL
+     WHERE user_id = $1 AND venmo_id IS NOT NULL`,
+    [userId]
+  );
+  return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+// ========================
+//  PLAID ITEMS + ACCOUNTS
+// ========================
+
+async function findPlaidItems(userId) {
+  const pool = getPool();
+  const { rows: items } = await pool.query(
+    `SELECT id, user_id AS "userId", institution, access_token AS "accessToken",
+            next_cursor AS "nextCursor", prev_cursor AS "prevCursor",
+            error_code AS "errorCode", error_message AS "errorMessage",
+            error_detected_at AS "errorDetectedAt", created_at AS "createdAt"
+     FROM plaid_items WHERE user_id = $1 ORDER BY institution`,
+    [userId]
+  );
+  if (items.length === 0) return [];
+
+  const itemIds = items.map(it => it.id);
+  const { rows: accounts } = await pool.query(
+    `SELECT account_id AS "accountId", item_id AS "itemId",
+            user_id AS "userId", name, official_name AS "officialName",
+            mask, type, subtype, balance, available,
+            "limit", balance_fetched_at AS "balanceFetchedAt"
+     FROM plaid_accounts WHERE item_id = ANY($1)`,
+    [itemIds]
+  );
+
+  const accountsByItem = {};
+  for (const acct of accounts) {
+    if (!accountsByItem[acct.itemId]) accountsByItem[acct.itemId] = [];
+    accountsByItem[acct.itemId].push(acct);
+  }
+
+  // Fetch balance snapshots for all items in one query
+  const { rows: snapshots } = await pool.query(
+    `SELECT item_id AS "itemId", date, net, fetched_at AS "fetchedAt"
+     FROM balance_snapshots WHERE item_id = ANY($1) ORDER BY date`,
+    [itemIds]
+  );
+  const snapshotsByItem = {};
+  for (const snap of snapshots) {
+    if (!snapshotsByItem[snap.itemId]) snapshotsByItem[snap.itemId] = [];
+    snapshotsByItem[snap.itemId].push(snap);
+  }
+
+  return items.map(item => {
+    const accts = accountsByItem[item.id] || [];
+    // Format balances in the shape createClientSideUser expects
+    const balances = accts.length ? accts.map(a => ({
+      account_id: a.accountId,
+      name: a.name,
+      official_name: a.officialName,
+      mask: a.mask,
+      type: a.type,
+      subtype: a.subtype,
+      current: a.balance,
+      available: a.available,
+      limit: a.limit,
+      fetchedAt: a.balanceFetchedAt,
+    })) : null;
+
+    // Build itemError from error columns
+    const itemError = item.errorCode ? {
+      error_code: item.errorCode,
+      error_message: item.errorMessage,
+      detected_at: item.errorDetectedAt,
+    } : null;
+
+    return {
+      ...item,
+      accounts: accts,
+      balances,
+      balanceSnapshots: snapshotsByItem[item.id] || [],
+      itemError,
+    };
+  });
+}
+
+async function findPlaidItemByInstitution(userId, institution) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT id, user_id AS "userId", institution, access_token AS "accessToken",
+            next_cursor AS "nextCursor", prev_cursor AS "prevCursor",
+            error_code AS "errorCode", error_message AS "errorMessage",
+            error_detected_at AS "errorDetectedAt", created_at AS "createdAt"
+     FROM plaid_items WHERE user_id = $1 AND institution = $2`,
+    [userId, institution]
+  );
+  if (rows.length === 0) return null;
+
+  const item = rows[0];
+  const { rows: accounts } = await pool.query(
+    `SELECT account_id AS "accountId", item_id AS "itemId",
+            user_id AS "userId", name, official_name AS "officialName",
+            mask, type, subtype, balance, available,
+            "limit", balance_fetched_at AS "balanceFetchedAt"
+     FROM plaid_accounts WHERE item_id = $1`,
+    [item.id]
+  );
+  item.accounts = accounts;
+  return item;
+}
+
+async function insertPlaidItem({ userId, institution, accessToken }) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `INSERT INTO plaid_items (user_id, institution, access_token)
+     VALUES ($1, $2, $3) RETURNING id`,
+    [userId, institution, accessToken]
+  );
+  return { id: rows[0].id };
+}
+
+const PLAID_ITEM_FIELD_MAP = {
+  nextCursor: 'next_cursor',
+  prevCursor: 'prev_cursor',
+  errorCode: 'error_code',
+  errorMessage: 'error_message',
+  errorDetectedAt: 'error_detected_at',
+  accessToken: 'access_token',
+};
+
+async function updatePlaidItem(userId, institution, fields) {
+  const pool = getPool();
+  const setClauses = [];
+  const params = [userId, institution];
+  let i = 3;
+  for (const [jsKey, sqlCol] of Object.entries(PLAID_ITEM_FIELD_MAP)) {
+    if (jsKey in fields) {
+      setClauses.push(`${sqlCol} = $${i}`);
+      params.push(fields[jsKey]);
+      i++;
+    }
+  }
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE plaid_items SET ${setClauses.join(', ')}
+     WHERE user_id = $1 AND institution = $2`,
+    params
+  );
+}
+
+async function updatePlaidItemByToken(accessToken, fields) {
+  const pool = getPool();
+  const setClauses = [];
+  const params = [accessToken];
+  let i = 2;
+  for (const [jsKey, sqlCol] of Object.entries(PLAID_ITEM_FIELD_MAP)) {
+    if (jsKey in fields) {
+      setClauses.push(`${sqlCol} = $${i}`);
+      params.push(fields[jsKey]);
+      i++;
+    }
+  }
+  if (setClauses.length === 0) return;
+  await pool.query(
+    `UPDATE plaid_items SET ${setClauses.join(', ')} WHERE access_token = $1`,
+    params
+  );
+}
+
+async function deletePlaidItem(userId, institution) {
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM plaid_items WHERE user_id = $1 AND institution = $2`,
+    [userId, institution]
+  );
+  return { deletedCount: result.rowCount };
+}
+
+async function deleteAllPlaidItems(userId) {
+  const pool = getPool();
+  await pool.query(`DELETE FROM plaid_items WHERE user_id = $1`, [userId]);
+}
+
+async function upsertPlaidAccounts(itemId, userId, accounts) {
+  if (!accounts || accounts.length === 0) return;
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const a of accounts) {
+      await client.query(
+        `INSERT INTO plaid_accounts (account_id, item_id, user_id, name, official_name,
+           mask, type, subtype, balance, available, "limit", balance_fetched_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (account_id) DO UPDATE SET
+           name = EXCLUDED.name, official_name = EXCLUDED.official_name,
+           mask = EXCLUDED.mask, type = EXCLUDED.type, subtype = EXCLUDED.subtype,
+           balance = EXCLUDED.balance, available = EXCLUDED.available,
+           "limit" = EXCLUDED."limit", balance_fetched_at = EXCLUDED.balance_fetched_at`,
+        [
+          a.account_id, itemId, userId,
+          a.name || null, a.official_name || null,
+          a.mask || null, a.type || null, a.subtype || null,
+          a.balances?.current ?? null,
+          a.balances?.available ?? null,
+          a.balances?.limit ?? null,
+          new Date(),
+        ]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+async function updatePlaidAccountBalances(itemId, accounts) {
+  if (!accounts || accounts.length === 0) return;
+  const pool = getPool();
+  for (const a of accounts) {
+    await pool.query(
+      `UPDATE plaid_accounts
+       SET balance = $2, available = $3, "limit" = $4, balance_fetched_at = $5
+       WHERE account_id = $1`,
+      [a.account_id, a.balances?.current ?? null, a.balances?.available ?? null,
+       a.balances?.limit ?? null, new Date()]
+    );
+  }
+}
+
+// ---- Balance Snapshots ----
+
+async function insertBalanceSnapshot(itemId, { date, net, fetchedAt }) {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO balance_snapshots (item_id, date, net, fetched_at)
+     VALUES ($1, $2, $3, $4)`,
+    [itemId, date, net, fetchedAt || new Date()]
+  );
+}
+
+async function findBalanceSnapshots(itemId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT date, net, fetched_at AS "fetchedAt"
+     FROM balance_snapshots WHERE item_id = $1 ORDER BY date`,
+    [itemId]
+  );
+  return rows;
+}
+
+async function findBalanceSnapshotsByUser(userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT bs.item_id AS "itemId", bs.date, bs.net, bs.fetched_at AS "fetchedAt"
+     FROM balance_snapshots bs
+     JOIN plaid_items pi ON pi.id = bs.item_id
+     WHERE pi.user_id = $1
+     ORDER BY bs.date`,
+    [userId]
+  );
+  return rows;
+}
+
+async function deleteBalanceSnapshots(userId) {
+  const pool = getPool();
+  await pool.query(
+    `DELETE FROM balance_snapshots bs
+     USING plaid_items pi
+     WHERE bs.item_id = pi.id AND pi.user_id = $1`,
+    [userId]
+  );
+}
+
+// ========================
+//  AGGREGATIONS
+// ========================
+
+async function findMerchantsWithStats(userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT merchant_name, COUNT(*)::int AS count,
+            ARRAY_AGG(DISTINCT mapped_category)
+              FILTER (WHERE mapped_category IS NOT NULL) AS categories
+     FROM transactions
+     WHERE user_id = $1 AND merchant_name IS NOT NULL
+     GROUP BY merchant_name
+     ORDER BY merchant_name`,
+    [userId]
+  );
+  return rows.map(r => ({
+    merchant_name: r.merchant_name,
+    count: r.count,
+    categories: (r.categories || []).sort(),
+  }));
+}
+
+async function findDistinctMerchants(userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT DISTINCT merchant_name FROM transactions
+     WHERE user_id = $1 AND merchant_name IS NOT NULL
+     ORDER BY merchant_name`,
+    [userId]
+  );
+  return rows.map(r => r.merchant_name);
 }
 
 async function findHistoricalCategoryMap(userId, monthsBack = 12) {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
+  const pool = getPool();
   const cutoff = new Date();
   cutoff.setMonth(cutoff.getMonth() - monthsBack);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
-  const results = await db.collection('Plaid-Transactions').aggregate([
-    { $match: {
-      userId,
-      merchant_name: { $exists: true, $ne: null },
-      mappedCategory: { $exists: true, $nin: [null, 'To Sort'] },
-      date: { $gte: cutoffStr },
-    }},
-    { $sort: { date: -1 } },
-    { $group: {
-      _id: '$merchant_name',
-      category: { $first: '$mappedCategory' },  // most recent due to $sort above
-      count: { $sum: 1 },
-    }},
-    { $sort: { count: -1 } },
-  ]).toArray();
+
+  const { rows } = await pool.query(
+    `WITH ranked AS (
+       SELECT merchant_name, mapped_category,
+              ROW_NUMBER() OVER (PARTITION BY merchant_name ORDER BY date DESC) AS rn,
+              COUNT(*) OVER (PARTITION BY merchant_name) AS count
+       FROM transactions
+       WHERE user_id = $1 AND merchant_name IS NOT NULL
+         AND mapped_category IS NOT NULL AND mapped_category != 'To Sort'
+         AND date >= $2
+     )
+     SELECT merchant_name, mapped_category AS category, count
+     FROM ranked WHERE rn = 1
+     ORDER BY count DESC`,
+    [userId, cutoffStr]
+  );
+
   const map = {};
-  for (const r of results) {
-    map[r._id] = { category: r.category, count: r.count };
+  for (const r of rows) {
+    map[r.merchant_name] = { category: r.category, count: r.count };
   }
   return map;
 }
 
-async function findAllUsers() {
-  const db = (await connectToDb()).db(process.env.DB_NAME);
-  return db.collection('Basil-Users').find({}, {
-    projection: { userId: 1, email: 1, name: 1, picture: 1, isAdmin: 1 },
-  }).toArray();
+// ========================
+//  NUKE (delete all user data)
+// ========================
+
+async function nukeAllUserData(userId) {
+  const pool = getPool();
+  await Promise.all([
+    pool.query(`DELETE FROM transactions WHERE user_id = $1`, [userId]),
+    pool.query(`DELETE FROM categories WHERE user_id = $1`, [userId]),
+    pool.query(`DELETE FROM compound_rules WHERE user_id = $1`, [userId]),
+    pool.query(`DELETE FROM plaid_items WHERE user_id = $1`, [userId]),
+  ]);
+  await pool.query(
+    `UPDATE users SET onboarded_at = NULL WHERE id = $1`, [userId]
+  );
 }
+
+// ========================
+//  EXPORTS
+// ========================
 
 module.exports = {
   connectToDb,
-  getDb,
-  insertData,
-  findDistinctMerchants,
-  findMerchantsWithStats,
-  findRecentTransactions,
-  updateData,
-  updateManyData,
-  deduplicateData,
-  findUnmappedData,
-  deleteRemovedData,
-  findFilterData,
-  cleanPendingTransactions,
-  findUserData,
-  findSimilarTransactionGroupsByName,
-  findSimilarTransactionGroupsByCategory,
+  getPool,
+  // Users
+  findUser,
+  insertUser,
+  updateUser,
+  findAllUsers,
+  // Categories
+  findCategories,
+  insertCategory,
+  insertCategories,
+  updateCategory,
+  deleteCategory,
+  removePfcFromOtherCategories,
+  removePfcFromAllCategories,
+  // Simple Rules
+  addSimpleRule,
+  removeSimpleRule,
+  removeSimpleRuleFromAll,
+  // Compound Rules
   findUserRules,
   insertRule,
   updateCompoundRule,
   deleteCompoundRule,
-  findAllUsers,
-  findUserTransactionsByMonth,
-  findUserTransactionsPaginated,
+  // Transactions
+  findTransactionsByMonth,
+  findTransactionsPaginated,
+  insertTransactions,
+  updateTransaction,
+  updateTransactionsBulk,
+  updateTransactionsByMerchant,
+  updateTransactionsByName,
+  sweepTransactionsByConditions,
+  renameTransactionCategory,
+  deleteTransactions,
+  deleteTransactionsByIds,
+  findUnmappedTransactions,
+  cleanPendingTransactions,
+  deduplicateTransactions,
+  clearManualOverrides,
+  clearVenmoEnrichment,
+  // Plaid Items + Accounts
+  findPlaidItems,
+  findPlaidItemByInstitution,
+  insertPlaidItem,
+  updatePlaidItem,
+  updatePlaidItemByToken,
+  deletePlaidItem,
+  deleteAllPlaidItems,
+  upsertPlaidAccounts,
+  updatePlaidAccountBalances,
+  insertBalanceSnapshot,
+  findBalanceSnapshots,
+  findBalanceSnapshotsByUser,
+  deleteBalanceSnapshots,
+  // Aggregations
+  findMerchantsWithStats,
+  findDistinctMerchants,
   findHistoricalCategoryMap,
+  // Nuke
+  nukeAllUserData,
+  // Utilities (exported for testing)
+  buildSetClause,
+  conditionsToSqlWhere,
+  TXN_FIELD_MAP,
 };

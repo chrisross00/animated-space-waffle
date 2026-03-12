@@ -1,5 +1,5 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
-const { insertData, findUserData } = require('../db/database');
+const { insertCategories, findCategories } = require('../db/database');
 
 const { DEFAULT_CATEGORIES } = require('./defaultCategories');
 
@@ -9,7 +9,7 @@ async function seedCategories(userId) {
     process.exit(1);
   }
 
-  const existing = await findUserData('Basil-Categories', userId);
+  const existing = await findCategories(userId);
   if (existing.length > 0) {
     console.log(`User already has ${existing.length} categories. Skipping.`);
     process.exit(0);
@@ -24,7 +24,7 @@ async function seedCategories(userId) {
     userId,
   }));
 
-  await insertData('Basil-Categories', toInsert);
+  await insertCategories(toInsert);
   console.log(`Seeded ${toInsert.length} categories for user ${userId}.`);
   process.exit(0);
 }

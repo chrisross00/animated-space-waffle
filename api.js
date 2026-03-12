@@ -2,12 +2,11 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { deduplicateData, updateData, updateManyData, findUnmappedData, cleanPendingTransactions, findUserData, insertData, findDistinctMerchants, findMerchantsWithStats, deleteRemovedData, findRecentTransactions, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findAllUsers, findUserTransactionsByMonth, findUserTransactionsPaginated, findHistoricalCategoryMap } = require('./db/database');
+const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots } = require('./db/database');
 const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
-const ObjectID = require('mongodb').ObjectId;
 const { rateLimit } = require('express-rate-limit');
 
 // Tighter per-endpoint limiter for expensive Plaid sync operations
@@ -16,7 +15,7 @@ const plaidSyncLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
 // Admin check: looks up isAdmin flag on the user's Basil-Users document.
 // No env vars needed — set isAdmin: true on your user doc in MongoDB once.
 async function requireAdmin(uid, res) {
-  const users = await findUserData('Basil-Users', uid);
+  const users = await findUser(uid);
   if (!users.length || !users[0].isAdmin) {
     res.status(403).json({ message: 'Forbidden' });
     return false;
@@ -51,7 +50,7 @@ router.post('/dedupe', async (req,res) => {
   try {
     const userId = await resolveTargetUser(req, res);
     if (!userId) return;
-    await deduplicateData('Plaid-Transactions', userId);
+    await deduplicateTransactions(userId);
     res.send('De-duplication complete');
   } catch (err) {
       console.error(err);
@@ -63,7 +62,7 @@ router.get('/getcategories', async (req, res)=>{
   try {
     const decodedToken = await validateIdToken(req)
     const userId = decodedToken.uid;
-    const categories = await findUserData('Basil-Categories', userId);
+    const categories = await findCategories(userId);
     res.send(categories)
     
   } catch (error) {
@@ -77,10 +76,10 @@ router.get('/seedcategories', async (req, res) => {
   try {
     const userId = await resolveTargetUser(req, res);
     if (!userId) return;
-    const existing = await findUserData('Basil-Categories', userId);
+    const existing = await findCategories(userId);
     if (existing.length > 0) {
       // Categories already exist — still ensure onboarded_at is stamped
-      await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
+      await updateUser(userId, { onboarded_at: new Date() });
       return res.send(`User already has ${existing.length} categories. Skipping.`);
     }
     const toInsert = DEFAULT_CATEGORIES.map(cat => ({
@@ -91,8 +90,8 @@ router.get('/seedcategories', async (req, res) => {
       isDefault: true,
       userId,
     }));
-    await insertData('Basil-Categories', toInsert);
-    await updateData('Basil-Users', { userId }, { $set: { onboarded_at: new Date() } });
+    await insertCategories(toInsert);
+    await updateUser(userId, { onboarded_at: new Date() });
     res.send(`Seeded ${toInsert.length} categories.`);
   } catch (error) {
     res.status(500).send('Error seeding categories: ' + error);
@@ -103,14 +102,12 @@ router.get('/addplaidpfc', async (req, res) => {
   try {
     const userId = await resolveTargetUser(req, res);
     if (!userId) return;
-    const categories = await findUserData('Basil-Categories', userId);
+    const categories = await findCategories(userId);
     const pfcByName = Object.fromEntries(DEFAULT_CATEGORIES.map(c => [c.category, c.plaid_pfc]));
     let updated = 0;
     for (const cat of categories) {
       if (!cat.plaid_pfc && pfcByName[cat.category] !== undefined) {
-        const filter = { _id: new ObjectID(cat._id), userId };
-        const update = { $set: { plaid_pfc: pfcByName[cat.category] } };
-        await updateData('Basil-Categories', filter, update);
+        await updateCategory(cat._id, userId, { plaid_pfc: pfcByName[cat.category] });
         updated++;
       }
     }
@@ -131,18 +128,17 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
     const syncResult = await getNewPlaidTransactions(userId);
     // Also refresh balances + snapshot in the same sync
     const balanceResult = await fetchAndStoreBalances(userId);
-    const accounts = await findUserData('Plaid-Accounts', userId);
-    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const items = await findPlaidItems(userId);
     const allSnapshots = [];
     const itemErrors = {};
-    for (const name of Object.keys(accountsObj)) {
-      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
+    for (const item of items) {
+      for (const snap of (item.balanceSnapshots || [])) {
         allSnapshots.push(snap);
       }
-      if (accountsObj[name].itemError) itemErrors[name] = accountsObj[name].itemError;
+      if (item.itemError) itemErrors[item.institution] = item.itemError;
     }
     const balanceSnapshots = aggregateSnapshots(allSnapshots);
-    await updateData('Basil-Users', { userId }, { $set: { lastSyncedAt: new Date() } });
+    await updateUser(userId, { lastSyncedAt: new Date() });
     res.json({
       syncedAt: new Date().toISOString(),
       balances: balanceResult.balances,
@@ -163,16 +159,15 @@ router.post('/sync/balances', plaidSyncLimiter, async (req, res) => {
     // No rejectTestUser guard — sandbox items are safe to sync
     const balanceResult = await fetchAndStoreBalances(uid);
     // Read back snapshots for the chart
-    const accounts = await findUserData('Plaid-Accounts', uid);
-    const accountsObj = accounts?.[0]?.Accounts ?? {};
+    const items = await findPlaidItems(uid);
     const allSnapshots = [];
-    for (const name of Object.keys(accountsObj)) {
-      for (const snap of (accountsObj[name].balanceSnapshots || [])) {
+    for (const item of items) {
+      for (const snap of (item.balanceSnapshots || [])) {
         allSnapshots.push(snap);
       }
     }
     const balanceSnapshots = aggregateSnapshots(allSnapshots);
-    await updateData('Basil-Users', { userId: uid }, { $set: { lastSyncedAt: new Date() } });
+    await updateUser(uid, { lastSyncedAt: new Date() });
     res.json({ balances: balanceResult.balances, balanceSnapshots });
   } catch (error) {
     console.error('/sync/balances error:', error.message);
@@ -193,12 +188,12 @@ router.get('/transactions', async (req, res) => {
       if (!/^\d{4}-\d{2}$/.test(month)) {
         return res.status(400).json({ message: 'month must be YYYY-MM format' });
       }
-      const transactions = await findUserTransactionsByMonth(userId, month);
+      const transactions = await findTransactionsByMonth(userId, month);
       return res.json({ transactions, total: transactions.length });
     }
 
     // Paginated fetch (for table view / search)
-    const result = await findUserTransactionsPaginated(userId, {
+    const result = await findTransactionsPaginated(userId, {
       page: parseInt(page) || 1,
       limit: Math.min(parseInt(limit) || 100, 500),
       search: search || undefined,
@@ -235,7 +230,7 @@ router.get('/getOrAddUser', async (req, res) => {
       console.log('Missing or malformed Authorization header');
     }
   } catch (error) {
-    console.log(error)
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 });
 
@@ -243,8 +238,8 @@ router.get('/cleanPendingTransactions', async (req, res) => {
   try {
     const userId = await resolveTargetUser(req, res);
     if (!userId) return;
-    const transactions = await cleanPendingTransactions('Plaid-Transactions', userId);
-    res.send(transactions);
+    const result = await cleanPendingTransactions(userId);
+    res.send(result);
   } catch (error) {
     res.status(500).send('Error cleaning pending transactions');
   }
@@ -262,7 +257,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
   const updateType = req.body.updateType;
   let d = {}
   if (updateType === 'editCategory') {
-    if (!ObjectID.isValid(req.body._id)) return res.status(400).json({ message: 'Invalid category id' });
+    if (!req.body._id) return res.status(400).json({ message: 'Invalid category id' });
     if (!isStr(req.body.categoryName, 200)) return res.status(400).json({ message: 'Invalid categoryName' });
     const plaid_pfc = req.body.plaid_pfc || [];
     d = {
@@ -276,30 +271,20 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
     // Remove each selected PFC value from any other category so it only maps to one place
     if (plaid_pfc.length > 0) {
-      await updateManyData('Basil-Categories',
-        { userId: uid, _id: { $ne: new ObjectID(req.body._id) } },
-        { $pull: { plaid_pfc: { $in: plaid_pfc } } }
-      );
+      await removePfcFromOtherCategories(uid, req.body._id, plaid_pfc);
     }
-    const filter = { _id: new ObjectID(req.body._id), userId: uid };
-    const update = {
-      $set: {
-        monthly_limit: req.body.monthly_limit,
-        plaid_pfc,
-        category: req.body.categoryName,
-      }
-    };
-    await updateData('Basil-Categories', filter, update);
+    await updateCategory(req.body._id, uid, {
+      monthly_limit: req.body.monthly_limit,
+      plaid_pfc,
+      category: req.body.categoryName,
+    });
     // If the name changed, rename mappedCategory on all matching transactions
     if (req.body.categoryName !== req.body.originalCategoryName) {
-      await updateManyData('Plaid-Transactions',
-        { userId: uid, mappedCategory: req.body.originalCategoryName },
-        { $set: { mappedCategory: req.body.categoryName } }
-      );
+      await renameTransactionCategory(uid, req.body.originalCategoryName, req.body.categoryName);
     }
   }
 
-  // Call updateData function to update Mongo Db
+  // Update transaction in database
   if (updateType === 'transaction') {
     if (!isStr(req.body.transaction_id)) return res.status(400).json({ message: 'Invalid transaction_id' });
     if (!isStr(req.body.mappedCategory, 200)) return res.status(400).json({ message: 'Invalid mappedCategory' });
@@ -320,58 +305,41 @@ router.post('/handleDialogSubmit', async (req, res) => {
       effectiveDate,
       ...(shouldPin && { manually_set: true }),
     }
-    const filter = { transaction_id: req.body.transaction_id, userId: uid };
-    const setFields = {
+    const fields = {
       mappedCategory: req.body.mappedCategory,
       date: req.body.date,
       note: req.body.note,
       excludeFromTotal: req.body.excludeFromTotal,
       ...(shouldPin && { manually_set: true }),
+      effectiveDate: effectiveDate || null,
     };
-    const update = effectiveDate
-      ? { $set: { ...setFields, effectiveDate } }
-      : { $set: setFields, $unset: { effectiveDate: '' } };
-    await updateData('Plaid-Transactions', filter, update);
+    await updateTransaction(uid, req.body.transaction_id, fields);
 
     // Auto-learn: if user opted in, save rule and re-categorize all matching transactions
     const categoryChanged = req.body.mappedCategory && req.body.originalCategoryName &&
                             req.body.mappedCategory !== req.body.originalCategoryName;
     const notToSort = req.body.mappedCategory !== 'To Sort';
     if (categoryChanged && notToSort && req.body.createRule) {
-      const catFilter = { category: req.body.mappedCategory, userId: uid };
+      const cats = await findCategories(uid);
+      const targetCat = cats.find(c => c.category === req.body.mappedCategory);
       if (req.body.merchantName) {
         // Clear this merchant_name from all categories so the rule only lives in one place
-        await updateManyData('Basil-Categories',
-          { userId: uid, 'rules.merchant_name': req.body.merchantName },
-          { $pull: { 'rules.merchant_name': req.body.merchantName } }
-        );
+        await removeSimpleRuleFromAll(uid, 'merchant_name', req.body.merchantName);
         // Also clear any stale name rule for this specific transaction — name rules are higher
         // priority than merchant_name rules, so a leftover name rule would override this one
         if (req.body.name) {
-          await updateManyData('Basil-Categories',
-            { userId: uid, 'rules.name': req.body.name },
-            { $pull: { 'rules.name': req.body.name } }
-          );
+          await removeSimpleRuleFromAll(uid, 'name', req.body.name);
         }
-        await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.merchant_name': req.body.merchantName } });
+        if (targetCat) await addSimpleRule(targetCat._id, uid, 'merchant_name', req.body.merchantName);
         // Move matching transactions, skipping any the user has manually categorized
-        await updateManyData('Plaid-Transactions',
-          { userId: uid, merchant_name: req.body.merchantName, manually_set: { $ne: true } },
-          { $set: { mappedCategory: req.body.mappedCategory } }
-        );
+        await updateTransactionsByMerchant(uid, req.body.merchantName, { mappedCategory: req.body.mappedCategory });
         console.log(`Auto-learn: set merchant_name "${req.body.merchantName}" -> "${req.body.mappedCategory}"`);
       } else if (req.body.name) {
         // Clear this name from all categories so the rule only lives in one place
-        await updateManyData('Basil-Categories',
-          { userId: uid, 'rules.name': req.body.name },
-          { $pull: { 'rules.name': req.body.name } }
-        );
-        await updateData('Basil-Categories', catFilter, { $addToSet: { 'rules.name': req.body.name } });
+        await removeSimpleRuleFromAll(uid, 'name', req.body.name);
+        if (targetCat) await addSimpleRule(targetCat._id, uid, 'name', req.body.name);
         // Move matching transactions, skipping any the user has manually categorized
-        await updateManyData('Plaid-Transactions',
-          { userId: uid, name: req.body.name, manually_set: { $ne: true } },
-          { $set: { mappedCategory: req.body.mappedCategory } }
-        );
+        await updateTransactionsByName(uid, req.body.name, { mappedCategory: req.body.mappedCategory });
         console.log(`Auto-learn: set name "${req.body.name}" -> "${req.body.mappedCategory}"`);
       }
     }
@@ -390,10 +358,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
     // Remove each selected PFC value from any other category so it only maps to one place
     if (plaid_pfc.length > 0) {
-      await updateManyData('Basil-Categories',
-        { userId: uid },
-        { $pull: { plaid_pfc: { $in: plaid_pfc } } }
-      );
+      await removePfcFromAllCategories(uid, plaid_pfc);
     }
     const update = {
       category: req.body.categoryName,
@@ -407,13 +372,9 @@ router.post('/handleDialogSubmit', async (req, res) => {
       client_id: req.body.client_id,
     }
 
-    await insertData('Basil-Categories', update)
-    const categoriesWithAdded = await findUserData('Basil-Categories', uid);
-    categoriesWithAdded.forEach(category => {
-      if(category.client_id === d.client_id){
-        d._id = category._id
-      }
-    });
+    const inserted = await insertCategory({ ...update, userId: uid });
+    d._id = inserted._id;
+    const categoriesWithAdded = await findCategories(uid);
   }
 
   const resObj = {
@@ -453,24 +414,19 @@ router.post('/saveRule', async (req, res) => {
     const { categoryId, categoryName, ruleType, ruleValue } = req.body;
     const allowed = ['merchant_name', 'name'];
     if (!allowed.includes(ruleType)) return res.status(400).json({ message: 'Invalid ruleType' });
-    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+    if (!categoryId) return res.status(400).json({ message: 'Invalid categoryId' });
     if (!isStr(categoryName, 200)) return res.status(400).json({ message: 'Invalid categoryName' });
     if (!isStr(ruleValue, 500)) return res.status(400).json({ message: 'Invalid ruleValue' });
     // Clear this rule value from any other category so it only lives in one place
-    await updateManyData('Basil-Categories',
-      { userId: uid, [`rules.${ruleType}`]: ruleValue },
-      { $pull: { [`rules.${ruleType}`]: ruleValue } }
-    );
+    await removeSimpleRuleFromAll(uid, ruleType, ruleValue);
     // Add to the target category
-    await updateData('Basil-Categories',
-      { _id: new ObjectID(categoryId), userId: uid },
-      { $addToSet: { [`rules.${ruleType}`]: ruleValue } }
-    );
+    await addSimpleRule(categoryId, uid, ruleType, ruleValue);
     // Re-categorize matching transactions, skipping any the user has manually categorized
-    const txnFilter = ruleType === 'merchant_name'
-      ? { userId: uid, merchant_name: ruleValue, manually_set: { $ne: true } }
-      : { userId: uid, name: ruleValue, manually_set: { $ne: true } };
-    await updateManyData('Plaid-Transactions', txnFilter, { $set: { mappedCategory: categoryName } });
+    if (ruleType === 'merchant_name') {
+      await updateTransactionsByMerchant(uid, ruleValue, { mappedCategory: categoryName });
+    } else {
+      await updateTransactionsByName(uid, ruleValue, { mappedCategory: categoryName });
+    }
     console.log(`saveRule: ${ruleType} "${ruleValue}" -> "${categoryName}"`);
     res.json({ ok: true });
   } catch (error) {
@@ -488,8 +444,7 @@ router.post('/deleteRule', async (req, res) => {
     if (!allowed.includes(ruleType)) {
       return res.status(400).json({ message: 'Invalid ruleType' });
     }
-    const filter = { _id: new ObjectID(categoryId), userId: uid };
-    await updateData('Basil-Categories', filter, { $pull: { [`rules.${ruleType}`]: ruleValue } });
+    await removeSimpleRule(categoryId, uid, ruleType, ruleValue);
     res.json({ ok: true });
   } catch (error) {
     console.error('/deleteRule error:', error);
@@ -510,31 +465,11 @@ router.get('/rules', async (req, res) => {
   }
 });
 
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 async function sweepCompoundRule(uid, conditions, action) {
   if (action?.type !== 'categorize' || !Array.isArray(conditions)) return;
-  const txnFilter = { userId: uid, manually_set: { $ne: true } };
-  const amountExprs = [];
-  for (const c of conditions) {
-    if (c.field === 'amount') {
-      if (c.op === 'eq')    amountExprs.push({ $eq: [{ $abs: '$amount' }, c.value] });
-      if (c.op === 'gt')    amountExprs.push({ $gt: [{ $abs: '$amount' }, c.value] });
-      if (c.op === 'lt')    amountExprs.push({ $lt: [{ $abs: '$amount' }, c.value] });
-      if (c.op === 'range') amountExprs.push({ $gte: [{ $abs: '$amount' }, c.min] }, { $lte: [{ $abs: '$amount' }, c.max] });
-    } else if (c.field === 'merchant_name' || c.field === 'name') {
-      if (c.op === 'eq') txnFilter[c.field] = c.value;
-      if (c.op === 'contains') txnFilter[c.field] = { $regex: escapeRegex(c.value), $options: 'i' };
-    } else if (c.op === 'eq') {
-      txnFilter[c.field] = c.value;
-    }
-  }
-  if (amountExprs.length > 0) txnFilter.$expr = amountExprs.length === 1 ? amountExprs[0] : { $and: amountExprs };
-  const sweep = { mappedCategory: action.categoryName };
-  if (action.note) sweep.note = action.note;
-  await updateManyData('Plaid-Transactions', txnFilter, { $set: sweep });
+  const fields = { mappedCategory: action.categoryName };
+  if (action.note) fields.note = action.note;
+  return sweepTransactionsByConditions(uid, conditions, fields);
 }
 
 router.post('/saveCompoundRule', async (req, res) => {
@@ -551,7 +486,7 @@ router.post('/saveCompoundRule', async (req, res) => {
     );
     if (isDuplicate) return res.status(409).json({ message: 'Duplicate rule' });
 
-    const rule = { userId: uid, label, conditions, action, createdAt: Date.now(), createdFrom: createdFrom || 'manual' };
+    const rule = { userId: uid, label, conditions, action, createdAt: new Date(), createdFrom: createdFrom || 'manual' };
     const result = await insertRule(rule);
 
     await sweepCompoundRule(uid, conditions, action);
@@ -613,23 +548,21 @@ router.post('/linkTransactions', async (req, res) => {
     if (signals) linkData.signals = signals;
 
     // Link both transactions to each other
-    await updateData('Plaid-Transactions',
-      { transaction_id: transactionId, userId: uid },
-      { $set: { linkedTransaction: { transaction_id: partnerId, ...linkData } } }
-    );
-    const partnerUpdate = { $set: { linkedTransaction: { transaction_id: transactionId, ...linkData } } };
+    await updateTransaction(uid, transactionId, {
+      linkedTransaction: { transaction_id: partnerId, ...linkData },
+    });
+    const partnerFields = {
+      linkedTransaction: { transaction_id: transactionId, ...linkData },
+    };
     // Optionally set effectiveDate on the secondary transaction to align budget months
     if (effectiveDate) {
-      partnerUpdate.$set.effectiveDate = effectiveDate;
+      partnerFields.effectiveDate = effectiveDate;
     }
     // Optionally recategorize the secondary transaction (when it was "To Sort")
     if (recategorize) {
-      partnerUpdate.$set.mappedCategory = recategorize;
+      partnerFields.mappedCategory = recategorize;
     }
-    await updateData('Plaid-Transactions',
-      { transaction_id: partnerId, userId: uid },
-      partnerUpdate
-    );
+    await updateTransaction(uid, partnerId, partnerFields);
 
     res.json({ linked: true, transactionId, partnerId, type, effectiveDate: effectiveDate || null, recategorize: recategorize || null });
   } catch (error) {
@@ -648,19 +581,13 @@ router.post('/unlinkTransactions', async (req, res) => {
       return res.status(400).json({ message: 'transactionId and partnerId are required' });
     }
 
-    await updateData('Plaid-Transactions',
-      { transaction_id: transactionId, userId: uid },
-      { $unset: { linkedTransaction: '', effectiveDate: '' } }
-    );
-    const partnerUnlink = { $unset: { linkedTransaction: '', effectiveDate: '' } };
+    await updateTransaction(uid, transactionId, { linkedTransaction: null, effectiveDate: null });
+    const partnerFields = { linkedTransaction: null, effectiveDate: null };
     // Revert category if it was auto-recategorized on link
     if (revertCategory) {
-      partnerUnlink.$set = { mappedCategory: revertCategory };
+      partnerFields.mappedCategory = revertCategory;
     }
-    await updateData('Plaid-Transactions',
-      { transaction_id: partnerId, userId: uid },
-      partnerUnlink
-    );
+    await updateTransaction(uid, partnerId, partnerFields);
 
     res.json({ unlinked: true, transactionId, partnerId });
   } catch (error) {
@@ -679,15 +606,9 @@ router.post('/undoDismissRelationship', async (req, res) => {
       return res.status(400).json({ message: 'transactionId is required' });
     }
 
-    await updateData('Plaid-Transactions',
-      { transaction_id: transactionId, userId: uid },
-      { $unset: { dismissedRelationship: '' } }
-    );
+    await updateTransaction(uid, transactionId, { dismissedRelationship: null });
     if (partnerId) {
-      await updateData('Plaid-Transactions',
-        { transaction_id: partnerId, userId: uid },
-        { $unset: { dismissedRelationship: '' } }
-      );
+      await updateTransaction(uid, partnerId, { dismissedRelationship: null });
     }
 
     res.json({ undone: true, transactionId, partnerId });
@@ -708,15 +629,9 @@ router.post('/dismissRelationship', async (req, res) => {
     }
 
     const now = new Date().toISOString();
-    await updateData('Plaid-Transactions',
-      { transaction_id: transactionId, userId: uid },
-      { $set: { dismissedRelationship: now } }
-    );
+    await updateTransaction(uid, transactionId, { dismissedRelationship: now });
     if (partnerId) {
-      await updateData('Plaid-Transactions',
-        { transaction_id: partnerId, userId: uid },
-        { $set: { dismissedRelationship: now } }
-      );
+      await updateTransaction(uid, partnerId, { dismissedRelationship: now });
     }
 
     res.json({ dismissed: true, transactionId, partnerId });
@@ -740,10 +655,7 @@ router.post('/bulkCategorize', async (req, res) => {
     if (typeof mappedCategory !== 'string' || !mappedCategory.trim()) {
       return res.status(400).json({ message: 'mappedCategory must be a non-empty string' });
     }
-    await updateManyData('Plaid-Transactions',
-      { transaction_id: { $in: transaction_ids }, userId: uid },
-      { $set: { mappedCategory, manually_set: true } }
-    );
+    await updateTransactionsBulk(uid, transaction_ids, { mappedCategory, manually_set: true });
     res.json({ updated: transaction_ids.length, mappedCategory });
   } catch (error) {
     res.status(500).send('Error bulk categorizing transactions');
@@ -754,17 +666,15 @@ router.get('/mapunmapped', async (req, res) => {
   try {
     const userId = await resolveTargetUser(req, res);
     if (!userId) return;
-    const unmappedTransactions = await findUnmappedData('Plaid-Transactions', userId);
-    const categories = await findUserData('Basil-Categories', userId);
+    const unmappedTransactions = await findUnmappedTransactions(userId);
+    const categories = await findCategories(userId);
     const ruleList = await getMappingRuleList(categories);
     const compoundRules = await findUserRules(userId);
     const mappedTxns = await mapTransactions(unmappedTransactions, ruleList, compoundRules);
 
     if(mappedTxns.length > 0){
       await Promise.all(mappedTxns.map(txn => {
-        const filter = { transaction_id: txn.transaction_id, userId };
-        const updateObject = { $set: { mappedCategory: txn.mappedCategory } };
-        return updateData('Plaid-Transactions', filter, updateObject);
+        return updateTransaction(userId, txn.transaction_id, { mappedCategory: txn.mappedCategory });
       }));
     }
     // finish
@@ -776,33 +686,31 @@ router.get('/mapunmapped', async (req, res) => {
 })
 
 async function getOrAddUser(decodedToken) {
-  let accounts;
   console.log('getOrAddUser function called and starting...:', decodedToken.uid)
   try {
-    const user = await findUserData('Basil-Users', decodedToken.uid);
+    const user = await findUser(decodedToken.uid);
     if (user.length === 0) {
       const newUser = {
         userId: decodedToken.uid,
         email: decodedToken.email,
         name: decodedToken.name,
         picture: decodedToken.picture,
-        firebase: decodedToken.firebase,
       }
       console.log('User added to database:', newUser)
-      await insertData('Basil-Users', newUser);
+      await insertUser(newUser);
       const clientSideUser = createClientSideUser(newUser)
       console.log('sending newly created client-side user:', clientSideUser)
       return clientSideUser
     } else {
       console.log('User found:', user[0])
+        let items;
         try {
-          // call "Plaid-Accounts" with userId to get the user's accounts
-          accounts = await findUserData('Plaid-Accounts', user[0].userId);
+          items = await findPlaidItems(user[0].userId);
         } catch (error) {
           console.log('Error getting user accounts:', error)
         }
-        
-      const clientSideUser = createClientSideUser(user[0], accounts)
+
+      const clientSideUser = createClientSideUser(user[0], items)
       console.log('sending client-side user:', clientSideUser)
       return clientSideUser;
     }
@@ -825,30 +733,30 @@ function aggregateSnapshots(snapshots) {
   return result.length ? result : null;
 }
 
-function createClientSideUser(user, accounts=null) {
-  const bankAccounts = accounts?.[0]?.Accounts ?? null;
-  console.log('createClientSideUser accounts: ', bankAccounts)
-  let bankNames = bankAccounts ? Object.keys(bankAccounts) : [];
+function createClientSideUser(user, items=null) {
+  const hasItems = items && items.length > 0;
+  console.log('createClientSideUser items: ', items)
+  let bankNames = hasItems ? items.map(item => item.institution) : [];
 
   // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
   let balanceSnapshots = null;
   let itemErrors = null;
-  if (bankAccounts) {
+  if (hasItems) {
     accountBalances = {};
     balanceSnapshots = [];
-    for (const name of bankNames) {
-      if (bankAccounts[name].balances) {
-        accountBalances[name] = bankAccounts[name].balances;
+    for (const item of items) {
+      if (item.balances) {
+        accountBalances[item.institution] = item.balances;
       }
-      if (bankAccounts[name].balanceSnapshots) {
-        for (const snap of bankAccounts[name].balanceSnapshots) {
+      if (item.balanceSnapshots) {
+        for (const snap of item.balanceSnapshots) {
           balanceSnapshots.push(snap);
         }
       }
-      if (bankAccounts[name].itemError) {
+      if (item.itemError) {
         if (!itemErrors) itemErrors = {};
-        itemErrors[name] = bankAccounts[name].itemError;
+        itemErrors[item.institution] = item.itemError;
       }
     }
     balanceSnapshots = aggregateSnapshots(balanceSnapshots);
@@ -883,7 +791,7 @@ router.get('/users', async (req, res) => {
 
 // Shared admin helpers — used by nuke routes below
 async function nukeTransactions(uid) {
-  return deleteRemovedData('Plaid-Transactions', { userId: uid });
+  return deleteTransactions(uid);
 }
 
 router.post('/nukeTransactions', async (req, res) => {
@@ -902,7 +810,7 @@ router.post('/clearManualOverrides', async (req, res) => {
   try {
     const uid = await resolveTargetUser(req, res);
     if (!uid) return;
-    const result = await updateManyData('Plaid-Transactions', { userId: uid, manually_set: true }, { $unset: { manually_set: '' } });
+    const result = await clearManualOverrides(uid);
     res.json({ clearedCount: result.modifiedCount });
   } catch (error) {
     console.error('/clearManualOverrides error:', error);
@@ -914,10 +822,7 @@ router.post('/clearVenmoEnrichment', async (req, res) => {
   try {
     const uid = await resolveTargetUser(req, res);
     if (!uid) return;
-    const result = await updateManyData('Plaid-Transactions',
-      { userId: uid, venmo_id: { $exists: true } },
-      { $unset: { venmo_id: '', venmo_note: '', venmo_counterparty: '' } }
-    );
+    const result = await clearVenmoEnrichment(uid);
     res.json({ clearedCount: result.modifiedCount });
   } catch (error) {
     console.error('/clearVenmoEnrichment error:', error);
@@ -929,16 +834,8 @@ router.post('/resetBalanceSnapshots', async (req, res) => {
   try {
     const uid = await resolveTargetUser(req, res);
     if (!uid) return;
-    const accounts = await findUserData('Plaid-Accounts', uid);
-    const accountsObj = accounts?.[0]?.Accounts ?? {};
-    const unset = {};
-    for (const name of Object.keys(accountsObj)) {
-      unset[`Accounts.${name}.balanceSnapshots`] = '';
-    }
-    if (Object.keys(unset).length) {
-      await updateData('Plaid-Accounts', { userId: uid }, { $unset: unset });
-    }
-    res.json({ cleared: Object.keys(unset).length });
+    await deleteBalanceSnapshots(uid);
+    res.json({ cleared: true });
   } catch (error) {
     console.error('/resetBalanceSnapshots error:', error);
     res.status(500).json({ message: 'Failed to reset snapshots' });
@@ -949,19 +846,8 @@ router.post('/nukeAllData', async (req, res) => {
   try {
     const uid = await resolveTargetUser(req, res);
     if (!uid) return;
-    const [txnResult, catResult, accResult, ruleResult] = await Promise.all([
-      nukeTransactions(uid),
-      deleteRemovedData('Basil-Categories', { userId: uid }),
-      deleteRemovedData('Plaid-Accounts', { userId: uid }),
-      deleteRemovedData('Basil-Rules', { userId: uid }),
-    ]);
-    await updateData('Basil-Users', { userId: uid }, { $unset: { onboarded_at: '' } });
-    res.json({
-      transactions: txnResult.deletedCount,
-      categories: catResult.deletedCount,
-      accounts: accResult.deletedCount,
-      rules: ruleResult.deletedCount,
-    });
+    const result = await nukeAllUserData(uid);
+    res.json(result);
   } catch (error) {
     console.error('/nukeAllData error:', error);
     res.status(500).json({ message: 'Failed to delete user data' });
@@ -991,7 +877,7 @@ router.post('/addVenmoTransactions', async (req, res) => {
     if (!uid) return;
 
     const ts = Date.now();
-    const categories = await findUserData('Basil-Categories', uid);
+    const categories = await findCategories(uid);
     const ruleList = await getMappingRuleList(categories);
 
     // Resolve real category names from the user's data so historical seeding works
@@ -1028,7 +914,7 @@ router.post('/addVenmoTransactions', async (req, res) => {
     }));
 
     const mapped = await mapTransactions(txns, ruleList);
-    await insertData('Plaid-Transactions', mapped);
+    await insertTransactions(mapped);
     res.json({ inserted: mapped.length, foodCat, housingCat });
   } catch (error) {
     console.error('/addVenmoTransactions error:', error);
@@ -1042,7 +928,7 @@ router.post('/addTestTransactions', async (req, res) => {
     if (!uid) return;
     const today = new Date().toISOString().slice(0, 10);
     const ts = Date.now();
-    const categories = await findUserData('Basil-Categories', uid);
+    const categories = await findCategories(uid);
     const ruleList = await getMappingRuleList(categories);
     const txns = SYNTHETIC_TRANSACTIONS.map((t, i) => ({
       ...t,
@@ -1052,7 +938,7 @@ router.post('/addTestTransactions', async (req, res) => {
       userId: uid,
     }));
     const mapped = await mapTransactions(txns, ruleList);
-    await insertData('Plaid-Transactions', mapped);
+    await insertTransactions(mapped);
     res.json({ inserted: mapped.length });
   } catch (error) {
     console.error('/addTestTransactions error:', error);
@@ -1070,8 +956,8 @@ router.post('/deleteCategory', async (req, res) => {
   }
   try {
     const { categoryId } = req.body;
-    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
-    await deleteRemovedData('Basil-Categories', { _id: new ObjectID(categoryId), userId: uid });
+    if (!categoryId) return res.status(400).json({ message: 'Invalid categoryId' });
+    await deleteCategory(categoryId, uid);
     res.json({ ok: true });
   } catch (error) {
     console.error('/deleteCategory error:', error);
@@ -1089,11 +975,8 @@ router.post('/updateBudgetLimit', async (req, res) => {
   }
   try {
     const { categoryId, monthly_limit } = req.body;
-    if (!ObjectID.isValid(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
-    await updateData('Basil-Categories',
-      { _id: new ObjectID(categoryId), userId: uid },
-      { $set: { monthly_limit: Number(monthly_limit) } }
-    );
+    if (!categoryId) return res.status(400).json({ message: 'Invalid categoryId' });
+    await updateCategory(categoryId, uid, { monthly_limit: Number(monthly_limit) });
     res.json({ ok: true });
   } catch (error) {
     console.error('/updateBudgetLimit error:', error);
@@ -1120,8 +1003,8 @@ router.post('/venmoEnrichment/preview', async (req, res) => {
     if (venmoRows.length === 0) {
       return res.status(400).json({ message: 'No valid Venmo transactions found in CSV' });
     }
-    const transactions = await findUserData('Plaid-Transactions', uid);
-    const result = matchVenmoRows(venmoRows, transactions);
+    const txnResult = await findTransactionsPaginated(uid, { page: 1, limit: 10000 });
+    const result = matchVenmoRows(venmoRows, txnResult.transactions);
     res.json(result);
   } catch (error) {
     console.error('/venmoEnrichment/preview error:', error.message);
@@ -1143,15 +1026,11 @@ router.post('/venmoEnrichment/apply', async (req, res) => {
     let enriched = 0;
     for (const e of enrichments) {
       if (!e.transaction_id || !e.venmo_id) continue;
-      const filter = { transaction_id: e.transaction_id, userId: uid };
-      const update = {
-        $set: {
-          venmo_id: e.venmo_id,
-          venmo_note: e.venmo_note || '',
-          venmo_counterparty: e.venmo_counterparty || '',
-        },
-      };
-      await updateData('Plaid-Transactions', filter, update);
+      await updateTransaction(uid, e.transaction_id, {
+        venmo_id: e.venmo_id,
+        venmo_note: e.venmo_note || '',
+        venmo_counterparty: e.venmo_counterparty || '',
+      });
       enriched++;
     }
     res.json({ enriched });

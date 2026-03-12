@@ -179,8 +179,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchCategories, fetchMonthRange, deleteAccount } from '@/firebase'
-import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
+import { getOrAddUser, fetchCategories, fetchMonthRange, deleteAccount, signOut as apiSignOut } from '@/api'
 import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
 
@@ -235,63 +234,11 @@ export default {
         this.isLoading = false;
       }
     },
-    async signInWithGoogle() {
+    signInWithGoogle() {
       this.isLoading = true;
-      try {
-        // try to set Persistence
-        try {
-          await setPersistence(auth, browserSessionPersistence);
-        } catch (error) {
-          console.error('Error setting persistence', error)
-        }
-
-        const result = await auth.signInWithPopup(GoogleAuthProvider)
-        const { user } = result
-        
-        // store the userData to firebase.firestore()
-        try {
-          const userData = {
-            uid: user.uid,
-            email: user.email,
-            createdAt: user.metadata.createdAt,
-          }
-          const docId = await firestore.collection('sessions').add(userData)
-          // after the session is saved to firestore, store the user in the store
-          const sessionData = {
-            docId: docId.id,
-            isSessionActive: true,
-          }
-          store.commit('setSession', sessionData)    
-        } catch (error) {
-          console.error('Error saving session data to firestore!', error)
-        }
-          
-        // check if user exists in mongodb. If it does add it to the store
-        try {
-          const appUser = await getOrAddUser()
-          store.commit('setUser', appUser)
-        } catch (error) {
-          console.error(error)
-        }
-        // load categories so we can detect returning users who skipped Plaid
-        try {
-          const categories = await fetchCategories()
-          if (categories?.length) store.commit('setCategories', categories)
-        } catch (error) {
-          console.error(error)
-        }
-        this.isLoading = false;
-        if (!this.user?.onboarded_at) {
-          this.$router.push('/onboarding');
-          return;
-        }
-        store.commit("setLastPlaidFetch", null) // set last plaid fetch to 0 since new login
-      } catch (error) {
-        console.error(error)
-        this.isLoading = false;
-      }
+      // Redirect to backend OAuth endpoint — Google handles the rest
+      window.location.href = '/auth/google';
     },
-    // sign out should log out the user using firebase.auth().signOut() and clear the store state
     confirmDeleteAccount() {
       this.$q.dialog({
         title: 'Delete your account?',
@@ -304,7 +251,7 @@ export default {
         try {
           const result = await deleteAccount();
           if (result) {
-            await this.signOut();
+            this.signOut();
           }
         } catch (error) {
           console.error('Delete account error:', error);
@@ -313,23 +260,11 @@ export default {
         }
       });
     },
-    async signOut() {
-      if(this.session?.docId){
-        try {
-          await firestore.collection('sessions').doc(this.session.docId).update({
-            endAt: Date.now().toString()
-          })
-        } catch (error) {
-          console.error(error)
-          }
-      }
-      sessionStorage.removeItem('impersonate-token');
-      await auth.signOut();
+    signOut() {
+      apiSignOut();
       store.commit('clearState');
       window.location.reload();
-      // this.$router.push({ name: 'Profile' });
-    }
-
+    },
   },
 }
 </script>

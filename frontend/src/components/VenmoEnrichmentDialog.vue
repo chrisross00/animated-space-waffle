@@ -151,7 +151,7 @@
 
 <script>
 import '@/styles/dialogs.css';
-import { venmoEnrichmentPreview, venmoEnrichmentApply } from '@/firebase';
+import { venmoEnrichmentPreview, venmoEnrichmentApply } from '@/api';
 
 export default {
   name: 'VenmoEnrichmentDialog',

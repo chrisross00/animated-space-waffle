@@ -1,7 +1,7 @@
 // plaid-api.js
 const express = require("express");
 const bodyParser = require('body-parser')
-const { findUserData, insertData, updateData } = require('./db/database');
+const { findUser, findPlaidItems, findPlaidItemByInstitution, insertPlaidItem, updatePlaidItem, deletePlaidItem } = require('./db/database');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 
 const { forUser } = require('./utils/plaidClient');
@@ -11,7 +11,7 @@ router.use(bodyParser.json({ limit: '1mb' }));
 
 // Resolve whether the authenticated user is an admin (production) or not (sandbox).
 async function getUserPlaidEnv(uid) {
-  const users = await findUserData('Basil-Users', uid);
+  const users = await findUser(uid);
   const isAdmin = !!(users.length && users[0].isAdmin);
   return { isAdmin, plaidEnv: isAdmin ? 'production' : 'sandbox' };
 }
@@ -53,17 +53,11 @@ router.post("/exchange_public_token", async (req, res, next) => {
     if (!institution || typeof institution !== 'string' || /[.$]/.test(institution)) {
       return res.status(400).json({ message: 'Invalid institution name' });
     }
-    const user = await findUserData('Plaid-Accounts', decodedToken.uid);
-    if (user.length > 0) {
-      const accounts = user[0].Accounts;
-      if (accounts.hasOwnProperty(institution)) {
-        return res.json({ alreadyLinked: true });
-      } else {
-        await addInstitution(req, decodedToken, 'addToExisting');
-      }
-    } else {
-      await addInstitution(req, decodedToken);
+    const existingItem = await findPlaidItemByInstitution(decodedToken.uid, institution);
+    if (existingItem) {
+      return res.json({ alreadyLinked: true });
     }
+    await addInstitution(req, decodedToken);
   } catch (error) {
     console.error('/exchange_public_token error:', error.message);
     return res.status(500).json({ message: 'Failed to exchange token' });
@@ -71,7 +65,7 @@ router.post("/exchange_public_token", async (req, res, next) => {
   res.json(true);
 });
 
-async function addInstitution(req, decodedToken, type='new'){
+async function addInstitution(req, decodedToken){
   const { isAdmin, plaidEnv } = await getUserPlaidEnv(decodedToken.uid);
   const client = forUser(isAdmin);
 
@@ -87,28 +81,11 @@ async function addInstitution(req, decodedToken, type='new'){
     const exchangeResponseData = exchangeResponse.data;
     const institutionName = req.body.metadata.institution.name;
     const userId = decodedToken.uid;
-    const earliestDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const accountData = {
-      token: exchangeResponseData.access_token,
-      next_cursor: '',
-      earliestDate: earliestDate,
-      plaidEnv,
-    };
-    if (type === 'addToExisting'){
-      const filter = {
-        userId: userId
-      };
-      const update = {
-        $set: { [`Accounts.${institutionName}`]: accountData },
-      };
-      await updateData('Plaid-Accounts', filter, update);
-    } else {
-      const updateObject = {
-        Accounts: { [institutionName]: accountData },
-        userId: userId,
-      };
-      await insertData('Plaid-Accounts', updateObject);
-    }
+    await insertPlaidItem({
+      userId,
+      institution: institutionName,
+      accessToken: exchangeResponseData.access_token,
+    });
     return;
   } catch (error) {
     console.log(error)
@@ -124,9 +101,8 @@ router.get("/create_update_link_token", async (req, res) => {
     const institution = req.query.institution;
     if (!institution) return res.status(400).json({ message: 'institution required' });
 
-    const accounts = await findUserData('Plaid-Accounts', uid);
-    const accountData = accounts?.[0]?.Accounts?.[institution];
-    if (!accountData?.token) return res.status(404).json({ message: 'Institution not found' });
+    const item = await findPlaidItemByInstitution(uid, institution);
+    if (!item?.accessToken) return res.status(404).json({ message: 'Institution not found' });
 
     const { isAdmin } = await getUserPlaidEnv(uid);
     const client = forUser(isAdmin);
@@ -135,7 +111,7 @@ router.get("/create_update_link_token", async (req, res) => {
       client_name: "Basil Budgeting",
       language: "en",
       country_codes: ["US"],
-      access_token: accountData.token,
+      access_token: item.accessToken,
     });
     res.json(tokenResponse.data);
   } catch (error) {
@@ -151,8 +127,7 @@ router.post("/clear_item_error", async (req, res) => {
     const uid = decodedToken.uid;
     const { institution } = req.body;
     if (!institution) return res.status(400).json({ message: 'institution required' });
-    await updateData('Plaid-Accounts', { userId: uid },
-      { $unset: { [`Accounts.${institution}.itemError`]: '' } });
+    await updatePlaidItem(uid, institution, { errorCode: null, errorMessage: null, errorDetectedAt: null });
     res.json({ ok: true });
   } catch (error) {
     console.error('/clear_item_error error:', error.message);
@@ -166,9 +141,7 @@ router.post("/remove_account", async (req, res) => {
     const userId = decodedToken.uid;
     if (await rejectTestUser(userId, res)) return;
     const { institution } = req.body;
-    const filter = { userId };
-    const update = { $unset: { [`Accounts.${institution}`]: '' } };
-    await updateData('Plaid-Accounts', filter, update);
+    await deletePlaidItem(userId, institution);
     res.json({ success: true });
   } catch (error) {
     console.error('/remove_account error:', error);
@@ -185,18 +158,19 @@ if (process.env.NODE_ENV !== 'production') {
       const { institution } = req.body;
       if (!institution) return res.status(400).json({ message: 'institution required' });
 
-      const accounts = await findUserData('Plaid-Accounts', uid);
-      const accountData = accounts?.[0]?.Accounts?.[institution];
-      if (!accountData?.token) return res.status(404).json({ message: 'Institution not found' });
-      if (accountData.plaidEnv === 'production') return res.status(400).json({ message: 'Cannot reset production items' });
+      const item = await findPlaidItemByInstitution(uid, institution);
+      if (!item?.accessToken) return res.status(404).json({ message: 'Institution not found' });
+      // Note: plaidEnv check removed — sandbox items won't exist in production Postgres
 
       const { sandbox } = require('./utils/plaidClient');
-      await sandbox.sandboxItemResetLogin({ access_token: accountData.token });
+      await sandbox.sandboxItemResetLogin({ access_token: item.accessToken });
 
       // Persist a synthetic item error so UI shows it immediately
-      const errorData = { error_code: 'ITEM_LOGIN_REQUIRED', error_message: 'Sandbox login reset for testing', detectedAt: new Date() };
-      await updateData('Plaid-Accounts', { userId: uid },
-        { $set: { [`Accounts.${institution}.itemError`]: errorData } });
+      await updatePlaidItem(uid, institution, {
+        errorCode: 'ITEM_LOGIN_REQUIRED',
+        errorMessage: 'Sandbox login reset for testing',
+        errorDetectedAt: new Date(),
+      });
 
       res.json({ ok: true, message: `Reset login for ${institution}. Next sync will fail with ITEM_LOGIN_REQUIRED.` });
     } catch (error) {

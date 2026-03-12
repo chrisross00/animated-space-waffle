@@ -221,7 +221,7 @@
 
 <script>
 import store from '../store';
-import { ensureAppData, deleteCompoundRule, deleteRule } from '@/firebase';
+import { ensureAppData, deleteCompoundRule, deleteRule } from '@/api';
 import RuleEditorDialog from '../components/RuleEditorDialog.vue';
 
 const PFC_NAMES = {

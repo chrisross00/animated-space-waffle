@@ -220,7 +220,7 @@
 </template>
 
 <script>
-import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError } from '@/firebase';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError } from '@/api';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';

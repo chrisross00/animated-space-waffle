@@ -50,6 +50,11 @@ export function createLoginToken(userId) {
   });
 }
 
+/** Fetch the current user's profile from the backend. */
+export function fetchCurrentUser() {
+  return request('/api/getOrAddUser');
+}
+
 /** Check if the current user is an admin by fetching /api/users (admin-only) */
 export async function checkAdmin() {
   try {

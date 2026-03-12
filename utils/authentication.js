@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 // In-memory store for impersonation tokens.
@@ -54,8 +54,13 @@ async function validateIdToken(req) {
     return { uid: data.userId };
   }
 
-  const decodedToken = await admin.auth().verifyIdToken(idToken);
-  return decodedToken;
+  // Self-issued JWT (primary auth path)
+  try {
+    const decoded = jwt.verify(idToken, process.env.JWT_SECRET);
+    return { uid: decoded.uid };
+  } catch (err) {
+    throw new Error('Invalid or expired token');
+  }
 }
 
 /**

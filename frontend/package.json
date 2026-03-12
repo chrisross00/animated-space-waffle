@@ -12,10 +12,10 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.0.0",
+    "@sentry/vue": "^10.43.0",
     "dayjs": "^1.11.7",
     "echarts": "^6.0.0",
-    "firebase": "^12.10.0",
-"quasar": "^2.0.0",
+    "quasar": "^2.0.0",
     "vue": "^3.2.13",
     "vue-echarts": "^8.0.1",
     "vue-router": "^4.1.6",

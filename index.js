@@ -1,4 +1,14 @@
 require('dotenv').config()
+const Sentry = require('@sentry/node')
+
+// Initialize Sentry before anything else
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 0.2,
+  });
+}
 
 // Main Express app
 const express = require('express')
@@ -9,17 +19,11 @@ const path = require('path')
 const app = express()
 const port = process.env.PORT
 
-const admin = require('firebase-admin');
-// FIREBASE_SERVICE_ACCOUNT_JSON must be set in your environment.
-// Generate it from: Firebase Console → Project Settings → Service Accounts → Generate new private key
-// Store the entire JSON as a single-line string in the env var.
-if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-  console.error('FATAL: FIREBASE_SERVICE_ACCOUNT_JSON env var is not set');
+// JWT_SECRET is required for auth token signing/verification
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET env var is not set');
   process.exit(1);
 }
-admin.initializeApp({
-  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)),
-});
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -29,13 +33,10 @@ app.use(helmet({
       styleSrc:         ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
       fontSrc:          ["'self'", "fonts.gstatic.com"],
       imgSrc:           ["'self'", "data:", "lh3.googleusercontent.com"],
-      connectSrc:       ["'self'",
-                         "https://*.googleapis.com",
-                         "https://*.firebaseapp.com",
-                         "wss://*.firebaseio.com"],
+      connectSrc:       ["'self'", "*.ingest.us.sentry.io"],
       frameAncestors:   ["'none'"],
       baseUri:          ["'self'"],
-      formAction:       ["'self'"],
+      formAction:       ["'self'", "https://accounts.google.com"],
     },
   },
 }))
@@ -62,12 +63,23 @@ app.use(rateLimit({
 
 app.use(express.static(path.join(__dirname, 'frontend/dist')))
 
+const authRouter = require("./auth-routes");
 const router = require("./api")
 const plaidApiRouter = require("./plaid-api");
 const adminRouter = require("./admin-api");
+app.use("/auth", authRouter);
 app.use("/api", router);
 app.use("/plaid-api", plaidApiRouter);
 app.use("/admin", adminRouter);
+
+// Sentry error handler — must be after routes, before SPA fallback
+Sentry.setupExpressErrorHandler(app);
+
+// SPA fallback — serve index.html for all unmatched routes so Vue Router
+// handles client-side navigation (e.g. /budget, /trends, /profile)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
+});
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`)

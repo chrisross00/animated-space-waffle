@@ -66,8 +66,8 @@
 </template>
 
 <script>
-import { auth, authReady, signInWithGoogle, signOut } from './auth';
-import { checkAdmin } from './api';
+import { getAuthHeaders, signInWithGoogle, signOut, consumeAuthToken } from './auth';
+import { checkAdmin, fetchCurrentUser } from './api';
 
 export default {
   data() {
@@ -87,7 +87,10 @@ export default {
     }
   },
   async created() {
-    // Dev bypass: skip Firebase auth, go straight to admin check
+    // Consume ?token= from OAuth callback redirect
+    consumeAuthToken();
+
+    // Dev bypass: skip OAuth, go straight to admin check
     if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
       this.user = { displayName: 'Dev Bypass', email: 'dev@basil.test' };
       this.isAdmin = await checkAdmin();
@@ -95,36 +98,33 @@ export default {
       return;
     }
 
-    const handleUser = async (user) => {
-      this.user = user;
-      this.loading = false;
-      if (user) {
-        this.isAdmin = await checkAdmin();
-      } else {
-        this.isAdmin = false;
+    // Check if we have a valid token
+    const headers = getAuthHeaders();
+    if (headers) {
+      try {
+        const userData = await fetchCurrentUser();
+        if (userData) {
+          this.user = { displayName: userData.name, email: userData.email };
+          this.isAdmin = await checkAdmin();
+        }
+      } catch (err) {
+        // Token expired or invalid — clear it
+        sessionStorage.removeItem('basil-token');
       }
-    };
-
-    // Register listener first, then check current state.
-    // onAuthStateChanged fires immediately with current state on registration.
-    auth.onAuthStateChanged(handleUser);
+    }
+    this.loading = false;
   },
   methods: {
-    async handleSignIn() {
+    handleSignIn() {
       this.signingIn = true;
       this.authError = null;
-      try {
-        await signInWithGoogle();
-      } catch (err) {
-        this.authError = err.message;
-      } finally {
-        this.signingIn = false;
-      }
+      signInWithGoogle();
     },
-    async handleSignOut() {
-      await signOut();
+    handleSignOut() {
+      signOut();
       this.user = null;
       this.isAdmin = false;
+      window.location.reload();
     },
     toggleDarkMode() {
       this.darkMode = !this.darkMode;

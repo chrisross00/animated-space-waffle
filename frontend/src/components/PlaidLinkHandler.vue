@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import { getOrAddUserAccount, getAuthHeaders }  from '@/firebase'
+import { getOrAddUserAccount, getAuthHeaders }  from '@/api'
 
 export default {
   props: {

@@ -161,38 +161,40 @@ function makeTransaction({ userId, merchant, amount, date, account, accountId, t
 
 // --- Account generator ---
 function generateAccounts(userId, accountDefs) {
-  const accountMap = {}; // name -> { account_id, subtype }
-  const accountsDoc = { userId, Accounts: {} };
+  const accountMap = {}; // institution -> { account_id, subtype }
+  const items = []; // flat array of plaid_items with nested accounts
 
+  // Group defs by institution
+  const byInstitution = {};
   for (const def of accountDefs) {
-    const accountId = `test-acct-${userId}-${def.subtype}`;
-    accountMap[def.institution] = { account_id: accountId, subtype: def.subtype };
-
-    if (!accountsDoc.Accounts[def.institution]) {
-      accountsDoc.Accounts[def.institution] = {
-        token: `test-access-token-${userId}-${def.institution.toLowerCase().replace(/\s/g, '-')}`,
-        next_cursor: '',
-        earliestDate: dateStr(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)),
-        plaidEnv: 'sandbox',
-        balances: [],
-      };
-    }
-
-    accountsDoc.Accounts[def.institution].balances.push({
-      account_id: accountId,
-      name: def.name,
-      official_name: def.officialName || def.name,
-      mask: def.mask || '0000',
-      type: def.type,
-      subtype: def.subtype,
-      current: def.balance,
-      available: def.available || def.balance,
-      limit: def.limit || null,
-      fetchedAt: Date.now(),
-    });
+    if (!byInstitution[def.institution]) byInstitution[def.institution] = [];
+    byInstitution[def.institution].push(def);
   }
 
-  return { accountsDoc, accountMap };
+  for (const [institution, defs] of Object.entries(byInstitution)) {
+    const accessToken = `test-access-token-${userId}-${institution.toLowerCase().replace(/\s/g, '-')}`;
+    const accounts = defs.map(def => {
+      const accountId = `test-acct-${userId}-${def.subtype}`;
+      accountMap[institution] = { account_id: accountId, subtype: def.subtype };
+      return {
+        account_id: accountId,
+        name: def.name,
+        official_name: def.officialName || def.name,
+        mask: def.mask || '0000',
+        type: def.type,
+        subtype: def.subtype,
+        balances: {
+          current: def.balance,
+          available: def.available || def.balance,
+          limit: def.limit || null,
+        },
+      };
+    });
+
+    items.push({ userId, institution, accessToken, accounts });
+  }
+
+  return { items, accountMap };
 }
 
 // --- Category generator ---
@@ -247,7 +249,7 @@ function generateCompoundRules(userId, ruleDefs) {
       categoryName: def.categoryName,
       note: def.note || undefined,
     },
-    createdAt: Date.now() - (ruleDefs.length - i) * 60000, // stagger creation times
+    createdAt: new Date(Date.now() - (ruleDefs.length - i) * 60000), // stagger creation times
     createdFrom: def.createdFrom || 'manual',
   }));
 }
