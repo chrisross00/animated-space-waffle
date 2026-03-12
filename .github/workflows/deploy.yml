@@ -32,8 +32,8 @@ jobs:
             cd /opt/basil/app
             git pull origin main
 
-            # Install dependencies
-            npm install --omit=dev
+            # Install dependencies (--ignore-scripts skips husky prepare)
+            npm install --omit=dev --ignore-scripts
             npm install --prefix frontend
 
             # Build frontend

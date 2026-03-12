@@ -192,14 +192,17 @@ stack, not before it exists. But it must be live before real users touch the app
 
 ## Phase 5: Deploy + validate
 
-- [ ] **Full deployment to Hetzner** — Build frontend, configure env vars, start
-  all containers.
+- [x] **Full deployment to Hetzner** — CI/CD pipeline deploys on push to main.
+  App .env at `/opt/basil/app/.env` with all production vars (JWT, Google OAuth,
+  Postgres, Plaid, Sentry, CORS). PM2 manages the process.
 - [ ] **End-to-end validation** — Plaid Link → sync → categorize → rules → triage →
   charts → account deletion → error boundary. Everything.
-- [ ] **Plaid production credentials** — Switch `PLAID_ENV` from `sandbox` to
-  `production`. Verify real bank connections work.
-- [ ] **SSL verification** — Confirm HTTPS works, certs auto-renew, HTTP redirects
-  to HTTPS.
+- [x] **Plaid production credentials** — `PLAID_ENV=production` with production
+  client ID and secret in Hetzner .env. Sandbox credentials also present for test users.
+- [x] **SSL verification** — HTTPS returns 200, HTTP redirects 301 → HTTPS.
+  Let's Encrypt cert via Nginx. CSP headers include Sentry ingest domain.
+- [ ] **Google OAuth redirect URI** — add `https://basilbudgeting.com/auth/google/callback`
+  in Google Cloud Console → APIs & Credentials → OAuth client.
 
 ---
 
