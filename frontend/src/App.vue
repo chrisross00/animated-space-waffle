@@ -110,11 +110,30 @@
     </q-footer>
 
     <q-page-container>
-      <router-view v-slot="{ Component }">
-        <Transition name="basil-page" mode="out-in">
-          <component :is="Component" />
-        </Transition>
-      </router-view>
+      <template v-if="hasError">
+        <q-page class="flex flex-center">
+          <EmptyState
+            icon="error_outline"
+            heading="Something went wrong"
+            body="An unexpected error occurred. Reloading usually fixes it."
+          >
+            <q-btn
+              unelevated
+              color="primary"
+              label="Reload"
+              class="q-mt-md"
+              @click="reload"
+            />
+          </EmptyState>
+        </q-page>
+      </template>
+      <template v-else>
+        <router-view v-slot="{ Component }">
+          <Transition name="basil-page" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </router-view>
+      </template>
     </q-page-container>
   </q-layout>
 </template>
@@ -313,16 +332,25 @@ import { ref } from 'vue'
 import store from './store'
 import { triggerSync, fetchTransactionsForMonth } from './firebase'
 import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
+import EmptyState from './components/EmptyState.vue'
 
 export default {
   name: 'LayoutDefault',
+  components: { EmptyState },
 
   data() {
     return {
       leftDrawerOpen: ref(false),
       headerScrolled: false,
       syncing: false,
+      hasError: false,
     }
+  },
+
+  errorCaptured(err) {
+    console.error('[App errorCaptured]:', err);
+    this.hasError = true;
+    return false; // prevent further propagation
   },
 
   computed: {
@@ -400,6 +428,9 @@ export default {
     openVenmoEnrichment() {
       this.leftDrawerOpen = false;
       this.$q.dialog({ component: VenmoEnrichmentDialog });
+    },
+    reload() {
+      window.location.reload();
     },
   },
 }

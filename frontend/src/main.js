@@ -98,8 +98,12 @@ router.beforeEach((to, _from, next) => {
 
 const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
 
+// Global error handler — catches unhandled errors from any component.
+// Logs to console.error (Sentry will hook into this later in Phase 4).
+app.config.errorHandler = (err, instance, info) => {
+  console.error(`[Vue error] ${info}:`, err);
+}
+
 app.use(router)
 app.use(store)
   .mount('#app')
-
-
