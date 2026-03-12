@@ -1,0 +1,48 @@
+name: Deploy to production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # manual trigger from GitHub UI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm install
+      - run: npm test
+      - run: npm install --prefix frontend
+      - run: npm test --prefix frontend
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/basil/app
+            git pull origin main
+
+            # Install dependencies
+            npm install --omit=dev
+            npm install --prefix frontend
+
+            # Build frontend
+            npm run build --prefix frontend
+
+            # Start or restart with PM2
+            if pm2 list | grep -q basil; then
+              pm2 restart basil
+            else
+              pm2 start index.js --name basil
+              pm2 save
+            fi
