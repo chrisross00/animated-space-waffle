@@ -216,7 +216,11 @@ async function fetchAndStoreBalances(uid) {
       const existingSnapshots = await findBalanceSnapshots(itemId);
       const lastSnapshot = existingSnapshots[existingSnapshots.length - 1];
       const today = new Date().toISOString().slice(0, 10);
-      const shouldSnapshot = !lastSnapshot || lastSnapshot.date !== today;
+      // pg returns DATE as JS Date object — normalize to string for comparison
+      const lastDate = lastSnapshot?.date instanceof Date
+        ? lastSnapshot.date.toISOString().slice(0, 10)
+        : lastSnapshot?.date;
+      const shouldSnapshot = !lastSnapshot || lastDate !== today;
 
       if (shouldSnapshot) {
         await insertBalanceSnapshot(itemId, {
