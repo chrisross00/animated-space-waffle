@@ -20,8 +20,10 @@ function createClient(env) {
 const sandbox = createClient('sandbox');
 const production = createClient('production');
 
-// Admin users use production (real banks), everyone else uses sandbox.
+// In production, everyone uses production Plaid (real banks).
+// In dev, admin users use production, everyone else uses sandbox.
 function forUser(isAdmin) {
+  if (process.env.NODE_ENV === 'production') return production;
   return isAdmin ? production : sandbox;
 }
 

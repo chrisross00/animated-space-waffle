@@ -9,11 +9,15 @@ const { forUser } = require('./utils/plaidClient');
 const router = express.Router();
 router.use(bodyParser.json({ limit: '1mb' }));
 
-// Resolve whether the authenticated user is an admin (production) or not (sandbox).
+// Resolve Plaid environment for the user.
+// In production: everyone uses production Plaid (real banks).
+// In dev: admins use production, others use sandbox.
 async function getUserPlaidEnv(uid) {
   const users = await findUser(uid);
   const isAdmin = !!(users.length && users[0].isAdmin);
-  return { isAdmin, plaidEnv: isAdmin ? 'production' : 'sandbox' };
+  const plaidEnv = process.env.NODE_ENV === 'production' ? 'production'
+    : isAdmin ? 'production' : 'sandbox';
+  return { isAdmin, plaidEnv };
 }
 
 router.get("/create_link_token", async (req, res, next) => {
