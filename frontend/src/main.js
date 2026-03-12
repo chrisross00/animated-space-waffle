@@ -78,7 +78,7 @@ router.beforeEach((to, _from, next) => {
   ) {
     next('/onboarding');
   } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
-    next('/');
+    next('/accounts');
   } else {
     next();
   }

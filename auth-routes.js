@@ -116,7 +116,7 @@ router.get('/google/callback', async (req, res) => {
     );
 
     // Redirect to frontend with token
-    const redirect = stateData.redirect || '/';
+    const redirect = stateData.redirect || '/accounts';
     const separator = redirect.includes('?') ? '&' : '?';
     res.redirect(`${redirect}${separator}token=${token}`);
   } catch (err) {

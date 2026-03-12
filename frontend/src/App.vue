@@ -37,10 +37,12 @@
       <!-- Desktop tab bar — hidden on mobile -->
       <q-tabs align="left" class="basil-tabs gt-xs">
         <template v-if="$store.state.session">
+          <template v-if="$store.state.user?.onboarded_at">
+            <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
+          </template>
           <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
           <q-route-tab to="/plan" icon="edit_note" label="Plan" />
           <template v-if="$store.state.user?.onboarded_at">
-            <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
             <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
             <q-route-tab to="/rules" icon="rule" label="Rules" />
           </template>
@@ -95,6 +97,15 @@
               <q-item-label caption>Add names and notes to Venmo transactions</q-item-label>
             </q-item-section>
           </q-item>
+          <q-separator class="q-my-sm" />
+          <q-item clickable @click="toggleTheme">
+            <q-item-section avatar>
+              <q-icon :name="isDark ? 'light_mode' : 'dark_mode'" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ isDark ? 'Light mode' : 'Dark mode' }}</q-item-label>
+            </q-item-section>
+          </q-item>
         </template>
       </q-list>
     </q-drawer>
@@ -102,8 +113,8 @@
     <!-- Mobile bottom nav — hidden on desktop -->
     <q-footer v-if="$store.state.session" class="lt-sm basil-bottom-nav">
       <q-tabs align="justify" class="basil-bottom-tabs">
-        <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
+        <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/trends" icon="bar_chart" label="Trends" />
         <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>
@@ -385,6 +396,9 @@ export default {
     hasItemErrors() {
       return Object.keys(this.$store.state.itemErrors || {}).length > 0;
     },
+    isDark() {
+      return this.$store.state.theme === 'dark';
+    },
   },
 
   created() {},
@@ -400,6 +414,9 @@ export default {
   methods: {
     toggleLeftDrawer() {
       this.leftDrawerOpen = !this.leftDrawerOpen;
+    },
+    toggleTheme() {
+      this.$store.commit('setTheme', this.isDark ? '' : 'dark');
     },
     onScroll() {
       this.headerScrolled = window.scrollY > 4;
