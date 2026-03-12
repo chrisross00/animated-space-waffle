@@ -22,7 +22,18 @@ function getRedirectUri() {
   if (process.env.NODE_ENV === 'production') {
     return `https://${process.env.DOMAIN || 'basilbudgeting.com'}/auth/google/callback`;
   }
+  // In dev, Google calls back to the Express server (PORT), but the final
+  // redirect sends the user to the Vite dev server (VITE_PORT) so they get
+  // the live dev build, not a stale frontend/dist.
   return `http://localhost:${process.env.PORT || 3000}/auth/google/callback`;
+}
+
+function getPostLoginRedirect(path) {
+  const vitePort = process.env.VITE_PORT;
+  if (process.env.NODE_ENV !== 'production' && vitePort) {
+    return `http://localhost:${vitePort}${path}`;
+  }
+  return path;
 }
 
 /**
@@ -115,10 +126,9 @@ router.get('/google/callback', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Redirect to frontend with token
-    const redirect = stateData.redirect || '/accounts';
-    const separator = redirect.includes('?') ? '&' : '?';
-    res.redirect(`${redirect}${separator}token=${token}`);
+    // Redirect to frontend with token — always land on / and let the
+    // Vue router guard decide the final destination based on user state.
+    res.redirect(getPostLoginRedirect(`/?token=${token}`));
   } catch (err) {
     console.error('OAuth callback error:', err);
     res.status(500).send('Authentication failed. <a href="/">Try again</a>');

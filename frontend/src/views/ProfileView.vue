@@ -229,6 +229,7 @@ export default {
         ]);
 
         this.isLoading = false;
+        this.$router.push('/');
       } catch (error) {
         console.error('devTestLogin error:', error);
         this.isLoading = false;

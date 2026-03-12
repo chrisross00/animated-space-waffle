@@ -37,8 +37,9 @@ import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 // Consume ?token= from OAuth callback redirect (must run before auth hydration)
 consumeAuthToken();
 
-// Hydrate auth state from token (JWT in sessionStorage, dev-bypass, or impersonation)
-;(async function hydrateAuth() {
+// Hydrate auth state from token (JWT in sessionStorage, dev-bypass, or impersonation).
+// Stored as a promise so the router guard can await it before deciding redirects.
+const authReady = (async function hydrateAuth() {
   const hasToken = sessionStorage.getItem('basil-token');
   const hasImpersonation = sessionStorage.getItem('impersonate-token');
   const isDevBypass = import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
@@ -67,7 +68,16 @@ const router = VueRouter.createRouter({
 
 const PUBLIC_ROUTES = ['/profile', '/onboarding', '/privacy'];
 const ONBOARDING_ALLOWED = ['/', '/plan', '/profile', '/onboarding'];
-router.beforeEach((to, _from, next) => {
+let isFirstNavigation = true;
+router.beforeEach(async (to, _from, next) => {
+  // Wait for auth hydration to finish before the first guard decision.
+  // Prevents redirect-to-/profile race when a valid token exists.
+  if (isFirstNavigation) {
+    await authReady;
+  }
+  const firstNav = isFirstNavigation;
+  isFirstNavigation = false;
+
   if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
     next('/profile');
   } else if (
@@ -78,6 +88,10 @@ router.beforeEach((to, _from, next) => {
   ) {
     next('/onboarding');
   } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
+    next('/accounts');
+  } else if (firstNav && to.path === '/' && store.state.user?.onboarded_at) {
+    // Initial page load on / (e.g. after OAuth callback) — send onboarded
+    // users to Accounts. Subsequent navigations to / (Budget tab) pass through.
     next('/accounts');
   } else {
     next();
