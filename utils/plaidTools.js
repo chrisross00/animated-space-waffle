@@ -108,7 +108,7 @@ async function getNewPlaidTransactions(uid) {
           response.newTxns = true;
           const additionalData = {
             account: response.account,
-            createdDate: Date.now(),
+            createdDate: new Date(),
             lastcursor: next_cursor,
             userId,
           };
@@ -187,7 +187,7 @@ async function fetchAndStoreBalances(uid) {
     try {
       const client = forEnv('production');
       const response = await client.accountsBalanceGet({ access_token: accessToken });
-      const fetchedAt = Date.now();
+      const fetchedAt = new Date();
       const balances = response.data.accounts.map(acct => ({
         account_id: acct.account_id,
         name: acct.name,

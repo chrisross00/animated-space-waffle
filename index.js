@@ -17,6 +17,7 @@ const cors = require('cors')
 const { rateLimit } = require('express-rate-limit')
 const path = require('path')
 const app = express()
+app.set('trust proxy', 1) // Trust first proxy (Nginx)
 const port = process.env.PORT
 
 // JWT_SECRET is required for auth token signing/verification
