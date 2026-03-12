@@ -40,7 +40,7 @@ function isStr(val, max = 500) {
   return typeof val === 'string' && val.trim().length > 0 && val.length <= max;
 }
 
-router.use(bodyParser.json());
+router.use(bodyParser.json({ limit: '1mb' }));
 
 router.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'))

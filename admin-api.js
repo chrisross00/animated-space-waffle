@@ -11,7 +11,7 @@ const { findUserData } = require('./db/database');
 const { seedPersona, listTestUsers, nukeTestUsers, getPersonaList } = require('./scripts/test-data/seed');
 
 const router = express.Router();
-router.use(bodyParser.json());
+router.use(bodyParser.json({ limit: '1mb' }));
 
 // --- Middleware: require admin for all /admin routes ---
 async function requireAdmin(req, res, next) {

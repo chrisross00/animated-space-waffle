@@ -7,7 +7,7 @@ const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const { forUser } = require('./utils/plaidClient');
 
 const router = express.Router();
-router.use(bodyParser.json());
+router.use(bodyParser.json({ limit: '1mb' }));
 
 // Resolve whether the authenticated user is an admin (production) or not (sandbox).
 async function getUserPlaidEnv(uid) {
