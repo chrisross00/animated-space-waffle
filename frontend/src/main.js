@@ -76,7 +76,7 @@ const router = VueRouter.createRouter({
   routes,
 })
 
-const PUBLIC_ROUTES = ['/profile', '/onboarding'];
+const PUBLIC_ROUTES = ['/profile', '/onboarding', '/privacy'];
 const ONBOARDING_ALLOWED = ['/', '/plan', '/profile', '/onboarding'];
 router.beforeEach((to, _from, next) => {
   if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {

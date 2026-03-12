@@ -6,6 +6,7 @@ import MerchantBrowser from './views/MerchantBrowser.vue'
 import TrendsView from './views/TrendsView.vue'
 import OnboardingView from './views/OnboardingView.vue'
 import RulesView from './views/RulesView.vue'
+import PrivacyView from './views/PrivacyView.vue'
 
 const routes = [
   {
@@ -47,6 +48,11 @@ const routes = [
     path: '/plan',
     name: 'BudgetPlannerView',
     component: BudgetPlannerView
+  },
+  {
+    path: '/privacy',
+    name: 'PrivacyView',
+    component: PrivacyView
   },
 ]
 

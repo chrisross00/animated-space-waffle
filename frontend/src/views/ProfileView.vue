@@ -125,6 +125,27 @@
         </div>
       </q-card>
 
+      <!-- Danger zone card -->
+      <q-card class="my-card profile-card basil-profile-card">
+        <div class="basil-card-head">
+          <span class="basil-card-label">Danger zone</span>
+        </div>
+        <div class="basil-settings-row">
+          <div>
+            <div class="basil-settings-row__label">Delete account</div>
+            <div class="basil-settings-row__hint">Permanently remove all your data</div>
+          </div>
+          <q-btn
+            flat dense
+            color="negative"
+            label="Delete"
+            icon="delete_forever"
+            :loading="isDeleting"
+            @click="confirmDeleteAccount"
+          />
+        </div>
+      </q-card>
+
     </div>
 
     <!-- Login screen — only when definitively not signed in -->
@@ -158,7 +179,7 @@
 </template>
 
 <script>
-import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchCategories, fetchMonthRange } from '@/firebase'
+import { auth, GoogleAuthProvider, firestore, getOrAddUser, fetchCategories, fetchMonthRange, deleteAccount } from '@/firebase'
 import { getAuth, setPersistence, browserSessionPersistence } from '@firebase/auth'
 import EmptyState from '../components/EmptyState.vue';
 import store from '../store'
@@ -171,6 +192,7 @@ export default {
   data() {
     return {
       isLoading: false,
+      isDeleting: false,
     }
   },
   computed: {
@@ -270,6 +292,27 @@ export default {
       }
     },
     // sign out should log out the user using firebase.auth().signOut() and clear the store state
+    confirmDeleteAccount() {
+      this.$q.dialog({
+        title: 'Delete your account?',
+        message: 'This will permanently delete all your transactions, categories, rules, and linked accounts. This cannot be undone.',
+        cancel: { flat: true, label: 'Cancel' },
+        ok: { color: 'negative', unelevated: true, label: 'Delete everything' },
+        persistent: true,
+      }).onOk(async () => {
+        this.isDeleting = true;
+        try {
+          const result = await deleteAccount();
+          if (result) {
+            await this.signOut();
+          }
+        } catch (error) {
+          console.error('Delete account error:', error);
+        } finally {
+          this.isDeleting = false;
+        }
+      });
+    },
     async signOut() {
       if(this.session?.docId){
         try {

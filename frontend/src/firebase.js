@@ -451,7 +451,14 @@ export async function undoDismissRelationship(transactionId, partnerId) {
   _notify({ type: 'negative', message: `Failed to undo dismiss (${response.status})` });
 }
 
-// export async function updateCategories() {} later...
+export async function deleteAccount() {
+  const headers = await getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/nukeAllData', { method: 'POST', headers });
+  if (response.ok) return response.json();
+  _notify({ type: 'negative', message: `Failed to delete account (${response.status})` });
+}
 
 // ---------------------------------------------------------------------------
 // App bootstrap — fetch all core data if the store is empty.
