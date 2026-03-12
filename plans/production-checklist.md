@@ -1,4 +1,5 @@
-# Production Readiness Checklist
+# Production Readiness Checklist (SUPERSEDED)
+**Status:** Superseded by `plans/production-go-live.md`. App is live in production.
 
 ## Blockers (can't ship without)
 

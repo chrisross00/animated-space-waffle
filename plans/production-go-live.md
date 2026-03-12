@@ -139,9 +139,8 @@ migration script details. Order within the phase matters.
 - [x] **JWT auth** — signs token, fetches categories for test user
 - [x] **Invalid/expired JWT** — returns 401 (fixed hanging request bug in getOrAddUser)
 - [x] **OAuth redirect** — 302 to Google with correct params
-- [ ] **Google OAuth credentials** — create in Google Cloud Console, set `GOOGLE_CLIENT_ID`
-  and `GOOGLE_CLIENT_SECRET` in `.env`. Test full end-to-end: click sign in → Google →
-  callback → JWT → app loads.
+- [x] **Google OAuth credentials** — configured in Google Cloud Console and Hetzner .env.
+  Full end-to-end flow working: sign in → Google → callback → JWT → app loads.
 
 ### 3c: Data migration
 - [x] **Write and test migration script** — `scripts/migrate-mongo-to-postgres.js`.
@@ -181,9 +180,8 @@ migration script details. Order within the phase matters.
   Frontend: initialized in `main.js` with `browserTracingIntegration` + router, Vue
   `errorHandler` forwards to Sentry. CSP updated to allow `*.sentry.io`. Both gated
   by env vars (`SENTRY_DSN` backend, `VITE_SENTRY_DSN` frontend) — no-ops if unset.
-- [ ] **Create Sentry project + set DSN** — create a project at sentry.io (free tier),
-  add `SENTRY_DSN` to `/opt/basil/.env` on Hetzner and `VITE_SENTRY_DSN` to frontend
-  build env. Verify errors appear in dashboard.
+- [x] **Create Sentry project + set DSN** — Sentry project created, DSN set in both
+  `/opt/basil/app/.env` and `frontend/.env.production`.
 
 **Why here:** Sentry config is environment-specific. Set it up on the real production
 stack, not before it exists. But it must be live before real users touch the app.
@@ -195,14 +193,14 @@ stack, not before it exists. But it must be live before real users touch the app
 - [x] **Full deployment to Hetzner** — CI/CD pipeline deploys on push to main.
   App .env at `/opt/basil/app/.env` with all production vars (JWT, Google OAuth,
   Postgres, Plaid, Sentry, CORS). PM2 manages the process.
-- [ ] **End-to-end validation** — Plaid Link → sync → categorize → rules → triage →
-  charts → account deletion → error boundary. Everything.
+- [ ] **End-to-end validation** — Still need full walkthrough: Plaid Link → sync →
+  categorize → rules → triage → charts → account deletion → error boundary.
 - [x] **Plaid production credentials** — `PLAID_ENV=production` with production
   client ID and secret in Hetzner .env. Sandbox credentials also present for test users.
 - [x] **SSL verification** — HTTPS returns 200, HTTP redirects 301 → HTTPS.
   Let's Encrypt cert via Nginx. CSP headers include Sentry ingest domain.
-- [ ] **Google OAuth redirect URI** — add `https://basilbudgeting.com/auth/google/callback`
-  in Google Cloud Console → APIs & Credentials → OAuth client.
+- [x] **Google OAuth redirect URI** — configured in Google Cloud Console. OAuth flow
+  working end-to-end in production.
 
 ---
 
@@ -225,7 +223,13 @@ These improve the experience but aren't blockers for go-live.
 - [x] Sync failure visibility (error toast + warning badge)
 - [x] Rate limiting (global 200/15min, stricter 10/5min on sync)
 - [x] CORS + CSP (Helmet + origin whitelist)
-- [x] Auth security (Bearer token, Firebase admin verification)
+- [x] Auth security (Bearer token, JWT verification)
+- [x] Nginx gzip compression + static asset cache headers
+- [x] PWA manifest + iOS home screen support
+- [x] Post-login redirect fix (auth hydration race condition)
+- [x] Plaid Link CSP fix (frame-src + connect-src for *.plaid.com)
+- [x] Non-admin users get production Plaid credentials in production
+- [x] Tech debt cleanup (see `plans/production-tech-debt.md`)
 - [x] Input validation (string limits, ObjectID validation, regex escaping, injection prevention)
 - [x] `.DS_Store` cleanup + `.gitignore` update
 - [x] Stale branches + stashes cleaned up

@@ -1,4 +1,5 @@
-# Plan: Database Migration — MongoDB to Postgres (Supabase)
+# Plan: Database Migration — MongoDB to Postgres (COMPLETED)
+**Status:** Migration complete. Self-hosted Postgres 16 on Hetzner VPS (not Supabase).
 
 ## Context
 

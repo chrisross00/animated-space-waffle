@@ -22,7 +22,7 @@ These apply to every task, every session, including after context compaction.
 3. **Check `api.js → sweepCompoundRule`** for the backend equivalent.
 4. If adding a new condition type or operator, update **all three**:
    `ruleUtils.js`, `categoryMapping.js` (`evaluateCompoundRules`), and `api.js`
-   (`conditionsToMongoFilter`).
+   (`conditionsToPostgresFilter`).
 
 ### Before building any new component or UI pattern
 5. **Check existing shared components first:**
@@ -46,8 +46,11 @@ auto-categorizes them using a rules engine. The core feature is **auto-learn**: 
 the user recategorizes a transaction, a rule is saved and applied to all similar
 transactions going forward.
 
-**Stack:** Vue 3 + Quasar 2 + Vuex 4 (frontend) · Express.js + MongoDB (backend) ·
-Firebase Google Auth · Plaid API
+**Stack:** Vue 3 + Quasar 2 + Vuex 4 (frontend) · Express.js + Postgres (backend) ·
+Google OAuth + self-issued JWTs · Plaid API
+
+**Hosting:** Self-hosted on Hetzner VPS (Postgres 16 in Docker, Node via PM2, Nginx
+reverse proxy, Let's Encrypt SSL). CI/CD via GitHub Actions (push to main → test → deploy).
 
 ## How to run
 ```
@@ -62,10 +65,11 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 ## Key files
 | File | Purpose |
 |------|---------|
-| `index.js` | Express entry point — helmet, CORS, rate-limit, firebase-admin init |
+| `index.js` | Express entry point — Sentry, helmet, CORS, rate-limit |
+| `auth-routes.js` | Google OAuth login flow (consent → callback → JWT) |
 | `api.js` | All app API routes |
 | `plaid-api.js` | Plaid Link token, token exchange, account removal |
-| `db/database.js` | MongoDB singleton connection pool + all DB helpers |
+| `db/database.js` | Postgres connection pool (pg) + all DB helpers |
 | `frontend/src/views/BudgetView.vue` | Main dashboard — monthly budget, transactions |
 | `frontend/src/views/TrendsView.vue` | Charts — Spending, Cash Flow, Cumulative, Savings |
 | `frontend/src/views/MerchantBrowser.vue` | Top-down merchant rule assignment |
@@ -77,14 +81,14 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/utils/ruleUtils.js → findSimilarTransactions()` | Auto-detects similar transactions and determines best rule strategy |
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
 | `frontend/src/store.js` | Vuex store (user, session, transactionsByMonth, categories, rules) |
-| `frontend/src/firebase.js` | All fetch calls to backend API + Firebase auth helpers |
+| `frontend/src/api.js` | All fetch calls to backend API + auth helpers |
 | `utils/venmoEnrichment.js` | Venmo CSV parser + transaction enrichment matching |
 | `frontend/src/utils/ruleUtils.js` | Shared condition matching + store sweep utilities |
 | `utils/categoryMapping.js` | Transaction categorization rule engine |
 
 ## Architecture notes
 - **Data layer: sync vs read separation.** Plaid API calls (expensive, rate-limited)
-  are decoupled from MongoDB reads (cheap, frequent). `POST /api/sync` triggers Plaid;
+  are decoupled from Postgres reads (cheap, frequent). `POST /api/sync` triggers Plaid;
   `GET /api/transactions?month=YYYY-MM` reads from DB. Frontend loads current + 3 prior
   months on mount, fetches more on demand (TrendsView 3→6→12). Background auto-sync
   fires only when data is >4 hours stale. `lastSyncedAt` persisted in sessionStorage.
@@ -94,10 +98,12 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   unchanged.
 - **Sync button** lives in the App.vue header toolbar (replaces old FAB). Spins while
   syncing. Pull-to-refresh on mobile still triggers sync via BudgetView.
-- **Auth:** Firebase ID token sent as `Authorization: Bearer <token>` header on every
-  backend request. Backend verifies with `firebase-admin`.
-- **MongoDB collections:** `Basil-Users`, `Plaid-Transactions`, `Plaid-Accounts`,
-  `Basil-Categories`, `Basil-Rules` (compound rules)
+- **Auth:** Google OAuth2 → self-issued JWT (7-day expiry). Frontend stores JWT in
+  sessionStorage, sends as `Authorization: Bearer <token>`. Backend verifies with
+  `jsonwebtoken`. OAuth flow in `auth-routes.js`, token consumption in `frontend/src/api.js`.
+- **Postgres tables:** `users`, `categories`, `simple_rules`, `compound_rules`,
+  `transactions`, `plaid_items`, `plaid_accounts`, `balance_snapshots`.
+  Schema at `db/migrations/001-initial-schema.sql`.
 - **Category types:** `income` / `expense` / `payment` / `savings`
 - **`transaction.account`:** Institution name stamped onto each individual transaction
   at Plaid sync time (`utils/plaidTools.js`). Used by the `account` condition type in
@@ -108,26 +114,20 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   sweepable. Rule sweeps skip `manually_set: true` transactions.
 - **`ruleMode` request field:** Sent in transaction update payloads to signal intent.
   Values: `null` (pure manual edit → sets `manually_set`), `'merchant'`, `'compound'`.
-- **Admin system:** `isAdmin` flag stored on `Basil-Users` document in MongoDB — no
-  env vars needed. `requireAdmin(uid, res)` does an async DB lookup. All ApiDir tools
-  use `resolveTargetUser(req, res)` which extracts `targetUserId` from request body
-  (POST) or query param (GET), defaults to authenticated user, and requires admin only
-  when targeting another user. ApiDir shows a user picker dropdown for admins.
-- **Plaid credentials:** `utils/plaidClient.js` reads `PLAID_ENV` (sandbox/production)
-  and picks `PLAID_{SANDBOX|PRODUCTION}_CLIENT_ID` + `SECRET`. Both sets of credentials
-  can coexist uncommented in `.env` — just change `PLAID_ENV` and restart.
-- **Firebase usage:** Only two services are used: (1) **Authentication** — Google Sign-In
-  via `firebase.auth()` + `GoogleAuthProvider` on the frontend, verified by
-  `firebase-admin.auth().verifyIdToken()` on the backend. (2) **Firestore** — a single
-  `sessions` collection storing login/logout timestamps (legacy/informational; all real
-  app data lives in MongoDB). No Cloud Functions, Storage, Hosting, Analytics, or other
-  Firebase services are in use. **Migration plan:** Replace Firebase with direct Google
-  OAuth2 + self-issued JWTs. No Supabase — just Postgres on the same Hetzner VPS. Auth
-  migration bundled with database migration. See `plans/production-go-live.md`.
-- **Env vars:** Root `.env` uses `VUE_APP_FIREBASE_*` (consumed by `index.js` backend),
-  `PLAID_ENV`, `PLAID_SANDBOX_*`, `PLAID_PRODUCTION_*` (Plaid credentials).
-  `frontend/.env` uses `VITE_FIREBASE_*` (consumed by Vite build).
-  Admin identity is in MongoDB (`isAdmin` on `Basil-Users`), not in env vars.
+- **Admin system:** `isAdmin` flag on `users` table (Postgres). `requireAdmin(uid, res)`
+  does an async DB lookup. `resolveTargetUser(req, res)` extracts `targetUserId` from
+  request body (POST) or query param (GET), defaults to authenticated user, requires
+  admin only when targeting another user.
+- **Plaid credentials:** `utils/plaidClient.js` creates both sandbox and production
+  clients. `forUser(isAdmin)` returns production for everyone in production env;
+  in dev, admins get production, others get sandbox. Credentials:
+  `PLAID_PRODUCTION_CLIENT_ID`, `PLAID_PRODUCTION_SECRET`, `PLAID_SANDBOX_CLIENT_ID`,
+  `PLAID_SANDBOX_SECRET`.
+- **Env vars:** Root `.env` has `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
+  `GOOGLE_CLIENT_SECRET`, `PLAID_*`, `SENTRY_DSN`. `frontend/.env` has `VITE_SENTRY_DSN`,
+  `VITE_DEV_AUTH_BYPASS`. Production env on Hetzner at `/opt/basil/app/.env`.
+- **Error tracking:** Sentry on both backend (`@sentry/node`) and frontend (`@sentry/vue`).
+  DSN configured via `SENTRY_DSN` / `VITE_SENTRY_DSN`.
 
 ## Large file maps — navigate before reading
 
@@ -187,15 +187,15 @@ section instead of reading the whole file.
 | `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates an array of compound rules against a transaction during batch categorization. |
 | `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Auto-detects similar transactions via 3 strategies (merchant_name → name+account → name). Returns match data + rule type for automatic rule creation. |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Full compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
-| `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/firebase.js` | Set `true` while `ensureAppData` is in-flight. Gate non-Budget view content — show skeleton/spinner while true, `EmptyState` only when false and data empty. See DESIGN.md "Loading states" for the three-state pattern. |
-| `triggerSync()` | `frontend/src/firebase.js` | `POST /api/sync` — triggers Plaid sync. Returns `{ syncedAt }`. Only call on explicit user action or stale-data check. |
-| `fetchTransactionsForMonth(month)` | `frontend/src/firebase.js` | `GET /api/transactions?month=YYYY-MM` — cheap DB read. Returns `{ transactions, total }`. |
-| `fetchMonthRange(store, start, end)` | `frontend/src/firebase.js` | Fetches missing months in parallel, skipping cached ones. Commits `setMonthTransactions` for each. |
-| `searchTransactions(search, page, limit)` | `frontend/src/firebase.js` | `GET /api/transactions?search=&page=&limit=` — server-side paginated search across all months. |
+| `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/api.js` | Set `true` while `ensureAppData` is in-flight. Gate non-Budget view content — show skeleton/spinner while true, `EmptyState` only when false and data empty. See DESIGN.md "Loading states" for the three-state pattern. |
+| `triggerSync()` | `frontend/src/api.js` | `POST /api/sync` — triggers Plaid sync. Returns `{ syncedAt }`. Only call on explicit user action or stale-data check. |
+| `fetchTransactionsForMonth(month)` | `frontend/src/api.js` | `GET /api/transactions?month=YYYY-MM` — cheap DB read. Returns `{ transactions, total }`. |
+| `fetchMonthRange(store, start, end)` | `frontend/src/api.js` | Fetches missing months in parallel, skipping cached ones. Commits `setMonthTransactions` for each. |
+| `searchTransactions(search, page, limit)` | `frontend/src/api.js` | `GET /api/transactions?search=&page=&limit=` — server-side paginated search across all months. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
-- **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToMongoFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
+- **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToPostgresFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
 - **Shared components over one-off markup.** `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement empty states inline.
 - **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations (`updateTransaction`, `updateRule`, `addRule`, etc.) or add a new named mutation.
 - **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `contains`, `range`, `gt`, `lt`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
@@ -291,23 +291,41 @@ Shipped: `contains` (name/merchant), `gt` / `lt` (amount) — implemented in all
 layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - **Amount:** `between` (range with min + max) — not yet built
 
+### Production issues (from initial launch testing)
+- [ ] **Persist login across sessions** — JWT is stored in sessionStorage, so closing
+      the tab or browser requires re-authenticating with Google. Switch to localStorage
+      or set an HTTP-only cookie so users stay logged in.
+- [ ] **Relationship card tap targets too small on mobile** — confirm/dismiss buttons
+      on transaction relationship cards are hard to tap. Increase touch target size to
+      minimum 44×44px per Apple HIG.
+- [ ] **PWA bottom chin / safe area** — bottom nav sits too low on iOS PWA standalone
+      mode. May need `env(safe-area-inset-bottom)` adjustments or viewport-fit=cover.
+- [ ] **Budget planner card numbers not centered on mobile** — main card dollar amounts
+      on the planning page should be centered at minimum for mobile viewports.
+- [ ] **Pull-to-refresh: native feel** — replace Quasar's overlay spinner with a native
+      iOS-style pull where the page content slides down revealing a status message. Works
+      for all mobile users, not just PWA.
+- [ ] **Production admin portal** — need `admin.basilbudgeting.com` deployed so we can
+      seed/manage test users in production and service real user accounts. Currently only
+      runs locally on `:8081`.
+- [ ] **Push notifications** — requires Service Worker + Push API + backend push service.
+      Use case: budget limit alerts, sync completion, etc. Needs design decision on
+      what's worth notifying about.
+- [ ] **"Show all" table horizontal overflow on mobile** — table slides around
+      horizontally. Consider truncating name column or reordering (amount first).
+- [ ] **Hide Plaid-managed categories from Planner view** — categories the user
+      can't modify (Plaid PFC-mapped) appear editable in the planner. Hide them or
+      visually distinguish them so users don't think they can set budgets on them.
+
 ### Tech debt
-- [ ] **Database + auth migration: MongoDB → Postgres, Firebase → Google OAuth + JWT** —
-      data model is textbook relational but stored in a document DB. Missing referential
-      integrity, manual `userId` filtering on every query, nested documents where flat
-      tables would be simpler. Auth consolidates to direct Google OAuth2 with self-issued
-      JWTs — no Supabase, no third-party auth service. Everything self-hosted on Hetzner
-      VPS for strongest user data privacy. See `plans/production-go-live.md` (master plan)
-      and `plans/database-migration.md` (schema + migration script).
+- [x] **Database + auth migration** — MongoDB → Postgres, Firebase → Google OAuth + JWT.
+      Self-hosted on Hetzner VPS. See `plans/production-go-live.md`.
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
       share identical auth/admin/insert scaffolding. Refactor to a shared helper or a single
       route with a `type` parameter if more test-data tools are added. (Toolbox UI now in
       admin portal — `admin/src/views/ToolboxView.vue`.)
-- [ ] **Switch persisted state from sessionStorage to localStorage** — Mostly mitigated
-      by data layer rearchitecture (transactions no longer persisted, 5MB cap no longer
-      an issue). Only `session`, `user`, and `lastSyncedAt` remain in sessionStorage.
-      New-tab auth gap still exists but Firebase `onAuthStateChanged` rehydrates quickly.
-      Low priority.
+- [ ] **Rename `plaid_items` → `plaid_links`** — Plaid's "Item" jargon is confusing in
+      our schema. Plan saved at `plans/kind-giggling-lake.md`. Cosmetic, do when convenient.
 - [ ] **BudgetView: eliminate local transaction array** — `this.transactions` is still
       copied locally from `store.state.transactions` with manual sync. Works fine in
       practice. Low priority — clean up opportunistically if already working in BudgetView.
@@ -338,9 +356,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Settings: First day of week** — affects weekly groupings if/when added.
 - [ ] **Settings: Notification thresholds** — warn when a category hits X% of budget.
       Needs delivery mechanism decision (in-app banner vs email) and the alerts feature built first.
-- [ ] **Sign in with Apple** — Firebase Auth supports it; requires Apple Developer account ($99/yr),
-      a registered domain, and a privacy policy URL. Apple-side setup is the main effort;
-      frontend change is minimal (swap `GoogleAuthProvider` for `OAuthProvider('apple.com')`).
+- [ ] **Sign in with Apple** — requires Apple Developer account ($99/yr), a registered
+      domain, and a privacy policy URL. Would add a second OAuth provider in `auth-routes.js`
+      alongside Google.
 
 - [ ] **Iteration 3.5** — Multi-select in Merchant Browser: check multiple merchants,
       assign all to the same category in one Apply. See details below.
@@ -382,22 +400,23 @@ Remaining ideas:
 
 All four iterations shipped. Key patterns for future agents:
 
-### What rules look like in MongoDB
-```json
-{ "rules": { "merchant_name": ["Uber"], "name": ["Specific Txn Name"] } }
+### What simple rules look like in Postgres
+```sql
+-- simple_rules table: one row per rule
+(id, category_id, user_id, rule_type='merchant_name', rule_value='Uber')
 ```
 Only `merchant_name` and `name` are created by auto-learn. Rule UI shows only these.
 
 ### Iteration 1 ✓ — View & delete rules (Edit Category dialog)
 Chips for each rule, click × to stage removal (strikethrough), fires on Submit.
 - `pendingRuleRemovals` in `DialogComponent.data()`, processed in `BudgetView.onSubmit()`
-- Backend: `POST /api/deleteRule` → `$pull` on `Basil-Categories`
+- Backend: `POST /api/deleteRule` → deletes from `simple_rules` table
 - Store: `updateCategoryRules` mutation
 
 ### Iteration 2 ✓ — Add rules (Edit Category dialog)
 Searchable merchant dropdown in the dialog, adds rule + re-categorizes on Submit.
 - `pendingRuleAdditions` in `DialogComponent.data()`, processed in `BudgetView.onSubmit()`
-- Backend: `POST /api/saveRule` → `$addToSet` + `updateMany` on transactions
+- Backend: `POST /api/saveRule` → inserts into `simple_rules` + updates matching transactions
 - Store: `addCategoryRule` mutation
 
 ### Iteration 3 ✓ — Merchant Browser (`/merchants`)
@@ -408,7 +427,7 @@ Top-down table: Merchant | Txns | Current category | Assign (inline q-select + A
 - Pre-populates selects from store ruleMap on mount
 
 ### Compound rules ✓ — multi-condition rules (triage + dialog + RuleEditorDialog)
-Stored in `Basil-Rules` collection as `{ userId, label, conditions[], action, createdAt, createdFrom }`.
+Stored in `compound_rules` table as `{ user_id, label, conditions (JSONB), action (JSONB), created_at, created_from }`.
 - `conditions`: array of `{ field, op, value }` — supported fields: `merchant_name` (`eq`|`contains`), `name` (`eq`|`contains`), `amount` (`eq`|`range`|`gt`|`lt`), `account` (`eq`)
 - `action`: `{ type: 'categorize', categoryName, note? }`
 - Evaluated before all simple rules in `utils/categoryMapping.js → evaluateCompoundRules()`
@@ -494,18 +513,15 @@ Never create classes starting with `q-` (Quasar's namespace).
 ---
 
 ## Recent history (for context)
-- **Data layer rearchitecture**: separated Plaid sync from DB reads; month-based loading;
-  background auto-sync when stale (>4h); server-side table search; removed `/getNewAuth`
-  and `/refreshBalances`; `lastSyncedAt` persisted in sessionStorage
-- **Venmo CSV import**: `utils/venmoEnrichment.js` + `VenmoEnrichmentDialog.vue`;
-  enriches P2P transactions with counterparty names and notes from Venmo statement CSV
-- **UI polish**: replaced FAB with sync button in header toolbar; fixed transaction sort
-  order (newest-first); spending chart tooltip shows only hovered category; nudged
-  `--basil-surface-alt` for better light mode contrast
-- Simplified onboarding to 3-step flow; removed custom category seeding + `OnboardingCategoryEditor`
-- Replaced `showOnBudgetPage` with dynamic category visibility; added `isDefault` flag to seeds
-- Removed PFC mapping UI from category dialogs
-- Fixed hard-refresh auth race; deduplicated nuke logic; fixed `onboarded_at` edge case
-- Consolidated view-level data fetching to `ensureAppData`; BudgetView categories/rules now from store
-- Added rule attribution + new condition operators (`contains`, `gt`, `lt`) to all three layers
-- Added pre-push hook (husky): runs backend + frontend test suites before every push
+- **Production launch (Mar 2026)**: MongoDB → Postgres migration, Firebase → Google
+  OAuth + JWT, deployed to Hetzner VPS with Docker Postgres, PM2, Nginx, Let's Encrypt.
+  CI/CD via GitHub Actions. Sentry error tracking added.
+- **Performance**: Nginx gzip compression (1.3MB→412KB JS), static asset cache headers
+  (1-year immutable for Vite hashed files). See `plans/performance-optimizations.md`.
+- **PWA**: manifest.json + iOS meta tags for home screen standalone mode
+- **Post-login redirect**: router guard awaits auth hydration before first navigation;
+  onboarded users redirect from `/` to `/accounts` on initial load
+- **Plaid fix**: CSP updated to allow Plaid iframe; non-admin users now get production
+  Plaid credentials in production (was incorrectly routing to sandbox)
+- **Tech debt cleanup**: removed hardcoded passwords, debug logs, stale columns; added
+  unique constraints; cleaned up dead files. See `plans/production-tech-debt.md`.
