@@ -22,7 +22,7 @@ export default {
           commit('setUserData', userData);
         }
       } catch (error) {
-        console.log(error);
+        console.error(error);
       }
     },
   },

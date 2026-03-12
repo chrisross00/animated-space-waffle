@@ -620,7 +620,6 @@ computed: {
         },
         addCategory() {
             this.addedCategory = {...this.dialogBody}
-            console.log('add-Category: added Category: ', this.addedCategory)
             this.$emit('add-category', this.addedCategory)
         },
         buildEditCategoryDialog() {
@@ -634,7 +633,6 @@ computed: {
             this.formSubmittable = false
         },
         isFormSubmittable(){
-            console.log('excludeFromTotal, ', this.dialogBody.excludeFromTotal, this.originalDialogBody.excludeFromTotal )
             // first evaluate for change
             if(this.dialogType == 'transaction'){
                 if(
@@ -676,11 +674,9 @@ computed: {
     },
     mounted(){
         this.originalDialogBody = Object.assign({}, this.dialogBody);
-        console.log('mounted(): this.item ', this.item)
     },
     created() {
         this.initialData = JSON.parse(JSON.stringify(this.dialogBody));
-        console.log('created child component dialog', this.originalDialogBody)
     },
     watch: {
         "dialogBody.mappedCategory": function (){

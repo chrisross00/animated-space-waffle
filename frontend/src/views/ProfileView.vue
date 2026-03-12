@@ -220,7 +220,7 @@ export default {
         try {
           await setPersistence(auth, browserSessionPersistence);
         } catch (error) {
-          console.log('Error setting persistence', error)
+          console.error('Error setting persistence', error)
         }
 
         const result = await auth.signInWithPopup(GoogleAuthProvider)
@@ -234,8 +234,6 @@ export default {
             createdAt: user.metadata.createdAt,
           }
           const docId = await firestore.collection('sessions').add(userData)
-          console.log('Session data successfully saved to firestore!', docId.id)
-
           // after the session is saved to firestore, store the user in the store
           const sessionData = {
             docId: docId.id,
@@ -243,7 +241,7 @@ export default {
           }
           store.commit('setSession', sessionData)    
         } catch (error) {
-          console.log('Error saving session data to firestore!', error)
+          console.error('Error saving session data to firestore!', error)
         }
           
         // check if user exists in mongodb. If it does add it to the store
@@ -251,14 +249,14 @@ export default {
           const appUser = await getOrAddUser()
           store.commit('setUser', appUser)
         } catch (error) {
-          console.log(error)
+          console.error(error)
         }
         // load categories so we can detect returning users who skipped Plaid
         try {
           const categories = await fetchCategories()
           if (categories?.length) store.commit('setCategories', categories)
         } catch (error) {
-          console.log(error)
+          console.error(error)
         }
         this.isLoading = false;
         if (!this.user?.onboarded_at) {
@@ -267,7 +265,7 @@ export default {
         }
         store.commit("setLastPlaidFetch", null) // set last plaid fetch to 0 since new login
       } catch (error) {
-        console.log(error)
+        console.error(error)
         this.isLoading = false;
       }
     },
@@ -279,7 +277,7 @@ export default {
             endAt: Date.now().toString()
           })
         } catch (error) {
-          console.log(error)
+          console.error(error)
           }
       }
       sessionStorage.removeItem('impersonate-token');

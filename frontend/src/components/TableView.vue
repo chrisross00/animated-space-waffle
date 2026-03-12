@@ -17,7 +17,6 @@
   
   <script>
   // Note: header labels need to match the keys of the object you're passing in
-  console.log('table script')
     export default {
       props: {
         headerLabels: {
@@ -29,9 +28,7 @@
           required: true,
         },
       },
-      async mounted() {
-        console.log('mounted TableView', this.tableData[0])
-      }
+      mounted() {}
     };
   </script>
   

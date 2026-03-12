@@ -257,7 +257,6 @@ const store = createStore({
             if (partnerId) clear(partnerId);
         },
         updateCategory(state, updatedCategory) {
-            console.log('updateCategory store:', updatedCategory)
             const newPfc = updatedCategory.plaid_pfcBEResponse || [];
             const oldName = updatedCategory.originalCategoryName;
             const newName = updatedCategory.categoryNameBEResponse;
@@ -284,7 +283,6 @@ const store = createStore({
                     .sort().reverse()
                     .flatMap(k => state.transactionsByMonth[k]);
             }
-            console.log('store.js updateCategory done!', state.categories)
         },
         updateCategoryRules(state, { categoryId, ruleType, ruleValue }) {
             const cat = state.categories.find(c => c._id === categoryId);
@@ -363,8 +361,7 @@ const store = createStore({
             state.categories = state.categories.filter(c => c._id !== categoryId);
         },
         addCategory(state, newCategory) {
-            console.log('addCategory store:', newCategory)
-                const newPfc = newCategory.plaid_pfcBEResponse || [];
+            const newPfc = newCategory.plaid_pfcBEResponse || [];
                 // Mirror backend dedup: remove claimed PFC values from existing categories
                 if (newPfc.length > 0) {
                     state.categories.forEach(category => {
@@ -381,8 +378,6 @@ const store = createStore({
                 }
 
                 state.categories.push(category)
-                console.log('store.js addCategory done!', state.categories)
-            // this.categoryMonthlyLimits.push(categoryToAdd) // need to modify addedCategory first
         },
     },
     actions: {

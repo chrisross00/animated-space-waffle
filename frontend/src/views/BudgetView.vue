@@ -1380,7 +1380,7 @@ monthStats() {
           }
           return dateList;
         } catch (err) {
-            console.log("error trying to buildDateList...", err)
+            console.error("error trying to buildDateList...", err)
         }
       },
       budgetRemaining(category){ // does math between monthlyLimit and Category sum to get budget
@@ -1494,7 +1494,7 @@ monthStats() {
           this.transactions = store.state.transactions || [];
           this.categoryMonthlyLimits = [...(store.state.categories || [])];
         } catch (error) {
-          console.log('error setting up transactions and categories: ' + error)
+          console.error('error setting up transactions and categories:', error)
         }
         this.groupTransactions();
         this.months = this.buildDateList(this.transactions).reverse()
@@ -1589,7 +1589,7 @@ monthStats() {
           }
         })
         .catch(error => {
-          console.log('Error:', error)
+          console.error('Error:', error)
         })
         .finally(() => {
           this.isLoading = false;

@@ -156,75 +156,55 @@ export async function fetchCategories() {
     } else {
       _notify({ type: 'negative', message: `Failed to fetch categories (${response.status})` });
     }
-  } else {
-    // User is not signed in
-    console.log('headers are null, therefore user is not logged in');
   }
 }
 
 export async function getOrAddUser() {
-  console.log("getOrAddUser(): current auth is", auth)
   const headers = await getAuthHeaders();
   if (headers) {
     const response = await fetch('/api/getOrAddUser', { headers });
     const data = await response.json();
     if (response.ok) {
-      const user = data
-      return user;
+      return data;
     } else {
       _notify({ type: 'negative', message: `Failed to load user (${response.status})` });
     }
-  } else {
-    // User is not signed in
-    console.log('headers are null, therefore user is not logged in');
   }
 }
 
 export async function getOrAddUserAccount(publicToken, metadata) {
-  console.log("getOrAddUserAccount(): current auth is", auth)
-  console.log("getOrAddUserAccount(): current publicToken is", publicToken)
-  console.log("getOrAddUserAccount(): current metadata is", metadata)
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/plaid-api/exchange_public_token', { 
+    const response = await fetch('/plaid-api/exchange_public_token', {
       method: 'POST',
-      headers: headers, 
-      body: JSON.stringify({ 
+      headers,
+      body: JSON.stringify({
       public_token: publicToken,
-      metadata: metadata
+      metadata,
     })});
     if (response.ok) {
       return response.json();
     } else {
       _notify({ type: 'negative', message: `Failed to link account (${response.status})` });
     }
-  } else {
-    // User is not signed in
-    console.log('headers are null, therefore user is not logged in');
   }
 }
 
 export async function handleDialogSubmit(dialogBody) {
-  console.log("(): current auth is", auth)
   const headers = await getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    console.log('firebase.handleDialogSubmit(): dialog body is', dialogBody);
     const response = await fetch('/api/handleDialogSubmit', {
       method: 'POST',
-      headers: headers,
+      headers,
       body: dialogBody,
     });
-    // const data = await response;
     if (response.ok) {
-      // console.log('data is', data);
       return response.json();
     } else {
       _notify({ type: 'negative', message: `Failed to save changes (${response.status})` });
     }
-  } else {
-    console.log('headers are null, therefore user is not logged in');
   }
 }
 

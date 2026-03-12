@@ -25,8 +25,6 @@ export default {
       return linkToken;
     },
     async initializePlaid() {
-      console.log('initializing plaid')
-
       const linkToken = this.linkToken || await this.createLinkToken();
       this.linkHandler = window.Plaid.create({
         token: linkToken,
@@ -37,20 +35,12 @@ export default {
             this.$emit("onPlaidSuccess", publicToken, metadata);
             return;
           }
-          const response = await getOrAddUserAccount(publicToken, metadata)
-          if (response.ok) {
-            console.log("Public token exchanged successfully.");
-          } else {
-            console.error("Error exchanging public token:", response.status);
-          }
+          await getOrAddUserAccount(publicToken, metadata);
           this.$emit("onPlaidSuccess", publicToken, metadata);
         },
-        onEvent: (eventName, metadata) => {
-          console.log("Event:", eventName);
-          console.log("Metadata:", metadata);
-        },
-        onExit: (error, metadata) => {
-          console.log(error, metadata);
+        onEvent: () => {},
+        onExit: (error) => {
+          if (error) console.error('Plaid Link exit error:', error.error_code);
           this.$emit('onPlaidExit');
         },
       });
