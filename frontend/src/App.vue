@@ -315,22 +315,17 @@
   display: none !important;
 }
 
-/* Pill behind active icon */
-.basil-bottom-tabs .q-tab__content {
-  position: relative;
-}
-
+/* Pill behind active icon — anchored to the icon element itself */
 .basil-bottom-tabs .q-tab__icon {
   position: relative;
-  z-index: 1;
 }
 
-.basil-bottom-tabs .q-tab__content::before {
+.basil-bottom-tabs .q-tab__icon::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   width: 64px;
   height: 32px;
   border-radius: 16px;
@@ -338,7 +333,7 @@
   transition: background-color 200ms var(--basil-ease);
 }
 
-.basil-bottom-tabs .q-tab--active .q-tab__content::before {
+.basil-bottom-tabs .q-tab--active .q-tab__icon::before {
   background-color: var(--basil-green-subtle);
 }
 
