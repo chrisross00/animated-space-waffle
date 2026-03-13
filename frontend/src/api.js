@@ -19,13 +19,13 @@ export function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
   }
-  const token = sessionStorage.getItem('basil-token');
+  const token = localStorage.getItem('basil-token');
   if (!token) return null;
   return { Authorization: `Bearer ${token}` };
 }
 
 export function signOut() {
-  sessionStorage.removeItem('basil-token');
+  localStorage.removeItem('basil-token');
   sessionStorage.removeItem('impersonate-token');
   sessionStorage.removeItem('session');
   sessionStorage.removeItem('user');
@@ -42,7 +42,7 @@ export function consumeAuthToken() {
   const token = params.get('token');
   if (!token) return false;
 
-  sessionStorage.setItem('basil-token', token);
+  localStorage.setItem('basil-token', token);
 
   // Strip token from URL without reload
   params.delete('token');

@@ -40,7 +40,7 @@ consumeAuthToken();
 // Hydrate auth state from token (JWT in sessionStorage, dev-bypass, or impersonation).
 // Stored as a promise so the router guard can await it before deciding redirects.
 const authReady = (async function hydrateAuth() {
-  const hasToken = sessionStorage.getItem('basil-token');
+  const hasToken = localStorage.getItem('basil-token');
   const hasImpersonation = sessionStorage.getItem('impersonate-token');
   const isDevBypass = import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
 
@@ -55,7 +55,7 @@ const authReady = (async function hydrateAuth() {
     } catch (err) {
       console.error('Auth hydration error:', err);
       // Token may be expired — clear it so user sees login screen
-      sessionStorage.removeItem('basil-token');
+      localStorage.removeItem('basil-token');
     }
   }
 })();
