@@ -3,7 +3,7 @@
    ===================================================== */
 
 .basil-onboarding-page {
-  min-height: 100vh;
+  min-height: calc(100dvh - var(--basil-bottom-nav-height, 72px) - 50px);
   display: flex;
   flex-direction: column;
   justify-content: center;
