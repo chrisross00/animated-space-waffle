@@ -96,10 +96,12 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
   of truth. `store.state.transactions` is a flat compatibility array rebuilt on every
   month update (sorted newest-first). All 26+ consumers of `state.transactions` work
   unchanged.
-- **Sync button** lives in the App.vue header toolbar (replaces old FAB). Spins while
-  syncing. Pull-to-refresh on mobile still triggers sync via BudgetView.
+- **Sync button** lives in the App.vue header toolbar. Spins while syncing. Triggers
+  Plaid API call (expensive, rate-limited). Pull-to-refresh on mobile is separate —
+  re-fetches from Postgres only (cheap). `PullToRefresh.vue` wraps the router-view
+  in App.vue so all views get it.
 - **Auth:** Google OAuth2 → self-issued JWT (7-day expiry). Frontend stores JWT in
-  sessionStorage, sends as `Authorization: Bearer <token>`. Backend verifies with
+  localStorage, sends as `Authorization: Bearer <token>`. Backend verifies with
   `jsonwebtoken`. OAuth flow in `auth-routes.js`, token consumption in `frontend/src/api.js`.
 - **Postgres tables:** `users`, `categories`, `simple_rules`, `compound_rules`,
   `transactions`, `plaid_items`, `plaid_accounts`, `balance_snapshots`.
@@ -292,9 +294,8 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - **Amount:** `between` (range with min + max) — not yet built
 
 ### Production issues (from initial launch testing)
-- [ ] **Persist login across sessions** — JWT is stored in sessionStorage, so closing
-      the tab or browser requires re-authenticating with Google. Switch to localStorage
-      or set an HTTP-only cookie so users stay logged in.
+- [x] **Persist login across sessions** — JWT moved from sessionStorage to localStorage.
+      Users stay logged in across tabs and browser restarts (until sign-out or 7-day expiry).
 - [ ] **Relationship card tap targets too small on mobile** — confirm/dismiss buttons
       on transaction relationship cards are hard to tap. Increase touch target size to
       minimum 44×44px per Apple HIG.
@@ -302,9 +303,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       mode. May need `env(safe-area-inset-bottom)` adjustments or viewport-fit=cover.
 - [ ] **Budget planner card numbers not centered on mobile** — main card dollar amounts
       on the planning page should be centered at minimum for mobile viewports.
-- [ ] **Pull-to-refresh: native feel** — replace Quasar's overlay spinner with a native
-      iOS-style pull where the page content slides down revealing a status message. Works
-      for all mobile users, not just PWA.
+- [x] **Pull-to-refresh: native feel** — replaced Quasar's overlay spinner with custom
+      `PullToRefresh.vue` component in App.vue. Page slides down with animated arrow +
+      status text. Re-fetches from Postgres (no Plaid sync). All views get it automatically.
 - [ ] **Production admin portal** — need `admin.basilbudgeting.com` deployed so we can
       seed/manage test users in production and service real user accounts. Currently only
       runs locally on `:8081`.
@@ -525,3 +526,10 @@ Never create classes starting with `q-` (Quasar's namespace).
   Plaid credentials in production (was incorrectly routing to sandbox)
 - **Tech debt cleanup**: removed hardcoded passwords, debug logs, stale columns; added
   unique constraints; cleaned up dead files. See `plans/production-tech-debt.md`.
+- **Persist login**: JWT moved from sessionStorage to localStorage. Users stay logged
+  in across browser restarts.
+- **Rule sweep fix**: frontend store now updates all matching transactions immediately
+  when a merchant rule is created (was only sweeping "To Sort" or not sweeping at all).
+- **Pull-to-refresh**: custom `PullToRefresh.vue` component in App.vue replaces Quasar
+  spinner. Page slides down with animated arrow. Re-fetches from Postgres only (sync
+  button is the only way to trigger Plaid). Works on all views.

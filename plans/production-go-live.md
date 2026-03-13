@@ -233,6 +233,9 @@ These improve the experience but aren't blockers for go-live.
 - [x] Input validation (string limits, ObjectID validation, regex escaping, injection prevention)
 - [x] `.DS_Store` cleanup + `.gitignore` update
 - [x] Stale branches + stashes cleaned up
+- [x] Persist login across sessions (JWT → localStorage)
+- [x] Pull-to-refresh: native iOS-style pull (DB-only, no Plaid sync)
+- [x] Rule sweep fix: frontend store now updates all matching transactions immediately
 
 ---
 
