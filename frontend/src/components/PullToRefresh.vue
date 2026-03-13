@@ -34,7 +34,7 @@
 
 <script>
 import store from '../store'
-import { fetchCategories, fetchRules, fetchTransactionsForMonth } from '../api'
+import { getOrAddUser, fetchCategories, fetchRules, fetchTransactionsForMonth } from '../api'
 
 export default {
   name: 'PullToRefresh',
@@ -95,10 +95,12 @@ export default {
     },
     async refreshFromDb() {
       const loadedMonths = Object.keys(store.state.transactionsByMonth);
-      const [categories, rules] = await Promise.all([
+      const [user, categories, rules] = await Promise.all([
+        getOrAddUser(),
         fetchCategories(),
         fetchRules(),
       ]);
+      if (user) store.commit('setUser', user);
       if (categories) store.commit('setCategories', categories);
       if (rules) store.commit('setRules', rules);
       if (loadedMonths.length > 0) {

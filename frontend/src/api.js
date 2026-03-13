@@ -26,10 +26,8 @@ export function getAuthHeaders() {
 
 export function signOut() {
   localStorage.removeItem('basil-token');
+  localStorage.removeItem('basil-store');
   sessionStorage.removeItem('impersonate-token');
-  sessionStorage.removeItem('session');
-  sessionStorage.removeItem('user');
-  sessionStorage.removeItem('lastSyncedAt');
 }
 
 /**

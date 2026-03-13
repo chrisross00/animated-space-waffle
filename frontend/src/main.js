@@ -23,6 +23,8 @@ import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 
   // Clear previous user's state
   sessionStorage.clear();
+  localStorage.removeItem('basil-store');
+  localStorage.removeItem('basil-token');
 
   // Store token for getAuthHeaders() to pick up
   sessionStorage.setItem('impersonate-token', token);

@@ -7,7 +7,7 @@
     </div>
 
     <!-- Loading skeleton -->
-    <template v-if="$store.state.bootstrapping">
+    <template v-if="$store.state.bootstrapping || syncing">
       <q-item v-for="i in 3" :key="i">
         <q-item-section>
           <q-skeleton type="text" width="55%" />
@@ -242,6 +242,7 @@ export default {
   data() {
     return {
       showPlaidLink: false,
+      syncing: false,           // true while syncing after Plaid Link success
       preDelete: {},
       reconnecting: null,       // institution name currently reconnecting
       reconnectToken: null,     // link token for update mode
@@ -512,6 +513,8 @@ export default {
     },
 
     async handlePlaidSuccess() {
+      this.showPlaidLink = false;
+      this.syncing = true;
       try {
         const user = await getOrAddUser();
         this.$store.commit('setUser', user);
@@ -532,8 +535,9 @@ export default {
         }
       } catch (error) {
         console.error('handlePlaidSuccess: sync error:', error);
+      } finally {
+        this.syncing = false;
       }
-      this.showPlaidLink = false;
     },
 
     async unlinkAccount(institution) {

@@ -18,10 +18,11 @@ const store = createStore({
         lastSyncedAt: null,
     },
     plugins: [createPersistedState({
-        storage: window.sessionStorage,
-        // Only persist session (needed for isLoggedIn check on page refresh).
-        // User data (email, account names) and financial data are reloaded
-        // from the network via auth.onAuthStateChanged + getOrAddUser().
+        storage: window.localStorage,
+        key: 'basil-store',
+        // Persist session + user so the app can render immediately on PWA reopen
+        // without waiting for getOrAddUser() to complete. Financial data (transactions,
+        // categories, rules) is always re-fetched from the network.
         reducer: state => ({ session: state.session, user: state.user, lastSyncedAt: state.lastSyncedAt }),
     })],
     mutations: {
