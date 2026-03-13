@@ -1570,6 +1570,7 @@ monthStats() {
             const sim = e.similarityData;
             const wantsRule = e.createRule && sim?.allCount > 0;
             if (wantsRule && sim.ruleType === 'merchant') {
+              sweepStore(store, sim.conditions, e.mappedCategory);
               applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, e.mappedCategory, this.$q.notify.bind(this.$q));
             }
             if (wantsRule && sim.ruleType === 'compound') {
@@ -1632,7 +1633,7 @@ monthStats() {
           const targetCategory = this.triageCategory;
 
           if (wantsRule && sim.ruleType === 'merchant') {
-            sweepStore(store, sim.conditions, targetCategory, null, true);
+            sweepStore(store, sim.conditions, targetCategory);
             applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, targetCategory, this.$q.notify.bind(this.$q));
           }
 
