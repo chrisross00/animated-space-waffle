@@ -554,7 +554,7 @@
     padding-left: 12px;
   }
 
-  .basil-txn-row td:last-child {
+  .basil-txn-row td.text-right {
     padding-right: 16px;
     white-space: nowrap;
   }
