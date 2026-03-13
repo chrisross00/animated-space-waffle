@@ -535,13 +535,38 @@
 @media (max-width: 600px) {
   .all-transactions-table {
     overflow-x: hidden;
-    padding-left: 4px !important;
-    padding-right: 12px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   .all-transactions-table .q-table__middle,
   .all-transactions-table .q-table__container {
     overflow-x: hidden !important;
+  }
+
+  /* Match q-item 48px min-height for consistent touch targets */
+  .basil-txn-row td {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .basil-txn-row td:first-child {
+    padding-left: 12px;
+  }
+
+  .basil-txn-row td:last-child {
+    padding-right: 16px;
+    white-space: nowrap;
+  }
+
+  .basil-txn-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.75rem;
+  }
+
+  .basil-txn-label__primary {
+    font-size: 0.9375rem;
   }
 
   .basil-txn-label {
