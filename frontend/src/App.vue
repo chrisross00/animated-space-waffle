@@ -306,13 +306,40 @@
   color: var(--basil-text-secondary) !important;
 }
 
-/* Active tab: color only, no indicator line (à la Gmail/Slack) */
+/* Active tab: green color + pill behind icon (M3 / Gmail pattern) */
 .basil-bottom-tabs .q-tab--active {
-  color: var(--basil-brand) !important;
+  color: var(--basil-green) !important;
 }
 
 .basil-bottom-tabs .q-tab__indicator {
   display: none !important;
+}
+
+/* Pill behind active icon */
+.basil-bottom-tabs .q-tab__content {
+  position: relative;
+}
+
+.basil-bottom-tabs .q-tab__icon {
+  position: relative;
+  z-index: 1;
+}
+
+.basil-bottom-tabs .q-tab__content::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: transparent;
+  transition: background-color 200ms var(--basil-ease);
+}
+
+.basil-bottom-tabs .q-tab--active .q-tab__content::before {
+  background-color: var(--basil-green-subtle);
 }
 
 .basil-drawer-section-label {
