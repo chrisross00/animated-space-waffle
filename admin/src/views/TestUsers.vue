@@ -225,7 +225,7 @@ export default {
         const baseUrl = import.meta.env.DEV
           ? 'http://localhost:8080'
           : 'https://basilbudgeting.com';
-        window.open(`${baseUrl}/?impersonate=${token}`, '_blank');
+        window.location.href = `${baseUrl}/?impersonate=${token}`;
       } catch (err) {
         Notify.create({ type: 'negative', message: `Login-as failed: ${err.message}` });
       }
