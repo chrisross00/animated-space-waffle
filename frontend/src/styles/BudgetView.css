@@ -569,6 +569,22 @@
     font-size: 0.9375rem;
   }
 
+  /* Force the name <td> to yield space to the amount column.
+     width:0 + max-width:1px on a table cell makes it shrink to
+     whatever remains after siblings (amount) claim their natural
+     width. The inner flex div then truncates via overflow:hidden. */
+  .basil-txn-row td[class*="name"],
+  .basil-txn-row td:has(.basil-txn-cell) {
+    width: 0;
+    max-width: 1px;
+    overflow: hidden;
+  }
+
+  .basil-txn-cell {
+    min-width: 0;
+    overflow: hidden;
+  }
+
   .basil-txn-label {
     min-width: 0;
     overflow: hidden;

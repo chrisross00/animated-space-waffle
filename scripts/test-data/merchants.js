@@ -12,8 +12,8 @@ const MERCHANTS = {
     { merchant_name: 'DoorDash', name: 'DOORDASH*ORDER', min: 15, max: 55, recurring: false },
     { merchant_name: 'Trader Joe\'s', name: 'TRADER JOE\'S #567', min: 25, max: 90, recurring: false },
     { merchant_name: 'Sweetgreen', name: 'SWEETGREEN NYC', min: 12, max: 20, recurring: false },
-    { merchant_name: null, name: 'TST* JOES PIZZA', min: 10, max: 35, recurring: false },
-    { merchant_name: null, name: 'SQ *CORNER CAFE', min: 5, max: 15, recurring: false },
+    { merchant_name: 'Groundwork Coffee', name: 'TST*GROUNDWORK COFFEE - VENICE BLVD', min: 10, max: 35, recurring: false },
+    { merchant_name: null, name: 'SQ *CORNER CAFE BROOKLYN HEIGHTS', min: 5, max: 15, recurring: false },
   ],
   'Rent & Utilities': [
     { merchant_name: 'Apartments.com', name: 'APARTMENTS.COM RENT', min: 1800, max: 1800, recurring: true },
@@ -22,7 +22,7 @@ const MERCHANTS = {
     { merchant_name: 'National Grid', name: 'NATIONAL GRID GAS', min: 40, max: 120, recurring: true },
   ],
   'Transportation': [
-    { merchant_name: 'Uber', name: 'UBER *TRIP', min: 8, max: 45, recurring: false },
+    { merchant_name: 'Uber', name: 'UBER *ONE MEMBERSHIP', min: 8, max: 45, recurring: false },
     { merchant_name: 'Lyft', name: 'LYFT *RIDE', min: 10, max: 40, recurring: false },
     { merchant_name: 'MTA', name: 'MTA*NYCT PAYGO', min: 2.90, max: 2.90, recurring: false },
     { merchant_name: 'Shell', name: 'SHELL OIL #12345', min: 35, max: 70, recurring: false },
@@ -52,22 +52,23 @@ const MERCHANTS = {
     { merchant_name: null, name: 'USPS PO STAMPS', min: 5, max: 15, recurring: false },
   ],
   'Travel': [
-    { merchant_name: 'United Airlines', name: 'UNITED AIRLINES', min: 150, max: 600, recurring: false },
-    { merchant_name: 'Airbnb', name: 'AIRBNB *HM1234ABC', min: 100, max: 400, recurring: false },
-    { merchant_name: 'Hilton', name: 'HILTON HOTELS', min: 150, max: 350, recurring: false },
+    { merchant_name: 'United Airlines', name: 'UNITED AIRLINES INFLIGHT PURCHASE', min: 150, max: 600, recurring: false },
+    { merchant_name: 'Airbnb', name: 'AIRBNB *HM1234ABC LONG BEACH CA', min: 100, max: 400, recurring: false },
+    { merchant_name: 'Pacific Park Ticketing', name: 'PACIFIC PARK TICKETING SANTA MONICA', min: 25, max: 60, recurring: false },
+    { merchant_name: 'Hilton', name: 'HILTON GARDEN INN DOWNTOWN', min: 150, max: 350, recurring: false },
   ],
   'Taxes & Giving': [
     { merchant_name: null, name: 'IRS USATAXPYMT', min: 500, max: 2000, recurring: false },
     { merchant_name: null, name: 'CHARITABLE DONATION', min: 25, max: 200, recurring: false },
   ],
   Income: [
-    { merchant_name: null, name: 'GUSTO PAYROLL', min: 3500, max: 3500, recurring: true, isIncome: true },
-    { merchant_name: null, name: 'DIRECT DEPOSIT EMPLOYER', min: 3500, max: 3500, recurring: true, isIncome: true },
+    { merchant_name: null, name: 'GUSTO-OSV PAYROLL1 CITIZENS PAID EARLY', min: 3500, max: 5000, recurring: true, isIncome: true },
+    { merchant_name: null, name: 'DIRECT DEPOSIT EMPLOYER PAYROLL ACH', min: 3500, max: 3500, recurring: true, isIncome: true },
     { merchant_name: 'Venmo', name: 'VENMO CASHOUT', min: 20, max: 200, recurring: false, isIncome: true },
   ],
   Payment: [
-    { merchant_name: null, name: 'CHASE CREDIT CRD AUTOPAY', min: 500, max: 3000, recurring: true, isPayment: true },
-    { merchant_name: null, name: 'TRANSFER TO SAVINGS', min: 200, max: 500, recurring: true, isPayment: true },
+    { merchant_name: null, name: 'CHASE CREDIT CRD AUTOPAY CHECKING', min: 500, max: 3000, recurring: true, isPayment: true },
+    { merchant_name: null, name: 'TRANSFER TO SAVINGS ACCOUNT XXXXXX1234', min: 200, max: 500, recurring: true, isPayment: true },
   ],
 };
 
