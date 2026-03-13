@@ -472,6 +472,16 @@
   color: var(--basil-text-inverse);
   letter-spacing: 0.03em;
   user-select: none;
+  transition: background-color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-txn-avatar--selected {
+  background-color: var(--basil-green) !important;
+  color: var(--basil-text-inverse);
+}
+
+.basil-txn-row--selected td {
+  background-color: var(--basil-green-subtle) !important;
 }
 
 .basil-txn-label__primary {
@@ -525,11 +535,17 @@
 @media (max-width: 600px) {
   .all-transactions-table {
     overflow-x: hidden;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .basil-txn-label {
+    min-width: 0;
+    overflow: hidden;
   }
 
   .basil-txn-label__primary,
   .basil-txn-label__secondary {
-    max-width: calc(100vw - 140px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

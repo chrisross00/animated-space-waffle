@@ -431,7 +431,7 @@
           row-key="transaction_id"
           :filter="tableServerResults !== null ? '' : tableSearch"
           :rows-per-page-options="[0]"
-          selection="multiple"
+          :selection="$q.screen.lt.sm ? 'none' : 'multiple'"
           v-model:selected="selectedRows"
           virtual-scroll
           :virtual-scroll-item-size="52"
@@ -442,18 +442,29 @@
           <template v-slot:body="props">
             <q-tr
               :props="props"
-              :class="['basil-txn-row', { 'basil-txn-row--excluded': props.row.excludeFromTotal }]"
-              @click="openTableDialog($event, props.row)"
+              :class="['basil-txn-row', { 'basil-txn-row--excluded': props.row.excludeFromTotal, 'basil-txn-row--selected': isRowSelected(props.row) }]"
+              @click="onRowClick($event, props.row)"
+              @touchstart="onRowTouchStart($event, props.row)"
+              @touchend="onRowTouchEnd"
+              @touchmove="onRowTouchCancel"
+              @contextmenu.prevent
             >
-              <q-td auto-width>
+              <q-td auto-width v-if="!$q.screen.lt.sm">
                 <q-checkbox dense v-model="props.selected" @click.stop />
               </q-td>
 
               <!-- Name: initials avatar + label -->
               <q-td key="name" :props="props">
                 <div class="basil-txn-cell">
-                  <div class="basil-txn-avatar" :style="{ background: merchantColor(props.row) }">
-                    {{ merchantInitials(props.row) }}
+                  <!-- Avatar: shows checkmark when selected on mobile -->
+                  <div
+                    class="basil-txn-avatar"
+                    :class="{ 'basil-txn-avatar--selected': $q.screen.lt.sm && isRowSelected(props.row) }"
+                    :style="isRowSelected(props.row) && $q.screen.lt.sm ? {} : { background: merchantColor(props.row) }"
+                    @click.stop="$q.screen.lt.sm && selectedRows.length > 0 ? toggleRowSelection(props.row) : null"
+                  >
+                    <q-icon v-if="$q.screen.lt.sm && isRowSelected(props.row)" name="check" size="18px" />
+                    <template v-else>{{ merchantInitials(props.row) }}</template>
                   </div>
                   <div class="basil-txn-label">
                     <div class="basil-txn-label__primary">
@@ -799,6 +810,8 @@
         displayedStats: { expenseSpend: 0, incomeAmount: 0, savingsAmount: 0, netPosition: 0 },
         barsReady: false,
         selectedRows: [],
+        longPressTimer: null,
+        longPressTriggered: false,
         bulkCategory: null,
         tableDialogOpen: false,
         tableDialogTransaction: null,
@@ -1813,6 +1826,51 @@ monthStats() {
           console.error('Failed to load more transactions:', err);
         } finally {
           this.tableLoadingMore = false;
+        }
+      },
+      isRowSelected(row) {
+        return this.selectedRows.some(r => r.transaction_id === row.transaction_id);
+      },
+      toggleRowSelection(row) {
+        const idx = this.selectedRows.findIndex(r => r.transaction_id === row.transaction_id);
+        if (idx >= 0) {
+          this.selectedRows.splice(idx, 1);
+        } else {
+          this.selectedRows.push(row);
+        }
+      },
+      onRowClick(evt, row) {
+        if (this.longPressTriggered) {
+          this.longPressTriggered = false;
+          return;
+        }
+        if (this.$q.screen.lt.sm && this.selectedRows.length > 0) {
+          this.toggleRowSelection(row);
+          return;
+        }
+        this.openTableDialog(evt, row);
+      },
+      onRowTouchStart(evt, row) {
+        this.longPressTriggered = false;
+        this.longPressTimer = setTimeout(() => {
+          this.longPressTimer = null;
+          this.longPressTriggered = true;
+          if (!this.isRowSelected(row)) {
+            this.selectedRows.push(row);
+          }
+          if (navigator.vibrate) navigator.vibrate(30);
+        }, 500);
+      },
+      onRowTouchEnd() {
+        if (this.longPressTimer) {
+          clearTimeout(this.longPressTimer);
+          this.longPressTimer = null;
+        }
+      },
+      onRowTouchCancel() {
+        if (this.longPressTimer) {
+          clearTimeout(this.longPressTimer);
+          this.longPressTimer = null;
         }
       },
       openTableDialog(evt, row) {
