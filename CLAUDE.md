@@ -307,8 +307,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       `PullToRefresh.vue` component in App.vue. Page slides down with animated arrow +
       status text. Re-fetches from Postgres (no Plaid sync). All views get it automatically.
 - [x] **Production admin portal** — `admin.basilbudgeting.com` deployed with Nginx,
-      SSL (Let's Encrypt), cross-origin OAuth redirect. Admin API routes available in
-      production (except login-as which stays dev-only).
+      SSL (Let's Encrypt), cross-origin OAuth redirect. All admin API routes available
+      in production including Login As (test user impersonation). Future: single-use
+      token exchange for real-user impersonation parked on `feature/single-use-impersonation`.
 - [ ] **Push notifications** — requires Service Worker + Push API + backend push service.
       Use case: budget limit alerts, sync completion, etc. Needs design decision on
       what's worth notifying about.
