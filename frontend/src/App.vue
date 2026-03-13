@@ -186,6 +186,8 @@
   /* Override Quasar's elevated shadow — we apply our own on scroll */
   box-shadow: none !important;
   transition: box-shadow var(--basil-t-base) var(--basil-ease);
+  /* PWA safe area: pad above the toolbar for notch/dynamic island */
+  padding-top: env(safe-area-inset-top);
 }
 
 .basil-header--scrolled {
