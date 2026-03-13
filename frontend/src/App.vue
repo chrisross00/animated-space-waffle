@@ -139,11 +139,13 @@
         </q-page>
       </template>
       <template v-else>
-        <router-view v-slot="{ Component }">
-          <Transition name="basil-page" mode="out-in">
-            <component :is="Component" />
-          </Transition>
-        </router-view>
+        <PullToRefresh>
+          <router-view v-slot="{ Component }">
+            <Transition name="basil-page" mode="out-in">
+              <component :is="Component" />
+            </Transition>
+          </router-view>
+        </PullToRefresh>
       </template>
     </q-page-container>
   </q-layout>
@@ -344,10 +346,11 @@ import store from './store'
 import { triggerSync, fetchTransactionsForMonth } from './api'
 import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
 import EmptyState from './components/EmptyState.vue'
+import PullToRefresh from './components/PullToRefresh.vue'
 
 export default {
   name: 'LayoutDefault',
-  components: { EmptyState },
+  components: { EmptyState, PullToRefresh },
 
   data() {
     return {
