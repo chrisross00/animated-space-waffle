@@ -302,7 +302,7 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-.basil-bottom-nav .q-tabs {
+.basil-bottom-nav .q-tab--full {
   min-height: 56px;
 }
 
