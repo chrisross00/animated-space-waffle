@@ -293,13 +293,17 @@
    Mobile bottom nav
    ======================================== */
 :root {
-  --basil-bottom-nav-height: 72px;
+  --basil-bottom-nav-height: calc(56px + env(safe-area-inset-bottom, 0px));
 }
 
 .basil-bottom-nav {
   background-color: var(--basil-surface) !important;
   border-top: 1px solid var(--basil-border);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.basil-bottom-nav .q-tabs {
+  min-height: 56px;
 }
 
 .basil-bottom-tabs {
