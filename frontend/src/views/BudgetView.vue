@@ -352,7 +352,7 @@
 
         <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
         <div class="row items-center q-gutter-sm q-mb-sm">
-          <template v-if="selectedRows.length === 0">
+          <template v-if="selectedRows.length === 0 || $q.screen.lt.sm">
             <q-input
               v-model="tableSearch"
               dense
