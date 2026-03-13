@@ -98,7 +98,7 @@ router.post('/nuke-test-users', async (req, res) => {
 });
 
 /** Create an impersonation token for "Login As" flow */
-router.post('/login-as', devOnly, async (req, res) => {
+router.post('/login-as', async (req, res) => {
   try {
     const { userId } = req.body;
     if (!userId) {

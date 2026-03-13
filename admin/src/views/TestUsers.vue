@@ -222,8 +222,10 @@ export default {
     async loginAs(uid) {
       try {
         const { token } = await createLoginToken(uid);
-        const mainAppUrl = `http://localhost:8080/?impersonate=${token}`;
-        window.open(mainAppUrl, '_blank');
+        const baseUrl = import.meta.env.DEV
+          ? 'http://localhost:8080'
+          : 'https://basilbudgeting.com';
+        window.open(`${baseUrl}/?impersonate=${token}`, '_blank');
       } catch (err) {
         Notify.create({ type: 'negative', message: `Login-as failed: ${err.message}` });
       }

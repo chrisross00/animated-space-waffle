@@ -42,8 +42,8 @@ async function validateIdToken(req) {
     return { uid: process.env.DEV_AUTH_BYPASS_UID };
   }
 
-  // Impersonation token — issued by admin portal, not in production
-  if (process.env.NODE_ENV !== 'production' && idToken.startsWith('impersonate:')) {
+  // Impersonation token — issued by admin portal "Login As" flow (admin-only)
+  if (idToken.startsWith('impersonate:')) {
     const token = idToken.slice('impersonate:'.length);
     const data = _impersonationTokens.get(token);
     if (!data) throw new Error('Invalid or expired impersonation token');
