@@ -44,7 +44,7 @@ app.use(helmet({
 }))
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.ALLOWED_ORIGIN].filter(Boolean)
+  ? [process.env.ALLOWED_ORIGIN, process.env.ADMIN_ORIGIN].filter(Boolean)
   : [/^http:\/\/localhost(:\d+)?$/];
 
 app.use(cors({

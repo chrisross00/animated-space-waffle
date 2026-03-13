@@ -1,19 +1,27 @@
+const TOKEN_KEY = 'basil-admin-token';
+
 export function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
     return { Authorization: 'Bearer dev-bypass' };
   }
-  const token = sessionStorage.getItem('basil-token');
+  const token = localStorage.getItem(TOKEN_KEY);
   if (!token) return null;
   return { Authorization: `Bearer ${token}` };
 }
 
 export function signInWithGoogle() {
-  // Redirect to backend OAuth — pass redirect hint so callback sends us back to /admin
-  window.location.href = '/auth/google?redirect=/admin';
+  // In production, OAuth lives on the main domain — redirect back to admin subdomain
+  const isDev = import.meta.env.DEV;
+  if (isDev) {
+    window.location.href = '/auth/google?redirect=/admin';
+  } else {
+    const adminOrigin = window.location.origin; // https://admin.basilbudgeting.com
+    window.location.href = `https://basilbudgeting.com/auth/google?redirect=${encodeURIComponent(adminOrigin)}`;
+  }
 }
 
 export function signOut() {
-  sessionStorage.removeItem('basil-token');
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 /**
@@ -25,7 +33,7 @@ export function consumeAuthToken() {
   const token = params.get('token');
   if (!token) return false;
 
-  sessionStorage.setItem('basil-token', token);
+  localStorage.setItem(TOKEN_KEY, token);
 
   params.delete('token');
   const clean = params.toString();

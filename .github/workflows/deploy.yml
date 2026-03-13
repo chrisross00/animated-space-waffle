@@ -39,9 +39,11 @@ jobs:
             # Install dependencies (--ignore-scripts skips husky prepare)
             npm install --omit=dev --ignore-scripts
             npm install --prefix frontend
+            npm install --prefix admin
 
-            # Build frontend
+            # Build frontends
             npm run build --prefix frontend
+            npm run build --prefix admin
 
             # Start or restart with PM2
             if pm2 list | grep -q basil; then

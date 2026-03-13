@@ -41,12 +41,12 @@ function devOnly(req, res, next) {
 // --- Routes ---
 
 /** List available personas */
-router.get('/personas', devOnly, (req, res) => {
+router.get('/personas', (req, res) => {
   res.json(getPersonaList());
 });
 
 /** List seeded test users in the database */
-router.get('/test-users', devOnly, async (req, res) => {
+router.get('/test-users', async (req, res) => {
   try {
     const pool = getPool();
     const users = await listTestUsers(pool);
@@ -58,7 +58,7 @@ router.get('/test-users', devOnly, async (req, res) => {
 });
 
 /** Seed a test user persona (idempotent — wipes and recreates) */
-router.post('/seed-test-user', devOnly, async (req, res) => {
+router.post('/seed-test-user', async (req, res) => {
   try {
     const { persona } = req.body;
     if (!persona) {
@@ -85,7 +85,7 @@ router.post('/seed-test-user', devOnly, async (req, res) => {
 });
 
 /** Nuke all test user data */
-router.post('/nuke-test-users', devOnly, async (req, res) => {
+router.post('/nuke-test-users', async (req, res) => {
   try {
     const pool = getPool();
     const dryRun = req.body.dryRun === true;

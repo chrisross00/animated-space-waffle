@@ -28,12 +28,25 @@ function getRedirectUri() {
   return `http://localhost:${process.env.PORT || 3000}/auth/google/callback`;
 }
 
-function getPostLoginRedirect(path) {
+// Allowed redirect origins for post-login (prevent open redirect)
+const ALLOWED_REDIRECT_ORIGINS = [
+  'https://admin.basilbudgeting.com',
+];
+
+function getPostLoginRedirect(redirectParam, token) {
+  // If redirect is an allowed full URL, append token and redirect there
+  if (redirectParam && ALLOWED_REDIRECT_ORIGINS.some(o => redirectParam.startsWith(o))) {
+    const sep = redirectParam.includes('?') ? '&' : '?';
+    return `${redirectParam}${sep}token=${token}`;
+  }
+
+  // Otherwise treat as a same-origin path
+  const path = redirectParam || '/';
   const vitePort = process.env.VITE_PORT;
   if (process.env.NODE_ENV !== 'production' && vitePort) {
-    return `http://localhost:${vitePort}${path}`;
+    return `http://localhost:${vitePort}${path}?token=${token}`;
   }
-  return path;
+  return `${path}?token=${token}`;
 }
 
 /**
@@ -128,7 +141,7 @@ router.get('/google/callback', async (req, res) => {
 
     // Redirect to frontend with token — always land on / and let the
     // Vue router guard decide the final destination based on user state.
-    res.redirect(getPostLoginRedirect(`/?token=${token}`));
+    res.redirect(getPostLoginRedirect(stateData.redirect, token));
   } catch (err) {
     console.error('OAuth callback error:', err);
     res.status(500).send('Authentication failed. <a href="/">Try again</a>');

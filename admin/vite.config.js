@@ -12,6 +12,8 @@ export default defineConfig({
     proxy: {
       '/admin': 'http://localhost:3000',
       '/api': 'http://localhost:3000',
+      '/auth': 'http://localhost:3000',
+      '/plaid-api': 'http://localhost:3000',
     },
   },
 });
