@@ -3,6 +3,10 @@ name: Deploy to production
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'plans/**'
+      - '.claude/**'
   workflow_dispatch: # manual trigger from GitHub UI
 
 jobs:
