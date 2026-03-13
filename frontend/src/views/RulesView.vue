@@ -21,26 +21,28 @@
       or use the Sort Transactions flow.
     </div>
 
-    <q-list v-else bordered separator rounded class="q-mb-lg">
-      <q-item v-for="rule in compoundRules" :key="String(rule._id)" class="basil-rules__item">
-        <q-item-section>
-          <q-item-label class="basil-rules__label">{{ rule.label }}</q-item-label>
-          <q-item-label caption class="basil-rules__conditions">
-            {{ formatConditions(rule.conditions) }}
-          </q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <div class="basil-rules__side">
+    <q-list v-else bordered rounded class="q-mb-lg">
+      <SwipeReveal class="basil-rules__swipe"
+        v-for="rule in compoundRules"
+        :key="String(rule._id)"
+        :ref="el => setSwipeRef('compound', rule._id, el)"
+        @action="confirmDeleteCompound(rule)"
+        @click="openEditCompound(rule)"
+      >
+        <q-item clickable v-ripple class="basil-rules__item">
+          <q-item-section>
+            <q-item-label class="basil-rules__label">{{ rule.label }}</q-item-label>
+            <q-item-label caption class="basil-rules__conditions">
+              {{ formatConditions(rule.conditions) }}
+            </q-item-label>
+          </q-item-section>
+          <q-item-section side>
             <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.action.categoryName)}`">
               {{ rule.action.categoryName }}
             </span>
-            <q-btn flat round dense icon="edit" size="sm"
-              @click="openEditCompound(rule)" />
-            <q-btn flat round dense icon="delete" size="sm" color="negative"
-              @click="confirmDeleteCompound(rule)" />
-          </div>
-        </q-item-section>
-      </q-item>
+          </q-item-section>
+        </q-item>
+      </SwipeReveal>
     </q-list>
 
     <!-- Simple rules section -->
@@ -60,22 +62,25 @@
       No merchant or name rules yet.
     </div>
 
-    <q-list v-else bordered separator rounded class="q-mb-lg">
-      <q-item v-for="rule in simpleRules" :key="rule.key" class="basil-rules__item">
-        <q-item-section>
-          <q-item-label class="basil-rules__label">{{ rule.value }}</q-item-label>
-          <q-item-label caption>{{ rule.type === 'merchant_name' ? 'Merchant rule' : 'Name rule' }}</q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <div class="basil-rules__side">
+    <q-list v-else bordered rounded class="q-mb-lg">
+      <SwipeReveal class="basil-rules__swipe"
+        v-for="rule in simpleRules"
+        :key="rule.key"
+        :ref="el => setSwipeRef('simple', rule.key, el)"
+        @action="confirmDeleteSimple(rule)"
+      >
+        <q-item class="basil-rules__item">
+          <q-item-section>
+            <q-item-label class="basil-rules__label">{{ rule.value }}</q-item-label>
+            <q-item-label caption>{{ rule.type === 'merchant_name' ? 'Merchant rule' : 'Name rule' }}</q-item-label>
+          </q-item-section>
+          <q-item-section side>
             <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.category)}`">
               {{ rule.category }}
             </span>
-            <q-btn flat round dense icon="delete" size="sm" color="negative"
-              @click="confirmDeleteSimple(rule)" />
-          </div>
-        </q-item-section>
-      </q-item>
+          </q-item-section>
+        </q-item>
+      </SwipeReveal>
     </q-list>
 
     <!-- Plaid auto-categorization rules: hidden from user-facing view.
@@ -86,6 +91,7 @@
       v-model="ruleEditorOpen"
       :rule="editingRule"
       @saved="onRuleSaved"
+      @delete="onDeleteFromEditor"
     />
 
     <!-- Delete confirmation dialog -->
@@ -119,18 +125,16 @@
   padding: var(--basil-space-3) var(--basil-space-4);
 }
 
+.basil-rules__swipe + .basil-rules__swipe {
+  border-top: 1px solid var(--basil-border);
+}
+
 .basil-rules__label {
   font-weight: 500;
 }
 
 .basil-rules__conditions {
   margin-top: 2px;
-}
-
-.basil-rules__side {
-  display: flex;
-  align-items: center;
-  gap: var(--basil-space-2);
 }
 
 .basil-rules__pfc-note {
@@ -186,6 +190,7 @@
 import store from '../store';
 import { ensureAppData, deleteCompoundRule, deleteRule } from '@/api';
 import RuleEditorDialog from '../components/RuleEditorDialog.vue';
+import SwipeReveal from '../components/SwipeReveal.vue';
 
 const PFC_NAMES = {
   INCOME:                   'Income',
@@ -219,7 +224,7 @@ const FIELD_LABELS = {
 
 export default {
   name: 'RulesView',
-  components: { RuleEditorDialog },
+  components: { RuleEditorDialog, SwipeReveal },
 
   data() {
     return {
@@ -229,6 +234,7 @@ export default {
       pendingDeleteType: null, // 'compound' | 'simple'
       ruleEditorOpen: false,
       editingRule: null,  // null = create, object = edit
+      swipeRefs: {},
     };
   },
 
@@ -289,12 +295,25 @@ export default {
       }).join(' · ');
     },
 
+    setSwipeRef(type, id, el) {
+      const key = `${type}-${id}`;
+      if (el) this.swipeRefs[key] = el;
+      else delete this.swipeRefs[key];
+    },
+
+    closeAllSwipes() {
+      for (const ref of Object.values(this.swipeRefs)) {
+        if (ref?.reset) ref.reset();
+      }
+    },
+
     openCreateRule() {
       this.editingRule = null;
       this.ruleEditorOpen = true;
     },
 
     openEditCompound(rule) {
+      this.closeAllSwipes();
       this.editingRule = rule;
       this.ruleEditorOpen = true;
     },
@@ -303,13 +322,20 @@ export default {
       // store already updated inside RuleEditorDialog; nothing extra needed here
     },
 
+    onDeleteFromEditor(rule) {
+      this.ruleEditorOpen = false;
+      this.$nextTick(() => this.confirmDeleteCompound(rule));
+    },
+
     confirmDeleteCompound(rule) {
+      this.closeAllSwipes();
       this.pendingDelete = rule;
       this.pendingDeleteType = 'compound';
       this.deleteDialog = true;
     },
 
     confirmDeleteSimple(rule) {
+      this.closeAllSwipes();
       this.pendingDelete = rule;
       this.pendingDeleteType = 'simple';
       this.deleteDialog = true;

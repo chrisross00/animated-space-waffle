@@ -182,6 +182,17 @@
               <span class="basil-re__condition-badge">Coming soon</span>
             </div>
           </div>
+
+          <!-- Apply to existing (edit mode only) -->
+          <template v-if="isEdit">
+            <div class="basil-re__divider" />
+            <q-checkbox
+              v-model="reapply"
+              label="Apply to existing transactions"
+              dense size="sm"
+              class="basil-re__reapply"
+            />
+          </template>
         </div>
 
       </div>
@@ -230,18 +241,12 @@
 
       <!-- Footer -->
       <div class="basil-re__footer">
-        <span v-if="conditions.length === 0" class="basil-re__match-count basil-re__match-count--none">
+        <q-btn v-if="isEdit" flat label="Delete" color="negative" @click="$emit('delete', rule)" />
+        <span v-else-if="conditions.length === 0" class="basil-re__match-count basil-re__match-count--none">
           No conditions set
         </span>
         <span v-else />
         <div class="basil-re__footer-actions">
-          <q-checkbox
-            v-if="isEdit"
-            v-model="reapply"
-            label="Apply to existing transactions"
-            dense size="sm"
-            class="basil-re__reapply"
-          />
           <q-btn flat label="Cancel" v-close-popup />
           <q-btn unelevated label="Save" color="primary"
             :loading="saving"
@@ -379,6 +384,11 @@
 .basil-re__reapply {
   font-size: 0.8125rem;
   color: var(--basil-text-muted);
+}
+
+.basil-re__divider {
+  border-top: 1px solid var(--basil-border);
+  margin: var(--basil-space-1) 0;
 }
 
 .basil-re__match-count {
@@ -543,7 +553,7 @@ export default {
     rule:        { type: Object, default: null },  // null = create mode
   },
 
-  emits: ['update:modelValue', 'saved'],
+  emits: ['update:modelValue', 'saved', 'delete'],
 
   data() {
     return {

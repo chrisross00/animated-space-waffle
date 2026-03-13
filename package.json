@@ -4,7 +4,8 @@
   },
   "scripts": {
     "start": "nodemon index.js",
-    "dev": "concurrently -n api,app,admin -c blue,green,magenta \"npm start\" \"npm run dev --prefix frontend\" \"npm run dev --prefix admin\"",
+    "predev": "lsof -ti:3000,15432 | xargs kill 2>/dev/null; true",
+    "dev": "concurrently --kill-others -n api,app,admin -c blue,green,magenta \"npm start\" \"npm run dev --prefix frontend\" \"npm run dev --prefix admin\"",
     "install:all": "npm install && npm install --prefix frontend && npm install --prefix admin",
     "test": "vitest run --config vitest.config.mjs",
     "prepare": "husky"

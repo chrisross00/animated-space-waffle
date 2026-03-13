@@ -339,6 +339,13 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       `NODE_ENV !== 'production'`. Feature is safe—completely absent from production builds.
 
 ### Rule editor UX improvements (backlog)
+- [ ] **Simple rule editing via RuleEditorDialog** — merchant/name rules currently can
+      only be deleted, not edited. A merchant rule is effectively a compound rule with a
+      single `merchant_name eq` condition. Tapping a simple rule row should open
+      RuleEditorDialog pre-populated with that condition + category, letting the user
+      edit the value, change the category, or add more conditions (upgrading it to a
+      compound rule). On save, delete the old simple rule and create a compound rule.
+      Reuses the existing editor — no new dialog needed.
 - [ ] **Rule label placement** — move the "Rule Name" field below the conditions panel
       so users build conditions first, then see/tweak the auto-generated label. Needs a
       demo before deciding — may feel worse in practice.
