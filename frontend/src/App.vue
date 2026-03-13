@@ -299,15 +299,20 @@
 .basil-bottom-nav {
   background-color: var(--basil-surface) !important;
   border-top: 1px solid var(--basil-border);
-  /* Safe area handled by Quasar's q-ios-padding on .q-footer > .q-tabs__content */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .basil-bottom-tabs {
   color: var(--basil-text-secondary) !important;
 }
 
+/* Active tab: color only, no indicator line (à la Gmail/Slack) */
 .basil-bottom-tabs .q-tab--active {
   color: var(--basil-brand) !important;
+}
+
+.basil-bottom-tabs .q-tab__indicator {
+  display: none !important;
 }
 
 .basil-drawer-section-label {
