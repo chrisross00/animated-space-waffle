@@ -306,9 +306,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [x] **Pull-to-refresh: native feel** — replaced Quasar's overlay spinner with custom
       `PullToRefresh.vue` component in App.vue. Page slides down with animated arrow +
       status text. Re-fetches from Postgres (no Plaid sync). All views get it automatically.
-- [ ] **Production admin portal** — need `admin.basilbudgeting.com` deployed so we can
-      seed/manage test users in production and service real user accounts. Currently only
-      runs locally on `:8081`.
+- [x] **Production admin portal** — `admin.basilbudgeting.com` deployed with Nginx,
+      SSL (Let's Encrypt), cross-origin OAuth redirect. Admin API routes available in
+      production (except login-as which stays dev-only).
 - [ ] **Push notifications** — requires Service Worker + Push API + backend push service.
       Use case: budget limit alerts, sync completion, etc. Needs design decision on
       what's worth notifying about.
