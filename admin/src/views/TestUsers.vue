@@ -223,7 +223,7 @@ export default {
       try {
         const { token } = await createLoginToken(uid);
         const baseUrl = import.meta.env.DEV
-          ? 'http://localhost:8080'
+          ? `${window.location.protocol}//${window.location.hostname}:8080`
           : 'https://basilbudgeting.com';
         window.location.href = `${baseUrl}/?impersonate=${token}`;
       } catch (err) {

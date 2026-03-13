@@ -9,6 +9,7 @@ export default defineConfig({
   ],
   server: {
     port: 8081,
+    host: '0.0.0.0',
     proxy: {
       '/admin': 'http://localhost:3000',
       '/api': 'http://localhost:3000',
