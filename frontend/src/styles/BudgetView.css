@@ -521,6 +521,21 @@
   color: var(--basil-savings);
 }
 
+/* Mobile: prevent horizontal overflow in transaction table */
+@media (max-width: 600px) {
+  .all-transactions-table {
+    overflow-x: hidden;
+  }
+
+  .basil-txn-label__primary,
+  .basil-txn-label__secondary {
+    max-width: calc(100vw - 140px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* Pending badge */
 .basil-txn-pending {
   display: inline-block;

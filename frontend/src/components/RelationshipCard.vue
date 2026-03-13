@@ -22,8 +22,8 @@
       <span>{{ enrichmentContext }}</span>
     </div>
     <div class="basil-rel-pair__actions">
-      <q-btn flat dense size="sm" label="Not related" @click="$emit('dismiss', relationship)" :disable="disable" />
-      <q-btn unelevated dense size="sm" color="primary" label="Confirm" @click="$emit('confirm', relationship)" :disable="disable" />
+      <q-btn flat label="Not related" @click="$emit('dismiss', relationship)" :disable="disable" />
+      <q-btn unelevated color="primary" label="Confirm" @click="$emit('confirm', relationship)" :disable="disable" />
     </div>
   </div>
 </template>
@@ -161,5 +161,20 @@ export default {
   justify-content: flex-end;
   gap: var(--basil-space-2);
   margin-top: var(--basil-space-3);
+}
+
+.basil-rel-pair__actions .q-btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+@media (max-width: 600px) {
+  .basil-rel-pair__actions {
+    flex-direction: column;
+  }
+
+  .basil-rel-pair__actions .q-btn {
+    width: 100%;
+  }
 }
 </style>

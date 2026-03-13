@@ -296,14 +296,13 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 ### Production issues (from initial launch testing)
 - [x] **Persist login across sessions** — JWT moved from sessionStorage to localStorage.
       Users stay logged in across tabs and browser restarts (until sign-out or 7-day expiry).
-- [ ] **Relationship card tap targets too small on mobile** — confirm/dismiss buttons
-      on transaction relationship cards are hard to tap. Increase touch target size to
-      minimum 44×44px per Apple HIG.
+- [x] **Relationship card tap targets too small on mobile** — removed `dense`/`size="sm"`,
+      added 44px min-height/width, full-width stacked layout on mobile.
 - [x] **PWA bottom chin / safe area** — safe area padding was already handled by
       Quasar's `q-ios-padding`. Removed duplicate. Hid indicator line and added M3-style
       pill highlight on active tab (green pill + color) so the nav flows into the chin.
-- [ ] **Budget planner card numbers not centered on mobile** — main card dollar amounts
-      on the planning page should be centered at minimum for mobile viewports.
+- [x] **Budget planner card numbers not centered on mobile** — added `align-items: center`
+      and `text-align: center` on summary cells at mobile breakpoint.
 - [x] **Pull-to-refresh: native feel** — replaced Quasar's overlay spinner with custom
       `PullToRefresh.vue` component in App.vue. Page slides down with animated arrow +
       status text. Re-fetches from Postgres (no Plaid sync). All views get it automatically.
@@ -313,8 +312,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Push notifications** — requires Service Worker + Push API + backend push service.
       Use case: budget limit alerts, sync completion, etc. Needs design decision on
       what's worth notifying about.
-- [ ] **"Show all" table horizontal overflow on mobile** — table slides around
-      horizontally. Consider truncating name column or reordering (amount first).
+- [x] **"Show all" table horizontal overflow on mobile** — truncate name/secondary
+      text with `text-overflow: ellipsis` + `max-width: calc(100vw - 140px)` on mobile.
+      Container switched to `overflow-x: hidden`.
 - [x] **Hide Plaid-managed categories from Rules view** — removed the "Plaid
       Auto-Categorization" section from RulesView. PFC mappings are managed via
       category settings, not the rules page.
