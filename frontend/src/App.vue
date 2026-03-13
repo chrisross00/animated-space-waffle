@@ -331,6 +331,7 @@
   border-radius: 16px;
   background-color: transparent;
   transition: background-color 200ms var(--basil-ease);
+  z-index: -1;
 }
 
 .basil-bottom-tabs .q-tab--active .q-tab__icon::before {
