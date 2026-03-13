@@ -201,8 +201,8 @@ async function fetchAndStoreBalances(uid) {
         fetchedAt,
       }));
 
-      // Update account balances in database
-      await updatePlaidAccountBalances(itemId, response.data.accounts);
+      // Upsert accounts — creates rows on first sync, updates on subsequent
+      await upsertPlaidAccounts(itemId, userId, response.data.accounts);
 
       // Compute institution net for snapshot
       const institutionNet = balances.reduce((sum, acct) => {

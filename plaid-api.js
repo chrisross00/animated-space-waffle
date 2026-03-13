@@ -1,7 +1,7 @@
 // plaid-api.js
 const express = require("express");
 const bodyParser = require('body-parser')
-const { findUser, findPlaidItems, findPlaidItemByInstitution, insertPlaidItem, updatePlaidItem, deletePlaidItem } = require('./db/database');
+const { findUser, findPlaidItems, findPlaidItemByInstitution, insertPlaidItem, updatePlaidItem, deletePlaidItem, upsertPlaidAccounts } = require('./db/database');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 
 const { forUser } = require('./utils/plaidClient');
@@ -85,11 +85,21 @@ async function addInstitution(req, decodedToken){
     const exchangeResponseData = exchangeResponse.data;
     const institutionName = req.body.metadata.institution.name;
     const userId = decodedToken.uid;
-    await insertPlaidItem({
+    const accessToken = exchangeResponseData.access_token;
+    const { id: itemId } = await insertPlaidItem({
       userId,
       institution: institutionName,
-      accessToken: exchangeResponseData.access_token,
+      accessToken,
     });
+
+    // Fetch and store accounts immediately so they exist in the DB
+    try {
+      const accountsResponse = await client.accountsGet({ access_token: accessToken });
+      await upsertPlaidAccounts(itemId, userId, accountsResponse.data.accounts);
+    } catch (err) {
+      console.error('Failed to fetch accounts after link:', err.message);
+      // Non-fatal — accounts will be created on first sync
+    }
     return;
   } catch (error) {
     console.log(error)
