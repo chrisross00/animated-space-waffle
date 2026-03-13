@@ -293,17 +293,13 @@
    Mobile bottom nav
    ======================================== */
 :root {
-  --basil-bottom-nav-height: calc(56px + env(safe-area-inset-bottom, 0px));
+  --basil-bottom-nav-height: 72px;
 }
 
 .basil-bottom-nav {
   background-color: var(--basil-surface) !important;
   border-top: 1px solid var(--basil-border);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.basil-bottom-nav .q-tab--full {
-  min-height: 56px !important;
+  /* Safe area handled by Quasar's q-ios-padding on .q-footer > .q-tabs__content */
 }
 
 .basil-bottom-tabs {
