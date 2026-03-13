@@ -39,6 +39,7 @@ app.use(helmet({
       frameAncestors:   ["'none'"],
       baseUri:          ["'self'"],
       formAction:       ["'self'", "https://accounts.google.com"],
+      upgradeInsecureRequests: [],
     },
   },
 }))

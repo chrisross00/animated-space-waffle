@@ -332,6 +332,10 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **BudgetView: eliminate local transaction array** — `this.transactions` is still
       copied locally from `store.state.transactions` with manual sync. Works fine in
       practice. Low priority — clean up opportunistically if already working in BudgetView.
+- [ ] **Test coverage: Plaid API routes + Vue component tests** — `plaid-api.js` routes
+      (token exchange, account upsert) have no test coverage; needs Plaid client mocks.
+      BudgetView interaction tests (long-press selection, bulk ops) need Vue Test Utils
+      setup which doesn't exist yet.
 
 ### Dev tools
 - [x] **Dev auth bypass** — "Login as test user" button on ProfileView login screen. Skips Google
