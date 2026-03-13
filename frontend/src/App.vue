@@ -303,7 +303,7 @@
 }
 
 .basil-bottom-nav .q-tab--full {
-  min-height: 56px;
+  min-height: 56px !important;
 }
 
 .basil-bottom-tabs {
