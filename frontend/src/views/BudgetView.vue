@@ -1,8 +1,21 @@
 <style src="../styles/BudgetView.css"></style>
 
 <template>
-  <q-pull-to-refresh @refresh="onPullRefresh" :disable="!$q.screen.lt.sm">
-  <div class="table-wrapper">
+  <div
+    class="basil-pull-wrap"
+    @touchstart.passive="onPullStart"
+    @touchmove.passive="onPullMove"
+    @touchend.passive="onPullEnd"
+  >
+    <div
+      class="basil-pull-indicator"
+      :style="{ height: pullIndicatorHeight + 'px', opacity: pullIndicatorOpacity }"
+    >
+      <span v-if="pullState === 'refreshing'" class="basil-pull-indicator__text">Refreshing…</span>
+      <span v-else-if="pullDistance > pullThreshold" class="basil-pull-indicator__text">Release to refresh</span>
+      <span v-else class="basil-pull-indicator__text">Pull to refresh</span>
+    </div>
+  <div class="table-wrapper" :class="{ 'basil-pull--no-transition': pullState === 'pulling' }" :style="{ transform: pullTranslate }">
 
   <EmptyState
     v-if="!isLoggedIn"
@@ -707,7 +720,7 @@
     </q-dialog>
 
   </div>
-  </q-pull-to-refresh>
+  </div>
 </template>
 
 
@@ -722,7 +735,7 @@
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/api';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, fetchCategories, fetchRules, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
@@ -767,6 +780,11 @@
         isLoggedIn: false,
         isLoading: true,
         isRefreshing: false,
+        // Pull-to-refresh state
+        pullStartY: 0,
+        pullDistance: 0,
+        pullState: 'idle', // idle | pulling | refreshing
+        pullThreshold: 64,
         selectedDate, 
         currentDate,
         clicker: ref(false),
@@ -827,6 +845,19 @@
       };
     },
     computed: {
+      pullIndicatorHeight() {
+        if (this.pullState === 'refreshing') return this.pullThreshold;
+        return Math.min(this.pullDistance, this.pullThreshold * 1.5);
+      },
+      pullIndicatorOpacity() {
+        if (this.pullState === 'refreshing') return 1;
+        return Math.min(this.pullDistance / this.pullThreshold, 1);
+      },
+      pullTranslate() {
+        if (this.pullState === 'refreshing') return `translateY(${this.pullThreshold}px)`;
+        if (this.pullDistance <= 0) return 'none';
+        return `translateY(${Math.min(this.pullDistance, this.pullThreshold * 1.5)}px)`;
+      },
       isOnboarded() {
         return !!store.state.user?.onboarded_at;
       },
@@ -1463,12 +1494,52 @@ monthStats() {
         });
 
       },
-      async onPullRefresh(done) {
-        this.isRefreshing = true;
-        await this.buildPage('sync');
-        store.commit('setLastPlaidFetch', Date.now());
-        this.isRefreshing = false;
-        done();
+      onPullStart(e) {
+        if (this.pullState === 'refreshing') return;
+        if (!this.$q.screen.lt.sm) return;
+        // Only activate when scrolled to top
+        const scrollTop = window.scrollY || document.documentElement.scrollTop;
+        if (scrollTop > 0) return;
+        this.pullStartY = e.touches[0].clientY;
+        this.pullState = 'pulling';
+      },
+      onPullMove(e) {
+        if (this.pullState !== 'pulling') return;
+        const delta = e.touches[0].clientY - this.pullStartY;
+        // Apply resistance: actual movement is ~40% of finger movement
+        this.pullDistance = Math.max(0, delta * 0.4);
+      },
+      async onPullEnd() {
+        if (this.pullState !== 'pulling') return;
+        if (this.pullDistance > this.pullThreshold) {
+          this.pullState = 'refreshing';
+          this.pullDistance = 0;
+          try {
+            await this.refreshFromDb();
+          } finally {
+            this.pullState = 'idle';
+          }
+        } else {
+          this.pullState = 'idle';
+          this.pullDistance = 0;
+        }
+      },
+      async refreshFromDb() {
+        // Re-fetch all loaded months from Postgres (no Plaid sync)
+        const loadedMonths = Object.keys(store.state.transactionsByMonth);
+        const [categories, rules] = await Promise.all([
+          fetchCategories(),
+          fetchRules(),
+        ]);
+        if (categories) store.commit('setCategories', categories);
+        if (rules) store.commit('setRules', rules);
+        const results = await Promise.all(loadedMonths.map(m => fetchTransactionsForMonth(m)));
+        for (let i = 0; i < loadedMonths.length; i++) {
+          if (results[i]?.transactions) {
+            store.commit('setMonthTransactions', { month: loadedMonths[i], transactions: results[i].transactions });
+          }
+        }
+        await this.buildPage('refresh');
       },
       async resetLastFetch (){
         const now = Date.now();
