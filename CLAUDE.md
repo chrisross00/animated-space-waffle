@@ -299,8 +299,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Relationship card tap targets too small on mobile** — confirm/dismiss buttons
       on transaction relationship cards are hard to tap. Increase touch target size to
       minimum 44×44px per Apple HIG.
-- [ ] **PWA bottom chin / safe area** — bottom nav sits too low on iOS PWA standalone
-      mode. May need `env(safe-area-inset-bottom)` adjustments or viewport-fit=cover.
+- [x] **PWA bottom chin / safe area** — safe area padding was already handled by
+      Quasar's `q-ios-padding`. Removed duplicate. Hid indicator line and added M3-style
+      pill highlight on active tab (green pill + color) so the nav flows into the chin.
 - [ ] **Budget planner card numbers not centered on mobile** — main card dollar amounts
       on the planning page should be centered at minimum for mobile viewports.
 - [x] **Pull-to-refresh: native feel** — replaced Quasar's overlay spinner with custom
@@ -314,9 +315,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       what's worth notifying about.
 - [ ] **"Show all" table horizontal overflow on mobile** — table slides around
       horizontally. Consider truncating name column or reordering (amount first).
-- [ ] **Hide Plaid-managed categories from Planner view** — categories the user
-      can't modify (Plaid PFC-mapped) appear editable in the planner. Hide them or
-      visually distinguish them so users don't think they can set budgets on them.
+- [x] **Hide Plaid-managed categories from Rules view** — removed the "Plaid
+      Auto-Categorization" section from RulesView. PFC mappings are managed via
+      category settings, not the rules page.
 
 ### Tech debt
 - [x] **Database + auth migration** — MongoDB → Postgres, Firebase → Google OAuth + JWT.

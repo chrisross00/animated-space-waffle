@@ -78,45 +78,8 @@
       </q-item>
     </q-list>
 
-    <!-- Plaid auto-categorization rules section -->
-    <div class="basil-card-head q-mb-xs">
-      <span class="basil-card-label">Plaid Auto-Categorization</span>
-      <q-icon name="info_outline" size="14px" class="q-ml-xs" style="color: var(--basil-text-muted)">
-        <q-tooltip max-width="240px">
-          Plaid classifies transactions into categories automatically. These rules map
-          Plaid's categories to your budget categories. Edit them via a category's settings.
-        </q-tooltip>
-      </q-icon>
-    </div>
-    <p class="basil-rules__pfc-note q-mb-sm">
-      These run after merchant &amp; compound rules. Edit them by opening a category's settings.
-    </p>
-
-    <template v-if="$store.state.bootstrapping">
-      <q-item v-for="i in 4" :key="i">
-        <q-item-section>
-          <q-skeleton type="text" width="40%" />
-          <q-skeleton type="text" width="30%" />
-        </q-item-section>
-      </q-item>
-    </template>
-    <div v-else-if="pfcRules.length === 0" class="basil-rules__empty q-mb-lg">
-      No Plaid category mappings set.
-    </div>
-
-    <q-list v-else bordered separator rounded class="q-mb-lg">
-      <q-item v-for="rule in pfcRules" :key="rule.key" class="basil-rules__item">
-        <q-item-section>
-          <q-item-label class="basil-rules__label">{{ pfcLabel(rule.pfc) }}</q-item-label>
-          <q-item-label caption>Plaid: {{ rule.pfc }}</q-item-label>
-        </q-item-section>
-        <q-item-section side>
-          <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.category)}`">
-            {{ rule.category }}
-          </span>
-        </q-item-section>
-      </q-item>
-    </q-list>
+    <!-- Plaid auto-categorization rules: hidden from user-facing view.
+         PFC mappings are managed via category settings, not here. -->
 
     <!-- Rule editor (create + edit) -->
     <RuleEditorDialog

@@ -251,8 +251,6 @@ export default {
       const grouped = {};
       for (const type of SECTION_ORDER) grouped[type] = [];
       for (const cat of cats) {
-        // Hide Plaid-managed categories — users can't modify them
-        if (cat.plaid_pfc && cat.plaid_pfc.length > 0) continue;
         if (grouped[cat.type]) grouped[cat.type].push(cat);
       }
       return grouped;

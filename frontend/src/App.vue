@@ -328,7 +328,7 @@
 .basil-bottom-tabs .q-tab__content::before {
   content: '';
   position: absolute;
-  top: 4px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 64px;
