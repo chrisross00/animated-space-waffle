@@ -382,18 +382,6 @@
   transform: translateY(-4px);
 }
 
-/* ---- Left border accent per category type ---- */
-.basil-category-row {
-  border-left: 3px solid transparent !important;
-  transition: border-color var(--basil-t-fast) var(--basil-ease),
-              background-color var(--basil-t-fast) var(--basil-ease);
-}
-
-.basil-category-row--expense  { border-left-color: var(--basil-expense)  !important; }
-.basil-category-row--income   { border-left-color: var(--basil-income)   !important; }
-.basil-category-row--savings  { border-left-color: var(--basil-savings)  !important; }
-.basil-category-row--payment  { border-left-color: var(--basil-payment)  !important; }
-
 /* ---- Progress bar fill animation ---- */
 /* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
 .basil-progress .q-linear-progress__model {

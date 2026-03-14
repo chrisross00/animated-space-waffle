@@ -287,8 +287,11 @@ export default {
     formatConditions(conditions) {
       return conditions.map(c => {
         const fieldLabel = FIELD_LABELS[c.field] || c.field;
-        if (c.op === 'eq') return `${fieldLabel} = ${c.value}`;
         if (c.field === 'amount' && c.op === 'eq') return `amount = $${c.value % 1 === 0 ? c.value : c.value.toFixed(2)}`;
+        if (c.op === 'eq') return `${fieldLabel} = ${c.value}`;
+        if (c.op === 'contains') return `${fieldLabel} contains "${c.value}"`;
+        if (c.op === 'gt') return `${fieldLabel} > $${c.value}`;
+        if (c.op === 'lt') return `${fieldLabel} < $${c.value}`;
         if (c.op === 'range' && c.field === 'amount') return `amount ${BUCKET_LABELS.amount_range(c.min, c.max)}`;
         if (c.op === 'range') return `${fieldLabel} ${c.min}–${c.max}`;
         return `${fieldLabel} ${c.op} ${c.value}`;

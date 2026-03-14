@@ -196,8 +196,7 @@
                 elevated
                 :class="[
                   { 'active': clickedCategories.includes(category) },
-                  'basil-category-row',
-                  `basil-category-row--${groupedTransactions.type || 'expense'}`
+                  'basil-category-row'
                 ]"
               >
                 <q-item-section>

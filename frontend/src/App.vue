@@ -106,6 +106,14 @@
               <q-item-label>{{ isDark ? 'Light mode' : 'Dark mode' }}</q-item-label>
             </q-item-section>
           </q-item>
+          <q-item clickable to="/privacy" @click="leftDrawerOpen = false">
+            <q-item-section avatar>
+              <q-icon name="policy" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Privacy Policy</q-item-label>
+            </q-item-section>
+          </q-item>
         </template>
       </q-list>
     </q-drawer>
