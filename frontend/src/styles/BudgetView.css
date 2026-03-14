@@ -25,6 +25,7 @@
 
   .table-wrapper--show-all {
     margin-bottom: 0;
+    padding-bottom: calc(var(--basil-bottom-nav-height) + env(safe-area-inset-bottom));
   }
   
   /* Overlay visible state */
