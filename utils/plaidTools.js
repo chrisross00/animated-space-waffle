@@ -147,7 +147,7 @@ async function getNewPlaidTransactions(uid) {
         merchant_name: txn.merchant_name,
         pending: txn.pending,
         category: txn.category,
-        personal_finance_category: txn.personal_finance_category,
+        plaidPfcDetail: txn.personal_finance_category?.detailed || null,
       });
     }
 

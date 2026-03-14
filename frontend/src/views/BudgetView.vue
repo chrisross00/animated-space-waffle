@@ -1260,9 +1260,8 @@ monthStats() {
         const map = {};
         for (const txn of txns) {
           if (txn.excludeFromTotal) continue;
-          const pfc = txn.personal_finance_category;
-          const detailed = pfc?.detailed;
-          const primary = pfc?.primary;
+          const detailed = txn.plaidPfcDetail;
+          const primary = txn.plaid_pfc?.[0] || null;
           const label = humanizeDetailedPfc(detailed, primary);
           if (!map[label]) map[label] = 0;
           map[label] += Math.abs(txn.amount);

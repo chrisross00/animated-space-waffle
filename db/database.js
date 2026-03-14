@@ -32,7 +32,7 @@ const TXN_COLUMNS = [
   'mapped_category AS "mappedCategory"',
   'pending', 'pending_transaction_id',
   'note', 'exclude_from_total AS "excludeFromTotal"', 'manually_set',
-  'account', 'plaid_pfc',
+  'account', 'plaid_pfc', 'plaid_pfc_detail AS "plaidPfcDetail"',
   'venmo_id', 'venmo_counterparty', 'venmo_note',
   'linked_transaction AS "linkedTransaction"',
   'dismissed_relationship AS "dismissedRelationship"',
@@ -56,7 +56,7 @@ const TXN_FIELD_MAP = {
   venmo_id: 'venmo_id',
   venmo_note: 'venmo_note',
   venmo_counterparty: 'venmo_counterparty',
-  personal_finance_category: 'personal_finance_category',
+  plaidPfcDetail: 'plaid_pfc_detail',
   category: 'category',
 };
 
@@ -433,9 +433,9 @@ async function insertTransactions(transactions) {
            transaction_id, user_id, account_id, name, merchant_name,
            amount, date, effective_date, mapped_category, pending,
            pending_transaction_id, note, exclude_from_total, manually_set,
-           account, plaid_pfc, venmo_id, venmo_counterparty, venmo_note,
+           account, plaid_pfc, plaid_pfc_detail, venmo_id, venmo_counterparty, venmo_note,
            linked_transaction, dismissed_relationship
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
          ON CONFLICT (transaction_id) DO NOTHING`,
         [
           t.transaction_id, t.userId, t.account_id || null,
@@ -445,6 +445,7 @@ async function insertTransactions(transactions) {
           t.pending || false, t.pending_transaction_id || null,
           t.note || null, t.excludeFromTotal || t.exclude_from_total || false,
           t.manually_set || false, t.account || null, pfc,
+          t.personal_finance_category?.detailed || t.plaidPfcDetail || null,
           t.venmo_id || null, t.venmo_counterparty || null, t.venmo_note || null,
           t.linkedTransaction ? JSON.stringify(t.linkedTransaction) : null,
           t.dismissedRelationship || null,
