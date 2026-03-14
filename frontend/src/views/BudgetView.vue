@@ -476,7 +476,7 @@
                   class="basil-txn-avatar"
                   :class="{ 'basil-txn-avatar--selected': $q.screen.lt.sm && isRowSelected(item) }"
                   :style="isRowSelected(item) && $q.screen.lt.sm ? {} : { background: merchantColor(item) }"
-                  @click.stop="$q.screen.lt.sm && selectedRows.length > 0 ? toggleRowSelection(item) : null"
+                  @click="$q.screen.lt.sm && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(item)) : null"
                 >
                   <q-icon v-if="$q.screen.lt.sm && isRowSelected(item)" name="check" size="18px" />
                   <template v-else>{{ merchantInitials(item) }}</template>

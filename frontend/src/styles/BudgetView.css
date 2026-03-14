@@ -632,6 +632,10 @@
     padding: var(--basil-space-2) var(--basil-space-3);
   }
 
+  .basil-txn-table {
+    border-radius: 0;
+  }
+
   .basil-txn-avatar {
     width: 36px;
     height: 36px;
