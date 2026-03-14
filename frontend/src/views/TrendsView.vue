@@ -107,8 +107,10 @@
         toggle-color="primary"
       />
       <template v-if="activeChart === 'spending'">
+        <q-toggle v-model="showExpenses" label="Expenses" dense />
         <q-toggle v-model="showIncome" label="Income" dense />
         <q-toggle v-model="showPayments" label="Payments" dense />
+        <q-toggle v-model="showSavings" label="Savings" dense />
       </template>
     </div>
 
@@ -191,6 +193,8 @@ export default {
       monthCount: 6,
       showIncome: false,
       showPayments: false,
+      showExpenses: true,
+      showSavings: true,
     };
   },
 
@@ -207,8 +211,10 @@ export default {
 
     visibleCategories() {
       return (store.state.categories || []).filter(cat => {
+        if (cat.type === 'expense' && !this.showExpenses) return false;
         if (cat.type === 'income' && !this.showIncome) return false;
         if (cat.type === 'payment' && !this.showPayments) return false;
+        if (cat.type === 'savings' && !this.showSavings) return false;
         return true;
       });
     },
