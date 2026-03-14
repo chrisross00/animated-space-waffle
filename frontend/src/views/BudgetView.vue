@@ -879,6 +879,15 @@
         let rows = this.tableServerResults !== null
           ? this.tableServerResults
           : this.transactions;
+        // Client-side search filter (replaces QTable's built-in :filter)
+        if (this.tableServerResults === null && this.tableSearch && this.tableSearch.trim()) {
+          const q = this.tableSearch.trim().toLowerCase();
+          rows = rows.filter(t =>
+            (t.name && t.name.toLowerCase().includes(q)) ||
+            (t.merchant_name && t.merchant_name.toLowerCase().includes(q)) ||
+            (t.mappedCategory && t.mappedCategory.toLowerCase().includes(q))
+          );
+        }
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
           rows = rows.filter(t =>
