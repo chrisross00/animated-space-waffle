@@ -1783,6 +1783,8 @@ monthStats() {
 
         // Optimistic update + immediate API call — mark both transactions
         store.commit('dismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+        this.transactions = store.state.transactions || [];
+        this.groupTransactions();
         dismissRelationship(txnA.transaction_id, txnB.transaction_id);
 
         this.$q.notify({
@@ -1793,6 +1795,8 @@ monthStats() {
             color: 'white',
             handler: () => {
               store.commit('undoDismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
+              this.transactions = store.state.transactions || [];
+              this.groupTransactions();
               undoDismissRelationship(txnA.transaction_id, txnB.transaction_id);
             },
           }],
