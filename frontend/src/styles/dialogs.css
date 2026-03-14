@@ -45,3 +45,70 @@
 .basil-dialog-close {
   color: var(--basil-text-muted) !important;
 }
+
+/* Hide close button on mobile trays — swipe-down dismisses instead */
+.basil-tray__wrap--mobile .basil-dialog-close {
+  display: none;
+}
+
+/* ── BasilTray — shared bottom-sheet / centered-dialog wrapper ────────── */
+
+.basil-tray__wrap {
+  background-color: var(--basil-surface-dialog);
+  width: 100%;
+}
+
+.basil-tray__wrap--mobile {
+  border-radius: var(--basil-radius-lg) var(--basil-radius-lg) 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  overflow: hidden;
+  max-height: 94dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.basil-tray__wrap--mobile > .q-card {
+  border-radius: 0 !important;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* Drag handle inside dialog/triage headers on mobile trays.
+   Uses padding + absolute positioning so the flex layout is untouched. */
+.basil-tray__wrap--mobile .basil-dialog-header,
+.basil-tray__wrap--mobile .basil-triage__header {
+  position: relative;
+  padding-top: 20px;
+}
+
+.basil-tray__wrap--mobile .basil-dialog-header::before,
+.basil-tray__wrap--mobile .basil-triage__header::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--basil-border);
+}
+
+/* Cards without basil-dialog-header or basil-triage__header:
+   add handle via padding + pseudo-element on the card itself */
+.basil-tray__wrap--mobile > .q-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header)) {
+  padding-top: 20px;
+  position: relative;
+}
+
+.basil-tray__wrap--mobile > .q-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header))::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--basil-border);
+}

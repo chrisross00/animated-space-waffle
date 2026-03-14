@@ -86,69 +86,72 @@
           </div>
 
           <!-- Category rows -->
-          <div
+          <SwipeReveal
             v-for="cat in categoriesByType[sectionType]"
             :key="cat._id"
-            :class="['basil-planner-row', `basil-planner-row--${sectionType}`]"
+            :disabled="!isUserCreated(cat)"
+            @action="removeCategory(cat)"
           >
-            <!-- Name cell -->
-            <div class="basil-planner-row__name-cell">
-              <span
-                v-if="editingNameId !== cat._id"
-                class="basil-planner-row__name"
-                @click="startEditName(cat)"
-              >{{ cat.category }}</span>
-              <q-input
-                v-else
-                v-model="editNameValue"
-                dense outlined
-                class="basil-planner-name-input"
-                :ref="el => { if (el) activeNameInputRef = el }"
-                @keyup.enter="saveName(cat)"
-                @keyup.esc="cancelEditName"
-                @blur="onNameBlur(cat)"
-                :loading="savingNameId === cat._id"
-              />
-            </div>
-
-            <!-- Right controls: amount + delete -->
-            <div class="basil-planner-row__controls">
-              <div class="basil-planner-row__amount-cell">
-                <!-- Display mode -->
-                <template v-if="editingId !== cat._id">
-                  <span
-                    class="basil-planner-row__amount basil-mono"
-                    @click="startEdit(cat)"
-                  >
-                    ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
-                  </span>
-                </template>
-                <!-- Edit mode -->
-                <template v-else>
-                  <q-input
-                    v-model.number="editValue"
-                    type="number"
-                    dense outlined
-                    class="basil-planner-input"
-                    :ref="el => { if (el) activeInputRef = el }"
-                    @keyup.enter="saveLimit(cat)"
-                    @keyup.esc="cancelEdit"
-                    @blur="onBlur(cat)"
-                    :loading="savingId === cat._id"
-                    min="0"
-                  />
-                </template>
+            <div :class="['basil-planner-row', `basil-planner-row--${sectionType}`]">
+              <!-- Name cell -->
+              <div class="basil-planner-row__name-cell">
+                <span
+                  v-if="editingNameId !== cat._id"
+                  class="basil-planner-row__name"
+                  @click="startEditName(cat)"
+                >{{ cat.category }}</span>
+                <q-input
+                  v-else
+                  v-model="editNameValue"
+                  dense outlined
+                  class="basil-planner-name-input"
+                  :ref="el => { if (el) activeNameInputRef = el }"
+                  @keyup.enter="saveName(cat)"
+                  @keyup.esc="cancelEditName"
+                  @blur="onNameBlur(cat)"
+                  :loading="savingNameId === cat._id"
+                />
               </div>
-              <q-icon
-                v-if="isUserCreated(cat)"
-                name="delete_outline"
-                size="16px"
-                class="basil-planner-delete-icon"
-                :class="{ 'basil-planner-delete-icon--loading': deletingId === cat._id }"
-                @click="removeCategory(cat)"
-              />
+
+              <!-- Right controls: amount + delete -->
+              <div class="basil-planner-row__controls">
+                <div class="basil-planner-row__amount-cell">
+                  <!-- Display mode -->
+                  <template v-if="editingId !== cat._id">
+                    <span
+                      class="basil-planner-row__amount basil-mono"
+                      @click="startEdit(cat)"
+                    >
+                      ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
+                    </span>
+                  </template>
+                  <!-- Edit mode -->
+                  <template v-else>
+                    <q-input
+                      v-model.number="editValue"
+                      type="number"
+                      dense outlined
+                      class="basil-planner-input"
+                      :ref="el => { if (el) activeInputRef = el }"
+                      @keyup.enter="saveLimit(cat)"
+                      @keyup.esc="cancelEdit"
+                      @blur="onBlur(cat)"
+                      :loading="savingId === cat._id"
+                      min="0"
+                    />
+                  </template>
+                </div>
+                <q-icon
+                  v-if="isUserCreated(cat)"
+                  name="delete_outline"
+                  size="16px"
+                  class="basil-planner-delete-icon gt-xs"
+                  :class="{ 'basil-planner-delete-icon--loading': deletingId === cat._id }"
+                  @click="removeCategory(cat)"
+                />
+              </div>
             </div>
-          </div>
+          </SwipeReveal>
 
           <!-- Add category row / inline form -->
           <div
@@ -185,11 +188,24 @@
 
       </div>
     </div>
+
+    <BasilConfirmTray
+      v-model="removeCatDialog"
+      :title="`Remove &quot;${removeCatTarget?.category}&quot;?`"
+      message="Existing transactions will keep this category label."
+      ok-label="Remove"
+      ok-color="negative"
+      cancel-label="Keep"
+      @confirm="executeRemoveCategory"
+    />
+
   </div>
 </template>
 
 <script>
 import EmptyState from '../components/EmptyState.vue';
+import BasilConfirmTray from '../components/BasilConfirmTray.vue';
+import SwipeReveal from '../components/SwipeReveal.vue';
 import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/api';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
@@ -199,7 +215,7 @@ const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
 
 export default {
   name: 'BudgetPlannerView',
-  components: { EmptyState },
+  components: { EmptyState, BasilConfirmTray, SwipeReveal },
 
   data() {
     return {
@@ -225,6 +241,8 @@ export default {
 
       // Delete
       deletingId: null,
+      removeCatDialog: false,
+      removeCatTarget: null,
 
       // Add category form
       addingType: null,
@@ -352,18 +370,17 @@ export default {
 
     // ── Delete category ────────────────────────────────
     removeCategory(cat) {
-      this.$q.dialog({
-        title: `Remove "${cat.category}"?`,
-        message: 'Existing transactions will keep this category label.',
-        cancel: true,
-        ok: { label: 'Remove', color: 'negative', flat: true },
-        cancel: { label: 'Keep', flat: true },
-      }).onOk(async () => {
-        this.deletingId = cat._id;
-        const ok = await deleteCategory(cat._id);
-        this.deletingId = null;
-        if (ok) store.commit('removeCategory', cat._id);
-      });
+      this.removeCatTarget = cat;
+      this.removeCatDialog = true;
+    },
+    async executeRemoveCategory() {
+      const cat = this.removeCatTarget;
+      if (!cat) return;
+      this.deletingId = cat._id;
+      const ok = await deleteCategory(cat._id);
+      this.deletingId = null;
+      this.removeCatDialog = false;
+      if (ok) store.commit('removeCategory', cat._id);
     },
 
     // ── Add category ──────────────────────────────────

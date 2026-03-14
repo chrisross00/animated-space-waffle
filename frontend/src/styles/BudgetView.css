@@ -712,19 +712,6 @@
    Triage flow dialog
    ===================================================== */
 
-.basil-triage__handle-wrap {
-  display: flex;
-  justify-content: center;
-  padding: 10px 0 4px;
-}
-
-.basil-triage__handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background-color: var(--basil-border);
-}
-
 .basil-triage__header {
   display: flex;
   align-items: center;

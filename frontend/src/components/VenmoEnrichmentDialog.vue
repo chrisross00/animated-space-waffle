@@ -1,13 +1,13 @@
 <template>
-  <q-dialog ref="dialogRef" @hide="$emit('hide')">
-    <q-card class="basil-dialog-card basil-venmo-dialog">
+  <BasilTray :model-value="modelValue" @update:model-value="onModelValueUpdate" max-width="640px">
+    <q-card class="basil-dialog-card basil-venmo-dialog" flat>
       <!-- Header -->
       <div class="basil-dialog-header">
         <div class="basil-dialog-title">
           <span class="basil-dialog-title__sub">IMPORT</span>
           <span class="basil-dialog-title__main">Venmo Details</span>
         </div>
-        <q-btn flat round dense icon="close" class="basil-dialog-close" @click="hide" />
+        <q-btn flat round dense icon="close" class="basil-dialog-close" @click="close" />
       </div>
 
       <!-- Body -->
@@ -123,7 +123,7 @@
 
       <!-- Footer -->
       <q-card-actions align="right" class="basil-venmo-dialog__actions">
-        <q-btn v-if="step === 'upload'" flat label="Cancel" @click="hide" />
+        <q-btn v-if="step === 'upload'" flat label="Cancel" @click="close" />
         <q-btn
           v-if="step === 'upload'"
           unelevated
@@ -143,20 +143,26 @@
           :loading="loading"
           @click="apply"
         />
-        <q-btn v-if="step === 'done'" unelevated label="Done" color="primary" @click="hide" />
+        <q-btn v-if="step === 'done'" unelevated label="Done" color="primary" @click="close" />
       </q-card-actions>
     </q-card>
-  </q-dialog>
+  </BasilTray>
 </template>
 
 <script>
 import '@/styles/dialogs.css';
 import { venmoEnrichmentPreview, venmoEnrichmentApply } from '@/api';
+import BasilTray from './BasilTray.vue';
 
 export default {
   name: 'VenmoEnrichmentDialog',
+  components: { BasilTray },
 
-  emits: ['hide'],
+  props: {
+    modelValue: { type: Boolean, default: false },
+  },
+
+  emits: ['update:modelValue'],
 
   data() {
     return {
@@ -186,9 +192,29 @@ export default {
     },
   },
 
+  watch: {
+    modelValue(val) {
+      if (!val) this.resetState();
+    },
+  },
+
   methods: {
-    show() { this.$refs.dialogRef.show(); },
-    hide() { this.$refs.dialogRef.hide(); },
+    close() {
+      this.$emit('update:modelValue', false);
+    },
+    onModelValueUpdate(val) {
+      this.$emit('update:modelValue', val);
+    },
+    resetState() {
+      this.step = 'upload';
+      this.csvText = null;
+      this.fileName = null;
+      this.matches = [];
+      this.unmatchedRows = [];
+      this.alreadyEnriched = [];
+      this.selected = [];
+      this.enrichedCount = 0;
+    },
 
     onFileSelected(event) {
       const file = event.target.files?.[0];
@@ -252,8 +278,7 @@ export default {
 
 <style scoped>
 .basil-venmo-dialog {
-  width: 640px;
-  max-width: 95vw;
+  width: 100%;
   max-height: 85vh;
 }
 

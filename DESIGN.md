@@ -240,6 +240,41 @@ All dialogs import `dialogs.css` for structural layout. Use these classes for th
 ```
 Component-specific styles stay in the component's `<style scoped>`. Never duplicate the shell structure.
 
+### Tray / bottom-sheet
+
+All modals use the `BasilTray` wrapper component. On mobile (`< 600px`) it renders as
+a bottom sheet with a drag handle, swipe-to-dismiss, safe-area padding, and
+`border-radius: 16px 16px 0 0`. On desktop it renders as a centered dialog with
+standard animation and no handle. The `maxWidth` prop controls the desktop card width.
+
+```html
+<!-- Standard content dialog -->
+<BasilTray v-model="dialogOpen" max-width="480px">
+  <q-card flat>
+    <!-- dialog content: header, body, footer -->
+  </q-card>
+</BasilTray>
+
+<!-- Confirm dialog (shortcut for OK/Cancel prompts) -->
+<BasilConfirmTray
+  v-model="confirmOpen"
+  title="Delete rule?"
+  message="This action cannot be undone."
+  ok-label="Delete"
+  ok-color="negative"
+  @confirm="onConfirm"
+/>
+```
+
+**When to use which:**
+- `BasilTray` — wraps any custom dialog content (slot-based)
+- `BasilConfirmTray` — simple title + message + OK/Cancel prompts (prop-based)
+
+**Rules:**
+- Always use `flat` on the inner `q-card` (the tray wrapper provides its own background)
+- Never hardcode `position="bottom"`, `border-radius`, or drag handles inline — `BasilTray` handles all of that
+- CSS classes: `basil-tray__wrap`, `basil-tray__handle-wrap`, `basil-tray__handle` (in `dialogs.css`)
+
 ### Transaction row (All Transactions table)
 The table uses a custom `v-slot:body` with:
 - Initials avatar: `merchantColor()` + `merchantInitials()` methods (BudgetView)
