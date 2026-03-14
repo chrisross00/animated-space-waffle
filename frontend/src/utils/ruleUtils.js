@@ -5,6 +5,33 @@
  * utils/categoryMapping.js. When adding a new condition type, update both files.
  */
 
+const FIELD_LABELS = {
+  name: 'name',
+  merchant_name: 'merchant',
+  personal_finance_category_primary: 'transfer type',
+  day_of_month: 'day of month',
+};
+
+/**
+ * Format an array of rule conditions into a human-readable string.
+ * Conditions are joined with " · ".
+ */
+export function formatConditions(conditions) {
+  return conditions.map(c => {
+    const fieldLabel = FIELD_LABELS[c.field] || c.field;
+    if (c.field === 'amount' && c.op === 'eq') return `amount = $${c.value % 1 === 0 ? c.value : c.value.toFixed(2)}`;
+    if (c.op === 'eq') return `${fieldLabel} = ${c.value}`;
+    if (c.op === 'contains') return `${fieldLabel} contains "${c.value}"`;
+    if (c.op === 'gt') return `${fieldLabel} > $${c.value}`;
+    if (c.op === 'lt') return `${fieldLabel} < $${c.value}`;
+    if (c.op === 'range' && c.field === 'amount') {
+      return c.max >= 9999 ? `amount $${c.min}+` : `amount $${c.min}–$${c.max}`;
+    }
+    if (c.op === 'range') return `${fieldLabel} ${c.min}–${c.max}`;
+    return `${fieldLabel} ${c.op} ${c.value}`;
+  }).join(' · ');
+}
+
 export function matchesCondition(txn, c) {
   const { field, op, value, min, max } = c;
   switch (field) {

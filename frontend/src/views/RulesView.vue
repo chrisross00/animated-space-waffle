@@ -191,6 +191,7 @@ import store from '../store';
 import { ensureAppData, deleteCompoundRule, deleteRule } from '@/api';
 import RuleEditorDialog from '../components/RuleEditorDialog.vue';
 import SwipeReveal from '../components/SwipeReveal.vue';
+import { formatConditions } from '../utils/ruleUtils';
 
 const PFC_NAMES = {
   INCOME:                   'Income',
@@ -209,17 +210,6 @@ const PFC_NAMES = {
   TRANSPORTATION:           'Transportation',
   TRAVEL:                   'Travel',
   RENT_AND_UTILITIES:       'Rent & Utilities',
-};
-
-const BUCKET_LABELS = {
-  amount_range: (min, max) => max >= 9999 ? `$${min}+` : `$${min}–$${max}`,
-};
-
-const FIELD_LABELS = {
-  name: 'name',
-  merchant_name: 'merchant',
-  personal_finance_category_primary: 'transfer type',
-  day_of_month: 'day of month',
 };
 
 export default {
@@ -284,19 +274,7 @@ export default {
       return PFC_NAMES[pfc] || pfc;
     },
 
-    formatConditions(conditions) {
-      return conditions.map(c => {
-        const fieldLabel = FIELD_LABELS[c.field] || c.field;
-        if (c.field === 'amount' && c.op === 'eq') return `amount = $${c.value % 1 === 0 ? c.value : c.value.toFixed(2)}`;
-        if (c.op === 'eq') return `${fieldLabel} = ${c.value}`;
-        if (c.op === 'contains') return `${fieldLabel} contains "${c.value}"`;
-        if (c.op === 'gt') return `${fieldLabel} > $${c.value}`;
-        if (c.op === 'lt') return `${fieldLabel} < $${c.value}`;
-        if (c.op === 'range' && c.field === 'amount') return `amount ${BUCKET_LABELS.amount_range(c.min, c.max)}`;
-        if (c.op === 'range') return `${fieldLabel} ${c.min}–${c.max}`;
-        return `${fieldLabel} ${c.op} ${c.value}`;
-      }).join(' · ');
-    },
+    formatConditions,
 
     setSwipeRef(type, id, el) {
       const key = `${type}-${id}`;

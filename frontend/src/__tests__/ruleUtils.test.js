@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils'
+import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution, formatConditions } from '@/utils/ruleUtils'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -668,5 +668,79 @@ describe('getAttribution', () => {
       categories, [compoundRule]
     )
     expect(result.type).toBe('manual')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// formatConditions
+// ---------------------------------------------------------------------------
+
+describe('formatConditions', () => {
+  it('formats eq on merchant_name', () => {
+    expect(formatConditions([{ field: 'merchant_name', op: 'eq', value: 'Starbucks' }]))
+      .toBe('merchant = Starbucks')
+  })
+
+  it('formats eq on name', () => {
+    expect(formatConditions([{ field: 'name', op: 'eq', value: 'Coffee Shop' }]))
+      .toBe('name = Coffee Shop')
+  })
+
+  it('formats eq on amount with integer', () => {
+    expect(formatConditions([{ field: 'amount', op: 'eq', value: 50 }]))
+      .toBe('amount = $50')
+  })
+
+  it('formats eq on amount with decimal', () => {
+    expect(formatConditions([{ field: 'amount', op: 'eq', value: 12.5 }]))
+      .toBe('amount = $12.50')
+  })
+
+  it('formats contains', () => {
+    expect(formatConditions([{ field: 'name', op: 'contains', value: 'coffee' }]))
+      .toBe('name contains "coffee"')
+  })
+
+  it('formats gt as >', () => {
+    expect(formatConditions([{ field: 'amount', op: 'gt', value: 100 }]))
+      .toBe('amount > $100')
+  })
+
+  it('formats lt as <', () => {
+    expect(formatConditions([{ field: 'amount', op: 'lt', value: 25 }]))
+      .toBe('amount < $25')
+  })
+
+  it('formats amount range with upper bound', () => {
+    expect(formatConditions([{ field: 'amount', op: 'range', min: 10, max: 50 }]))
+      .toBe('amount $10–$50')
+  })
+
+  it('formats amount range with high max as open-ended', () => {
+    expect(formatConditions([{ field: 'amount', op: 'range', min: 100, max: 9999 }]))
+      .toBe('amount $100+')
+  })
+
+  it('formats known field labels', () => {
+    expect(formatConditions([{ field: 'personal_finance_category_primary', op: 'eq', value: 'INCOME' }]))
+      .toBe('transfer type = INCOME')
+  })
+
+  it('falls back to raw field name for unknown fields', () => {
+    expect(formatConditions([{ field: 'account', op: 'eq', value: 'Chase' }]))
+      .toBe('account = Chase')
+  })
+
+  it('joins multiple conditions with ·', () => {
+    const result = formatConditions([
+      { field: 'merchant_name', op: 'eq', value: 'Target' },
+      { field: 'amount', op: 'gt', value: 50 },
+    ])
+    expect(result).toBe('merchant = Target · amount > $50')
+  })
+
+  it('falls back to raw op for unknown operators', () => {
+    expect(formatConditions([{ field: 'name', op: 'regex', value: '.*test' }]))
+      .toBe('name regex .*test')
   })
 })
