@@ -54,6 +54,7 @@ const PERSONAS = {
       picture: null,
       firebase: false,
       isTestUser: true,
+      isAdmin: true,
       onboarded_at: new Date(),
     },
     accounts: [

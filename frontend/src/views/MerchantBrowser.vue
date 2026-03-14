@@ -138,17 +138,8 @@
     </div>
 
     <!-- Bottom sheet dialog (mobile edit) -->
-    <q-dialog v-model="editDialog.open" position="bottom">
-      <q-card style="width: 100%; border-radius: 16px 16px 0 0 !important;
-                     background-color: var(--basil-surface);
-                     padding-bottom: env(safe-area-inset-bottom)">
-
-        <!-- drag handle -->
-        <div class="q-pt-md q-pb-xs" style="display:flex; justify-content:center">
-          <div style="width:40px; height:4px; border-radius:2px;
-                      background-color: var(--basil-border-strong)" />
-        </div>
-
+    <BasilTray v-model="editDialog.open">
+      <q-card flat>
         <q-card-section class="q-pb-sm">
           <div class="text-subtitle1 text-weight-medium">{{ editDialog.merchantName }}</div>
           <div class="text-caption" style="color: var(--basil-text-muted)">
@@ -176,7 +167,7 @@
             @click="saveEdit" />
         </q-card-actions>
       </q-card>
-    </q-dialog>
+    </BasilTray>
   </div>
 </template>
 
@@ -184,6 +175,7 @@
 import store from '../store';
 import { ensureAppData, fetchMerchantStats, saveRule } from '@/api';
 import EmptyState from '../components/EmptyState.vue';
+import BasilTray from '../components/BasilTray.vue';
 
 const columns = [
   { name: 'merchant_name', label: 'Merchant', field: 'merchant_name', sortable: true, align: 'left' },
@@ -194,7 +186,7 @@ const columns = [
 
 export default {
   name: 'MerchantBrowser',
-  components: { EmptyState },
+  components: { EmptyState, BasilTray },
 
   data() {
     return {

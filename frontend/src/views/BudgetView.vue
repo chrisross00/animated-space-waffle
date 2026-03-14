@@ -300,7 +300,7 @@
                           <q-badge label="excluded" />
                         </q-item-section>
                       </div>
-                      <q-dialog v-model="transactionClickers[item.transaction_id]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+                      <BasilTray v-model="transactionClickers[item.transaction_id]">
                         <DialogComponent :dialogType="'transaction'" :item="item"
                         :dropDown="this.categoryMonthlyLimits"
                         :similarity-data="dialogSimilarityData"
@@ -310,7 +310,7 @@
                         @view-rule="handleViewRule"
                         @relationship-confirm="relationshipConfirm"
                         @relationship-dismiss="relationshipDismiss"/>
-                      </q-dialog>
+                      </BasilTray>
                     </q-item>
                 </div>
               </div>
@@ -538,7 +538,7 @@
           <span>Loading older transactions...</span>
         </div>
 
-        <q-dialog v-model="tableDialogOpen" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+        <BasilTray v-model="tableDialogOpen">
           <DialogComponent
             v-if="tableDialogTransaction"
             :dialogType="'transaction'"
@@ -552,7 +552,7 @@
             @relationship-confirm="relationshipConfirm"
             @relationship-dismiss="relationshipDismiss"
           />
-        </q-dialog>
+        </BasilTray>
       </div>
 
     </div>
@@ -585,22 +585,13 @@
     </div>
     
 
-    <q-dialog v-model="newCategory" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
+    <BasilTray v-model="newCategory">
       <DialogComponent :dialogType="'addCategory'" @add-category="onSubmit"/>
-    </q-dialog>
+    </BasilTray>
 
     <!-- Triage Flow Dialog -->
-    <q-dialog
-      v-model="triageOpen"
-      :position="$q.screen.lt.sm ? 'bottom' : 'standard'"
-      class="basil-triage__dialog"
-    >
-      <q-card :style="$q.screen.lt.sm ? 'width:100%;border-radius:16px 16px 0 0;' : 'width:440px;'">
-
-        <!-- Drag handle (mobile only) -->
-        <div v-if="$q.screen.lt.sm" class="basil-triage__handle-wrap">
-          <div class="basil-triage__handle"></div>
-        </div>
+    <BasilTray v-model="triageOpen" max-width="440px">
+      <q-card flat>
 
         <!-- Done state -->
         <template v-if="triageDone">
@@ -631,7 +622,7 @@
           <div class="basil-triage__header">
             <span class="basil-triage__title">Sort Transactions</span>
             <span class="basil-triage__progress">{{ triageTotal - triageItems.length + 1 }} of {{ triageTotal }}</span>
-            <q-btn flat round dense icon="close" v-close-popup />
+            <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
           </div>
 
           <!-- Transaction -->
@@ -708,7 +699,10 @@
         </template>
 
       </q-card>
-    </q-dialog>
+    </BasilTray>
+
+    <!-- Venmo Enrichment Dialog -->
+    <VenmoEnrichmentDialog v-model="venmoDialogOpen" />
 
   </div>
 </template>
@@ -730,6 +724,7 @@
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
+  import BasilTray from '@/components/BasilTray.vue';
 
 // import e from 'express';
 
@@ -752,6 +747,8 @@
       RelationshipCard,
       SkeletonBudget,
       EmptyState,
+      BasilTray,
+      VenmoEnrichmentDialog,
     },
     data() {
       const currentDate = dayjs();
@@ -770,7 +767,7 @@
         transactionClickers: {},
         newCategory: false,
         categoryClickers: {},
-        maximizedToggle: ref(true),
+        venmoDialogOpen: false,
         transactionDetails: {},
         decimalPlaces: 0,
         fetchInterval: 0,
@@ -1789,7 +1786,7 @@ monthStats() {
         return txn && isP2PTransaction(txn) && !txn.venmo_note;
       },
       openVenmoImport() {
-        this.$q.dialog({ component: VenmoEnrichmentDialog });
+        this.venmoDialogOpen = true;
       },
       formatDate(date) {
         return dayjs(date).format('MMM D, YYYY');

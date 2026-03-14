@@ -95,21 +95,15 @@
     />
 
     <!-- Delete confirmation dialog -->
-    <q-dialog v-model="deleteDialog">
-      <q-card style="min-width: 280px">
-        <q-card-section>
-          <div class="text-subtitle1">Delete rule?</div>
-          <div class="text-body2 q-mt-xs" style="color: var(--basil-text-secondary)">
-            "{{ pendingDelete?.label || pendingDelete?.value }}" will no longer apply to new transactions.
-            Existing categorizations are not affected.
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn flat label="Delete" color="negative" :loading="deleting" @click="executeDelete" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <BasilConfirmTray
+      v-model="deleteDialog"
+      title="Delete rule?"
+      :message="`&quot;${pendingDelete?.label || pendingDelete?.value}&quot; will no longer apply to new transactions. Existing categorizations are not affected.`"
+      ok-label="Delete"
+      ok-color="negative"
+      :loading="deleting"
+      @confirm="executeDelete"
+    />
 
   </div>
 </template>
@@ -191,6 +185,7 @@ import store from '../store';
 import { ensureAppData, deleteCompoundRule, deleteRule } from '@/api';
 import RuleEditorDialog from '../components/RuleEditorDialog.vue';
 import SwipeReveal from '../components/SwipeReveal.vue';
+import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import { formatConditions } from '../utils/ruleUtils';
 
 const PFC_NAMES = {
@@ -214,7 +209,7 @@ const PFC_NAMES = {
 
 export default {
   name: 'RulesView',
-  components: { RuleEditorDialog, SwipeReveal },
+  components: { RuleEditorDialog, SwipeReveal, BasilConfirmTray },
 
   data() {
     return {

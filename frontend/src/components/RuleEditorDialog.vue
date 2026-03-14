@@ -1,7 +1,7 @@
 <template>
-  <q-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)"
-    @hide="reset" @show="populate">
-    <q-card class="basil-dialog-card basil-re__card">
+  <BasilTray :model-value="modelValue" @update:model-value="onModelValueUpdate"
+    max-width="680px">
+    <q-card class="basil-dialog-card basil-re__card" flat>
 
       <!-- Header -->
       <div class="basil-dialog-header">
@@ -257,7 +257,7 @@
       </div>
 
     </q-card>
-  </q-dialog>
+  </BasilTray>
 </template>
 
 <style scoped>
@@ -520,6 +520,7 @@
 import store from '../store';
 import { saveCompoundRule, updateCompoundRule } from '@/api';
 import { matchesCondition, sweepStore } from '@/utils/ruleUtils';
+import BasilTray from './BasilTray.vue';
 import dayjs from 'dayjs';
 
 const TEXT_OP_OPTIONS = [
@@ -547,6 +548,7 @@ const EMPTY_FORM = () => ({
 
 export default {
   name: 'RuleEditorDialog',
+  components: { BasilTray },
 
   props: {
     modelValue:  { type: Boolean, default: false },
@@ -638,6 +640,10 @@ export default {
   },
 
   watch: {
+    modelValue(val) {
+      if (val) this.populate();
+      else this.reset();
+    },
     autoLabel(val) {
       if (!this.userEditedLabel) this.form.label = val;
     },
@@ -681,6 +687,9 @@ export default {
     },
     onLabelInput() {
       this.userEditedLabel = true;
+    },
+    onModelValueUpdate(val) {
+      this.$emit('update:modelValue', val);
     },
     filterMerchants(val, update) {
       update(() => {

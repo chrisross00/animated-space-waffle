@@ -185,11 +185,23 @@
 
       </div>
     </div>
+
+    <BasilConfirmTray
+      v-model="removeCatDialog"
+      :title="`Remove &quot;${removeCatTarget?.category}&quot;?`"
+      message="Existing transactions will keep this category label."
+      ok-label="Remove"
+      ok-color="negative"
+      cancel-label="Keep"
+      @confirm="executeRemoveCategory"
+    />
+
   </div>
 </template>
 
 <script>
 import EmptyState from '../components/EmptyState.vue';
+import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/api';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
@@ -199,7 +211,7 @@ const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
 
 export default {
   name: 'BudgetPlannerView',
-  components: { EmptyState },
+  components: { EmptyState, BasilConfirmTray },
 
   data() {
     return {
@@ -225,6 +237,8 @@ export default {
 
       // Delete
       deletingId: null,
+      removeCatDialog: false,
+      removeCatTarget: null,
 
       // Add category form
       addingType: null,
@@ -352,18 +366,17 @@ export default {
 
     // ── Delete category ────────────────────────────────
     removeCategory(cat) {
-      this.$q.dialog({
-        title: `Remove "${cat.category}"?`,
-        message: 'Existing transactions will keep this category label.',
-        cancel: true,
-        ok: { label: 'Remove', color: 'negative', flat: true },
-        cancel: { label: 'Keep', flat: true },
-      }).onOk(async () => {
-        this.deletingId = cat._id;
-        const ok = await deleteCategory(cat._id);
-        this.deletingId = null;
-        if (ok) store.commit('removeCategory', cat._id);
-      });
+      this.removeCatTarget = cat;
+      this.removeCatDialog = true;
+    },
+    async executeRemoveCategory() {
+      const cat = this.removeCatTarget;
+      if (!cat) return;
+      this.deletingId = cat._id;
+      const ok = await deleteCategory(cat._id);
+      this.deletingId = null;
+      this.removeCatDialog = false;
+      if (ok) store.commit('removeCategory', cat._id);
     },
 
     // ── Add category ──────────────────────────────────

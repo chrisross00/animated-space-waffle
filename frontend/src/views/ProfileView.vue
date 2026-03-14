@@ -175,23 +175,38 @@
       </EmptyState>
     </div>
 
+    <BasilConfirmTray
+      v-model="deleteAccountDialog"
+      title="Delete your account?"
+      message="This will permanently delete all your transactions, categories, rules, and linked accounts. This cannot be undone."
+      ok-label="Delete everything"
+      ok-color="negative"
+      cancel-label="Cancel"
+      persistent
+      :loading="isDeleting"
+      @confirm="executeDeleteAccount"
+    />
+
   </div>
 </template>
 
 <script>
 import { getOrAddUser, fetchCategories, fetchMonthRange, deleteAccount, signOut as apiSignOut } from '@/api'
 import EmptyState from '../components/EmptyState.vue';
+import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import store from '../store'
 
 
 export default {
   components: {
     EmptyState,
+    BasilConfirmTray,
   },
   data() {
     return {
       isLoading: false,
       isDeleting: false,
+      deleteAccountDialog: false,
     }
   },
   computed: {
@@ -241,25 +256,21 @@ export default {
       window.location.href = '/auth/google';
     },
     confirmDeleteAccount() {
-      this.$q.dialog({
-        title: 'Delete your account?',
-        message: 'This will permanently delete all your transactions, categories, rules, and linked accounts. This cannot be undone.',
-        cancel: { flat: true, label: 'Cancel' },
-        ok: { color: 'negative', unelevated: true, label: 'Delete everything' },
-        persistent: true,
-      }).onOk(async () => {
-        this.isDeleting = true;
-        try {
-          const result = await deleteAccount();
-          if (result) {
-            this.signOut();
-          }
-        } catch (error) {
-          console.error('Delete account error:', error);
-        } finally {
-          this.isDeleting = false;
+      this.deleteAccountDialog = true;
+    },
+    async executeDeleteAccount() {
+      this.isDeleting = true;
+      try {
+        const result = await deleteAccount();
+        if (result) {
+          this.deleteAccountDialog = false;
+          this.signOut();
         }
-      });
+      } catch (error) {
+        console.error('Delete account error:', error);
+      } finally {
+        this.isDeleting = false;
+      }
     },
     signOut() {
       apiSignOut();

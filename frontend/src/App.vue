@@ -156,6 +156,8 @@
         </PullToRefresh>
       </template>
     </q-page-container>
+
+    <VenmoEnrichmentDialog v-model="venmoDialogOpen" />
   </q-layout>
 </template>
 
@@ -388,7 +390,7 @@ import PullToRefresh from './components/PullToRefresh.vue'
 
 export default {
   name: 'LayoutDefault',
-  components: { EmptyState, PullToRefresh },
+  components: { EmptyState, PullToRefresh, VenmoEnrichmentDialog },
 
   data() {
     return {
@@ -396,6 +398,7 @@ export default {
       headerScrolled: false,
       syncing: false,
       hasError: false,
+      venmoDialogOpen: false,
     }
   },
 
@@ -485,7 +488,7 @@ export default {
     },
     openVenmoEnrichment() {
       this.leftDrawerOpen = false;
-      this.$q.dialog({ component: VenmoEnrichmentDialog });
+      this.venmoDialogOpen = true;
     },
     reload() {
       window.location.reload();
