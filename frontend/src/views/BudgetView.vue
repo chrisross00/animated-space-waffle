@@ -234,22 +234,6 @@
                   </q-item-label>
                 </q-item-section>
 
-                <!-- Edit Pencil Icon -->
-                <q-item-section side>
-                  <q-icon 
-                  style="font-size: 16px;"
-                  name="edit"
-                  class="icon-hover"
-                  clickable
-                  @click.stop="buildEditCategoryDialog(category)">
-                  
-                  <!-- Start Making Dialog Box -->
-                        <!-- Dialog: Edit Category  -->
-                    <q-dialog v-model="categoryClickers[category]" class="dialog" :maximized="maximizedToggle" transition-show="slide-up" transition-hide="slide-down">
-                      <DialogComponent :dialogType="'editCategory'" :item="this.dialogBody.currentCategoryDetails" @update-category="onSubmit"/>
-                    </q-dialog>
-                  </q-icon>
-                </q-item-section>
               </q-item>
               
             <!-- Make the nested rows grouped under each category List Item -->
