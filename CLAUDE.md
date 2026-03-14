@@ -211,7 +211,7 @@ section instead of reading the whole file.
 - **Compound rules**: multi-condition rules (merchant name, transaction name, amount, institution) created from triage, Edit Transaction dialog, or RuleEditorDialog; stored in `Basil-Rules`; evaluated before simple rules; retroactively sweep all matching transactions on creation or reapply; edit/delete in RulesView
 - Merchant Browser (`/merchants`): top-down table, inline rule assignment per merchant
 - Transaction search/filter: server-side search + amount range in "Show all" table
-- Bulk categorization in table view (with disclosure note)
+- Bulk categorization in table view (with disclosure note); Gmail-style long-press selection on mobile
 - Charts (`/trends`): Spending (stacked bar), Cash Flow, Cumulative net, Savings rate
 - Recurring transaction detection: badge on category rows, expected amount in Projections card
 - Similarity engine: auto-detects similar transactions (3 strategies: merchant_name → name+account → name), shows reactive "Also categorize N similar" checkbox with count based on selected category
@@ -313,9 +313,9 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [ ] **Push notifications** — requires Service Worker + Push API + backend push service.
       Use case: budget limit alerts, sync completion, etc. Needs design decision on
       what's worth notifying about.
-- [x] **"Show all" table horizontal overflow on mobile** — truncate name/secondary
-      text with `text-overflow: ellipsis` + `max-width: calc(100vw - 140px)` on mobile.
-      Container switched to `overflow-x: hidden`.
+- [x] **"Show all" table horizontal overflow on mobile** — `width: 0; max-width: 1px`
+      on name `<td>` forces it to yield space to amount column. Gmail-style long-press
+      selection replaces checkbox column on mobile. Overflow-x hidden on container.
 - [x] **Hide Plaid-managed categories from Rules view** — removed the "Plaid
       Auto-Categorization" section from RulesView. PFC mappings are managed via
       category settings, not the rules page.
@@ -546,3 +546,12 @@ Never create classes starting with `q-` (Quasar's namespace).
 - **Pull-to-refresh**: custom `PullToRefresh.vue` component in App.vue replaces Quasar
   spinner. Page slides down with animated arrow. Re-fetches from Postgres only (sync
   button is the only way to trigger Plaid). Works on all views.
+- **Plaid accounts persistence fix**: `plaid_accounts` rows weren't created on initial
+  bank link — only `plaid_items`. Fixed by adding `accountsGet` + `upsertPlaidAccounts`
+  after token exchange in `plaid-api.js`. Safety net: balance sync also upserts.
+- **Mobile table overhaul**: "Show all" table amount column clipping fixed via
+  `width: 0; max-width: 1px` on name `<td>`. Checkbox column replaced with Gmail-style
+  long-press selection (500ms touch → selection mode, avatar becomes checkmark).
+- **Local mobile testing**: Vite `host: 0.0.0.0`, CORS allows `192.168.*` in dev,
+  `upgrade-insecure-requests` moved from HTML meta tag to helmet (production only).
+  Admin Login As uses dynamic hostname instead of hardcoded localhost.

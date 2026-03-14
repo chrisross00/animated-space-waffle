@@ -1,12 +1,13 @@
-import AccountsView from './views/AccountsView.vue'
 import BudgetView from './views/BudgetView.vue'
-import BudgetPlannerView from './views/BudgetPlannerView.vue'
-import ProfileView from './views/ProfileView.vue'
-import MerchantBrowser from './views/MerchantBrowser.vue'
-import TrendsView from './views/TrendsView.vue'
-import OnboardingView from './views/OnboardingView.vue'
-import RulesView from './views/RulesView.vue'
-import PrivacyView from './views/PrivacyView.vue'
+
+const AccountsView = () => import('./views/AccountsView.vue')
+const BudgetPlannerView = () => import('./views/BudgetPlannerView.vue')
+const ProfileView = () => import('./views/ProfileView.vue')
+const MerchantBrowser = () => import('./views/MerchantBrowser.vue')
+const TrendsView = () => import('./views/TrendsView.vue')
+const OnboardingView = () => import('./views/OnboardingView.vue')
+const RulesView = () => import('./views/RulesView.vue')
+const PrivacyView = () => import('./views/PrivacyView.vue')
 
 const routes = [
   {
