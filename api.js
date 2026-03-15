@@ -691,11 +691,13 @@ async function getOrAddUser(decodedToken) {
   try {
     const user = await findUser(decodedToken.uid);
     if (user.length === 0) {
+      const adminUids = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
       const newUser = {
         userId: decodedToken.uid,
         email: decodedToken.email,
         name: decodedToken.name,
         picture: decodedToken.picture,
+        isAdmin: adminUids.includes(decodedToken.uid),
       }
       console.log('User added to database:', newUser)
       await insertUser(newUser);

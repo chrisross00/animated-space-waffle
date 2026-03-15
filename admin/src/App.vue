@@ -90,9 +90,10 @@ export default {
     // Consume ?token= from OAuth callback redirect
     consumeAuthToken();
 
-    // Dev bypass: skip OAuth, go straight to admin check
+    // Dev bypass: skip OAuth, ensure user exists, then admin check
     if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
-      this.user = { displayName: 'Dev Bypass', email: 'dev@basil.test' };
+      const userData = await fetchCurrentUser();
+      this.user = { displayName: userData?.name || 'Dev Bypass', email: userData?.email || 'dev@basil.test' };
       this.isAdmin = await checkAdmin();
       this.loading = false;
       return;
