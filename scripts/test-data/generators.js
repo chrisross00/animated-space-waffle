@@ -151,7 +151,7 @@ function makeTransaction({ userId, merchant, amount, date, account, accountId, t
     pending_transaction_id: null,
     transaction_type: isIncome ? 'credit' : 'debit',
     category: [],
-    personal_finance_category: { primary: merchant.category === 'Income' ? 'INCOME' : 'GENERAL', detailed: '' },
+    personal_finance_category: { primary: merchant.pfc || (merchant.category === 'Income' ? 'INCOME' : 'GENERAL'), detailed: merchant.pfcDetailed || '' },
     userId,
     account,
     mappedCategory: merchant.category,

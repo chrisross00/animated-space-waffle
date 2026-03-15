@@ -288,10 +288,10 @@ async function seedPersona(pool, personaName) {
         `INSERT INTO transactions (
            transaction_id, user_id, name, merchant_name, amount, date,
            effective_date, mapped_category, pending, pending_transaction_id,
-           note, exclude_from_total, manually_set, account, plaid_pfc,
+           note, exclude_from_total, manually_set, account, plaid_pfc, plaid_pfc_detail,
            venmo_id, venmo_counterparty, venmo_note,
            linked_transaction, dismissed_relationship
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
          ON CONFLICT (transaction_id) DO NOTHING`,
         [
           t.transaction_id, uid, t.name, t.merchant_name || null,
@@ -300,6 +300,7 @@ async function seedPersona(pool, personaName) {
           t.pending_transaction_id || null, t.note || null,
           t.excludeFromTotal || false, t.manually_set || false,
           t.account || null, pfc,
+          t.personal_finance_category?.detailed || null,
           t.venmo_id || null, t.venmo_counterparty || null, t.venmo_note || null,
           t.linkedTransaction ? JSON.stringify(t.linkedTransaction) : null,
           t.dismissedRelationship || null,

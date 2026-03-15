@@ -235,20 +235,20 @@
                 </q-item-section>
 
               </q-item>
-              
+
+              <!-- Detailed PFC sub-breakdown (attached to category row) -->
+              <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
+                <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
+                     class="basil-pfc-breakdown__row">
+                  <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
+                  <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
+                </div>
+              </div>
+
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
               <Transition name="basil-txn-expand" :duration="{ enter: 800, leave: 150 }">
               <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
-
-                <!-- Detailed PFC sub-breakdown -->
-                <div v-if="detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
-                  <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
-                       class="basil-pfc-breakdown__row">
-                    <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
-                    <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
-                  </div>
-                </div>
 
                 <div
                   v-for="(item, index) in filteredTransactions(groupedTransactions)"
@@ -1320,13 +1320,17 @@ monthStats() {
         return hasLimit || hasActivity || hasTransactions;
       },
       formatDollar(value, Prefix = null) {
-        let val = (value/1).toFixed(2).replace('.', '.');
         let prefix = Prefix == null ? '' : Prefix;
         if (value < 0) {
           prefix = ''; // change to `prefix = '-'` for negative income values
         }
-        if (isNaN(val)) val = 0;
-        return prefix + '$' + Math.abs(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const num = Math.abs(Number(value));
+        if (isNaN(num)) return prefix + '$0';
+        // Preserve caller's decimal precision: if value was passed as "591.50" keep 2 decimals
+        const str = String(value);
+        const decimalPlaces = str.includes('.') ? str.split('.')[1].length : 0;
+        const formatted = num.toFixed(decimalPlaces);
+        return prefix + '$' + formatted.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       },
       addCategoryDialog(){
         this.newCategory = !this.newCategory;
