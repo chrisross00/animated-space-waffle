@@ -242,7 +242,7 @@
               <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
 
                 <!-- Detailed PFC sub-breakdown -->
-                <div v-if="detailedPfcBreakdown(groupedTransactions).length >= 2" class="basil-pfc-breakdown">
+                <div v-if="detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
                   <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
                        class="basil-pfc-breakdown__row">
                     <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
