@@ -75,7 +75,7 @@
           color="primary"
           label="Exclude from total"
           v-model="dialogBody.excludeFromTotal"
-          @click="excludeFromTotal = !excludeFromTotal, isFormSubmittable()"
+          @update:model-value="isFormSubmittable()"
         />
         <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
           <q-checkbox v-model="dialogBody.createRule" dense color="primary">
