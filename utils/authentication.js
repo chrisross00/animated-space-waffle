@@ -33,13 +33,14 @@ async function validateIdToken(req) {
   }
   const idToken = header.split('Bearer ')[1];
 
-  // Dev auth bypass — only active when DEV_AUTH_BYPASS_UID is set and not in production
-  if (
-    process.env.DEV_AUTH_BYPASS_UID &&
-    process.env.NODE_ENV !== 'production' &&
-    idToken === 'dev-bypass'
-  ) {
-    return { uid: process.env.DEV_AUTH_BYPASS_UID };
+  // Dev auth bypass — only active when env vars are set and not in production
+  if (process.env.NODE_ENV !== 'production') {
+    if (idToken === 'dev-bypass' && process.env.DEV_AUTH_BYPASS_UID) {
+      return { uid: process.env.DEV_AUTH_BYPASS_UID };
+    }
+    if (idToken === 'dev-admin-bypass' && process.env.DEV_ADMIN_UID) {
+      return { uid: process.env.DEV_ADMIN_UID };
+    }
   }
 
   // Impersonation token — issued by admin portal "Login As" flow (admin-only)

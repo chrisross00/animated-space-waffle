@@ -2,7 +2,7 @@ const TOKEN_KEY = 'basil-admin-token';
 
 export function getAuthHeaders() {
   if (import.meta.env.VITE_DEV_AUTH_BYPASS === 'true') {
-    return { Authorization: 'Bearer dev-bypass' };
+    return { Authorization: 'Bearer dev-admin-bypass' };
   }
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) return null;
