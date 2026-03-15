@@ -59,15 +59,20 @@
     justify-content: space-between;
   }
   
-  .transaction-decoration {
-    float: right;
-  
+  /* Nested transaction rows inside category cards — no checkbox/category/date columns */
+  .basil-txn-row--nested {
+    padding: var(--basil-space-2) var(--basil-space-3);
+    border-bottom: none;
+  }
+
+  .basil-txn-row--nested + .basil-txn-row--nested {
+    border-top: 1px solid var(--basil-border);
   }
   
   .budget-container .total {
     font-size: 14px;
     margin-top: 0px !important;
-    color: var(--basil-text-muted);
+    color: var(--basil-text-secondary);
   }
   
   .budget-container .dialog {
@@ -144,20 +149,6 @@
   
     .category table tbody {
       overflow-y: auto;
-    }
-    .category-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-      padding: 12px;
-      background-color: var(--basil-surface-alt);
-      border-bottom: 1px solid var(--basil-border);
-      transition: background-color 0.2s ease-in-out;
-    }
-
-    .category-row:hover {
-      background-color: var(--basil-surface-raised);
     }
   
   
@@ -762,10 +753,6 @@
   margin-top: 2px;
 }
 
-/* Institution context in category transaction list */
-.basil-txn-institution {
-  color: var(--basil-text-muted);
-}
 
 .basil-triage__suggestion-area {
   display: flex;
