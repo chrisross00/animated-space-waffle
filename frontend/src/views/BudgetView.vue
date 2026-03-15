@@ -214,7 +214,7 @@
                         <q-tooltip>Contains recurring transactions</q-tooltip>
                       </q-icon>
                     </q-item-label>
-                    <q-item-label class="budget-container total">
+                    <q-item-label class="budget-container total basil-mono">
                       {{ categoryAmountLabel(category) }}
                     </q-item-label>
                   </div>
@@ -227,7 +227,7 @@
                     />
                   </div>
 
-                  <q-item-label caption class="budget-container" v-show="this.groupedTransactions[category].monthly_limit">
+                  <q-item-label caption class="budget-container basil-mono" v-show="this.groupedTransactions[category].monthly_limit">
                     {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }}
                     {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
@@ -256,12 +256,19 @@
                   class="category-txn-item"
                   :style="{ '--txn-i': index }"
                 >
-
-                  <q-item clickable v-ripple :class="[item.pending ? 'pending' : 'posted']" @click.stop="buildEditTransactionDialog(item)">
-                      <q-item-section>
-                        <q-item-label lines="1">
-                          <span class="basil-txn-label__primary">
-                            {{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}
+                  <div
+                    :class="['basil-txn-row', 'basil-txn-row--nested', { 'basil-txn-row--excluded': item.excludeFromTotal }, item.pending ? 'pending' : '']"
+                    @click.stop="buildEditTransactionDialog(item)"
+                  >
+                    <div class="basil-txn-row__name">
+                      <div class="basil-txn-cell">
+                        <div
+                          class="basil-txn-avatar"
+                          :style="{ background: merchantColor(item) }"
+                        >{{ merchantInitials(item) }}</div>
+                        <div class="basil-txn-label">
+                          <div class="basil-txn-label__primary">
+                            <span class="basil-txn-label__text">{{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</span>
                             <span
                               v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
                               class="basil-relationship-badge basil-relationship-badge--pending"
@@ -276,42 +283,41 @@
                               {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
                               <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
                             </span>
-                          </span>
-                        </q-item-label>
-                        <q-item-label caption lines="2">
-                          {{ item.date }}
-                          <q-icon
-                            v-if="item.effectiveDate && item.effectiveDate !== item.date"
-                            name="event_repeat"
-                            size="12px"
-                            class="basil-effective-date-icon"
-                          >
-                            <q-tooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</q-tooltip>
-                          </q-icon>
-                          <span v-if="item.venmo_counterparty" class="basil-txn-institution"> · Venmo · {{ item.venmo_counterparty }}</span>
-                          <span v-else-if="!item.merchant_name && item.account && item.account !== '?'" class="basil-txn-institution"> · {{ item.account }}</span>
-                        </q-item-label>
-                      </q-item-section>
-                      <div class="transaction-decoration">
-                        <q-item-section side top>
-                          {{ isNaN(item.amount) ? "N/A" : formatDollar(item.amount.toFixed(2), '-') }}
-                        </q-item-section>
-                        <q-item-section side bottom v-if="item.excludeFromTotal">
-                          <q-badge label="excluded" />
-                        </q-item-section>
+                          </div>
+                          <div class="basil-txn-label__secondary">
+                            {{ formatDate(item.date) }}
+                            <q-icon
+                              v-if="item.effectiveDate && item.effectiveDate !== item.date"
+                              name="event_repeat"
+                              size="12px"
+                              class="basil-effective-date-icon"
+                            >
+                              <q-tooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</q-tooltip>
+                            </q-icon>
+                          </div>
+                        </div>
                       </div>
-                      <BasilTray v-model="transactionClickers[item.transaction_id]">
-                        <DialogComponent :dialogType="'transaction'" :item="item"
-                        :dropDown="this.categoryMonthlyLimits"
-                        :similarity-data="dialogSimilarityData"
-                        :attribution="getTransactionAttribution(item)"
-                        :relationship="!item.linkedTransaction && !item.dismissedRelationship ? relationshipMap[item.transaction_id]?.rel : null"
-                        @update-transaction="onSubmit"
-                        @view-rule="handleViewRule"
-                        @relationship-confirm="relationshipConfirm"
-                        @relationship-dismiss="relationshipDismiss"/>
-                      </BasilTray>
-                    </q-item>
+                    </div>
+                    <div class="basil-txn-row__amount">
+                      <span
+                        class="basil-txn-amount"
+                        :class="item.amount < 0 ? 'basil-txn-amount--income' : `basil-txn-amount--${categoryTypeMap[item.mappedCategory] || 'expense'}`"
+                      >
+                        {{ item.amount < 0 ? '+' : '' }}${{ Math.abs(item.amount).toFixed(2) }}
+                      </span>
+                    </div>
+                    <BasilTray v-model="transactionClickers[item.transaction_id]">
+                      <DialogComponent :dialogType="'transaction'" :item="item"
+                      :dropDown="this.categoryMonthlyLimits"
+                      :similarity-data="dialogSimilarityData"
+                      :attribution="getTransactionAttribution(item)"
+                      :relationship="!item.linkedTransaction && !item.dismissedRelationship ? relationshipMap[item.transaction_id]?.rel : null"
+                      @update-transaction="onSubmit"
+                      @view-rule="handleViewRule"
+                      @relationship-confirm="relationshipConfirm"
+                      @relationship-dismiss="relationshipDismiss"/>
+                    </BasilTray>
+                  </div>
                 </div>
               </div>
               </Transition>
@@ -482,18 +488,17 @@
                       <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
                     </span>
                   </div>
-                  <div
-                    v-if="item.venmo_counterparty"
-                    class="basil-txn-label__secondary"
-                  >Venmo · {{ item.venmo_counterparty }}</div>
-                  <div
-                    v-else-if="item.merchant_name && item.merchant_name !== item.name"
-                    class="basil-txn-label__secondary"
-                  >{{ item.name }}</div>
-                  <div
-                    v-else-if="!item.merchant_name && item.account && item.account !== '?'"
-                    class="basil-txn-label__secondary"
-                  >{{ item.account }}</div>
+                  <div class="basil-txn-label__secondary">
+                    {{ formatDate(item.date) }}
+                    <q-icon
+                      v-if="item.effectiveDate && item.effectiveDate !== item.date"
+                      name="event_repeat"
+                      size="12px"
+                      class="basil-effective-date-icon"
+                    >
+                      <q-tooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</q-tooltip>
+                    </q-icon>
+                  </div>
                 </div>
               </div>
             </div>
