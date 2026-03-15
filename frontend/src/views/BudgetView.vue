@@ -1311,7 +1311,8 @@ monthStats() {
         if (!group) return false;
         const hasLimit = Number(group.monthly_limit) > 0;
         const hasActivity = this.categorySum(category) !== 0;
-        return hasLimit || hasActivity;
+        const hasTransactions = this.filteredTransactions(group).length > 0;
+        return hasLimit || hasActivity || hasTransactions;
       },
       formatDollar(value, Prefix = null) {
         let val = (value/1).toFixed(2).replace('.', '.');
