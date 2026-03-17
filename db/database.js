@@ -877,11 +877,14 @@ async function updatePlaidAccountBalances(itemId, accounts) {
 
 // ---- Balance Snapshots ----
 
-async function insertBalanceSnapshot(itemId, { date, net, fetchedAt }) {
+async function upsertBalanceSnapshot(itemId, { date, net, fetchedAt }) {
   const pool = getPool();
   await pool.query(
     `INSERT INTO balance_snapshots (item_id, date, net, fetched_at)
-     VALUES ($1, $2, $3, $4)`,
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (item_id, date) DO UPDATE
+       SET net = EXCLUDED.net, fetched_at = EXCLUDED.fetched_at
+       WHERE balance_snapshots.net IS DISTINCT FROM EXCLUDED.net`,
     [itemId, date, net, fetchedAt || new Date()]
   );
 }
@@ -1055,7 +1058,7 @@ module.exports = {
   deleteAllPlaidItems,
   upsertPlaidAccounts,
   updatePlaidAccountBalances,
-  insertBalanceSnapshot,
+  upsertBalanceSnapshot,
   findBalanceSnapshots,
   findBalanceSnapshotsByUser,
   deleteBalanceSnapshots,

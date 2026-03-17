@@ -1,5 +1,5 @@
 const { forEnv } = require('./plaidClient');
-const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, insertBalanceSnapshot, findBalanceSnapshots } = require('../db/database');
+const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, upsertBalanceSnapshot } = require('../db/database');
 const { getMappingRuleList, mapTransactions } = require('./categoryMapping');
 
 async function getAccountData(uid) {
@@ -212,23 +212,13 @@ async function fetchAndStoreBalances(uid) {
         return sum + bal;
       }, 0);
 
-      // One snapshot per calendar day
-      const existingSnapshots = await findBalanceSnapshots(itemId);
-      const lastSnapshot = existingSnapshots[existingSnapshots.length - 1];
+      // Upsert snapshot: one per calendar day, updated if net changes
       const today = new Date().toISOString().slice(0, 10);
-      // pg returns DATE as JS Date object — normalize to string for comparison
-      const lastDate = lastSnapshot?.date instanceof Date
-        ? lastSnapshot.date.toISOString().slice(0, 10)
-        : lastSnapshot?.date;
-      const shouldSnapshot = !lastSnapshot || lastDate !== today;
-
-      if (shouldSnapshot) {
-        await insertBalanceSnapshot(itemId, {
-          date: today,
-          net: Math.round(institutionNet * 100) / 100,
-          fetchedAt,
-        });
-      }
+      await upsertBalanceSnapshot(itemId, {
+        date: today,
+        net: Math.round(institutionNet * 100) / 100,
+        fetchedAt,
+      });
 
       results[institution] = balances;
     } catch (error) {
