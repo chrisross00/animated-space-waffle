@@ -9,6 +9,7 @@ const store = createStore({
         session: null,
         theme: localStorage?.getItem?.('basil-theme') || '',
         rules: [],
+        tags: [],
         accountBalances: null,
         balanceSnapshots: null,
         itemErrors: {},
@@ -50,6 +51,7 @@ const store = createStore({
           state.transactions = [];
           state.categories = [];
           state.rules = [];
+          state.tags = [];
           state.accountBalances = null;
           state.balanceSnapshots = null;
           state.itemErrors = {};
@@ -313,6 +315,51 @@ const store = createStore({
         updateRule(state, { ruleId, label, conditions, action }) {
             const rule = state.rules.find(r => String(r._id) === String(ruleId));
             if (rule) { rule.label = label; rule.conditions = conditions; if (action) rule.action = action; }
+        },
+        setTags(state, tags) {
+            state.tags = tags || [];
+        },
+        addTag(state, tag) {
+            state.tags.push(tag);
+        },
+        removeTag(state, tagId) {
+            state.tags = state.tags.filter(t => t.id !== tagId);
+            for (const txn of state.transactions) {
+                if (txn.tags) {
+                    txn.tags = txn.tags.filter(t => t.id !== tagId);
+                }
+            }
+        },
+        setTransactionTags(state, { transactionIds, tags }) {
+            const idSet = new Set(transactionIds);
+            for (const txn of state.transactions) {
+                if (idSet.has(txn.transaction_id)) {
+                    txn.tags = tags;
+                }
+            }
+        },
+        addTransactionTags(state, { transactionIds, tagIds }) {
+            const idSet = new Set(transactionIds);
+            const newTags = state.tags.filter(t => tagIds.includes(t.id));
+            for (const txn of state.transactions) {
+                if (idSet.has(txn.transaction_id)) {
+                    if (!txn.tags) txn.tags = [];
+                    for (const tag of newTags) {
+                        if (!txn.tags.some(t => t.id === tag.id)) {
+                            txn.tags.push(tag);
+                        }
+                    }
+                }
+            }
+        },
+        removeTransactionTags(state, { transactionIds, tagIds }) {
+            const idSet = new Set(transactionIds);
+            const removeSet = new Set(tagIds);
+            for (const txn of state.transactions) {
+                if (idSet.has(txn.transaction_id) && txn.tags) {
+                    txn.tags = txn.tags.filter(t => !removeSet.has(t.id));
+                }
+            }
         },
         setAccountBalances(state, balances) {
             state.accountBalances = balances;

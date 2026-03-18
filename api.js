@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool } = require('./db/database');
+const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool, findTags, insertTag, deleteTag, tagTransactions, untagTransactions, findTagSummary, findTagCategoryBreakdown, findTagTransactions } = require('./db/database');
 const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
@@ -1129,6 +1129,117 @@ router.delete('/manualAccount/:accountId', async (req, res) => {
   } catch (error) {
     console.error('/manualAccount delete error:', error);
     res.status(500).json({ message: 'Failed to delete account' });
+  }
+});
+
+// ---- Tags ----
+
+router.get('/tags', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const tags = await findTags(uid);
+    res.json(tags);
+  } catch (error) {
+    console.error('/tags error:', error);
+    res.status(500).json({ message: 'Failed to fetch tags' });
+  }
+});
+
+router.post('/tags', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { name } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ message: 'name is required' });
+    }
+    const tag = await insertTag(uid, name.trim());
+    res.json(tag);
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Tag already exists' });
+    }
+    console.error('/tags create error:', error);
+    res.status(500).json({ message: 'Failed to create tag' });
+  }
+});
+
+router.post('/deleteTag', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { tagId } = req.body;
+    if (!tagId) return res.status(400).json({ message: 'tagId is required' });
+    await deleteTag(tagId, uid);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/deleteTag error:', error);
+    res.status(500).json({ message: 'Failed to delete tag' });
+  }
+});
+
+router.post('/tagTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionIds, tagIds } = req.body;
+    if (!Array.isArray(transactionIds) || !Array.isArray(tagIds)) {
+      return res.status(400).json({ message: 'transactionIds and tagIds must be arrays' });
+    }
+    const tagged = await tagTransactions(uid, transactionIds, tagIds);
+    res.json({ tagged });
+  } catch (error) {
+    console.error('/tagTransactions error:', error);
+    res.status(500).json({ message: 'Failed to tag transactions' });
+  }
+});
+
+router.post('/untagTransactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transactionIds, tagIds } = req.body;
+    if (!Array.isArray(transactionIds) || !Array.isArray(tagIds)) {
+      return res.status(400).json({ message: 'transactionIds and tagIds must be arrays' });
+    }
+    const untagged = await untagTransactions(uid, transactionIds, tagIds);
+    res.json({ untagged });
+  } catch (error) {
+    console.error('/untagTransactions error:', error);
+    res.status(500).json({ message: 'Failed to untag transactions' });
+  }
+});
+
+router.get('/tags/:id/summary', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const summary = await findTagSummary(req.params.id, uid);
+    if (!summary) return res.status(404).json({ message: 'Tag not found' });
+    const categoryBreakdown = await findTagCategoryBreakdown(req.params.id, uid);
+    res.json({
+      tag: { id: summary.id, name: summary.tagName },
+      totalSpend: Number(summary.totalSpend),
+      transactionCount: Number(summary.transactionCount),
+      dateRange: { earliest: summary.earliest, latest: summary.latest },
+      categoryBreakdown,
+    });
+  } catch (error) {
+    console.error('/tags/:id/summary error:', error);
+    res.status(500).json({ message: 'Failed to fetch tag summary' });
+  }
+});
+
+router.get('/tags/:id/transactions', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const transactions = await findTagTransactions(req.params.id, uid);
+    res.json({ transactions });
+  } catch (error) {
+    console.error('/tags/:id/transactions error:', error);
+    res.status(500).json({ message: 'Failed to fetch tag transactions' });
   }
 });
 
