@@ -39,6 +39,14 @@ const TXN_COLUMNS = [
   'inserted_at AS "insertDate"',
 ].join(', ');
 
+const TXN_TAGS_SUBQUERY = `
+  COALESCE((
+    SELECT json_agg(json_build_object('id', tg.id, 'name', tg.name))
+    FROM transaction_tags tt
+    JOIN tags tg ON tg.id = tt.tag_id
+    WHERE tt.transaction_id = t.transaction_id
+  ), '[]'::json) AS tags`;
+
 const TXN_FIELD_MAP = {
   mappedCategory: 'mapped_category',
   excludeFromTotal: 'exclude_from_total',
@@ -368,7 +376,7 @@ async function findTransactionsByMonth(userId, month) {
   const monthEnd = `${month}-${String(lastDay).padStart(2, '0')}`;
 
   const { rows } = await pool.query(
-    `SELECT ${TXN_COLUMNS} FROM transactions
+    `SELECT ${TXN_COLUMNS}, ${TXN_TAGS_SUBQUERY} FROM transactions t
      WHERE user_id = $1 AND (
        (effective_date IS NOT NULL AND effective_date >= $2 AND effective_date <= $3)
        OR
@@ -398,7 +406,7 @@ async function findTransactionsPaginated(userId, { page = 1, limit = 100, search
 
   const [txnResult, countResult] = await Promise.all([
     pool.query(
-      `SELECT ${TXN_COLUMNS} FROM transactions
+      `SELECT ${TXN_COLUMNS}, ${TXN_TAGS_SUBQUERY} FROM transactions t
        WHERE user_id = $1${whereExtra}
        ORDER BY date DESC
        LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
@@ -1043,7 +1051,7 @@ async function findTagCategoryBreakdown(tagId, userId) {
 async function findTagTransactions(tagId, userId) {
   const pool = getPool();
   const { rows } = await pool.query(
-    `SELECT ${TXN_COLUMNS}
+    `SELECT ${TXN_COLUMNS}, ${TXN_TAGS_SUBQUERY}
      FROM transactions t
      WHERE t.transaction_id IN (
        SELECT transaction_id FROM transaction_tags WHERE tag_id = $1
