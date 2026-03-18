@@ -263,6 +263,90 @@ export async function deleteManualAccountApi(accountId) {
   }
 }
 
+// ---- Tags ----
+
+export async function fetchTags() {
+  const headers = getAuthHeaders();
+  if (headers) {
+    const response = await fetch('/api/tags', { headers });
+    if (response.ok) return response.json();
+  }
+  return [];
+}
+
+export async function createTag(name) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/tags', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name }),
+    });
+    if (response.ok) return response.json();
+    const err = await response.json().catch(() => ({}));
+    _notify({ type: 'negative', message: err.message || 'Failed to create tag' });
+  }
+}
+
+export async function deleteTagApi(tagId) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/deleteTag', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ tagId }),
+    });
+    if (response.ok) return response.json();
+    _notify({ type: 'negative', message: 'Failed to delete tag' });
+  }
+}
+
+export async function tagTransactionsApi(transactionIds, tagIds) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/tagTransactions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ transactionIds, tagIds }),
+    });
+    if (response.ok) return response.json();
+    _notify({ type: 'negative', message: 'Failed to tag transactions' });
+  }
+}
+
+export async function untagTransactionsApi(transactionIds, tagIds) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/untagTransactions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ transactionIds, tagIds }),
+    });
+    if (response.ok) return response.json();
+    _notify({ type: 'negative', message: 'Failed to untag transactions' });
+  }
+}
+
+export async function fetchTagSummary(tagId) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    const response = await fetch(`/api/tags/${tagId}/summary`, { headers });
+    if (response.ok) return response.json();
+  }
+}
+
+export async function fetchTagTransactions(tagId) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    const response = await fetch(`/api/tags/${tagId}/transactions`, { headers });
+    if (response.ok) return response.json();
+  }
+}
+
 export async function seedCategories(targetUserId) {
   const headers = getAuthHeaders();
   if (headers) {
@@ -515,12 +599,14 @@ export async function ensureAppData(store) {
   _bootstrapPromise = (async () => {
     try {
       // Fetch categories + rules (small, bounded data)
-      const [categories, rules] = await Promise.all([
+      const [categories, rules, tags] = await Promise.all([
         fetchCategories(),
         fetchRules(),
+        fetchTags(),
       ]);
       if (categories) store.commit('setCategories', categories);
       if (rules)      store.commit('setRules', rules);
+      if (tags)        store.commit('setTags', tags);
 
       // Fetch transactions month-by-month from DB (no Plaid call)
       if (hasAccounts) {
