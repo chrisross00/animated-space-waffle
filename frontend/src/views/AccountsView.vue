@@ -32,7 +32,7 @@
         flat no-caps icon="edit_note" label="Add manually"
         class="q-mt-xs"
         style="color: var(--basil-text-secondary)"
-        @click="showManualForm = true"
+        @click="openManualForm()"
       />
       <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
     </EmptyState>
@@ -212,7 +212,7 @@
               @click="showPlaidLink = true" />
             <q-btn flat dense icon="edit_note" label="Add manually"
               style="color: var(--basil-text-secondary)"
-              @click="showManualForm = true" />
+              @click="openManualForm()" />
           </div>
           <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
         </q-card>
@@ -270,54 +270,85 @@
           </div>
           <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showManualForm = false" />
         </div>
-        <q-card-section>
-          <q-select
-            v-model="manualInstitution" label="Institution name" outlined dense
-            :options="institutionOptions"
-            use-input input-debounce="0"
-            new-value-mode="add-unique"
-            clearable
-            :placeholder="manualInstitution ? '' : 'e.g. Fidelity, My Credit Union'"
-            class="q-mb-sm"
-            @filter="filterInstitutions"
-          >
-            <template v-slot:no-option>
-              <q-item>
-                <q-item-section style="color: var(--basil-text-secondary); font-size: 0.8125rem;">
-                  Add new institution
+
+        <!-- Step 1: Pick institution (no text input — avoids iOS keyboard jitter) -->
+        <template v-if="manualStep === 'institution'">
+          <q-card-section>
+            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-bottom: var(--basil-space-3);">
+              Which institution is this account at?
+            </div>
+            <q-list bordered rounded>
+              <q-item
+                v-for="name in existingInstitutions" :key="name"
+                clickable v-ripple
+                @click="manualInstitution = name; manualIsNewInstitution = false; manualStep = 'details'"
+              >
+                <q-item-section avatar>
+                  <q-icon name="account_balance" color="grey-6" />
+                </q-item-section>
+                <q-item-section>{{ name }}</q-item-section>
+                <q-item-section side>
+                  <q-icon name="chevron_right" color="grey-5" />
                 </q-item-section>
               </q-item>
-            </template>
-          </q-select>
-          <q-input
-            v-model="manualAccountName" label="Account name" outlined dense
-            placeholder="e.g. Brokerage, Checking"
-            class="q-mb-sm"
-          />
-          <q-select
-            v-model="manualAccountType" label="Account type" outlined dense
-            :options="accountTypeOptions"
-            emit-value map-options
-            placeholder="Select account type"
-            class="q-mb-sm"
-          />
-          <q-input
-            v-model.number="manualBalance" label="Current balance" outlined dense
-            type="number" step="0.01" prefix="$"
-          />
-          <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2)">
-            Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
-          </div>
-        </q-card-section>
-        <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn flat label="Cancel" @click="showManualForm = false" />
-          <q-btn
-            unelevated color="primary" label="Add Account"
-            :disable="!manualInstitution || !manualAccountName || !manualAccountType || manualBalance == null"
-            :loading="manualSaving"
-            @click="saveManualAccount"
-          />
-        </q-card-actions>
+              <q-item
+                clickable v-ripple
+                @click="manualInstitution = ''; manualIsNewInstitution = true; manualStep = 'details'"
+              >
+                <q-item-section avatar>
+                  <q-icon name="add" color="primary" />
+                </q-item-section>
+                <q-item-section style="color: var(--basil-green)">New institution</q-item-section>
+                <q-item-section side>
+                  <q-icon name="chevron_right" color="grey-5" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </template>
+
+        <!-- Step 2: Account details -->
+        <template v-else-if="manualStep === 'details'">
+          <q-card-section>
+            <q-input
+              v-if="manualIsNewInstitution"
+              v-model="manualInstitution" label="Institution name" outlined dense
+              placeholder="e.g. Fidelity, My Credit Union"
+              class="q-mb-sm"
+            />
+            <div v-else style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-3);">
+              Adding to <strong>{{ manualInstitution }}</strong>
+            </div>
+            <q-input
+              v-model="manualAccountName" label="Account name" outlined dense
+              placeholder="e.g. Brokerage, Checking"
+              class="q-mb-sm"
+            />
+            <q-select
+              v-model="manualAccountType" label="Account type" outlined dense
+              :options="accountTypeOptions"
+              emit-value map-options
+              placeholder="Select account type"
+              class="q-mb-sm"
+            />
+            <q-input
+              v-model.number="manualBalance" label="Current balance" outlined dense
+              type="number" step="0.01" prefix="$"
+            />
+            <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2); padding-bottom: var(--basil-space-8)">
+              Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
+            </div>
+          </q-card-section>
+          <q-card-actions align="right" class="q-px-md q-pb-md">
+            <q-btn flat label="Back" @click="manualStep = 'institution'" />
+            <q-btn
+              unelevated color="primary" label="Add Account"
+              :disable="!manualInstitution?.trim() || !manualAccountName || !manualAccountType || manualBalance == null"
+              :loading="manualSaving"
+              @click="saveManualAccount"
+            />
+          </q-card-actions>
+        </template>
       </q-card>
     </BasilTray>
 
@@ -407,9 +438,10 @@ export default {
       manualSaving: false,
       manualInstitution: '',
       manualAccountName: '',
+      manualStep: 'institution',  // 'institution' | 'details'
+      manualIsNewInstitution: false,
       manualAccountType: null,
       manualBalance: null,
-      institutionOptions: [],
       swipeRefs: {},
       // Edit manual account
       showEditManual: false,
@@ -606,6 +638,10 @@ export default {
       };
     },
 
+    existingInstitutions() {
+      return (this.$store.state.user?.accounts || []).sort();
+    },
+
     accountTypeOptions() {
       return [
         { label: 'Checking', value: 'depository:checking' },
@@ -772,16 +808,18 @@ export default {
       if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
     },
 
-    filterInstitutions(val, update) {
-      update(() => {
-        const names = this.$store.state.user?.accounts || [];
-        if (!val) {
-          this.institutionOptions = names;
-        } else {
-          const needle = val.toLowerCase();
-          this.institutionOptions = names.filter(n => n.toLowerCase().includes(needle));
-        }
-      });
+    openManualForm() {
+      this.resetManualForm();
+      this.showManualForm = true;
+    },
+
+    resetManualForm() {
+      this.manualStep = 'institution';
+      this.manualIsNewInstitution = false;
+      this.manualInstitution = '';
+      this.manualAccountName = '';
+      this.manualAccountType = null;
+      this.manualBalance = null;
     },
 
     async saveManualAccount() {
@@ -799,10 +837,7 @@ export default {
           // Refresh user data to pick up the new institution
           await this.refreshAccountData();
           this.showManualForm = false;
-          this.manualInstitution = '';
-          this.manualAccountName = '';
-          this.manualAccountType = 'depository';
-          this.manualBalance = null;
+          this.resetManualForm();
         }
       } catch (err) {
         console.error('saveManualAccount error:', err);

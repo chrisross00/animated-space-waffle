@@ -321,6 +321,11 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
       category settings, not the rules page.
 
 ### Tech debt
+- [ ] **iOS keyboard audit for BasilTray dialogs** — audit all `BasilTray` usages with
+      text inputs for iOS keyboard jitter (see DESIGN.md "iOS keyboard rule"). Short trays
+      with text inputs near the bottom are vulnerable. Known safe: edit transaction (tall),
+      rule editor (tall), triage (no text input). Known fixed: manual account add/edit.
+      Check: VenmoEnrichmentDialog, any future trays with text inputs.
 - [x] **Database + auth migration** — MongoDB → Postgres, Firebase → Google OAuth + JWT.
       Self-hosted on Hetzner VPS. See `plans/production-go-live.md`.
 - [ ] **Admin toolbox route consolidation** — `/addTestTransactions` and `/addVenmoTransactions`
