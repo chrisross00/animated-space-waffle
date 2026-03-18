@@ -25,12 +25,7 @@
     <!-- Tag list -->
     <q-list v-else bordered rounded>
       <template v-for="tag in tags" :key="tag.id">
-        <SwipeReveal
-          :ref="el => setSwipeRef(tag.id, el)"
-          @action="confirmDelete(tag)"
-          @click="toggleExpand(tag)"
-        >
-          <q-item clickable v-ripple>
+          <q-item clickable v-ripple @click="toggleExpand(tag)">
             <q-item-section>
               <q-item-label class="basil-tags__name">{{ tag.name }}</q-item-label>
               <q-item-label caption v-if="summaries[tag.id]">
@@ -45,16 +40,10 @@
                 <span v-if="summaries[tag.id]" class="basil-tags__total basil-mono">
                   {{ formatCurrency(summaries[tag.id].totalSpend) }}
                 </span>
-                <q-btn
-                  flat round dense icon="delete" size="xs" color="negative"
-                  class="basil-tags__delete-btn"
-                  @click.stop="confirmDelete(tag)"
-                />
                 <q-icon :name="expanded === tag.id ? 'expand_less' : 'expand_more'" color="grey-6" size="xs" />
               </div>
             </q-item-section>
           </q-item>
-        </SwipeReveal>
 
         <!-- Expanded detail (inline after this tag) -->
         <div v-if="expanded === tag.id && expandedData" class="basil-tags__detail q-pa-md">
@@ -88,6 +77,12 @@
               </q-item-section>
             </q-item>
           </q-list>
+
+          <q-btn
+            flat no-caps color="negative" icon="delete" label="Delete tag"
+            class="q-mt-md basil-tags__delete-btn"
+            @click="confirmDelete(expandedTag)"
+          />
         </div>
       </template>
     </q-list>
@@ -108,13 +103,12 @@
 import { ensureAppData, fetchTagSummary, fetchTagTransactions, deleteTagApi } from '@/api';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
-import SwipeReveal from '../components/SwipeReveal.vue';
 import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import dayjs from 'dayjs';
 
 export default {
   name: 'TagsView',
-  components: { EmptyState, SwipeReveal, BasilConfirmTray },
+  components: { EmptyState, BasilConfirmTray },
 
   data() {
     return {
@@ -122,7 +116,6 @@ export default {
       expandedData: null,
       expandedTransactions: [],
       summaries: {},
-      swipeRefs: {},
       showDeleteConfirm: false,
       deleteTarget: null,
     };
@@ -131,6 +124,10 @@ export default {
   computed: {
     tags() {
       return this.$store.state.tags || [];
+    },
+    expandedTag() {
+      if (!this.expanded) return null;
+      return this.tags.find(t => t.id === this.expanded) || null;
     },
   },
 
@@ -144,11 +141,6 @@ export default {
 
     formatDate(d) {
       return dayjs(d).format('MMM D, YYYY');
-    },
-
-    setSwipeRef(key, el) {
-      if (el) this.swipeRefs[key] = el;
-      else delete this.swipeRefs[key];
     },
 
     async toggleExpand(tag) {
@@ -175,9 +167,6 @@ export default {
     },
 
     confirmDelete(tag) {
-      for (const ref of Object.values(this.swipeRefs)) {
-        if (ref?.reset) ref.reset();
-      }
       this.deleteTarget = tag;
       this.showDeleteConfirm = true;
     },
@@ -235,19 +224,7 @@ export default {
 }
 
 .basil-tags__delete-btn {
-  opacity: 0;
-  transition: opacity var(--basil-t-fast) var(--basil-ease);
-}
-
-.q-item:hover .basil-tags__delete-btn {
-  opacity: 1;
-}
-
-/* Always show on touch devices (no hover) */
-@media (hover: none) {
-  .basil-tags__delete-btn {
-    opacity: 1;
-  }
+  padding-left: 0 !important;
 }
 
 .basil-tags__detail {

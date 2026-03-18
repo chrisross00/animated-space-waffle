@@ -127,15 +127,6 @@ export default {
   flex-wrap: wrap;
   gap: var(--basil-space-1);
 }
-
-.basil-tag-picker__chip--selected {
-  background-color: var(--basil-green) !important;
-  color: white !important;
-}
-
-.basil-tag-picker__chip--unselected {
-  background-color: transparent !important;
-  border: 1px solid var(--basil-border-strong) !important;
-  color: var(--basil-text) !important;
-}
 </style>
+
+<!-- Chip color overrides live in quasar-overrides.css (dark mode aware) -->
