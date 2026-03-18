@@ -925,6 +925,136 @@ async function deleteBalanceSnapshots(userId) {
 }
 
 // ========================
+//  TAGS
+// ========================
+
+async function findTags(userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT id, name, created_at AS "createdAt"
+     FROM tags WHERE user_id = $1 ORDER BY name`,
+    [userId]
+  );
+  return rows;
+}
+
+async function insertTag(userId, name) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `INSERT INTO tags (user_id, name) VALUES ($1, $2)
+     RETURNING id, name, created_at AS "createdAt"`,
+    [userId, name]
+  );
+  return rows[0];
+}
+
+async function deleteTag(tagId, userId) {
+  const pool = getPool();
+  await pool.query(
+    `DELETE FROM tags WHERE id = $1 AND user_id = $2`,
+    [tagId, userId]
+  );
+}
+
+async function tagTransactions(userId, transactionIds, tagIds) {
+  if (!transactionIds.length || !tagIds.length) return 0;
+  const pool = getPool();
+  // Validate ownership
+  const { rows: validTxns } = await pool.query(
+    `SELECT transaction_id FROM transactions WHERE transaction_id = ANY($1) AND user_id = $2`,
+    [transactionIds, userId]
+  );
+  const { rows: validTags } = await pool.query(
+    `SELECT id FROM tags WHERE id = ANY($1) AND user_id = $2`,
+    [tagIds, userId]
+  );
+  const txnIds = validTxns.map(r => r.transaction_id);
+  const tIds = validTags.map(r => r.id);
+  if (!txnIds.length || !tIds.length) return 0;
+
+  const values = [];
+  const params = [];
+  let idx = 1;
+  for (const txnId of txnIds) {
+    for (const tagId of tIds) {
+      values.push(`($${idx}, $${idx + 1})`);
+      params.push(txnId, tagId);
+      idx += 2;
+    }
+  }
+  const { rowCount } = await pool.query(
+    `INSERT INTO transaction_tags (transaction_id, tag_id)
+     VALUES ${values.join(', ')}
+     ON CONFLICT DO NOTHING`,
+    params
+  );
+  return rowCount;
+}
+
+async function untagTransactions(userId, transactionIds, tagIds) {
+  if (!transactionIds.length || !tagIds.length) return 0;
+  const pool = getPool();
+  const { rowCount } = await pool.query(
+    `DELETE FROM transaction_tags tt
+     USING transactions t
+     WHERE tt.transaction_id = t.transaction_id
+       AND t.user_id = $1
+       AND tt.transaction_id = ANY($2)
+       AND tt.tag_id = ANY($3)`,
+    [userId, transactionIds, tagIds]
+  );
+  return rowCount;
+}
+
+async function findTagSummary(tagId, userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT
+       t.id, t.name AS "tagName",
+       COUNT(DISTINCT tt.transaction_id) AS "transactionCount",
+       COALESCE(SUM(txn.amount), 0) AS "totalSpend",
+       MIN(txn.date) AS "earliest",
+       MAX(txn.date) AS "latest"
+     FROM tags t
+     LEFT JOIN transaction_tags tt ON tt.tag_id = t.id
+     LEFT JOIN transactions txn ON txn.transaction_id = tt.transaction_id
+     WHERE t.id = $1 AND t.user_id = $2
+     GROUP BY t.id, t.name`,
+    [tagId, userId]
+  );
+  if (!rows.length) return null;
+  return rows[0];
+}
+
+async function findTagCategoryBreakdown(tagId, userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT txn.mapped_category AS "category", SUM(txn.amount) AS "amount"
+     FROM transaction_tags tt
+     JOIN transactions txn ON txn.transaction_id = tt.transaction_id
+     WHERE tt.tag_id = $1 AND txn.user_id = $2
+     GROUP BY txn.mapped_category
+     ORDER BY SUM(txn.amount) DESC`,
+    [tagId, userId]
+  );
+  return rows;
+}
+
+async function findTagTransactions(tagId, userId) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT ${TXN_COLUMNS}
+     FROM transactions t
+     WHERE t.transaction_id IN (
+       SELECT transaction_id FROM transaction_tags WHERE tag_id = $1
+     ) AND t.user_id = $2
+     ORDER BY t.date DESC`,
+    [tagId, userId]
+  );
+  return rows;
+}
+
+// ========================
 //  AGGREGATIONS
 // ========================
 
@@ -1070,6 +1200,15 @@ module.exports = {
   findHistoricalCategoryMap,
   // Nuke
   nukeAllUserData,
+  // Tags
+  findTags,
+  insertTag,
+  deleteTag,
+  tagTransactions,
+  untagTransactions,
+  findTagSummary,
+  findTagCategoryBreakdown,
+  findTagTransactions,
   // Utilities (exported for testing)
   buildSetClause,
   conditionsToSqlWhere,
