@@ -1,5 +1,6 @@
 <template>
   <q-select
+    ref="select"
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     :options="filteredOptions"
@@ -12,6 +13,7 @@
     dense
     @new-value="onNewValue"
     @filter="onFilter"
+    @blur="onBlur"
   >
     <template v-slot:no-option>
       <q-item>
@@ -52,6 +54,29 @@ export default {
           this.filteredOptions = options.filter(o => o.label.toLowerCase().includes(needle));
         }
       });
+    },
+
+    async onBlur() {
+      // Auto-commit any typed text on blur (mobile has no Enter key)
+      const input = this.$refs.select?.inputValue;
+      if (!input?.trim()) return;
+      const trimmed = input.trim();
+      const existing = (store.state.tags || []).find(
+        t => t.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      let tagObj;
+      if (existing) {
+        tagObj = { label: existing.name, value: existing.id, id: existing.id, name: existing.name };
+      } else {
+        const tag = await createTag(trimmed);
+        if (!tag) return;
+        store.commit('addTag', tag);
+        tagObj = { label: tag.name, value: tag.id, id: tag.id, name: tag.name };
+      }
+      // Add if not already selected
+      if (!this.modelValue.some(t => (t.id || t.value) === tagObj.id)) {
+        this.$emit('update:modelValue', [...this.modelValue, tagObj]);
+      }
     },
 
     async onNewValue(val, done) {

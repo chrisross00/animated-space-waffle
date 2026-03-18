@@ -71,7 +71,7 @@
       </div>
 
       <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
-        <TagPicker v-model="selectedTags" />
+        <TagPicker v-model="selectedTags" @update:modelValue="isFormSubmittable()" />
       </div>
 
       <div class="basil-dialog-toggles">
