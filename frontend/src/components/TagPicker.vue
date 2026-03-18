@@ -1,28 +1,45 @@
 <template>
-  <q-select
-    ref="select"
-    :model-value="modelValue"
-    @update:model-value="$emit('update:modelValue', $event)"
-    :options="filteredOptions"
-    multiple
-    use-chips
-    use-input
-    input-debounce="0"
-    label="Tags"
-    outlined
-    dense
-    @new-value="onNewValue"
-    @filter="onFilter"
-    @blur="onBlur"
-  >
-    <template v-slot:no-option>
-      <q-item>
-        <q-item-section style="color: var(--basil-text-secondary); font-size: 0.8125rem;">
-          Type to create a new tag
-        </q-item-section>
-      </q-item>
-    </template>
-  </q-select>
+  <div>
+    <div class="basil-tag-picker__label">Tags</div>
+
+    <!-- Selected + available tags as toggleable chips -->
+    <div class="basil-tag-picker__chips">
+      <q-chip
+        v-for="tag in allTags" :key="tag.id"
+        :class="isSelected(tag) ? 'basil-tag-picker__chip--selected' : 'basil-tag-picker__chip--unselected'"
+        clickable
+        size="sm"
+        @click="toggle(tag)"
+      >
+        {{ tag.name }}
+        <q-icon v-if="isSelected(tag)" name="close" size="14px" class="q-ml-xs" />
+      </q-chip>
+
+      <!-- New tag inline input -->
+      <q-chip
+        v-if="!showNewInput"
+        outline clickable size="sm"
+        icon="add"
+        @click="openNewTagInput"
+      >
+        New tag
+      </q-chip>
+    </div>
+
+    <!-- Inline new tag input -->
+    <div v-if="showNewInput" class="basil-tag-picker__new row items-center q-gutter-xs q-mt-xs" style="padding-bottom: var(--basil-space-8)">
+      <q-input
+        ref="newTagInput"
+        v-model="newTagName"
+        dense outlined
+        placeholder="Tag name"
+        style="flex: 1"
+        @keyup.enter="addNewTag"
+      />
+      <q-btn flat dense icon="check" color="primary" :disable="!newTagName?.trim()" @click="addNewTag" />
+      <q-btn flat dense icon="close" @click="showNewInput = false; newTagName = ''" />
+    </div>
+  </div>
 </template>
 
 <script>
@@ -38,32 +55,45 @@ export default {
 
   data() {
     return {
-      filteredOptions: [],
+      showNewInput: false,
+      newTagName: '',
     };
   },
 
+  computed: {
+    allTags() {
+      return store.state.tags || [];
+    },
+  },
+
   methods: {
-    onFilter(val, update) {
-      update(() => {
-        const allTags = store.state.tags || [];
-        const options = allTags.map(t => ({ label: t.name, value: t.id, id: t.id, name: t.name }));
-        if (!val) {
-          this.filteredOptions = options;
-        } else {
-          const needle = val.toLowerCase();
-          this.filteredOptions = options.filter(o => o.label.toLowerCase().includes(needle));
-        }
+    openNewTagInput() {
+      this.showNewInput = true;
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.$refs.newTagInput?.focus();
+        }, 300);
       });
     },
 
-    async onBlur() {
-      // Auto-commit any typed text on blur (mobile has no Enter key)
-      const input = this.$refs.select?.inputValue;
-      if (!input?.trim()) return;
-      const trimmed = input.trim();
-      const existing = (store.state.tags || []).find(
-        t => t.name.toLowerCase() === trimmed.toLowerCase()
-      );
+    isSelected(tag) {
+      return this.modelValue.some(t => (t.id || t.value) === tag.id);
+    },
+
+    toggle(tag) {
+      const tagObj = { label: tag.name, value: tag.id, id: tag.id, name: tag.name };
+      if (this.isSelected(tag)) {
+        this.$emit('update:modelValue', this.modelValue.filter(t => (t.id || t.value) !== tag.id));
+      } else {
+        this.$emit('update:modelValue', [...this.modelValue, tagObj]);
+      }
+    },
+
+    async addNewTag() {
+      const trimmed = this.newTagName?.trim();
+      if (!trimmed) return;
+      // Check if already exists
+      const existing = this.allTags.find(t => t.name.toLowerCase() === trimmed.toLowerCase());
       let tagObj;
       if (existing) {
         tagObj = { label: existing.name, value: existing.id, id: existing.id, name: existing.name };
@@ -73,32 +103,39 @@ export default {
         store.commit('addTag', tag);
         tagObj = { label: tag.name, value: tag.id, id: tag.id, name: tag.name };
       }
-      // Add if not already selected
-      if (!this.modelValue.some(t => (t.id || t.value) === tagObj.id)) {
+      if (!this.isSelected({ id: tagObj.id })) {
         this.$emit('update:modelValue', [...this.modelValue, tagObj]);
       }
-    },
-
-    async onNewValue(val, done) {
-      const trimmed = val.trim();
-      if (!trimmed) return done(null);
-      // Check if tag already exists
-      const existing = (store.state.tags || []).find(
-        t => t.name.toLowerCase() === trimmed.toLowerCase()
-      );
-      if (existing) {
-        done({ label: existing.name, value: existing.id, id: existing.id, name: existing.name });
-        return;
-      }
-      // Create new tag
-      const tag = await createTag(trimmed);
-      if (tag) {
-        store.commit('addTag', tag);
-        done({ label: tag.name, value: tag.id, id: tag.id, name: tag.name });
-      } else {
-        done(null);
-      }
+      this.newTagName = '';
+      this.showNewInput = false;
     },
   },
 };
 </script>
+
+<style scoped>
+.basil-tag-picker__label {
+  font-size: 0.75rem;
+  color: var(--basil-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--basil-space-1);
+}
+
+.basil-tag-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--basil-space-1);
+}
+
+.basil-tag-picker__chip--selected {
+  background-color: var(--basil-green) !important;
+  color: white !important;
+}
+
+.basil-tag-picker__chip--unselected {
+  background-color: transparent !important;
+  border: 1px solid var(--basil-border-strong) !important;
+  color: var(--basil-text) !important;
+}
+</style>

@@ -420,7 +420,7 @@
                 @touchmove.stop.prevent
               />
               <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-              <q-btn flat dense no-caps icon="sell" label="Tag" @click="bulkTagOpen = true" />
+              <q-btn flat dense no-caps icon="sell" label="Tag" @click="openBulkTag()" />
               <q-btn flat label="Clear selection" @click="selectedRows = []" />
               <span v-if="bulkCategory" class="basil-bulk-disclosure">
                 Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
@@ -603,7 +603,7 @@
           @touchmove.stop.prevent
         />
         <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-        <q-btn flat dense no-caps icon="sell" label="Tag" @click="bulkTagOpen = true" />
+        <q-btn flat dense no-caps icon="sell" label="Tag" @click="openBulkTag()" />
       </div>
       <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
         Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
@@ -791,7 +791,7 @@
   import EmptyState from '../components/EmptyState.vue'
   import TagPicker from '../components/TagPicker.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi } from '@/api';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
@@ -843,6 +843,7 @@
         venmoDialogOpen: false,
         bulkTagOpen: false,
         bulkTagSelection: [],
+        bulkTagOriginal: [],
         tagFilter: null,
         transactionDetails: {},
         decimalPlaces: 0,
@@ -2030,6 +2031,10 @@ monthStats() {
         } finally {
           this.isLoading = false;
         }
+      },
+      openBulkTag() {
+        this.bulkTagSelection = [];
+        this.bulkTagOpen = true;
       },
       async applyBulkTag() {
         if (!this.bulkTagSelection.length || !this.selectedRows.length) return;

@@ -1,0 +1,65 @@
+<h2>Tags — UI Surface Overview</h2>
+<p class="subtitle">Where tags appear across the app. Click to indicate what's essential for v1.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="edit-dialog" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Edit Transaction Dialog</h3>
+      <p>Tag picker field below Note. Type to search existing tags or create new ones. Multiple tags per transaction.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="bulk-table" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Bulk Tag in "Show All" Table</h3>
+      <p>Select rows → "Tag" action alongside "Move to category". Apply tags to all selected at once. Primary workflow for tagging a trip after the fact.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="row-badge" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Tag Badges on Transaction Rows</h3>
+      <p>Small colored chips on transaction rows in budget view and Show All table. Visible at a glance. Tappable to filter by that tag.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tags-view" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Dedicated Tags View (/tags)</h3>
+      <p>New page. Shows all tags with: total spend, transaction count, date range, category breakdown. Tap to see transactions. Cross-month analysis.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="rule-action" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>Rule Action: Auto-Tag</h3>
+      <p>Compound rules can apply tags alongside categorize. "When merchant contains 'Marriott' → tag 'Travel'". Shows rule attribution.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="table-filter" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content">
+      <h3>Tag Filter on Show All Table</h3>
+      <p>Filter dropdown to show only transactions with a specific tag. Quick way to see tagged groups without leaving budget page.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="trends-filter" onclick="toggleSelect(this)">
+    <div class="letter">7</div>
+    <div class="content">
+      <h3>Tag Filter on Trends View</h3>
+      <p>Filter charts by tag to see spending patterns for tagged groups over time.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-secondary); border-radius: 12px;">
+  <h3 style="margin-top: 0;">My v1 Recommendation</h3>
+  <p style="margin-bottom: 0;">Ship <strong>1–4 + 6</strong> (edit dialog, bulk tag, row badges, tags view, table filter). Defer 5 (rule action) and 7 (trends filter) to v2 — they're valuable but independent of the core tagging infrastructure.</p>
+</div>
