@@ -45,6 +45,7 @@
           <template v-if="$store.state.user?.onboarded_at">
             <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
             <q-route-tab to="/rules" icon="rule" label="Rules" />
+            <q-route-tab to="/tags" icon="sell" label="Tags" />
           </template>
         </template>
         <q-route-tab to="/profile" icon="person" label="Profile" />
@@ -84,6 +85,15 @@
             <q-item-section>
               <q-item-label>Rules</q-item-label>
               <q-item-label caption>Manage categorization rules</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item clickable to="/tags" @click="leftDrawerOpen = false">
+            <q-item-section avatar>
+              <q-icon name="sell" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Tags</q-item-label>
+              <q-item-label caption>Track spending by tag</q-item-label>
             </q-item-section>
           </q-item>
           <q-separator class="q-my-sm" />

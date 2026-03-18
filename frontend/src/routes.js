@@ -8,6 +8,7 @@ const TrendsView = () => import('./views/TrendsView.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')
 const RulesView = () => import('./views/RulesView.vue')
 const PrivacyView = () => import('./views/PrivacyView.vue')
+const TagsView = () => import('./views/TagsView.vue')
 
 const routes = [
   {
@@ -49,6 +50,11 @@ const routes = [
     path: '/plan',
     name: 'BudgetPlannerView',
     component: BudgetPlannerView
+  },
+  {
+    path: '/tags',
+    name: 'TagsView',
+    component: TagsView
   },
   {
     path: '/privacy',
