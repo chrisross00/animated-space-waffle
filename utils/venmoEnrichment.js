@@ -119,10 +119,12 @@ function parseCSVLine(line) {
  * Match parsed Venmo CSV rows against Plaid transactions.
  *
  * Matching criteria:
- *   1. Transaction's `account` field contains "venmo" (case-insensitive)
- *      OR `merchant_name` contains "venmo" (case-insensitive)
+ *   1. Transaction's `account`, `merchant_name`, or `name` contains "venmo" (case-insensitive)
  *   2. Amount matches (absolute value, within 1 cent for float precision)
- *   3. Date within ±1 day
+ *
+ * Date is NOT used as a filter (Venmo and Plaid dates often differ by several
+ * days) but IS used as a tiebreaker when multiple transactions share the same
+ * amount — the closest date wins.
  *
  * @param {Array} venmoRows     Output of parseVenmoCsv()
  * @param {Array} plaidTxns     Array of Plaid transaction documents
@@ -167,15 +169,7 @@ function matchVenmoRows(venmoRows, plaidTxns) {
       // Venmo CSV: negative = money out, positive = money in
       // So signs are flipped: venmo * -1 ≈ plaid
       // But Plaid's sign for Venmo can be inconsistent, so match on abs
-      if (Math.round(Math.abs(t.amount) * 100) !== Math.round(Math.abs(row.amount) * 100)) {
-        return false;
-      }
-
-      // Date match: within ±1 day
-      if (!t.date) return false;
-      const plaidDate = t.date.substring(0, 10);
-      const dayDiff = Math.abs(dateDiffDays(row.date, plaidDate));
-      return dayDiff <= 1;
+      return Math.round(Math.abs(t.amount) * 100) === Math.round(Math.abs(row.amount) * 100);
     });
 
     if (candidates.length === 0) {
@@ -183,10 +177,10 @@ function matchVenmoRows(venmoRows, plaidTxns) {
       continue;
     }
 
-    // Pick the best candidate: prefer exact date match, then closest date
+    // Pick the best candidate: closest date breaks ties for duplicate amounts
     candidates.sort((a, b) => {
-      const diffA = Math.abs(dateDiffDays(row.date, a.date.substring(0, 10)));
-      const diffB = Math.abs(dateDiffDays(row.date, b.date.substring(0, 10)));
+      const diffA = Math.abs(dateDiffDays(row.date, (a.date || '').substring(0, 10)));
+      const diffB = Math.abs(dateDiffDays(row.date, (b.date || '').substring(0, 10)));
       return diffA - diffB;
     });
 

@@ -130,21 +130,23 @@ describe('matchVenmoRows', () => {
     expect(result.matches).toHaveLength(1); // v2 still matches
   });
 
-  test('matches within ±1 day date tolerance', () => {
-    const offsetPlaid = [
-      { transaction_id: 'p1', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-05', account: 'Venmo' },
+  test('matches regardless of date drift', () => {
+    const farPlaid = [
+      { transaction_id: 'p1', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-10', account: 'Venmo' },
     ];
-    const result = matchVenmoRows([venmoRows[0]], offsetPlaid);
+    const result = matchVenmoRows([venmoRows[0]], farPlaid);
     expect(result.matches).toHaveLength(1);
   });
 
-  test('does not match beyond ±1 day', () => {
-    const farPlaid = [
-      { transaction_id: 'p1', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-07', account: 'Venmo' },
+  test('uses date proximity as tiebreaker for duplicate amounts', () => {
+    const dupePlaid = [
+      { transaction_id: 'far', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-10', account: 'Venmo' },
+      { transaction_id: 'close', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-05', account: 'Venmo' },
     ];
-    const result = matchVenmoRows([venmoRows[0]], farPlaid);
-    expect(result.matches).toHaveLength(0);
-    expect(result.unmatched).toHaveLength(1);
+    const result = matchVenmoRows([venmoRows[0]], dupePlaid);
+    expect(result.matches).toHaveLength(1);
+    expect(result.matches[0].plaidTransaction.transaction_id).toBe('close');
+    expect(result.matches[0].confidence).toBe('medium');
   });
 
   test('handles empty inputs', () => {
