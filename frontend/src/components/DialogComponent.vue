@@ -70,6 +70,10 @@
         />
       </div>
 
+      <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
+        <TagPicker v-model="selectedTags" />
+      </div>
+
       <div class="basil-dialog-toggles">
         <q-toggle
           color="primary"
@@ -462,10 +466,12 @@
 <script>
   import {ref} from 'vue'
   import RelationshipCard from './RelationshipCard.vue'
+  import TagPicker from './TagPicker.vue'
+  import { tagTransactionsApi, untagTransactionsApi } from '@/api'
 
   export default {
       name: 'DialogComponent',
-      components: { RelationshipCard },
+      components: { RelationshipCard, TagPicker },
       props: {
         dialogType: {
           type: String,
@@ -518,6 +524,8 @@
             originalDialogBody: {},
             formSubmittable:false,
             initialData: null,
+            selectedTags: (this.item?.tags || []).map(t => ({ label: t.name, value: t.id, id: t.id, name: t.name })),
+            originalTags: (this.item?.tags || []).map(t => ({ label: t.name, value: t.id, id: t.id, name: t.name })),
             pendingRuleRemovals: [],
             pendingRuleAdditions: [],
             newRuleValue: null,
@@ -575,7 +583,24 @@ computed: {
         onTransactionFormReset () {
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
         },
-        updateTransaction() {
+        async updateTransaction() {
+            // Handle tag changes directly (independent of main transaction update)
+            const oldIds = new Set(this.originalTags.map(t => t.id || t.value));
+            const newIds = new Set(this.selectedTags.map(t => t.id || t.value));
+            const addedTagIds = [...newIds].filter(id => !oldIds.has(id));
+            const removedTagIds = [...oldIds].filter(id => !newIds.has(id));
+            if (addedTagIds.length) {
+                await tagTransactionsApi([this.item.transaction_id], addedTagIds);
+            }
+            if (removedTagIds.length) {
+                await untagTransactionsApi([this.item.transaction_id], removedTagIds);
+            }
+            if (addedTagIds.length || removedTagIds.length) {
+                this.$store.commit('setTransactionTags', {
+                    transactionIds: [this.item.transaction_id],
+                    tags: this.selectedTags.map(t => ({ id: t.id || t.value, name: t.label || t.name })),
+                });
+            }
             this.editedTransaction = {...this.dialogBody, similarityData: this.similarityData}
             this.$emit('update-transaction', this.editedTransaction)
         },
@@ -635,12 +660,15 @@ computed: {
         isFormSubmittable(){
             // first evaluate for change
             if(this.dialogType == 'transaction'){
+                const tagsChanged = JSON.stringify(this.selectedTags.map(t => t.id || t.value).sort()) !==
+                    JSON.stringify(this.originalTags.map(t => t.id || t.value).sort());
                 if(
                     this.dialogBody.date !== this.originalDialogBody.date ||
                     this.dialogBody.mappedCategory !== this.originalDialogBody.mappedCategory ||
                     this.dialogBody.note !== this.originalDialogBody.note ||
                     this.dialogBody.excludeFromTotal !== this.originalDialogBody.excludeFromTotal ||
-                    this.dialogBody.createRule !== this.originalDialogBody.createRule
+                    this.dialogBody.createRule !== this.originalDialogBody.createRule ||
+                    tagsChanged
                 ){
                     this.formSubmittable = true
                 }
