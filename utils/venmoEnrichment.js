@@ -54,8 +54,8 @@ function parseVenmoCsv(csvText) {
     const to = fields[7]?.trim() || '';
     const amountRaw = fields[8]?.trim();
 
-    // Only include completed transactions
-    if (status !== 'Complete') continue;
+    // Only include completed transactions (Standard Transfers use "Issued")
+    if (status !== 'Complete' && status !== 'Issued') continue;
 
     const amount = parseVenmoAmount(amountRaw);
     if (amount === null) continue;

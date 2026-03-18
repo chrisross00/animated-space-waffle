@@ -10,13 +10,14 @@ Account Activity,,,,,,,,,,,,,,,,,,,,,
 ,2222222222222222222,2026-03-06T05:38:23,Charge,Complete,gjlina,Chris Ross,McKayla Smith,+ $72.66,,0,,0,,,Venmo balance,,,,Venmo,,
 ,3333333333333333333,2026-03-06T05:38:42,Payment,Complete,Tacos and fries,McKayla Smith,Chris Ross,+ $19.00,,0,,0,,,Venmo balance,,,,Venmo,,
 ,4444444444444444444,2026-03-07T01:25:21,Charge,Pending,Prince less,McKayla Smith,Chris Ross,- $51.22,,0,,0,,Citizens Bank *3589,,,,,Venmo,,
+,5555555555555555555,2026-03-16T06:05:30,Standard Transfer,Issued,,,,- $90.42,,,,,,,Citizens Bank *3589,,,,Venmo,,
 ,,,,,,,,,,,,,,,,,$0.00,$0.00,,$0.00,"Disclaimer text"
 `;
 
 describe('parseVenmoCsv', () => {
   test('parses valid rows and skips headers, footer, and pending', () => {
     const rows = parseVenmoCsv(SAMPLE_CSV);
-    expect(rows).toHaveLength(3); // 3 Complete, 1 Pending skipped
+    expect(rows).toHaveLength(4); // 3 Complete + 1 Issued, 1 Pending skipped
   });
 
   test('extracts correct fields', () => {
@@ -50,7 +51,7 @@ describe('parseVenmoCsv', () => {
   test('handles BOM', () => {
     const withBom = '\uFEFF' + SAMPLE_CSV;
     const rows = parseVenmoCsv(withBom);
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(4);
   });
 });
 
