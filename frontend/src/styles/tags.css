@@ -1,0 +1,33 @@
+/* ---- Tag badges on transaction rows ---- */
+
+.basil-tag-badge {
+  display: inline-block;
+  max-width: 80px;
+  padding: 1px var(--basil-space-1);
+  background: var(--basil-surface-alt);
+  color: var(--basil-text-secondary);
+  font-size: 0.6875rem;
+  border-radius: var(--basil-radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.basil-tag-badges {
+  display: inline;
+  margin-left: var(--basil-space-1);
+}
+
+.basil-tag-badges .basil-tag-badge + .basil-tag-badge {
+  margin-left: 2px;
+}
+
+.basil-tag-overflow {
+  display: inline-block;
+  padding: 1px var(--basil-space-1);
+  color: var(--basil-text-muted);
+  font-size: 0.6875rem;
+  vertical-align: middle;
+}

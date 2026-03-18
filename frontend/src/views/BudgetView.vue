@@ -269,6 +269,10 @@
                         <div class="basil-txn-label">
                           <div class="basil-txn-label__primary">
                             <span class="basil-txn-label__text">{{ item.venmo_note || item.merchant_name || (item.name == 'Venmo' ? item.name + (item.note ? ': ' + item.note : '') : item.name) }}</span>
+                            <span v-if="item.tags?.length" class="basil-tag-badges">
+                              <span v-for="tag in item.tags.slice(0, 2)" :key="tag.id" class="basil-tag-badge">{{ tag.name }}</span>
+                              <span v-if="item.tags.length > 2" class="basil-tag-overflow">+{{ item.tags.length - 2 }}</span>
+                            </span>
                             <span
                               v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
                               class="basil-relationship-badge basil-relationship-badge--pending"
@@ -384,11 +388,22 @@
               style="width: 90px"
               class="gt-xs"
             />
+            <q-select
+              v-if="$store.state.tags.length > 0"
+              v-model="tagFilter"
+              :options="$store.state.tags.map(t => ({ label: t.name, value: t.id }))"
+              emit-value map-options
+              label="Tag"
+              dense outlined clearable
+              style="min-width: 120px"
+              class="gt-xs"
+              @touchmove.stop.prevent
+            />
             <q-btn
               flat
               label="Clear"
-              :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null"
-              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tableServerResults = null"
+              :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null"
             />
           </template>
 
@@ -405,6 +420,7 @@
                 @touchmove.stop.prevent
               />
               <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+              <q-btn flat dense no-caps icon="sell" label="Tag" @click="bulkTagOpen = true" />
               <q-btn flat label="Clear selection" @click="selectedRows = []" />
               <span v-if="bulkCategory" class="basil-bulk-disclosure">
                 Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
@@ -473,6 +489,10 @@
                 <div class="basil-txn-label">
                   <div class="basil-txn-label__primary">
                     <span class="basil-txn-label__text">{{ item.venmo_note || item.merchant_name || item.name }}</span>
+                    <span v-if="item.tags?.length" class="basil-tag-badges">
+                      <span v-for="tag in item.tags.slice(0, 2)" :key="tag.id" class="basil-tag-badge">{{ tag.name }}</span>
+                      <span v-if="item.tags.length > 2" class="basil-tag-overflow">+{{ item.tags.length - 2 }}</span>
+                    </span>
                     <span
                       v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
                       class="basil-relationship-badge basil-relationship-badge--pending"
@@ -583,6 +603,7 @@
           @touchmove.stop.prevent
         />
         <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
+        <q-btn flat dense no-caps icon="sell" label="Tag" @click="bulkTagOpen = true" />
       </div>
       <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
         Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
@@ -730,6 +751,30 @@
     <!-- Venmo Enrichment Dialog -->
     <VenmoEnrichmentDialog v-model="venmoDialogOpen" />
 
+    <!-- Bulk Tag tray -->
+    <BasilTray v-model="bulkTagOpen" max-width="440px">
+      <q-card flat>
+        <div class="basil-dialog-header">
+          <div class="basil-dialog-title">
+            <span class="basil-dialog-title__sub">BULK TAG</span>
+            <span class="basil-dialog-title__main">Tag {{ selectedRows.length }} transaction{{ selectedRows.length !== 1 ? 's' : '' }}</span>
+          </div>
+          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="bulkTagOpen = false" />
+        </div>
+        <q-card-section>
+          <TagPicker v-model="bulkTagSelection" />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" @click="bulkTagOpen = false" />
+          <q-btn
+            unelevated color="primary" label="Apply"
+            :disable="!bulkTagSelection.length"
+            @click="applyBulkTag"
+          />
+        </q-card-actions>
+      </q-card>
+    </BasilTray>
+
   </div>
 </template>
 
@@ -744,8 +789,9 @@
   import RelationshipCard from '../components/RelationshipCard.vue'
   import SkeletonBudget from '../components/SkeletonBudget.vue'
   import EmptyState from '../components/EmptyState.vue'
+  import TagPicker from '../components/TagPicker.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship } from '@/api';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
@@ -775,6 +821,7 @@
       EmptyState,
       BasilTray,
       VenmoEnrichmentDialog,
+      TagPicker,
     },
     data() {
       const currentDate = dayjs();
@@ -794,6 +841,9 @@
         newCategory: false,
         categoryClickers: {},
         venmoDialogOpen: false,
+        bulkTagOpen: false,
+        bulkTagSelection: [],
+        tagFilter: null,
         transactionDetails: {},
         decimalPlaces: 0,
         fetchInterval: 0,
@@ -908,6 +958,9 @@
         }
         if (this.amountMax !== null && this.amountMax !== '') {
           rows = rows.filter(t => Math.abs(t.amount) <= Number(this.amountMax));
+        }
+        if (this.tagFilter) {
+          rows = rows.filter(t => t.tags?.some(tag => tag.id === this.tagFilter));
         }
         return rows;
       },
@@ -1976,6 +2029,18 @@ monthStats() {
           console.error('Bulk categorize error:', err);
         } finally {
           this.isLoading = false;
+        }
+      },
+      async applyBulkTag() {
+        if (!this.bulkTagSelection.length || !this.selectedRows.length) return;
+        const txnIds = this.selectedRows.map(r => r.transaction_id);
+        const tagIds = this.bulkTagSelection.map(t => t.id || t.value);
+        const result = await tagTransactionsApi(txnIds, tagIds);
+        if (result) {
+          store.commit('addTransactionTags', { transactionIds: txnIds, tagIds });
+          this.bulkTagOpen = false;
+          this.bulkTagSelection = [];
+          this.selectedRows = [];
         }
       },
       toggleCategory(category) {
