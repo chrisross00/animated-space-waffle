@@ -720,6 +720,7 @@ async function findPlaidItems(userId) {
 
     return {
       ...item,
+      manual: !item.accessToken,
       accounts: accts,
       balances,
       balanceSnapshots: snapshotsByItem[item.id] || [],
@@ -1072,4 +1073,5 @@ module.exports = {
   buildSetClause,
   conditionsToSqlWhere,
   TXN_FIELD_MAP,
+  getPool,
 };

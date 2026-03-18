@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots } = require('./db/database');
+const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool } = require('./db/database');
 const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
@@ -739,6 +739,8 @@ function aggregateSnapshots(snapshots) {
 function createClientSideUser(user, items=null) {
   const hasItems = items && items.length > 0;
   let bankNames = hasItems ? items.map(item => item.institution) : [];
+  const manualInstitutions = new Set(hasItems ? items.filter(i => i.manual).map(i => i.institution) : []);
+  const itemIdByInstitution = hasItems ? Object.fromEntries(items.map(i => [i.institution, i.id])) : {};
 
   // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
@@ -770,6 +772,8 @@ function createClientSideUser(user, items=null) {
     picture: user.picture,
     accounts: bankNames,
     accountBalances,
+    manualInstitutions: manualInstitutions.size ? [...manualInstitutions] : null,
+    itemIdByInstitution: hasItems ? itemIdByInstitution : null,
     balanceSnapshots: balanceSnapshots?.length ? balanceSnapshots : null,
     itemErrors,
     onboarded_at: user.onboarded_at || null,
@@ -983,6 +987,113 @@ router.post('/updateBudgetLimit', async (req, res) => {
   } catch (error) {
     console.error('/updateBudgetLimit error:', error);
     res.status(500).json({ message: 'Failed to update budget limit' });
+  }
+});
+
+// ---- Manual accounts ----
+
+const crypto = require('crypto');
+
+router.post('/manualAccount', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { institution, accountName, accountType, balance } = req.body;
+    if (!institution || !accountName || !accountType || balance == null) {
+      return res.status(400).json({ message: 'institution, accountName, accountType, and balance are required' });
+    }
+    // Check if institution already exists (Plaid-linked or manual)
+    let existing = await findPlaidItemByInstitution(uid, institution);
+    let itemId;
+    if (existing) {
+      // Add account under existing institution
+      itemId = existing.id;
+    } else {
+      // Create new manual institution
+      const item = await insertPlaidItem({ userId: uid, institution, accessToken: null });
+      itemId = item.id;
+    }
+    // Create plaid_accounts row
+    const accountId = crypto.randomUUID();
+    const pool = getPool();
+    const now = new Date();
+    await pool.query(
+      `INSERT INTO plaid_accounts (account_id, item_id, user_id, name, type, balance, balance_fetched_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [accountId, itemId, uid, accountName, accountType, balance, now]
+    );
+    // Recompute snapshot for this item (sum all accounts)
+    const { rows: accounts } = await pool.query(
+      `SELECT type, balance FROM plaid_accounts WHERE item_id = $1`,
+      [itemId]
+    );
+    const net = accounts.reduce((sum, a) => {
+      const isLiability = a.type === 'credit' || a.type === 'loan';
+      return isLiability ? sum - Math.abs(a.balance) : sum + Number(a.balance);
+    }, 0);
+    await upsertBalanceSnapshot(itemId, {
+      date: now.toISOString().slice(0, 10),
+      net: Math.round(net * 100) / 100,
+      fetchedAt: now,
+    });
+    res.json({
+      item: { id: itemId, institution, manual: !existing },
+      account: { accountId, name: accountName, type: accountType, balance, balanceFetchedAt: now },
+    });
+  } catch (error) {
+    console.error('/manualAccount create error:', error);
+    res.status(500).json({ message: 'Failed to create manual account' });
+  }
+});
+
+router.put('/manualAccount/:itemId', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { itemId } = req.params;
+    const { balance, accountName } = req.body;
+    if (balance == null) {
+      return res.status(400).json({ message: 'balance is required' });
+    }
+    // Verify item belongs to user and is manual
+    const pool = getPool();
+    const { rows: items } = await pool.query(
+      `SELECT id, access_token AS "accessToken" FROM plaid_items WHERE id = $1 AND user_id = $2`,
+      [itemId, uid]
+    );
+    if (!items.length) return res.status(404).json({ message: 'Account not found' });
+    if (items[0].accessToken) return res.status(400).json({ message: 'Cannot manually update a Plaid-linked account' });
+    // Update account balance (and name if provided)
+    const now = new Date();
+    const setClauses = ['balance = $1', 'balance_fetched_at = $2'];
+    const params = [balance, now];
+    if (accountName) {
+      setClauses.push(`name = $${params.length + 1}`);
+      params.push(accountName);
+    }
+    params.push(itemId);
+    await pool.query(
+      `UPDATE plaid_accounts SET ${setClauses.join(', ')} WHERE item_id = $${params.length}`,
+      params
+    );
+    // Compute net for snapshot (need all accounts under this item for multi-account manual institutions)
+    const { rows: accounts } = await pool.query(
+      `SELECT type, balance FROM plaid_accounts WHERE item_id = $1`,
+      [itemId]
+    );
+    const net = accounts.reduce((sum, a) => {
+      const isLiability = a.type === 'credit' || a.type === 'loan';
+      return isLiability ? sum - Math.abs(a.balance) : sum + Number(a.balance);
+    }, 0);
+    await upsertBalanceSnapshot(itemId, {
+      date: now.toISOString().slice(0, 10),
+      net: Math.round(net * 100) / 100,
+      fetchedAt: now,
+    });
+    res.json({ ok: true, balance, balanceFetchedAt: now });
+  } catch (error) {
+    console.error('/manualAccount update error:', error);
+    res.status(500).json({ message: 'Failed to update manual account' });
   }
 });
 

@@ -133,9 +133,9 @@
           :loading="loading"
           @click="preview"
         />
-        <q-btn v-if="step === 'review'" flat label="Back" @click="step = 'upload'" />
+        <q-btn v-if="step === 'review'" flat label="Skip" @click="close" />
         <q-btn
-          v-if="step === 'review'"
+          v-if="step === 'review' && matches.length"
           unelevated
           :label="`Update ${selectedCount} transaction${selectedCount !== 1 ? 's' : ''}`"
           color="primary"

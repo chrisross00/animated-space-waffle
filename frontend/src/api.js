@@ -222,6 +222,35 @@ export async function removeAccount(institution) {
   }
 }
 
+export async function createManualAccount({ institution, accountName, accountType, balance }) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/manualAccount', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ institution, accountName, accountType, balance }),
+    });
+    if (response.ok) return response.json();
+    const err = await response.json().catch(() => ({}));
+    _notify({ type: 'negative', message: err.message || `Failed to create account (${response.status})` });
+  }
+}
+
+export async function updateManualAccount(itemId, { balance, accountName }) {
+  const headers = getAuthHeaders();
+  if (headers) {
+    headers['Content-Type'] = 'application/json';
+    const response = await fetch(`/api/manualAccount/${itemId}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ balance, accountName }),
+    });
+    if (response.ok) return response.json();
+    _notify({ type: 'negative', message: `Failed to update account (${response.status})` });
+  }
+}
+
 export async function seedCategories(targetUserId) {
   const headers = getAuthHeaders();
   if (headers) {

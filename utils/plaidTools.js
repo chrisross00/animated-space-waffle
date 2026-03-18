@@ -73,6 +73,7 @@ async function getNewPlaidTransactions(uid) {
 
     for (const response of responses) {
       let token = response.token;
+      if (!token) continue; // skip manual accounts (no Plaid access token)
       let next_cursor = response.next_cursor;
       let hasMore = true;
         const updatedTxns = [];
