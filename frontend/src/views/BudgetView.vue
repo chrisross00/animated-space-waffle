@@ -604,7 +604,7 @@
             <q-icon name="check_circle" size="48px" color="positive" />
             <div class="basil-triage__done-heading">All caught up!</div>
           </div>
-          <div v-if="triageVenmoCount > 0" class="basil-triage__venmo-nudge">
+          <div v-if="triageVenmoCount > 0 && !enrichmentOffered" class="basil-triage__venmo-nudge">
             <div class="basil-triage__venmo-nudge-text">
               You sorted {{ triageVenmoCount }} Venmo {{ triageVenmoCount === 1 ? 'payment' : 'payments' }} without details.
             </div>
@@ -618,6 +618,27 @@
           </div>
           <div class="basil-triage__actions">
             <q-btn unelevated color="primary" label="Done" class="full-width" v-close-popup />
+          </div>
+        </template>
+
+        <!-- Enrichment prompt -->
+        <template v-else-if="triageShowEnrichmentPrompt">
+          <div class="basil-triage__done">
+            <q-icon name="upload_file" size="48px" style="color: var(--basil-green)" />
+            <div class="basil-triage__done-heading">Add Venmo details before sorting?</div>
+            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; text-align: center; padding: 0 var(--basil-space-4);">
+              You have <b>{{ triageUnenrichedP2PCount }}</b> Venmo {{ triageUnenrichedP2PCount === 1 ? 'transaction' : 'transactions' }} without names or notes. Importing a CSV will make them easier to categorize.
+            </div>
+          </div>
+          <div class="basil-triage__actions">
+            <q-btn flat label="Skip" @click="triageShowEnrichmentPrompt = false; enrichmentOffered = true" />
+            <q-btn
+              unelevated
+              color="primary"
+              icon="upload_file"
+              label="Import CSV"
+              @click="triageOpen = false; enrichmentOffered = true; $nextTick(() => openVenmoImport())"
+            />
           </div>
         </template>
 
@@ -823,6 +844,8 @@
         triageDone: false,
         triageTotal: 0,
         triageVenmoCount: 0,
+        enrichmentOffered: false,
+        triageShowEnrichmentPrompt: false,
         relationshipsExpanded: false,
         relationshipSaving: false,
       };
@@ -1070,6 +1093,9 @@
       },
       triageItems() {
         return this.toSortWithSuggestions.filter(t => !this.triageSkipped.has(t.transaction_id));
+      },
+      triageUnenrichedP2PCount() {
+        return this.toSortWithSuggestions.filter(t => this.isUnenrichedP2P(t)).length;
       },
       triageSimilar() {
         const first = this.triageItems[0];
@@ -1636,6 +1662,7 @@ monthStats() {
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
         this.triageCategory = first?.suggestion || null;
+        this.triageShowEnrichmentPrompt = !this.enrichmentOffered && this.triageUnenrichedP2PCount > 0;
         this.triageOpen = true;
       },
       async triageAccept() {

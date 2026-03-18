@@ -28,6 +28,12 @@
         class="q-mt-sm"
         @click="showPlaidLink = true"
       />
+      <q-btn
+        flat no-caps icon="edit_note" label="Add manually"
+        class="q-mt-xs"
+        style="color: var(--basil-text-secondary)"
+        @click="showManualForm = true"
+      />
       <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
     </EmptyState>
 
@@ -101,6 +107,14 @@
             <div class="basil-accounts__institution-header">
               <span class="basil-accounts__institution-name">{{ institution.name }}</span>
               <q-chip
+                v-if="institution.manual"
+                dense size="sm" icon="edit_note"
+                class="q-ml-xs"
+                style="background: var(--basil-surface-alt); color: var(--basil-text-secondary)"
+              >
+                Manual
+              </q-chip>
+              <q-chip
                 v-if="institution.error"
                 dense size="sm" icon="warning" color="warning" text-color="dark"
                 class="q-ml-xs"
@@ -109,7 +123,14 @@
               </q-chip>
               <q-space />
               <q-btn
-                v-if="institution.error"
+                v-if="institution.manual"
+                flat dense no-caps icon="edit" label="Edit"
+                class="q-mr-xs"
+                style="color: var(--basil-text-secondary)"
+                @click="openEditManual(institution)"
+              />
+              <q-btn
+                v-if="institution.error && !institution.manual"
                 flat dense no-caps color="warning" icon="refresh" label="Reconnect"
                 :loading="reconnecting === institution.name"
                 class="q-mr-xs"
@@ -169,8 +190,13 @@
             </div>
           </div>
 
-          <q-btn flat dense color="primary" icon="add" label="Add account" class="q-mt-xs"
-            @click="showPlaidLink = true" />
+          <div class="row q-gutter-sm q-mt-xs">
+            <q-btn flat dense color="primary" icon="add" label="Add account"
+              @click="showPlaidLink = true" />
+            <q-btn flat dense icon="edit_note" label="Add manually"
+              style="color: var(--basil-text-secondary)"
+              @click="showManualForm = true" />
+          </div>
           <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
         </q-card>
         </div>
@@ -216,11 +242,101 @@
         {{ lastUpdatedText }}
       </div>
     </template>
+
+    <!-- Add Manual Account tray -->
+    <BasilTray v-model="showManualForm" max-width="440px">
+      <q-card flat>
+        <div class="basil-dialog-header">
+          <div class="basil-dialog-title">
+            <span class="basil-dialog-title__sub">NEW ACCOUNT</span>
+            <span class="basil-dialog-title__main">Add Manual Account</span>
+          </div>
+          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showManualForm = false" />
+        </div>
+        <q-card-section>
+          <q-select
+            v-model="manualInstitution" label="Institution name" outlined dense
+            :options="institutionOptions"
+            use-input input-debounce="0"
+            new-value-mode="add-unique"
+            placeholder="e.g. Fidelity, My Credit Union"
+            class="q-mb-sm"
+            behavior="menu"
+            @filter="filterInstitutions"
+          />
+          <q-input
+            v-model="manualAccountName" label="Account name" outlined dense
+            placeholder="e.g. Brokerage, Checking"
+            class="q-mb-sm"
+          />
+          <q-select
+            v-model="manualAccountType" label="Account type" outlined dense
+            :options="[
+              { label: 'Depository (checking, savings)', value: 'depository' },
+              { label: 'Credit card', value: 'credit' },
+              { label: 'Loan', value: 'loan' },
+              { label: 'Investment', value: 'investment' },
+            ]"
+            emit-value map-options
+            class="q-mb-sm"
+          />
+          <q-input
+            v-model.number="manualBalance" label="Current balance" outlined dense
+            type="number" step="0.01" prefix="$"
+          />
+          <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2)">
+            Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
+          </div>
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" @click="showManualForm = false" />
+          <q-btn
+            unelevated color="primary" label="Add Account"
+            :disable="!manualInstitution || !manualAccountName || manualBalance == null"
+            :loading="manualSaving"
+            @click="saveManualAccount"
+          />
+        </q-card-actions>
+      </q-card>
+    </BasilTray>
+
+    <!-- Edit Manual Account tray -->
+    <BasilTray v-model="showEditManual" max-width="440px">
+      <q-card flat>
+        <div class="basil-dialog-header">
+          <div class="basil-dialog-title">
+            <span class="basil-dialog-title__sub">UPDATE BALANCE</span>
+            <span class="basil-dialog-title__main">Edit Account</span>
+          </div>
+          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showEditManual = false" />
+        </div>
+        <q-card-section>
+          <q-input
+            v-model="editAccountName" label="Account name" outlined dense
+            class="q-mb-sm"
+          />
+          <q-input
+            v-model.number="editBalance" label="Current balance" outlined dense
+            type="number" step="0.01" prefix="$"
+          />
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancel" @click="showEditManual = false" />
+          <q-btn
+            unelevated color="primary" label="Save"
+            :disable="editBalance == null"
+            :loading="editManualSaving"
+            @click="saveEditManual"
+          />
+        </q-card-actions>
+      </q-card>
+    </BasilTray>
   </div>
 </template>
 
 <script>
-import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError } from '@/api';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError, createManualAccount, updateManualAccount } from '@/api';
+import BasilTray from '../components/BasilTray.vue';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
@@ -237,7 +353,7 @@ const ANIMATION = { animation: true, animationDuration: 800, animationEasing: 'c
 
 export default {
   name: 'AccountsView',
-  components: { EmptyState, PlaidLinkHandler, VChart },
+  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray },
 
   data() {
     return {
@@ -246,6 +362,20 @@ export default {
       preDelete: {},
       reconnecting: null,       // institution name currently reconnecting
       reconnectToken: null,     // link token for update mode
+      // Manual account form
+      showManualForm: false,
+      manualSaving: false,
+      manualInstitution: '',
+      manualAccountName: '',
+      manualAccountType: 'depository',
+      manualBalance: null,
+      institutionOptions: [],
+      // Edit manual account
+      showEditManual: false,
+      editManualSaving: false,
+      editItemId: null,
+      editAccountName: '',
+      editBalance: null
     };
   },
 
@@ -271,11 +401,25 @@ export default {
       return Object.keys(this.itemErrors).length > 0;
     },
 
+    manualSet() {
+      return new Set(this.$store.state.user?.manualInstitutions || []);
+    },
+
+    itemIdMap() {
+      return this.$store.state.user?.itemIdByInstitution || {};
+    },
+
     institutions() {
       const names = this.$store.state.user?.accounts || [];
       const balances = this.balances || {};
       return names
-        .map(name => ({ name, accounts: balances[name] || [], error: this.itemErrors[name] || null }))
+        .map(name => ({
+          name,
+          accounts: balances[name] || [],
+          error: this.itemErrors[name] || null,
+          manual: this.manualSet.has(name),
+          itemId: this.itemIdMap[name] || null,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
 
@@ -557,6 +701,76 @@ export default {
         console.error('unlinkAccount error:', error);
       }
       this.preDelete[institution] = false;
+    },
+
+    filterInstitutions(val, update) {
+      update(() => {
+        const names = this.$store.state.user?.accounts || [];
+        if (!val) {
+          this.institutionOptions = names;
+        } else {
+          const needle = val.toLowerCase();
+          this.institutionOptions = names.filter(n => n.toLowerCase().includes(needle));
+        }
+      });
+    },
+
+    async saveManualAccount() {
+      this.manualSaving = true;
+      try {
+        const result = await createManualAccount({
+          institution: this.manualInstitution.trim(),
+          accountName: this.manualAccountName.trim(),
+          accountType: this.manualAccountType,
+          balance: this.manualBalance,
+        });
+        if (result) {
+          // Refresh user data to pick up the new institution
+          const user = await getOrAddUser();
+          this.$store.commit('setUser', user);
+          if (user.accountBalances) this.$store.commit('setAccountBalances', user.accountBalances);
+          if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
+          this.showManualForm = false;
+          this.manualInstitution = '';
+          this.manualAccountName = '';
+          this.manualAccountType = 'depository';
+          this.manualBalance = null;
+        }
+      } catch (err) {
+        console.error('saveManualAccount error:', err);
+      } finally {
+        this.manualSaving = false;
+      }
+    },
+
+    openEditManual(institution) {
+      this.editItemId = institution.itemId;
+      const acct = institution.accounts[0];
+      this.editAccountName = acct?.name || '';
+      this.editBalance = acct?.current ?? acct?.balance ?? 0;
+      this.showEditManual = true;
+    },
+
+    async saveEditManual() {
+      this.editManualSaving = true;
+      try {
+        const result = await updateManualAccount(this.editItemId, {
+          balance: this.editBalance,
+          accountName: this.editAccountName.trim(),
+        });
+        if (result) {
+          // Refresh to pick up updated balances + snapshots
+          const user = await getOrAddUser();
+          this.$store.commit('setUser', user);
+          if (user.accountBalances) this.$store.commit('setAccountBalances', user.accountBalances);
+          if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
+          this.showEditManual = false;
+        }
+      } catch (err) {
+        console.error('saveEditManual error:', err);
+      } finally {
+        this.editManualSaving = false;
+      }
     },
   },
 
