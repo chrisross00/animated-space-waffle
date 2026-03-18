@@ -10,3 +10,6 @@ DO $$ BEGIN
     ALTER TABLE balance_snapshots ADD CONSTRAINT balance_snapshots_item_id_date_key UNIQUE (item_id, date);
   END IF;
 END $$;
+
+-- Explicit manual flag for manually-created accounts
+ALTER TABLE plaid_accounts ADD COLUMN IF NOT EXISTS manual BOOLEAN DEFAULT false;

@@ -174,6 +174,20 @@ async function updatePlaidCursors(response, userId) {
   });
 }
 
+function toManualBalance(a) {
+  return {
+    account_id: a.accountId,
+    name: a.name,
+    type: a.type,
+    subtype: a.subtype,
+    current: a.balance,
+    available: a.available,
+    limit: a.limit,
+    fetchedAt: a.balanceFetchedAt,
+    manual: a.manual || false,
+  };
+}
+
 async function fetchAndStoreBalances(uid) {
   const userId = uid.toString();
   const items = await findPlaidItems(userId);
@@ -184,7 +198,13 @@ async function fetchAndStoreBalances(uid) {
 
   for (const item of items) {
     const { accessToken, institution, id: itemId } = item;
-    if (!accessToken) continue;
+    if (!accessToken) {
+      // Manual account — include cached balances
+      if (item.accounts?.length) {
+        results[institution] = item.accounts.map(toManualBalance);
+      }
+      continue;
+    }
     try {
       const client = forEnv('production');
       const response = await client.accountsBalanceGet({ access_token: accessToken });
@@ -204,6 +224,16 @@ async function fetchAndStoreBalances(uid) {
 
       // Upsert accounts — creates rows on first sync, updates on subsequent
       await upsertPlaidAccounts(itemId, userId, response.data.accounts);
+
+      // Append any manual accounts under this institution (not returned by Plaid)
+      const plaidAccountIds = new Set(response.data.accounts.map(a => a.account_id));
+      if (item.accounts?.length) {
+        for (const a of item.accounts) {
+          if (!plaidAccountIds.has(a.accountId)) {
+            balances.push(toManualBalance(a));
+          }
+        }
+      }
 
       // Compute institution net for snapshot
       const institutionNet = balances.reduce((sum, acct) => {
@@ -244,6 +274,7 @@ async function fetchAndStoreBalances(uid) {
           available: a.available,
           limit: a.limit,
           fetchedAt: a.balanceFetchedAt,
+          manual: a.manual || false,
         }));
       }
     }
@@ -270,6 +301,7 @@ async function getCachedBalances(uid) {
         available: a.available,
         limit: a.limit,
         fetchedAt: a.balanceFetchedAt,
+        manual: a.manual || false,
       }));
     }
   }

@@ -123,13 +123,6 @@
               </q-chip>
               <q-space />
               <q-btn
-                v-if="institution.manual"
-                flat dense no-caps icon="edit" label="Edit"
-                class="q-mr-xs"
-                style="color: var(--basil-text-secondary)"
-                @click="openEditManual(institution)"
-              />
-              <q-btn
                 v-if="institution.error && !institution.manual"
                 flat dense no-caps color="warning" icon="refresh" label="Reconnect"
                 :loading="reconnecting === institution.name"
@@ -150,40 +143,64 @@
               </template>
             </div>
 
-            <q-list v-if="institution.accounts.length" bordered separator rounded>
-              <q-item v-for="acct in institution.accounts" :key="acct.account_id">
-                <q-item-section>
-                  <q-item-label class="basil-accounts__acct-name">
-                    {{ acct.name }}
-                    <span v-if="acct.mask" class="basil-accounts__mask">{{ acct.mask }}</span>
-                  </q-item-label>
-                  <q-item-label caption>{{ formatSubtype(acct.subtype) }}</q-item-label>
-                  <!-- Credit utilization -->
-                  <template v-if="acct.type === 'credit' && acct.limit">
-                    <div class="basil-accounts__utilization q-mt-xs">
-                      <q-linear-progress
-                        :value="Math.abs(acct.current) / acct.limit"
-                        rounded
-                        size="6px"
-                        :color="utilizationColor(Math.abs(acct.current) / acct.limit)"
-                        track-color="grey-3"
-                        class="basil-accounts__utilization-bar"
-                      />
-                      <span class="basil-accounts__utilization-label">
-                        {{ Math.round((Math.abs(acct.current) / acct.limit) * 100) }}% of {{ formatCurrency(acct.limit) }}
-                      </span>
-                    </div>
+            <q-list v-if="institution.accounts.length" bordered rounded class="basil-accounts__list">
+              <template v-for="acct in institution.accounts" :key="acct.account_id">
+                <SwipeReveal
+                  v-if="acct.manual"
+                  :ref="el => setSwipeRef(acct.account_id, el)"
+                  class="basil-accounts__swipe-edit"
+                  @action="openEditManualAcct(institution, acct)"
+                  @click="openEditManualAcct(institution, acct)"
+                >
+                  <template #action>
+                    <q-icon name="edit" color="white" size="24px" />
                   </template>
-                </q-item-section>
-                <q-item-section side>
-                  <span
-                    class="basil-mono basil-accounts__balance"
-                    :style="{ color: balanceColor(acct) }"
-                  >
-                    {{ formatBalance(acct) }}
-                  </span>
-                </q-item-section>
-              </q-item>
+                  <q-item clickable v-ripple>
+                    <q-item-section>
+                      <q-item-label class="basil-accounts__acct-name">{{ acct.name }}</q-item-label>
+                      <q-item-label caption>{{ formatSubtype(acct.subtype) }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <span class="basil-mono basil-accounts__balance" :style="{ color: balanceColor(acct) }">
+                        {{ formatBalance(acct) }}
+                      </span>
+                    </q-item-section>
+                  </q-item>
+                </SwipeReveal>
+                <q-item v-else>
+                  <q-item-section>
+                    <q-item-label class="basil-accounts__acct-name">
+                      {{ acct.name }}
+                      <span v-if="acct.mask" class="basil-accounts__mask">{{ acct.mask }}</span>
+                    </q-item-label>
+                    <q-item-label caption>{{ formatSubtype(acct.subtype) }}</q-item-label>
+                    <!-- Credit utilization -->
+                    <template v-if="acct.type === 'credit' && acct.limit">
+                      <div class="basil-accounts__utilization q-mt-xs">
+                        <q-linear-progress
+                          :value="Math.abs(acct.current) / acct.limit"
+                          rounded
+                          size="6px"
+                          :color="utilizationColor(Math.abs(acct.current) / acct.limit)"
+                          track-color="grey-3"
+                          class="basil-accounts__utilization-bar"
+                        />
+                        <span class="basil-accounts__utilization-label">
+                          {{ Math.round((Math.abs(acct.current) / acct.limit) * 100) }}% of {{ formatCurrency(acct.limit) }}
+                        </span>
+                      </div>
+                    </template>
+                  </q-item-section>
+                  <q-item-section side>
+                    <span
+                      class="basil-mono basil-accounts__balance"
+                      :style="{ color: balanceColor(acct) }"
+                    >
+                      {{ formatBalance(acct) }}
+                    </span>
+                  </q-item-section>
+                </q-item>
+              </template>
             </q-list>
             <div v-else class="basil-accounts__no-balances">
               No balance data
@@ -259,11 +276,20 @@
             :options="institutionOptions"
             use-input input-debounce="0"
             new-value-mode="add-unique"
-            placeholder="e.g. Fidelity, My Credit Union"
+            clearable
+            :placeholder="manualInstitution ? '' : 'e.g. Fidelity, My Credit Union'"
             class="q-mb-sm"
             behavior="menu"
             @filter="filterInstitutions"
-          />
+          >
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section style="color: var(--basil-text-secondary); font-size: 0.8125rem;">
+                  Add new institution
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
           <q-input
             v-model="manualAccountName" label="Account name" outlined dense
             placeholder="e.g. Brokerage, Checking"
@@ -271,13 +297,9 @@
           />
           <q-select
             v-model="manualAccountType" label="Account type" outlined dense
-            :options="[
-              { label: 'Depository (checking, savings)', value: 'depository' },
-              { label: 'Credit card', value: 'credit' },
-              { label: 'Loan', value: 'loan' },
-              { label: 'Investment', value: 'investment' },
-            ]"
+            :options="accountTypeOptions"
             emit-value map-options
+            placeholder="Select account type"
             class="q-mb-sm"
           />
           <q-input
@@ -292,7 +314,7 @@
           <q-btn flat label="Cancel" @click="showManualForm = false" />
           <q-btn
             unelevated color="primary" label="Add Account"
-            :disable="!manualInstitution || !manualAccountName || manualBalance == null"
+            :disable="!manualInstitution || !manualAccountName || !manualAccountType || manualBalance == null"
             :loading="manualSaving"
             @click="saveManualAccount"
           />
@@ -320,23 +342,42 @@
             type="number" step="0.01" prefix="$"
           />
         </q-card-section>
-        <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn flat label="Cancel" @click="showEditManual = false" />
-          <q-btn
-            unelevated color="primary" label="Save"
-            :disable="editBalance == null"
-            :loading="editManualSaving"
-            @click="saveEditManual"
+        <q-card-actions class="q-px-md q-pb-md" style="justify-content: space-between;">
+          <q-btn flat icon="delete" label="Delete" color="negative"
+            :loading="editManualDeleting"
+            @click="confirmDeleteManual = true"
           />
+          <div>
+            <q-btn flat label="Cancel" @click="showEditManual = false" />
+            <q-btn
+              unelevated color="primary" label="Save"
+              :disable="editBalance == null"
+              :loading="editManualSaving"
+              @click="saveEditManual"
+            />
+          </div>
         </q-card-actions>
+        <div v-if="confirmDeleteManual" class="q-px-md q-pb-md" style="text-align: center;">
+          <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-2);">
+            Remove this account? This cannot be undone.
+          </div>
+          <div class="row justify-center q-gutter-sm">
+            <q-btn flat dense label="Keep" @click="confirmDeleteManual = false" />
+            <q-btn flat dense label="Remove" color="negative"
+              :loading="editManualDeleting"
+              @click="deleteManualAccount"
+            />
+          </div>
+        </div>
       </q-card>
     </BasilTray>
   </div>
 </template>
 
 <script>
-import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError, createManualAccount, updateManualAccount } from '@/api';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError, createManualAccount, updateManualAccount, deleteManualAccountApi } from '@/api';
 import BasilTray from '../components/BasilTray.vue';
+import SwipeReveal from '../components/SwipeReveal.vue';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
@@ -353,7 +394,7 @@ const ANIMATION = { animation: true, animationDuration: 800, animationEasing: 'c
 
 export default {
   name: 'AccountsView',
-  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray },
+  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray, SwipeReveal },
 
   data() {
     return {
@@ -367,15 +408,19 @@ export default {
       manualSaving: false,
       manualInstitution: '',
       manualAccountName: '',
-      manualAccountType: 'depository',
+      manualAccountType: null,
       manualBalance: null,
       institutionOptions: [],
+      swipeRefs: {},
       // Edit manual account
       showEditManual: false,
       editManualSaving: false,
       editItemId: null,
+      editAccountId: null,
       editAccountName: '',
-      editBalance: null
+      editBalance: null,
+      editManualDeleting: false,
+      confirmDeleteManual: false
     };
   },
 
@@ -562,6 +607,24 @@ export default {
       };
     },
 
+    accountTypeOptions() {
+      return [
+        { label: 'Checking', value: 'depository:checking' },
+        { label: 'Savings', value: 'depository:savings' },
+        { label: 'Money market', value: 'depository:money market' },
+        { label: 'CD', value: 'depository:cd' },
+        { label: 'Credit card', value: 'credit:credit card' },
+        { label: 'Auto loan', value: 'loan:auto' },
+        { label: 'Mortgage', value: 'loan:mortgage' },
+        { label: 'Student loan', value: 'loan:student' },
+        { label: 'Personal loan', value: 'loan:loan' },
+        { label: 'Brokerage', value: 'investment:brokerage' },
+        { label: '401k', value: 'investment:401k' },
+        { label: 'IRA', value: 'investment:ira' },
+        { label: 'Other investment', value: 'investment:other' },
+      ];
+    },
+
     lastUpdatedText() {
       const accts = this.allAccounts;
       if (accts.length === 0) return '';
@@ -703,6 +766,13 @@ export default {
       this.preDelete[institution] = false;
     },
 
+    async refreshAccountData() {
+      const user = await getOrAddUser();
+      this.$store.commit('setUser', user);
+      if (user.accountBalances) this.$store.commit('setAccountBalances', user.accountBalances);
+      if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
+    },
+
     filterInstitutions(val, update) {
       update(() => {
         const names = this.$store.state.user?.accounts || [];
@@ -718,18 +788,17 @@ export default {
     async saveManualAccount() {
       this.manualSaving = true;
       try {
+        const [type, subtype] = this.manualAccountType.split(':');
         const result = await createManualAccount({
           institution: this.manualInstitution.trim(),
           accountName: this.manualAccountName.trim(),
-          accountType: this.manualAccountType,
+          accountType: type,
+          accountSubtype: subtype,
           balance: this.manualBalance,
         });
         if (result) {
           // Refresh user data to pick up the new institution
-          const user = await getOrAddUser();
-          this.$store.commit('setUser', user);
-          if (user.accountBalances) this.$store.commit('setAccountBalances', user.accountBalances);
-          if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
+          await this.refreshAccountData();
           this.showManualForm = false;
           this.manualInstitution = '';
           this.manualAccountName = '';
@@ -743,33 +812,58 @@ export default {
       }
     },
 
-    openEditManual(institution) {
+    setSwipeRef(key, el) {
+      if (el) this.swipeRefs[key] = el;
+      else delete this.swipeRefs[key];
+    },
+
+    resetAllSwipes() {
+      for (const ref of Object.values(this.swipeRefs)) {
+        if (ref?.reset) ref.reset();
+      }
+    },
+
+    openEditManualAcct(institution, acct) {
+      this.resetAllSwipes();
       this.editItemId = institution.itemId;
-      const acct = institution.accounts[0];
+      this.editAccountId = acct?.account_id;
       this.editAccountName = acct?.name || '';
       this.editBalance = acct?.current ?? acct?.balance ?? 0;
+      this.confirmDeleteManual = false;
       this.showEditManual = true;
     },
 
     async saveEditManual() {
       this.editManualSaving = true;
       try {
-        const result = await updateManualAccount(this.editItemId, {
+        const result = await updateManualAccount(this.editAccountId, {
           balance: this.editBalance,
           accountName: this.editAccountName.trim(),
         });
         if (result) {
           // Refresh to pick up updated balances + snapshots
-          const user = await getOrAddUser();
-          this.$store.commit('setUser', user);
-          if (user.accountBalances) this.$store.commit('setAccountBalances', user.accountBalances);
-          if (user.balanceSnapshots) this.$store.commit('setBalanceSnapshots', user.balanceSnapshots);
+          await this.refreshAccountData();
           this.showEditManual = false;
         }
       } catch (err) {
         console.error('saveEditManual error:', err);
       } finally {
         this.editManualSaving = false;
+      }
+    },
+
+    async deleteManualAccount() {
+      this.editManualDeleting = true;
+      try {
+        const result = await deleteManualAccountApi(this.editAccountId);
+        if (result) {
+          await this.refreshAccountData();
+          this.showEditManual = false;
+        }
+      } catch (err) {
+        console.error('deleteManualAccount error:', err);
+      } finally {
+        this.editManualDeleting = false;
       }
     },
   },
@@ -782,4 +876,8 @@ export default {
 
 <style scoped>
 @import '../styles/accounts.css';
+
+.basil-accounts__swipe-edit :deep(.basil-swipe__action) {
+  background-color: var(--basil-info);
+}
 </style>

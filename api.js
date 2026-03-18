@@ -994,11 +994,29 @@ router.post('/updateBudgetLimit', async (req, res) => {
 
 const crypto = require('crypto');
 
+async function recomputeItemSnapshot(itemId) {
+  const pool = getPool();
+  const { rows: accounts } = await pool.query(
+    `SELECT type, balance FROM plaid_accounts WHERE item_id = $1`,
+    [itemId]
+  );
+  const net = accounts.reduce((sum, a) => {
+    const isLiability = a.type === 'credit' || a.type === 'loan';
+    return isLiability ? sum - Math.abs(a.balance) : sum + Number(a.balance);
+  }, 0);
+  const now = new Date();
+  await upsertBalanceSnapshot(itemId, {
+    date: now.toISOString().slice(0, 10),
+    net: Math.round(net * 100) / 100,
+    fetchedAt: now,
+  });
+}
+
 router.post('/manualAccount', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
-    const { institution, accountName, accountType, balance } = req.body;
+    const { institution, accountName, accountType, accountSubtype, balance } = req.body;
     if (!institution || !accountName || !accountType || balance == null) {
       return res.status(400).json({ message: 'institution, accountName, accountType, and balance are required' });
     }
@@ -1018,27 +1036,14 @@ router.post('/manualAccount', async (req, res) => {
     const pool = getPool();
     const now = new Date();
     await pool.query(
-      `INSERT INTO plaid_accounts (account_id, item_id, user_id, name, type, balance, balance_fetched_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [accountId, itemId, uid, accountName, accountType, balance, now]
+      `INSERT INTO plaid_accounts (account_id, item_id, user_id, name, type, subtype, balance, balance_fetched_at, manual)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+      [accountId, itemId, uid, accountName, accountType, accountSubtype || null, balance, now]
     );
-    // Recompute snapshot for this item (sum all accounts)
-    const { rows: accounts } = await pool.query(
-      `SELECT type, balance FROM plaid_accounts WHERE item_id = $1`,
-      [itemId]
-    );
-    const net = accounts.reduce((sum, a) => {
-      const isLiability = a.type === 'credit' || a.type === 'loan';
-      return isLiability ? sum - Math.abs(a.balance) : sum + Number(a.balance);
-    }, 0);
-    await upsertBalanceSnapshot(itemId, {
-      date: now.toISOString().slice(0, 10),
-      net: Math.round(net * 100) / 100,
-      fetchedAt: now,
-    });
+    await recomputeItemSnapshot(itemId);
     res.json({
       item: { id: itemId, institution, manual: !existing },
-      account: { accountId, name: accountName, type: accountType, balance, balanceFetchedAt: now },
+      account: { accountId, name: accountName, type: accountType, balance, balanceFetchedAt: now, manual: true },
     });
   } catch (error) {
     console.error('/manualAccount create error:', error);
@@ -1046,23 +1051,27 @@ router.post('/manualAccount', async (req, res) => {
   }
 });
 
-router.put('/manualAccount/:itemId', async (req, res) => {
+router.put('/manualAccount/:accountId', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
-    const { itemId } = req.params;
+    const { accountId } = req.params;
     const { balance, accountName } = req.body;
     if (balance == null) {
       return res.status(400).json({ message: 'balance is required' });
     }
-    // Verify item belongs to user and is manual
+    // Verify account belongs to user and is manual
     const pool = getPool();
-    const { rows: items } = await pool.query(
-      `SELECT id, access_token AS "accessToken" FROM plaid_items WHERE id = $1 AND user_id = $2`,
-      [itemId, uid]
+    const { rows } = await pool.query(
+      `SELECT account_id, item_id, manual FROM plaid_accounts
+       WHERE account_id = $1 AND user_id = $2`,
+      [accountId, uid]
     );
-    if (!items.length) return res.status(404).json({ message: 'Account not found' });
-    if (items[0].accessToken) return res.status(400).json({ message: 'Cannot manually update a Plaid-linked account' });
+    if (!rows.length) return res.status(404).json({ message: 'Account not found' });
+    if (!rows[0].manual) {
+      return res.status(400).json({ message: 'Cannot manually update a Plaid-linked account' });
+    }
+    const itemId = rows[0].item_id;
     // Update account balance (and name if provided)
     const now = new Date();
     const setClauses = ['balance = $1', 'balance_fetched_at = $2'];
@@ -1071,29 +1080,55 @@ router.put('/manualAccount/:itemId', async (req, res) => {
       setClauses.push(`name = $${params.length + 1}`);
       params.push(accountName);
     }
-    params.push(itemId);
+    params.push(accountId);
     await pool.query(
-      `UPDATE plaid_accounts SET ${setClauses.join(', ')} WHERE item_id = $${params.length}`,
+      `UPDATE plaid_accounts SET ${setClauses.join(', ')} WHERE account_id = $${params.length}`,
       params
     );
-    // Compute net for snapshot (need all accounts under this item for multi-account manual institutions)
-    const { rows: accounts } = await pool.query(
-      `SELECT type, balance FROM plaid_accounts WHERE item_id = $1`,
-      [itemId]
-    );
-    const net = accounts.reduce((sum, a) => {
-      const isLiability = a.type === 'credit' || a.type === 'loan';
-      return isLiability ? sum - Math.abs(a.balance) : sum + Number(a.balance);
-    }, 0);
-    await upsertBalanceSnapshot(itemId, {
-      date: now.toISOString().slice(0, 10),
-      net: Math.round(net * 100) / 100,
-      fetchedAt: now,
-    });
+    await recomputeItemSnapshot(itemId);
     res.json({ ok: true, balance, balanceFetchedAt: now });
   } catch (error) {
     console.error('/manualAccount update error:', error);
     res.status(500).json({ message: 'Failed to update manual account' });
+  }
+});
+
+router.delete('/manualAccount/:accountId', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { accountId } = req.params;
+    const pool = getPool();
+    // Verify account belongs to user and is manual
+    const { rows } = await pool.query(
+      `SELECT pa.account_id, pa.item_id, pa.manual,
+              pi.access_token AS "accessToken"
+       FROM plaid_accounts pa JOIN plaid_items pi ON pa.item_id = pi.id
+       WHERE pa.account_id = $1 AND pa.user_id = $2`,
+      [accountId, uid]
+    );
+    if (!rows.length) return res.status(404).json({ message: 'Account not found' });
+    const { item_id: itemId, accessToken } = rows[0];
+    if (!rows[0].manual) {
+      return res.status(400).json({ message: 'Cannot delete a Plaid-linked account' });
+    }
+    // Delete the account row
+    await pool.query(`DELETE FROM plaid_accounts WHERE account_id = $1`, [accountId]);
+    // Check if the item has any remaining accounts
+    const { rows: remaining } = await pool.query(
+      `SELECT account_id FROM plaid_accounts WHERE item_id = $1`,
+      [itemId]
+    );
+    if (remaining.length === 0 && !accessToken) {
+      // Manual-only institution with no accounts left — remove the item entirely
+      await pool.query(`DELETE FROM plaid_items WHERE id = $1`, [itemId]);
+    } else {
+      await recomputeItemSnapshot(itemId);
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('/manualAccount delete error:', error);
+    res.status(500).json({ message: 'Failed to delete account' });
   }
 });
 

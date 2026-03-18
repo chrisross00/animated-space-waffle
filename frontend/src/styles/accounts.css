@@ -109,6 +109,11 @@
   margin-top: var(--basil-space-1);
 }
 
+/* Account list separators (can't use q-list separator — SwipeReveal breaks direct child relationship) */
+.basil-accounts__list > * + * {
+  border-top: 1px solid var(--basil-border);
+}
+
 /* Last updated footer */
 .basil-accounts__updated {
   text-align: center;

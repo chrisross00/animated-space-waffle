@@ -672,7 +672,7 @@ async function findPlaidItems(userId) {
     `SELECT account_id AS "accountId", item_id AS "itemId",
             user_id AS "userId", name, official_name AS "officialName",
             mask, type, subtype, balance, available,
-            "limit", balance_fetched_at AS "balanceFetchedAt"
+            "limit", balance_fetched_at AS "balanceFetchedAt", manual
      FROM plaid_accounts WHERE item_id = ANY($1)`,
     [itemIds]
   );
@@ -709,6 +709,7 @@ async function findPlaidItems(userId) {
       available: a.available,
       limit: a.limit,
       fetchedAt: a.balanceFetchedAt,
+      ...(a.manual ? { manual: true } : {}),
     })) : null;
 
     // Build itemError from error columns
