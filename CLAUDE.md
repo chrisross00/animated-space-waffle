@@ -224,7 +224,14 @@ section instead of reading the whole file.
 - Background auto-sync: syncs with Plaid when data >4 hours stale, non-blocking
 - Transaction relationships: split detection (incoming + outgoing P2P), return/refund detection, review UI with confirm/dismiss/undo, effective date alignment, auto-recategorization
 - Plaid reconnect: detects stale tokens, surfaces reconnect prompt, launches Link in update mode
-- Post-triage Venmo CSV nudge: prompts import on "All caught up" screen when unenriched P2P payments were sorted
+- Pre-triage Venmo enrichment prompt: skippable CSV import offer before sorting unsorted P2P transactions
+- Post-triage Venmo CSV nudge: prompts import on "All caught up" screen when unenriched P2P payments were sorted (suppressed if pre-triage prompt was shown)
+- Accounts view (`/accounts`): net worth hero card, per-institution account list, balance snapshots sparkline chart, cash runway calculation, credit utilization bars
+- Manual accounts: add/edit/delete accounts for institutions Plaid doesn't support (balance-only, no transactions); swipe-to-edit on mobile, tap on desktop; grouped under existing or new institutions; `manual` boolean column on `plaid_accounts`; survives Plaid sync
+- Balance snapshots: daily upsert per institution on sync, aggregated for net worth graph; manual account snapshots recomputed on balance update
+- Bottom-sheet trays: all modals use `BasilTray` — bottom sheet on mobile with drag handle + swipe-to-dismiss, centered dialog on desktop
+- Unified transaction row design across budget category view and all-transactions table
+- PFC detail breakdown: stores and displays detailed Plaid Financial Category codes per category
 
 ---
 
@@ -275,18 +282,21 @@ section instead of reading the whole file.
       sessionStorage + Vuex store retain the previous user's data. The "Login as" flow
       should clear the store and sessionStorage before authenticating as the new user.
 
-### Prerequisites for Accounts & Balances feature
-These should be resolved before building the Accounts view. See `plans/accounts-balances.md`.
-
+### Accounts view (shipped)
 - [x] **Plaid item error handling + reconnect flow** — detects Plaid error codes on sync,
       surfaces "reconnect your account" banner in AccountsView, launches Plaid Link in
       update mode. Error test persona available for testing.
 - [x] **Sync failure visibility** — error toast on sync failure, orange warning badge
       on sync button when Plaid items have errors.
 - [x] **Dynamic `earliestDate`** — set to 30 days before today at link time in `plaid-api.js`.
-- [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal. Once
-      a dedicated Accounts view exists there will be overlap. Decide what stays in Profile
-      vs moves to Accounts before building the new view.
+- [x] **Manual accounts** — add/edit/delete for institutions Plaid doesn't support.
+      Balance-only, `manual` column on `plaid_accounts`, swipe-to-edit, institution
+      picker with two-step flow. Survives Plaid sync.
+- [x] **Balance snapshots + net worth graph** — daily upsert on sync, aggregated sparkline
+      in AccountsView. Same-day balance changes update the snapshot (upsert).
+- [ ] **ProfileView cleanup** — currently handles auth + linked accounts + removal.
+      AccountsView now exists with overlap. Decide what stays in Profile vs moves to
+      Accounts.
 
 ### Rule editor future operators
 Shipped: `contains` (name/merchant), `gt` / `lt` (amount) — implemented in all three
@@ -560,3 +570,22 @@ Never create classes starting with `q-` (Quasar's namespace).
 - **Local mobile testing**: Vite `host: 0.0.0.0`, CORS allows `192.168.*` in dev,
   `upgrade-insecure-requests` moved from HTML meta tag to helmet (production only).
   Admin Login As uses dynamic hostname instead of hardcoded localhost.
+- **Bottom-sheet trays**: all modals converted to `BasilTray` — bottom sheet on mobile
+  with drag handle + swipe-to-dismiss, centered dialog on desktop. Swipe-to-delete on
+  BudgetPlannerView category rows. Edit pencils removed from BudgetView category rows.
+- **Unified transaction rows**: consistent design across budget category view and
+  all-transactions table.
+- **PFC detail breakdown**: stores and displays detailed Plaid Financial Category codes;
+  single-PFC categories show their breakdown.
+- **Excluded txn fix**: excluded-only categories no longer disappear; exclude toggle
+  saves correctly.
+- **Balance snapshot upsert**: snapshots update same-day when balances change (was
+  insert-only, skipping subsequent syncs). Uses `ON CONFLICT DO UPDATE` with
+  `IS DISTINCT FROM` guard.
+- **Manual accounts**: add/edit/delete accounts for unsupported institutions. `manual`
+  boolean column on `plaid_accounts`. Two-step add flow (pick institution → account
+  details). Swipe-to-edit on mobile, tap on desktop. Survives Plaid sync.
+- **Pre-triage Venmo enrichment**: skippable CSV import prompt before sorting unsorted
+  P2P transactions. Post-triage nudge suppressed if already offered.
+- **iOS keyboard fix**: documented BasilTray keyboard jitter issue in DESIGN.md.
+  Short trays need sufficient content below inputs to avoid iOS Safari repositioning.
