@@ -279,7 +279,6 @@
             clearable
             :placeholder="manualInstitution ? '' : 'e.g. Fidelity, My Credit Union'"
             class="q-mb-sm"
-            behavior="menu"
             @filter="filterInstitutions"
           >
             <template v-slot:no-option>
