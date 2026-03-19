@@ -303,6 +303,11 @@ Shipped: `contains` (name/merchant), `gt` / `lt` (amount) — implemented in all
 layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - **Amount:** `between` (range with min + max) — not yet built
 
+### Production issues (current)
+- [ ] **Sync doesn't refresh UI** — after syncing via the sync button, new transactions
+      don't appear until the app is fully restarted. Pull-to-refresh also doesn't pick
+      them up. The store may not be re-fetching from DB after sync completes.
+
 ### Production issues (from initial launch testing)
 - [x] **Persist login across sessions** — JWT moved from sessionStorage to localStorage.
       Users stay logged in across tabs and browser restarts (until sign-out or 7-day expiry).
@@ -329,6 +334,12 @@ layers (`ruleUtils.js`, `categoryMapping.js`, `api.js`). Remaining:
 - [x] **Hide Plaid-managed categories from Rules view** — removed the "Plaid
       Auto-Categorization" section from RulesView. PFC mappings are managed via
       category settings, not the rules page.
+
+### Observability
+- [ ] **Sync log table** — lightweight audit trail for Plaid syncs. Store `synced_at`,
+      `institution`, `added_count`, `modified_count`, `removed_count` per sync call.
+      Helps detect anomalies (unexpected bulk removes, missing transactions). No cursor
+      storage needed — cursor history has limited value since recovery always resets to `''`.
 
 ### Tech debt
 - [ ] **iOS keyboard audit for BasilTray dialogs** — audit all `BasilTray` usages with
