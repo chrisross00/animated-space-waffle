@@ -225,9 +225,21 @@ async function fetchAndStoreBalances(uid) {
   for (const item of items) {
     const { accessToken, institution, id: itemId } = item;
     if (!accessToken) {
-      // Manual account — include cached balances
+      // Manual account — include cached balances + upsert snapshot
       if (item.accounts?.length) {
-        results[institution] = item.accounts.map(toManualBalance);
+        const manualBalances = item.accounts.map(toManualBalance);
+        results[institution] = manualBalances;
+        const manualNet = manualBalances.reduce((sum, acct) => {
+          const isLiability = acct.type === 'credit' || acct.type === 'loan';
+          const bal = isLiability ? (acct.current ?? 0) : (acct.available ?? acct.current ?? 0);
+          return isLiability ? sum - Math.abs(bal) : sum + bal;
+        }, 0);
+        const today = new Date().toISOString().slice(0, 10);
+        await upsertBalanceSnapshot(itemId, {
+          date: today,
+          net: Math.round(manualNet * 100) / 100,
+          fetchedAt: new Date(),
+        });
       }
       continue;
     }
