@@ -452,17 +452,23 @@ async function insertTransactions(transactions) {
 
       if (existing.rows.length > 0) {
         // Adopt Plaid's current transaction_id and account_id.
-        // Update transaction_tags FK reference first (no ON UPDATE CASCADE).
-        await client.query(
-          `UPDATE transaction_tags SET transaction_id = $1
-           WHERE transaction_id = $2`,
-          [t.transaction_id, existing.rows[0].transaction_id]
+        // Temporarily drop and re-add tags since FK has no ON UPDATE CASCADE.
+        const oldTxnId = existing.rows[0].transaction_id;
+        const tags = await client.query(
+          `DELETE FROM transaction_tags WHERE transaction_id = $1 RETURNING tag_id`,
+          [oldTxnId]
         );
         await client.query(
           `UPDATE transactions SET transaction_id = $1, account_id = $2
            WHERE id = $3`,
           [t.transaction_id, t.account_id || null, existing.rows[0].id]
         );
+        for (const tag of tags.rows) {
+          await client.query(
+            `INSERT INTO transaction_tags (transaction_id, tag_id) VALUES ($1, $2)`,
+            [t.transaction_id, tag.tag_id]
+          );
+        }
         continue;
       }
 
