@@ -71,6 +71,110 @@
   color: var(--basil-text-muted);
   margin-top: 2px;
 }
+
+/* ---- Landing page ---- */
+
+.basil-landing__hero {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--basil-space-7) var(--basil-space-5) var(--basil-space-6);
+  text-align: center;
+}
+
+.basil-landing__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--basil-radius-lg);
+  background: var(--basil-green-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--basil-space-6);
+}
+
+.basil-landing__headline {
+  font-size: 2.125rem;
+  font-weight: 400;
+  line-height: 1.15;
+  margin-bottom: var(--basil-space-4);
+  color: var(--basil-text);
+}
+
+.basil-landing__sub {
+  font-size: 1.0625rem;
+  color: var(--basil-text-secondary);
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto var(--basil-space-6);
+}
+
+.basil-landing__cta {
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-landing__props {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 var(--basil-space-5) var(--basil-space-7);
+}
+
+.basil-landing__prop {
+  display: flex;
+  gap: var(--basil-space-4);
+  padding: var(--basil-space-4) 0;
+  border-top: 1px solid var(--basil-border);
+}
+
+.basil-landing__prop:last-child {
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-landing__prop-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--basil-radius-md);
+  background: var(--basil-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.basil-landing__prop-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: var(--basil-space-1);
+  color: var(--basil-text);
+}
+
+.basil-landing__prop-desc {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  line-height: 1.5;
+}
+
+.basil-landing__footer {
+  text-align: center;
+  padding: var(--basil-space-5);
+  font-size: 0.8125rem;
+}
+
+.basil-landing__footer a {
+  color: var(--basil-text-muted);
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .basil-landing__hero {
+    padding: var(--basil-space-6) var(--basil-space-4) var(--basil-space-5);
+  }
+  .basil-landing__headline {
+    font-size: 1.875rem;
+  }
+  .basil-landing__props {
+    padding: 0 var(--basil-space-4) var(--basil-space-6);
+  }
+}
 </style>
 
 <template>
@@ -148,19 +252,23 @@
 
     </div>
 
-    <!-- Login screen — only when definitively not signed in -->
-    <div v-else>
-      <EmptyState
-        icon="lock_open"
-        heading="Welcome to Basil"
-        body="Track your spending, set budgets, and understand your finances. Sign in to get started."
-      >
+    <!-- Landing / login screen -->
+    <div v-else class="basil-landing">
+      <div class="basil-landing__hero">
+        <div class="basil-landing__icon">
+          <q-icon name="eco" size="32px" color="primary" />
+        </div>
+        <h1 class="basil-landing__headline basil-display">Know where your money goes.</h1>
+        <p class="basil-landing__sub">
+          Basil connects to your bank, sorts your transactions, and learns how you think about spending — so you don't have to do the same work twice.
+        </p>
         <q-btn
           unelevated
           color="primary"
+          icon="login"
           label="Sign in with Google"
           :loading="isLoading"
-          class="q-mt-sm"
+          class="basil-landing__cta"
           @click="signInWithGoogle"
         />
         <q-btn
@@ -169,10 +277,53 @@
           color="secondary"
           label="Login as test user"
           :loading="isLoading"
-          class="q-mt-sm q-ml-sm"
+          class="q-mt-sm"
           @click="devTestLogin"
         />
-      </EmptyState>
+      </div>
+
+      <div class="basil-landing__props">
+        <div class="basil-landing__prop">
+          <div class="basil-landing__prop-icon">
+            <q-icon name="auto_fix_high" size="20px" color="primary" />
+          </div>
+          <div>
+            <div class="basil-landing__prop-title">Categorize once, done forever.</div>
+            <div class="basil-landing__prop-desc">Move a transaction to a category and Basil remembers. Every similar transaction — past and future — follows suit.</div>
+          </div>
+        </div>
+        <div class="basil-landing__prop">
+          <div class="basil-landing__prop-icon">
+            <q-icon name="calendar_today" size="20px" color="primary" />
+          </div>
+          <div>
+            <div class="basil-landing__prop-title">See the month as it unfolds.</div>
+            <div class="basil-landing__prop-desc">Track spending by category, spot what's left, and catch surprises before they compound.</div>
+          </div>
+        </div>
+        <div class="basil-landing__prop">
+          <div class="basil-landing__prop-icon">
+            <q-icon name="show_chart" size="20px" color="primary" />
+          </div>
+          <div>
+            <div class="basil-landing__prop-title">Months of context, not just a snapshot.</div>
+            <div class="basil-landing__prop-desc">Spending patterns, cash flow, savings rate — watch the shape of your finances over time.</div>
+          </div>
+        </div>
+        <div class="basil-landing__prop">
+          <div class="basil-landing__prop-icon">
+            <q-icon name="lock" size="20px" color="primary" />
+          </div>
+          <div>
+            <div class="basil-landing__prop-title">Your data stays yours.</div>
+            <div class="basil-landing__prop-desc">No third-party cloud. No data selling. Your financial life lives on infrastructure you can trust.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="basil-landing__footer">
+        <router-link to="/privacy">Privacy Policy</router-link>
+      </div>
     </div>
 
     <BasilConfirmTray
