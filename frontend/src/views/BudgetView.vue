@@ -456,7 +456,7 @@
           :items="sortedTableTransactions"
           :virtual-scroll-item-size="56"
           @virtual-scroll="onTableVirtualScroll"
-          style="max-height: calc(100dvh - 200px)"
+          style="max-height: calc(100dvh - 200px); min-height: calc(100dvh - 300px)"
           class="basil-txn-table"
           v-slot="{ item, index }"
         >
