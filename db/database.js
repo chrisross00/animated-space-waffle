@@ -451,7 +451,13 @@ async function insertTransactions(transactions) {
       );
 
       if (existing.rows.length > 0) {
-        // Adopt Plaid's current transaction_id and account_id
+        // Adopt Plaid's current transaction_id and account_id.
+        // Update transaction_tags FK reference first (no ON UPDATE CASCADE).
+        await client.query(
+          `UPDATE transaction_tags SET transaction_id = $1
+           WHERE transaction_id = $2`,
+          [t.transaction_id, existing.rows[0].transaction_id]
+        );
         await client.query(
           `UPDATE transactions SET transaction_id = $1, account_id = $2
            WHERE id = $3`,

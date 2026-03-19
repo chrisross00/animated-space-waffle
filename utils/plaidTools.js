@@ -79,7 +79,9 @@ async function getNewPlaidTransactions(uid) {
         const updatedTxns = [];
 
         while (hasMore) {
+          console.log(`Syncing ${response.account} with cursor: ${next_cursor ? next_cursor.slice(0, 20) + '...' : '(empty)'}`);
           const newTxns = await plaidTransactionsSync(token, next_cursor, userId, response.plaidEnv);
+          console.log(`${response.account} result:`, JSON.stringify({ added: newTxns?.added?.length, modified: newTxns?.modified?.length, removed: newTxns?.removed?.length, has_more: newTxns?.has_more, itemError: newTxns?.itemError }));
 
           // Item error — persist on the account doc, skip this institution
           if (newTxns?.itemError) {
