@@ -235,6 +235,66 @@ section instead of reading the whole file.
 
 ---
 
+## Pre-release projects
+
+Three major features prioritized for release readiness. Ship in order — each
+builds on the last.
+
+### 1. Onboarding: auto-categorize + first insight (NEXT)
+The current onboarding lands users on a dashboard full of "To Sort" transactions —
+homework, not insight. 73% of fintech users disengage in week one. The fix is
+reducing time-to-value by showing users something meaningful immediately.
+
+**Three moves, in order:**
+- **Auto-categorize on first sync.** Run PFC mapping + existing rules engine
+  aggressively at first contact. Most transactions should arrive pre-sorted, not
+  in "To Sort." The categorization engine exists — it just needs to run earlier
+  and more aggressively for new users.
+- **"Here's what we found" summary card after sync.** Show spending total, top 3
+  categories by spend, and "N transactions need your help." Transforms first
+  dashboard visit from "here's your homework" to "here's what we already know."
+- **Replace sync spinner with preview cards.** 3-4 animated cards explaining what
+  the app does during the 10-60s Plaid wait. Turns dead time into engagement.
+- **Post-onboarding nudges (behavior-triggered).** After first visit with unsorted
+  transactions: surface triage flow. After categorizing 5: celebrate + show rules
+  created. After first week with no budget set: nudge on Projections card.
+
+**Effort:** Medium. Categorization engine exists. Mostly frontend + summary card.
+**Research:** `plans/onboarding-research.md`
+
+### 2. Flex budgets: fixed/variable category grouping
+Monarch's flex budgeting reduces cognitive load to one number: income minus fixed
+costs minus savings = what's left to spend. Basil already has a `fixed` boolean
+on the categories schema (never used in frontend).
+
+**The play:**
+- Add fixed/variable toggle to Edit Category dialog
+- Group BudgetView into "Fixed" and "Flexible" sections
+- Show "Flexible spending remaining" summary card
+- Per-category limits within flex remain optional
+
+**Effort:** Small. Schema exists. Pure frontend grouping + summary computation.
+**Research:** `plans/flex-budgets-research.md`
+
+### 3. Transaction splitting
+Split a single transaction across multiple categories (Costco run = groceries +
+household, Venmo blob = dinner + tickets). Table stakes — all major competitors
+(YNAB, Monarch, Copilot, Lunch Money) support this.
+
+**MVP:** Manual amount-based splitting from transaction detail. Parent row marked
+`is_split_parent` and excluded from totals. Children get own categories. Unsplit
+restores original. No auto-split rules in V1.
+
+**Data model:** Two new columns on `transactions` — `parent_transaction_id` and
+`is_split_parent`. Existing queries add `WHERE is_split_parent IS NOT TRUE`.
+
+**Highest risk:** Plaid sync updating parent amount after user has split it.
+
+**Effort:** Medium-large. Schema + API + split editor UI + filtering across all views.
+**Research:** `plans/transaction-splitting-research.md`
+
+---
+
 ## Things to build next
 
 ### High value
