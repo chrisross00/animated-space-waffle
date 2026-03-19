@@ -902,6 +902,9 @@
       };
     },
     computed: {
+      storeTransactions() {
+        return store.state.transactions;
+      },
       isOnboarded() {
         return !!store.state.user?.onboarded_at;
       },
@@ -2089,6 +2092,13 @@ monthStats() {
         this.groupTransactions();
         // this.resetLastFetch(); // alternative is to update the store
         this.monthlyStats = this.monthStats(this.groupedTransactions)
+      },
+      // Rebuild when store transactions change from external sources (sync button, pull-to-refresh)
+      storeTransactions(newTxns) {
+        if (!newTxns || !this.isLoggedIn) return;
+        this.transactions = newTxns;
+        this.groupTransactions();
+        this.monthlyStats = this.monthStats(this.groupedTransactions);
       },
     },
     async mounted() {
