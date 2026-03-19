@@ -677,7 +677,7 @@
             <div class="basil-triage__amount basil-mono">
               {{ triageItems[0].amount < 0 ? `-$${Math.abs(triageItems[0].amount).toFixed(2)}` : `$${triageItems[0].amount.toFixed(2)}` }}
             </div>
-            <div class="basil-triage__merchant">{{ triageItems[0].merchant_name || triageItems[0].name }}</div>
+            <div class="basil-triage__merchant">{{ triageItems[0].venmo_note || triageItems[0].merchant_name || triageItems[0].name }}</div>
             <div v-if="!triageItems[0].merchant_name && triageItems[0].account && triageItems[0].account !== '?'" class="basil-triage__institution">{{ triageItems[0].account }}</div>
             <div class="basil-triage__date">{{ formatDate(triageItems[0].date) }}</div>
             <div

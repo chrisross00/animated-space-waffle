@@ -147,6 +147,18 @@ describe('matchVenmoRows', () => {
     const result = matchVenmoRows([venmoRows[0]], dupePlaid);
     expect(result.matches).toHaveLength(1);
     expect(result.matches[0].plaidTransaction.transaction_id).toBe('close');
+    // Date clearly distinguishes (5-day gap between candidates) → still high confidence
+    expect(result.matches[0].confidence).toBe('high');
+  });
+
+  test('assigns medium confidence when multiple matches have similar dates', () => {
+    const ambiguousPlaid = [
+      { transaction_id: 'pd1', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-04', account: 'Venmo' },
+      { transaction_id: 'pd2', name: 'Venmo', merchant_name: 'Venmo', amount: 182.40, date: '2026-03-05', account: 'Venmo' },
+    ];
+    const result = matchVenmoRows([venmoRows[0]], ambiguousPlaid);
+    expect(result.matches).toHaveLength(1);
+    // Dates are only 1 day apart — ambiguous, so medium confidence
     expect(result.matches[0].confidence).toBe('medium');
   });
 

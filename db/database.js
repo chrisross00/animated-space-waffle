@@ -395,7 +395,7 @@ async function findTransactionsPaginated(userId, { page = 1, limit = 100, search
   let paramIdx = 2;
 
   if (search) {
-    whereExtra = ` AND (name ILIKE $${paramIdx} OR merchant_name ILIKE $${paramIdx} OR mapped_category ILIKE $${paramIdx})`;
+    whereExtra = ` AND (name ILIKE $${paramIdx} OR merchant_name ILIKE $${paramIdx} OR mapped_category ILIKE $${paramIdx} OR venmo_counterparty ILIKE $${paramIdx} OR venmo_note ILIKE $${paramIdx})`;
     params.push(`%${search}%`);
     paramIdx++;
   }

@@ -122,9 +122,14 @@ function parseCSVLine(line) {
  *   1. Transaction's `account`, `merchant_name`, or `name` contains "venmo" (case-insensitive)
  *   2. Amount matches (absolute value, within 1 cent for float precision)
  *
- * Date is NOT used as a filter (Venmo and Plaid dates often differ by several
- * days) but IS used as a tiebreaker when multiple transactions share the same
- * amount — the closest date wins.
+ * Amount match is the primary matcher. Date is NOT used as a filter (Venmo and
+ * Plaid dates often differ by several days) but IS used as a tiebreaker when
+ * multiple transactions share the same amount — the closest date wins.
+ *
+ * Confidence levels:
+ *   - HIGH: single amount match (no ambiguity), or multiple matches but date
+ *     proximity clearly distinguishes the best candidate (>= 2 day gap)
+ *   - MEDIUM: multiple amount matches with similar date proximity (ambiguous)
  *
  * @param {Array} venmoRows     Output of parseVenmoCsv()
  * @param {Array} plaidTxns     Array of Plaid transaction documents
@@ -185,7 +190,20 @@ function matchVenmoRows(venmoRows, plaidTxns) {
     });
 
     const best = candidates[0];
-    const confidence = candidates.length === 1 ? 'high' : 'medium';
+
+    // Confidence: exact amount match is always high unless genuinely ambiguous.
+    // Ambiguous = multiple candidates with the same (or very close) date proximity,
+    // so date can't clearly distinguish them.
+    let confidence;
+    if (candidates.length === 1) {
+      confidence = 'high';
+    } else {
+      const bestDiff = Math.abs(dateDiffDays(row.date, (best.date || '').substring(0, 10)));
+      const runnerUpDiff = Math.abs(dateDiffDays(row.date, (candidates[1].date || '').substring(0, 10)));
+      // If the best candidate is clearly closer in date (>= 2 day gap to runner-up),
+      // it's a confident pick. Otherwise it's ambiguous.
+      confidence = (runnerUpDiff - bestDiff) >= 2 ? 'high' : 'medium';
+    }
     claimed.add(best.transaction_id);
 
     matches.push({
