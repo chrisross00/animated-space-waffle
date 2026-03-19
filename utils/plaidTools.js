@@ -46,8 +46,8 @@ async function plaidTransactionsSync (access_token, cursor=null, uid, plaidEnv='
 
     if (data.added.length === 0 && data.modified.length === 0 && data.removed.length === 0) {
       console.log(newTxns, "\nplaidTransactionsSync(): All transactions up to date for this account")
-      let data = "All transactions up to date for this account"
-      return data;
+      // Return the cursor even when no changes — caller needs it to persist
+      return { added: [], modified: [], removed: [], next_cursor: data.next_cursor, has_more: false };
     } else {
       console.log(newTxns, "\nplaidTransactionsSync(): new Transactions and userId mapped")
         return data;
@@ -123,7 +123,7 @@ async function getNewPlaidTransactions(uid) {
         response.prev_cursor = response.next_cursor;
         response.next_cursor = next_cursor;
 
-        if (response.next_cursor && response.token && response.newTxns === true) {
+        if (response.next_cursor && response.token) {
           await updatePlaidCursors(response, userId);
         }
       }
