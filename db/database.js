@@ -436,6 +436,30 @@ async function insertTransactions(transactions) {
       const pfc = t.personal_finance_category
         ? [t.personal_finance_category.primary]
         : (t.plaid_pfc || null);
+
+      // Check for existing transaction with same real-world identity but different
+      // Plaid transaction_id and account_id (e.g., migrated data with stale IDs).
+      // If found, adopt the new Plaid IDs so future syncs work correctly.
+      // Only reconcile when account_id differs — same account_id means it's a
+      // legitimate second transaction (e.g., two coffees on the same day).
+      const existing = await client.query(
+        `SELECT id, transaction_id, account_id FROM transactions
+         WHERE user_id = $1 AND name = $2 AND amount = $3 AND date = $4 AND account = $5
+           AND account_id <> $6
+         LIMIT 1`,
+        [t.userId, t.name, t.amount, t.date, t.account || null, t.account_id || '']
+      );
+
+      if (existing.rows.length > 0) {
+        // Adopt Plaid's current transaction_id and account_id
+        await client.query(
+          `UPDATE transactions SET transaction_id = $1, account_id = $2
+           WHERE id = $3`,
+          [t.transaction_id, t.account_id || null, existing.rows[0].id]
+        );
+        continue;
+      }
+
       await client.query(
         `INSERT INTO transactions (
            transaction_id, user_id, account_id, name, merchant_name,
