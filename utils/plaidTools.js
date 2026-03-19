@@ -1,5 +1,5 @@
 const { forEnv } = require('./plaidClient');
-const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, upsertBalanceSnapshot } = require('../db/database');
+const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, upsertBalanceSnapshot, insertSyncLog } = require('../db/database');
 const { getMappingRuleList, mapTransactions } = require('./categoryMapping');
 
 async function getAccountData(uid) {
@@ -134,8 +134,10 @@ async function getNewPlaidTransactions(uid) {
     const addedTxns = updatedResponses.flatMap(r => (r.added || []).map(t => ({ ...t, account: r.account })));
     const mappedTxns = await mapTransactions(addedTxns, ruleList, compoundRules);
 
+    let reconciledCount = 0;
     if (mappedTxns.length > 0) {
-      await insertTransactions(mappedTxns);
+      const result = await insertTransactions(mappedTxns);
+      reconciledCount = result?.reconciled || 0;
     }
 
     // Handle modified transactions — update mutable fields without touching mappedCategory
@@ -157,6 +159,30 @@ async function getNewPlaidTransactions(uid) {
     if (removedIds.length > 0) {
       const deleteResult = await deleteTransactionsByIds(userId, removedIds);
       console.log('deletedRemovedTransactions', deleteResult);
+    }
+
+    // Log sync results per institution
+    const syncByInstitution = {};
+    for (const r of updatedResponses) {
+      const inst = r.account || 'unknown';
+      if (!syncByInstitution[inst]) syncByInstitution[inst] = { added: 0, modified: 0, removed: 0 };
+      syncByInstitution[inst].added += (r.added || []).length;
+      syncByInstitution[inst].modified += (r.modified || []).length;
+      syncByInstitution[inst].removed += (r.removed || []).length;
+    }
+    for (const [institution, counts] of Object.entries(syncByInstitution)) {
+      if (counts.added + counts.modified + counts.removed > 0) {
+        await insertSyncLog({
+          userId,
+          institution,
+          addedCount: counts.added,
+          modifiedCount: counts.modified,
+          removedCount: counts.removed,
+        });
+      }
+    }
+    if (reconciledCount > 0) {
+      console.log(`Reconciled ${reconciledCount} transaction ID(s) to match Plaid`);
     }
 
     console.log('/getnew: done checking for new Plaid transactions...');

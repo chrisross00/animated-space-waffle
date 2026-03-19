@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f5f1eb;
+    color: #1a1a14;
+    padding: 40px 24px;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #6b6860;
+    font-size: 0.9375rem;
+    margin-bottom: 40px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .option {
+    background: white;
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .option:hover { border-color: #3d8b6c; transform: translateY(-2px); }
+  .option.selected { border-color: #3d8b6c; }
+  .option h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-top: 20px;
+    color: #1a1a14;
+  }
+  .option p {
+    font-size: 0.8125rem;
+    color: #6b6860;
+    margin-top: 6px;
+    line-height: 1.4;
+  }
+  .logo {
+    display: inline-block;
+    position: relative;
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.75rem;
+    color: #1a1a14;
+    letter-spacing: -0.01em;
+  }
+
+  /* A: Current — no color */
+  .logo-a { /* plain */ }
+
+  /* B: Watercolor blob behind */
+  .logo-b { position: relative; z-index: 1; }
+  .logo-b::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -12px;
+    right: -12px;
+    bottom: -4px;
+    background: radial-gradient(ellipse at 40% 50%, rgba(61,139,108,0.18) 0%, rgba(61,139,108,0.08) 50%, transparent 70%);
+    border-radius: 50% 60% 45% 55% / 50% 45% 55% 50%;
+    z-index: -1;
+    filter: blur(2px);
+    transform: rotate(-3deg);
+  }
+
+  /* C: Subtle underline wash */
+  .logo-c { position: relative; z-index: 1; }
+  .logo-c::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    bottom: 2px;
+    height: 10px;
+    background: linear-gradient(90deg, rgba(61,139,108,0.25) 0%, rgba(61,139,108,0.12) 60%, transparent 100%);
+    border-radius: 4px;
+    z-index: -1;
+    transform: rotate(-1deg);
+  }
+
+  /* D: Leaf dot on the i */
+  .logo-d .leaf {
+    display: inline-block;
+    position: relative;
+  }
+  .logo-d .leaf::after {
+    content: '🌿';
+    position: absolute;
+    top: -6px;
+    right: -14px;
+    font-size: 14px;
+    transform: rotate(-30deg);
+  }
+
+  /* E: Green first letter */
+  .logo-e .green { color: #3d8b6c; }
+
+  /* F: Circle mark */
+  .logo-f { position: relative; z-index: 1; }
+  .logo-f::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: -16px;
+    right: -16px;
+    bottom: -8px;
+    border: 2.5px solid rgba(61,139,108,0.3);
+    border-radius: 50% 45% 50% 45% / 45% 50% 45% 50%;
+    z-index: -1;
+    transform: rotate(-2deg);
+  }
+
+  /* Dark bg preview */
+  .dark-row {
+    max-width: 900px;
+    margin: 40px auto 0;
+    background: #1a1a14;
+    border-radius: 12px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 24px;
+    text-align: center;
+  }
+  .dark-row .logo { color: #e8e4dd; }
+  .dark-label {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 0.75rem;
+    color: #6b6860;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<h2>Basil Wordmark — Color Accent Options</h2>
+<p class="subtitle">Click your favorite. All use the existing DM Serif Display font.</p>
+
+<div class="grid">
+  <div class="option" onclick="document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+    <span class="logo logo-a">Basil</span>
+    <h3>A. Current</h3>
+    <p>No color. Clean and confident. Lets the typography do the work.</p>
+  </div>
+
+  <div class="option" onclick="document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+    <span class="logo logo-b">Basil</span>
+    <h3>B. Watercolor wash</h3>
+    <p>Soft green bloom behind the text. Organic, handmade feel. Your original instinct.</p>
+  </div>
+
+  <div class="option" onclick="document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+    <span class="logo logo-c">Basil</span>
+    <h3>C. Underline wash</h3>
+    <p>Green highlight stroke under the word. Editorial, like a marker on paper.</p>
+  </div>
+
+  <div class="option" onclick="document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+    <span class="logo logo-e"><span class="green">B</span>asil</span>
+    <h3>D. Green capital</h3>
+    <p>Just the B in green. Minimal, brand-colored. Works at any size.</p>
+  </div>
+
+  <div class="option" onclick="document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));this.classList.add('selected')">
+    <span class="logo logo-f">Basil</span>
+    <h3>E. Hand-drawn circle</h3>
+    <p>Irregular circle around the word. Notebook doodle feel. Warm and personal.</p>
+  </div>
+</div>
+
+<!-- Dark mode preview -->
+<p class="dark-label" style="margin-top: 40px;">Dark mode preview</p>
+<div class="dark-row">
+  <span class="logo logo-a">Basil</span>
+  <span class="logo logo-b">Basil</span>
+  <span class="logo logo-c">Basil</span>
+  <span class="logo logo-e"><span class="green">B</span>asil</span>
+  <span class="logo logo-f">Basil</span>
+</div>
+
+</body>
+</html>

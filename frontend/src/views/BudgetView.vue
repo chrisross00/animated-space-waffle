@@ -2074,28 +2074,32 @@ monthStats() {
       },
       // category watchers - updates the client with response data so you don't have to hit db again
       'updatedCategory': function(t) {
+        this._internalMutation = true;
         store.commit("updateCategory", t)
         this.groupTransactions();
         this.monthlyStats = this.monthStats(this.groupedTransactions) // abstract to a method setMonthlyStats
-        // this.resetLastFetch();  
+        this.$nextTick(() => { this._internalMutation = false; });
       },
       'addedCategory': function(t) {
+        this._internalMutation = true;
         store.commit('addCategory', t)
         this.categoryMonthlyLimits = [];
         this.categoryMonthlyLimits.push(...store.state.categories)
         this.groupTransactions();
-        this.monthlyStats = this.monthStats(this.groupedTransactions); // abstract to a method setMonthlyStats
-        // this.resetLastFetch(); 
+        this.monthlyStats = this.monthStats(this.groupedTransactions);
+        this.$nextTick(() => { this._internalMutation = false; });
       },
       'updatedTransaction' : function(t) { // updates go here if you want client to auto-update w.o refresh
+        this._internalMutation = true;
         store.commit('updateTransaction', t)
         this.groupTransactions();
-        // this.resetLastFetch(); // alternative is to update the store
         this.monthlyStats = this.monthStats(this.groupedTransactions)
+        this.$nextTick(() => { this._internalMutation = false; });
       },
-      // Rebuild when store transactions change from external sources (sync button, pull-to-refresh)
+      // Rebuild when store transactions change from external sources (sync button, pull-to-refresh).
+      // Skip when triggered by internal mutations (updatedTransaction, etc.) to avoid double-regroup.
       storeTransactions(newTxns) {
-        if (!newTxns || !this.isLoggedIn) return;
+        if (!newTxns || !this.isLoggedIn || this._internalMutation) return;
         this.transactions = newTxns;
         this.groupTransactions();
         this.monthlyStats = this.monthStats(this.groupedTransactions);

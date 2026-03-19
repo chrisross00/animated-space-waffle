@@ -427,9 +427,10 @@ async function findTransactionsPaginated(userId, { page = 1, limit = 100, search
 }
 
 async function insertTransactions(transactions) {
-  if (!transactions || transactions.length === 0) return;
+  if (!transactions || transactions.length === 0) return { reconciled: 0 };
   const pool = getPool();
   const client = await pool.connect();
+  let reconciled = 0;
   try {
     await client.query('BEGIN');
     for (const t of transactions) {
@@ -469,6 +470,7 @@ async function insertTransactions(transactions) {
             [t.transaction_id, tag.tag_id]
           );
         }
+        reconciled++;
         continue;
       }
 
@@ -497,6 +499,7 @@ async function insertTransactions(transactions) {
       );
     }
     await client.query('COMMIT');
+    return { reconciled };
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
@@ -1179,6 +1182,19 @@ async function nukeAllUserData(userId) {
 }
 
 // ========================
+//  SYNC LOG
+// ========================
+
+async function insertSyncLog({ userId, institution, addedCount, modifiedCount, removedCount }) {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO sync_log (user_id, institution, added_count, modified_count, removed_count)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, institution, addedCount || 0, modifiedCount || 0, removedCount || 0]
+  );
+}
+
+// ========================
 //  EXPORTS
 // ========================
 
@@ -1253,6 +1269,8 @@ module.exports = {
   findTagSummary,
   findTagCategoryBreakdown,
   findTagTransactions,
+  // Sync Log
+  insertSyncLog,
   // Utilities (exported for testing)
   buildSetClause,
   conditionsToSqlWhere,
