@@ -128,8 +128,8 @@
       </q-list>
     </q-drawer>
 
-    <!-- Mobile bottom nav — hidden on desktop -->
-    <q-footer v-if="$store.state.session" class="lt-sm basil-bottom-nav">
+    <!-- Mobile bottom nav — hidden on desktop and when keyboard is open -->
+    <q-footer v-if="$store.state.session" v-show="!keyboardOpen" class="lt-sm basil-bottom-nav">
       <q-tabs align="justify" class="basil-bottom-tabs">
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
         <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
@@ -409,6 +409,7 @@ export default {
       syncing: false,
       hasError: false,
       venmoDialogOpen: false,
+      keyboardOpen: false,
     }
   },
 
@@ -459,10 +460,15 @@ export default {
 
   mounted() {
     window.addEventListener('scroll', this.onScroll, { passive: true });
+    // Hide bottom nav when keyboard opens on mobile (iOS PWA)
+    window.addEventListener('focusin', this.onFocusIn);
+    window.addEventListener('focusout', this.onFocusOut);
   },
 
   beforeUnmount() {
     window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('focusin', this.onFocusIn);
+    window.removeEventListener('focusout', this.onFocusOut);
   },
 
   methods: {
@@ -474,6 +480,14 @@ export default {
     },
     onScroll() {
       this.headerScrolled = window.scrollY > 4;
+    },
+    onFocusIn(e) {
+      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') {
+        this.keyboardOpen = true;
+      }
+    },
+    onFocusOut() {
+      this.keyboardOpen = false;
     },
     async handleSync() {
       if (this.syncing) return;
