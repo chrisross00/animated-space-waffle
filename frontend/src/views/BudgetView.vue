@@ -947,7 +947,9 @@
           rows = rows.filter(t =>
             (t.name && t.name.toLowerCase().includes(q)) ||
             (t.merchant_name && t.merchant_name.toLowerCase().includes(q)) ||
-            (t.mappedCategory && t.mappedCategory.toLowerCase().includes(q))
+            (t.mappedCategory && t.mappedCategory.toLowerCase().includes(q)) ||
+            (t.venmo_counterparty && t.venmo_counterparty.toLowerCase().includes(q)) ||
+            (t.venmo_note && t.venmo_note.toLowerCase().includes(q))
           );
         }
         if (this.tableMonth) {
