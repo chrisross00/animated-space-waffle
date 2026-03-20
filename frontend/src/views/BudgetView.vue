@@ -84,32 +84,61 @@
             <span class="basil-card-period">{{ selectedDate.display }}</span>
           </div>
 
-          <!-- Spent vs Earned -->
-          <div class="basil-primary-stats">
-            <div class="basil-primary-stat">
-              <div class="basil-primary-stat__amount basil-display">
-                ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+          <!-- Traditional layout (no flex budget) -->
+          <template v-if="!flexBudget">
+            <!-- Spent vs Earned -->
+            <div class="basil-primary-stats">
+              <div class="basil-primary-stat">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">spent</div>
               </div>
-              <div class="basil-primary-stat__label">spent</div>
-            </div>
-            <div class="basil-primary-stats__divider"></div>
-            <div class="basil-primary-stat basil-primary-stat--earned">
-              <div class="basil-primary-stat__amount basil-display">
-                ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-primary-stat basil-primary-stat--earned">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">earned</div>
               </div>
-              <div class="basil-primary-stat__label">earned</div>
             </div>
-          </div>
 
-          <div class="basil-card-rule"></div>
+            <div class="basil-card-rule"></div>
 
-          <!-- Net position — hero stat -->
-          <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
-            <div class="basil-net__amount basil-display">
-              {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+            <!-- Net position — hero stat -->
+            <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
+              <div class="basil-net__amount basil-display">
+                {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+              </div>
+              <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
             </div>
-            <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
-          </div>
+          </template>
+
+          <!-- Compact actuals (flex mode) -->
+          <template v-else>
+            <div class="basil-actuals-3col">
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display" style="color: var(--basil-positive)">
+                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">earned</div>
+              </div>
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">spent</div>
+              </div>
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display" :style="{ color: netPositive ? 'var(--basil-positive)' : 'var(--basil-negative)' }">
+                  {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">free cash flow</div>
+              </div>
+            </div>
+          </template>
 
           <!-- Secondary stats -->
           <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">

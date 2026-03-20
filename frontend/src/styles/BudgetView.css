@@ -259,6 +259,19 @@
   margin-top: 4px;
 }
 
+/* ---- Compact 3-column actuals (flex mode) ---- */
+.basil-actuals-3col {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: var(--basil-space-4);
+}
+.basil-actuals-col {
+  flex: 1;
+  text-align: center;
+}
+.basil-actuals-col:first-child { text-align: left; }
+.basil-actuals-col:last-child { text-align: right; }
+
 /* ---- Horizontal rule ---- */
 .basil-card-rule {
   height: 1px;
