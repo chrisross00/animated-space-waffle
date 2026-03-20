@@ -240,7 +240,17 @@ section instead of reading the whole file.
 Three major features prioritized for release readiness. Ship in order — each
 builds on the last.
 
-### 1. Onboarding: auto-categorize + first insight (NEXT)
+### 1. Budget summary hero card — SHIPPED
+BudgetView now leads with a "left to spend" hero card showing income minus
+expenses minus savings, with animated numbers. Compact 3-column Actuals card
+below (earned | spent | free cash flow). Optional "Fixed costs" summary line
+when categories are flagged. Replaces the old Projections card.
+- Fixed toggle available in Edit Category dialog (expense categories only)
+- `Rent & Utilities` seeded as fixed by default for new users
+- Budget Planner (`/plan`) now opens Edit Category dialog on row click
+  (replaces inline editing)
+
+### 2. Onboarding: auto-categorize + first insight (NEXT)
 The current onboarding lands users on a dashboard full of "To Sort" transactions —
 homework, not insight. 73% of fintech users disengage in week one. The fix is
 reducing time-to-value by showing users something meaningful immediately.
@@ -261,20 +271,6 @@ reducing time-to-value by showing users something meaningful immediately.
 
 **Effort:** Medium. Categorization engine exists. Mostly frontend + summary card.
 **Research:** `plans/onboarding-research.md`
-
-### 2. Flex budgets: fixed/variable category grouping
-Monarch's flex budgeting reduces cognitive load to one number: income minus fixed
-costs minus savings = what's left to spend. Basil already has a `fixed` boolean
-on the categories schema (never used in frontend).
-
-**The play:**
-- Add fixed/variable toggle to Edit Category dialog
-- Group BudgetView into "Fixed" and "Flexible" sections
-- Show "Flexible spending remaining" summary card
-- Per-category limits within flex remain optional
-
-**Effort:** Small. Schema exists. Pure frontend grouping + summary computation.
-**Research:** `plans/flex-budgets-research.md`
 
 ### 3. Transaction splitting
 Split a single transaction across multiple categories (Costco run = groceries +
@@ -660,3 +656,15 @@ Never create classes starting with `q-` (Quasar's namespace).
   P2P transactions. Post-triage nudge suppressed if already offered.
 - **iOS keyboard fix**: documented BasilTray keyboard jitter issue in DESIGN.md.
   Short trays need sufficient content below inputs to avoid iOS Safari repositioning.
+- **Transaction ID reconciliation**: `insertTransactions` reconciles stale Plaid IDs
+  from MongoDB migration by matching on (name, amount, date, account). Tags preserved
+  via delete/re-insert. Sync log table (`sync_log`) records per-institution sync stats.
+- **BudgetView auto-refresh**: watches `store.state.transactions` so UI updates after
+  sync without app restart. Bottom nav hides when iOS keyboard is open.
+- **Budget summary hero card**: BudgetView leads with "left to spend" hero card,
+  compact 3-column Actuals. Fixed costs as optional summary line. Animated numbers.
+- **Budget Planner dialog**: category rows on `/plan` open Edit Category dialog
+  (replaces inline editing). Full category management: name, limit, PFC, rules, fixed.
+- **Enrichment search**: server + client search includes `venmo_counterparty` and
+  `venmo_note`. Triage cards show enriched names. All-transactions table maintains
+  stable min-height. Enrichment confidence scoring improved.
