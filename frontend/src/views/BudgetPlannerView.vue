@@ -92,62 +92,24 @@
             :disabled="!isUserCreated(cat)"
             @action="removeCategory(cat)"
           >
-            <div :class="['basil-planner-row', `basil-planner-row--${sectionType}`]">
+            <div :class="['basil-planner-row', `basil-planner-row--${sectionType}`]" @click="openEditCategory(cat)" style="cursor: pointer">
               <!-- Name cell -->
               <div class="basil-planner-row__name-cell">
-                <span
-                  v-if="editingNameId !== cat._id"
-                  class="basil-planner-row__name"
-                  @click="startEditName(cat)"
-                >{{ cat.category }}</span>
-                <q-input
-                  v-else
-                  v-model="editNameValue"
-                  dense outlined
-                  class="basil-planner-name-input"
-                  :ref="el => { if (el) activeNameInputRef = el }"
-                  @keyup.enter="saveName(cat)"
-                  @keyup.esc="cancelEditName"
-                  @blur="onNameBlur(cat)"
-                  :loading="savingNameId === cat._id"
-                />
+                <span class="basil-planner-row__name">{{ cat.category }}</span>
               </div>
 
-              <!-- Right controls: amount + delete -->
+              <!-- Amount display -->
               <div class="basil-planner-row__controls">
-                <div class="basil-planner-row__amount-cell">
-                  <!-- Display mode -->
-                  <template v-if="editingId !== cat._id">
-                    <span
-                      class="basil-planner-row__amount basil-mono"
-                      @click="startEdit(cat)"
-                    >
-                      ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
-                    </span>
-                  </template>
-                  <!-- Edit mode -->
-                  <template v-else>
-                    <q-input
-                      v-model.number="editValue"
-                      type="number"
-                      dense outlined
-                      class="basil-planner-input"
-                      :ref="el => { if (el) activeInputRef = el }"
-                      @keyup.enter="saveLimit(cat)"
-                      @keyup.esc="cancelEdit"
-                      @blur="onBlur(cat)"
-                      :loading="savingId === cat._id"
-                      min="0"
-                    />
-                  </template>
-                </div>
+                <span class="basil-planner-row__amount basil-mono">
+                  ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
+                </span>
                 <q-icon
                   v-if="isUserCreated(cat)"
                   name="delete_outline"
                   size="16px"
                   class="basil-planner-delete-icon gt-xs"
                   :class="{ 'basil-planner-delete-icon--loading': deletingId === cat._id }"
-                  @click="removeCategory(cat)"
+                  @click.stop="removeCategory(cat)"
                 />
               </div>
             </div>
@@ -189,6 +151,17 @@
       </div>
     </div>
 
+    <!-- Edit category dialog -->
+    <BasilTray v-model="editCatDialogOpen">
+      <DialogComponent
+        v-if="editCatItem"
+        :dialogType="'editCategory'"
+        :item="editCatItem"
+        :dropDown="$store.state.categories"
+        @update-category="onEditCategorySubmit"
+      />
+    </BasilTray>
+
     <BasilConfirmTray
       v-model="removeCatDialog"
       :title="`Remove &quot;${removeCatTarget?.category}&quot;?`"
@@ -205,8 +178,10 @@
 <script>
 import EmptyState from '../components/EmptyState.vue';
 import BasilConfirmTray from '../components/BasilConfirmTray.vue';
+import BasilTray from '../components/BasilTray.vue';
+import DialogComponent from '../components/DialogComponent.vue';
 import SwipeReveal from '../components/SwipeReveal.vue';
-import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory } from '@/api';
+import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory, fetchMerchants } from '@/api';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 
@@ -215,7 +190,7 @@ const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
 
 export default {
   name: 'BudgetPlannerView',
-  components: { EmptyState, BasilConfirmTray, SwipeReveal },
+  components: { EmptyState, BasilConfirmTray, BasilTray, DialogComponent, SwipeReveal },
 
   data() {
     return {
@@ -250,6 +225,10 @@ export default {
       addLimit: 0,
       addLoading: false,
 
+      // Edit category dialog
+      editCatDialogOpen: false,
+      editCatItem: null,
+      editCatDialogBody: {},
     };
   },
 
@@ -363,6 +342,50 @@ export default {
       if (data) store.commit('updateCategory', data);
     },
 
+
+    openEditCategory(cat) {
+      const merchantRuleMap = {};
+      (this.$store.state.categories || []).forEach(c => {
+        (c.rules?.merchant_name || []).forEach(m => { merchantRuleMap[m] = c.category; });
+      });
+      this.editCatItem = {
+        _id: cat._id,
+        type: cat.type,
+        monthly_limit: cat.monthly_limit,
+        categoryName: cat.category,
+        showOnBudgetPage: cat.showOnBudgetPage !== false,
+        fixed: cat.fixed || false,
+        plaid_pfc: cat.plaid_pfc || [],
+        rules: cat.rules || {},
+        merchants: [],
+        merchantRuleMap,
+        originalCategoryName: cat.category,
+      };
+      this.editCatDialogBody = { ...this.editCatItem };
+      fetchMerchants().then(list => {
+        if (list && this.editCatItem) this.editCatItem.merchants = list;
+      });
+      this.editCatDialogOpen = true;
+    },
+
+    async onEditCategorySubmit(e) {
+      const d = {
+        updateType: 'editCategory',
+        _id: e._id,
+        categoryName: e.categoryName,
+        originalCategoryName: this.editCatItem.originalCategoryName || e.categoryName,
+        monthly_limit: e.monthly_limit,
+        showOnBudgetPage: e.showOnBudgetPage !== false,
+        plaid_pfc: e.plaid_pfc || [],
+        fixed: e.fixed || false,
+        pendingRuleRemovals: e.pendingRuleRemovals || [],
+        pendingRuleAdditions: e.pendingRuleAdditions || [],
+      };
+      const data = await handleDialogSubmit(JSON.stringify(d));
+      if (data) store.commit('updateCategory', data);
+      this.editCatDialogOpen = false;
+      this.editCatItem = null;
+    },
 
     isUserCreated(cat) {
       // Prefer isDefault flag (set at seed time); fall back to name matching for older accounts

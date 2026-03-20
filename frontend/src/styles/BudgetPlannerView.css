@@ -144,13 +144,6 @@
 .basil-planner-row__name {
   font-size: 0.9375rem;
   color: var(--basil-text);
-  cursor: text;
-  border-bottom: 1px dashed transparent;
-  transition: border-color var(--basil-t-fast) var(--basil-ease);
-}
-
-.basil-planner-row:hover .basil-planner-row__name {
-  border-bottom-color: var(--basil-border-strong);
 }
 
 .basil-planner-name-input {
@@ -195,16 +188,6 @@
   font-size: 0.9375rem;
   font-weight: 500;
   color: var(--basil-text);
-  cursor: pointer;
-  border-bottom: 1px dashed var(--basil-border-strong);
-  padding-bottom: 1px;
-  transition: color var(--basil-t-fast) var(--basil-ease),
-              border-color var(--basil-t-fast) var(--basil-ease);
-}
-
-.basil-planner-row__amount:hover {
-  color: var(--basil-green);
-  border-color: var(--basil-green);
 }
 
 .basil-planner-input {
