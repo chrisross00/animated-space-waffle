@@ -48,6 +48,10 @@
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
               left to spend this month
             </div>
+            <div v-if="budgetSummary" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
+              <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
+              {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
+            </div>
             <div style="margin-top: var(--basil-space-3)">
               <q-linear-progress
                 :value="Math.min(displayedSummary.ratio, 1)"
@@ -968,6 +972,7 @@
         triageVenmoCount: 0,
         enrichmentOffered: false,
         triageShowEnrichmentPrompt: false,
+        triageLearnToast: null,
         relationshipsExpanded: false,
         relationshipSaving: false,
       };
@@ -1345,6 +1350,16 @@
 
         const remaining = income - savingsLimit - spent;
 
+        // Pace: compare spending rate to days elapsed in month
+        const sel = this.selectedDate.actual;
+        const daysInMonth = sel.daysInMonth();
+        const today = dayjs();
+        const dayOfMonth = (sel.month() === today.month() && sel.year() === today.year())
+          ? today.date() : daysInMonth;
+        const expectedSpendRate = dayOfMonth / daysInMonth;
+        const actualSpendRate = pool > 0 ? spent / pool : 0;
+        const pace = actualSpendRate <= expectedSpendRate + 0.15 ? 'on-track' : 'caution';
+
         return {
           pool: Math.round(income - savingsLimit),
           spent: Math.round(spent),
@@ -1354,6 +1369,7 @@
           fixedBudget: Math.round(fixedCosts),
           savingsAmount: Math.round(this.monthlyStats.savingsAmount || 0),
           savingsBudget: Math.round(savingsLimit),
+          pace,
         };
       },
 monthStats() {

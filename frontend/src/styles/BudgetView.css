@@ -987,4 +987,24 @@
   vertical-align: middle;
 }
 
+/* ---- Pace indicator badge ---- */
+.basil-pace-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--basil-space-1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-top: var(--basil-space-2);
+}
+.basil-pace-badge--on-track {
+  background: var(--basil-green-subtle);
+  color: var(--basil-green);
+}
+.basil-pace-badge--caution {
+  background: var(--basil-warning-bg);
+  color: var(--basil-warning);
+}
+
 /* ---- Fixed costs collapsible group ---- */
