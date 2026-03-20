@@ -269,6 +269,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
       originalCategoryName: req.body.originalCategoryName,
       updateType: req.body.updateType,
       plaid_pfcBEResponse: plaid_pfc,
+      fixedBEResponse: !!req.body.fixed,
     }
     // Remove each selected PFC value from any other category so it only maps to one place
     if (plaid_pfc.length > 0) {
@@ -278,6 +279,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
       monthly_limit: req.body.monthly_limit,
       plaid_pfc,
       category: req.body.categoryName,
+      fixed: !!req.body.fixed,
     });
     // If the name changed, rename mappedCategory on all matching transactions
     if (req.body.categoryName !== req.body.originalCategoryName) {

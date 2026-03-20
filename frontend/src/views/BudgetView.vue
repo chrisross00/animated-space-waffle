@@ -35,40 +35,110 @@
     <SkeletonBudget v-if="isOnboarded && isLoading" />
       <div v-show="isOnboarded && !isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
+        <!-- Flex spending card (replaces Projections when fixed categories exist) -->
+        <q-card v-if="budgetSummary && !showAll" flat bordered class="basil-card q-mb-md">
+          <q-card-section>
+            <div class="basil-card-head">
+              <span class="basil-card-label">Flexible spending</span>
+              <span class="basil-card-period">{{ selectedDate.display }}</span>
+            </div>
+            <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-green)">
+              ${{ Math.round(displayedSummary.remaining).toLocaleString() }}
+            </div>
+            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
+              left to spend this month
+            </div>
+            <div style="margin-top: var(--basil-space-3)">
+              <q-linear-progress
+                :value="Math.min(displayedSummary.ratio, 1)"
+                :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
+                :track-color="$store.state.theme === 'dark' ? 'grey-8' : 'grey-3'"
+                rounded
+                style="height: 8px"
+              />
+            </div>
+            <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-top: var(--basil-space-2)">
+              ${{ Math.round(displayedSummary.spent).toLocaleString() }} of ${{ Math.round(displayedSummary.pool).toLocaleString() }} spent
+            </div>
+            <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
+            <div v-if="hasFixedCategories" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0">
+              <span>Fixed costs</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
+            </div>
+            <div class="basil-flex-detail-row" :class="{ 'basil-flex-detail-row--bordered': hasFixedCategories }">
+              <span>Savings</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
+            </div>
+            <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
+              <span>Recurring expected</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-actuals-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Actuals</span>
-            <span class="basil-card-period">{{ selectedDate.display }}</span>
+            <span v-if="!budgetSummary" class="basil-card-period">{{ selectedDate.display }}</span>
           </div>
 
-          <!-- Spent vs Earned -->
-          <div class="basil-primary-stats">
-            <div class="basil-primary-stat">
-              <div class="basil-primary-stat__amount basil-display">
-                ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+          <!-- Traditional layout (no flex budget) -->
+          <template v-if="!budgetSummary">
+            <!-- Spent vs Earned -->
+            <div class="basil-primary-stats">
+              <div class="basil-primary-stat">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">spent</div>
               </div>
-              <div class="basil-primary-stat__label">spent</div>
-            </div>
-            <div class="basil-primary-stats__divider"></div>
-            <div class="basil-primary-stat basil-primary-stat--earned">
-              <div class="basil-primary-stat__amount basil-display">
-                ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-primary-stat basil-primary-stat--earned">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">earned</div>
               </div>
-              <div class="basil-primary-stat__label">earned</div>
             </div>
-          </div>
 
-          <div class="basil-card-rule"></div>
+            <div class="basil-card-rule"></div>
 
-          <!-- Net position — hero stat -->
-          <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
-            <div class="basil-net__amount basil-display">
-              {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+            <!-- Net position — hero stat -->
+            <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
+              <div class="basil-net__amount basil-display">
+                {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+              </div>
+              <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
             </div>
-            <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
-          </div>
+          </template>
+
+          <!-- Compact actuals (flex mode) -->
+          <template v-else>
+            <div class="basil-actuals-3col">
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display" style="color: var(--basil-positive)">
+                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">earned</div>
+              </div>
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display">
+                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">spent</div>
+              </div>
+              <div class="basil-primary-stats__divider"></div>
+              <div class="basil-actuals-col">
+                <div class="basil-primary-stat__amount basil-display" :style="{ color: netPositive ? 'var(--basil-positive)' : 'var(--basil-negative)' }">
+                  {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+                </div>
+                <div class="basil-primary-stat__label">free cash flow</div>
+              </div>
+            </div>
+          </template>
 
           <!-- Secondary stats -->
           <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
@@ -81,7 +151,7 @@
           </div>
         </q-card>
         </div>
-        <div style="flex: 1; min-width: 220px;">
+        <div v-if="!budgetSummary" style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-projections-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Projections</span>
@@ -870,6 +940,7 @@
         },
         monthlyStats:{},
         displayedStats: { expenseSpend: 0, incomeAmount: 0, savingsAmount: 0, netPosition: 0 },
+        displayedSummary: { pool: 0, spent: 0, remaining: 0, ratio: 0, fixedSpent: 0, fixedBudget: 0, savingsAmount: 0, savingsBudget: 0 },
         barsReady: false,
         selectedRows: [],
         longPressTimer: null,
@@ -1230,6 +1301,61 @@
           remainingMerchantNames,
         };
       },
+      hasFixedCategories() {
+        if (!this.groupedTransactions) return false;
+        return Object.values(this.groupedTransactions).some(g => g.fixed && g.type === 'expense');
+      },
+      budgetSummary() {
+        if (!this.monthlyStats || !this.groupedTransactions) return null;
+
+        // Income: prefer budget limit, fall back to actual
+        const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === 'income');
+        const incomeBudget = Number(incomeCategory?.monthly_limit) || 0;
+        const income = incomeBudget > 0 ? incomeBudget : (this.monthlyStats.incomeAmount || 0);
+        if (income <= 0) return null;
+
+        // Fixed costs (optional — only when user has flagged categories)
+        let fixedCosts = 0;
+        let fixedSpent = 0;
+        for (const [name, g] of Object.entries(this.groupedTransactions)) {
+          if (g.fixed && g.type === 'expense') {
+            const limit = Number(g.monthly_limit) || 0;
+            const actual = this.categorySum(name);
+            const actualAbs = isNaN(actual) ? 0 : Math.abs(actual);
+            fixedCosts += limit > 0 ? limit : actualAbs;
+            fixedSpent += actualAbs;
+          }
+        }
+
+        const savingsLimit = Object.values(this.groupedTransactions).reduce(
+          (sum, g) => g.type === 'savings' ? sum + (Number(g.monthly_limit) || 0) : sum, 0
+        );
+
+        const pool = income - savingsLimit;
+        if (pool <= 0) return null;
+
+        // Total expense spending
+        const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
+          if (g.type === 'expense') {
+            const catSpend = this.categorySum(name);
+            return sum + (isNaN(catSpend) ? 0 : Math.abs(catSpend));
+          }
+          return sum;
+        }, 0);
+
+        const remaining = income - savingsLimit - spent;
+
+        return {
+          pool: Math.round(income - savingsLimit),
+          spent: Math.round(spent),
+          remaining: Math.round(remaining),
+          ratio: pool > 0 ? spent / pool : 0,
+          fixedSpent: Math.round(fixedSpent),
+          fixedBudget: Math.round(fixedCosts),
+          savingsAmount: Math.round(this.monthlyStats.savingsAmount || 0),
+          savingsBudget: Math.round(savingsLimit),
+        };
+      },
 monthStats() {
         return (groupedTransactions) => {
           let monthlySum = 0; // sum of all categories
@@ -1342,34 +1468,43 @@ monthStats() {
           .sort((a, b) => b.total - a.total);
       },
 
-      animateStats(from, to) {
-        if (!to || !Object.keys(to).length) return;
-        const fields = ['expenseSpend', 'incomeAmount', 'savingsAmount', 'netPosition'];
+      // Shared number animation helper — ease-out cubic over 600ms
+      _animateFields(target, to, fields, frameKey) {
+        if (!to) return;
         const startVals = {};
-        for (const f of fields) startVals[f] = this.displayedStats[f] || 0;
+        for (const f of fields) startVals[f] = target[f] || 0;
         const endVals = {};
         for (const f of fields) endVals[f] = to[f] || 0;
 
         const duration = 600;
         const startTime = performance.now();
 
-        if (this._animFrame) {
-          cancelAnimationFrame(this._animFrame);
-          this._animFrame = null;
+        if (this[frameKey]) {
+          cancelAnimationFrame(this[frameKey]);
+          this[frameKey] = null;
         }
 
         const tick = (now) => {
-          const t = 1 - Math.pow(1 - Math.min((now - startTime) / duration, 1), 3); // ease-out cubic
+          const t = 1 - Math.pow(1 - Math.min((now - startTime) / duration, 1), 3);
           for (const f of fields) {
-            this.displayedStats[f] = startVals[f] + (endVals[f] - startVals[f]) * t;
+            target[f] = startVals[f] + (endVals[f] - startVals[f]) * t;
           }
           if (t < 1) {
-            this._animFrame = requestAnimationFrame(tick);
+            this[frameKey] = requestAnimationFrame(tick);
           } else {
-            this._animFrame = null;
+            this[frameKey] = null;
           }
         };
-        this._animFrame = requestAnimationFrame(tick);
+        this[frameKey] = requestAnimationFrame(tick);
+      },
+      animateStats(from, to) {
+        if (!to || !Object.keys(to).length) return;
+        this._animateFields(this.displayedStats, to,
+          ['expenseSpend', 'incomeAmount', 'savingsAmount', 'netPosition'], '_animFrame');
+      },
+      animateSummary(to) {
+        this._animateFields(this.displayedSummary, to,
+          ['pool', 'spent', 'remaining', 'ratio', 'fixedSpent', 'fixedBudget', 'savingsAmount', 'savingsBudget'], '_summaryAnimFrame');
       },
       categoryAmountLabel(category) {
         const type = this.groupedTransactions[category].type;
@@ -1445,6 +1580,7 @@ monthStats() {
             monthly_limit: this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit,
             categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
+            fixed: this.dialogBody.fixed = this.groupedTransactions[category].fixed || false,
             plaid_pfc: this.groupedTransactions[category].plaid_pfc || [],
             rules: this.groupedTransactions[category].rules || {},
             merchants: [],
@@ -1568,6 +1704,7 @@ monthStats() {
           this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage
           this.groupedTransactions[category.category].originalName = category.category
           this.groupedTransactions[category.category].type = category.type
+          this.groupedTransactions[category.category].fixed = category.fixed || false
           this.groupedTransactions[category.category].plaid_pfc = category.plaid_pfc || []
           this.groupedTransactions[category.category].rules = category.rules || {}
         });
@@ -1585,6 +1722,7 @@ monthStats() {
             this.groupedTransactions[category].push(transaction);
           }
         });
+
 
       },
       async resetLastFetch (){
@@ -1648,6 +1786,7 @@ monthStats() {
           'type': e.type.toLowerCase(),
           'showOnBudgetPage': true,
           'plaid_pfc': e.plaid_pfc || [],
+          'fixed': e.fixed || false,
         }
         if (e.dialogType == 'addCategory'){
           const randomId = 'client_id_' + Math.random().toString(36).substring(2, 12);
@@ -2067,6 +2206,13 @@ monthStats() {
       monthlyStats: {
         handler(newStats, oldStats) {
           this.animateStats(oldStats || {}, newStats || {});
+        },
+        immediate: true,
+      },
+      budgetSummary: {
+        handler(newFlex) {
+          if (!newFlex) return;
+          this.animateSummary(newFlex);
         },
         immediate: true,
       },

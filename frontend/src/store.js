@@ -269,6 +269,7 @@ const store = createStore({
                     category.monthly_limit = updatedCategory.monthlyLimitBEResponse
                     category.showOnBudgetPage = updatedCategory.showOnBudgetPageBEResponse
                     category.plaid_pfc = newPfc
+                    if (updatedCategory.fixedBEResponse !== undefined) category.fixed = updatedCategory.fixedBEResponse
                 } else if (newPfc.length > 0) {
                     // Mirror backend dedup: remove any PFC values now claimed by this category
                     category.plaid_pfc = (category.plaid_pfc || []).filter(p => !newPfc.includes(p));
