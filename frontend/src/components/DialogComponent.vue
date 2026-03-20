@@ -134,6 +134,14 @@
           :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
           @change="isFormSubmittable()"
         />
+        <q-toggle
+          v-if="item.type === 'expense'"
+          v-model="dialogBody.fixed"
+          label="Fixed expense (rent, subscriptions, bills)"
+          color="primary"
+          class="q-mt-sm"
+          @update:model-value="isFormSubmittable()"
+        />
       </div>
 
       <!-- Existing rules -->
@@ -518,6 +526,7 @@
                 note: this.item?.note ? this.item.note : '',
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
+                fixed: this.item?.fixed || false,
                 createRule: this.similarityData?.matches?.some(t => t.mappedCategory !== (this.item?.mappedCategory || '') && !t.manually_set) ?? false,
                 dialogType: this.dialogType
             },
@@ -605,7 +614,7 @@ computed: {
             this.$emit('update-transaction', this.editedTransaction)
         },
         updateCategory() {
-            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type, pendingRuleRemovals: [...this.pendingRuleRemovals], pendingRuleAdditions: [...this.pendingRuleAdditions]}
+            this.editedCategory = {...this.dialogBody, '_id': this.item._id, 'type': this.item.type, 'fixed': this.dialogBody.fixed || false, pendingRuleRemovals: [...this.pendingRuleRemovals], pendingRuleAdditions: [...this.pendingRuleAdditions]}
             this.$emit('update-category', this.editedCategory)
         },
         stageRuleRemoval(ruleType, ruleValue) {
@@ -680,6 +689,7 @@ computed: {
             if (this.dialogType == 'editCategory'){
                 if (this.dialogBody.categoryName !== this.originalDialogBody.categoryName
                 || this.dialogBody.monthly_limit !== this.originalDialogBody.monthly_limit
+                || this.dialogBody.fixed !== this.originalDialogBody.fixed
                 || this.pendingRuleRemovals.length > 0
                 || this.pendingRuleAdditions.length > 0){
                     this.formSubmittable = true;

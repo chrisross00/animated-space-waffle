@@ -354,6 +354,7 @@ export default {
         monthly_limit: Number(cat.monthly_limit) || 0,
         showOnBudgetPage: cat.showOnBudgetPage !== false,
         plaid_pfc: cat.plaid_pfc || [],
+        fixed: cat.fixed || false,
       };
       const data = await handleDialogSubmit(JSON.stringify(payload));
       this.savingNameId = null;
@@ -361,6 +362,7 @@ export default {
       this.activeNameInputRef = null;
       if (data) store.commit('updateCategory', data);
     },
+
 
     isUserCreated(cat) {
       // Prefer isDefault flag (set at seed time); fall back to name matching for older accounts

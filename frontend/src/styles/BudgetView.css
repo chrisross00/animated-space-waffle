@@ -260,6 +260,19 @@
 }
 
 /* ---- Compact 3-column actuals (flex mode) ---- */
+/* ---- Flex card detail rows ---- */
+.basil-flex-detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+  padding: var(--basil-space-1) 0;
+}
+.basil-flex-detail-row--bordered {
+  border-top: 1px solid var(--basil-surface-alt);
+}
+
+/* ---- 3-column Actuals layout ---- */
 .basil-actuals-3col {
   display: flex;
   align-items: flex-start;
@@ -973,3 +986,5 @@
   margin-left: var(--basil-space-1);
   vertical-align: middle;
 }
+
+/* ---- Fixed costs collapsible group ---- */
