@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Basil — Flex Budget Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ---- Basil Tokens ---- */
+:root {
+  --basil-bg: #faf7f2;
+  --basil-surface: #ffffff;
+  --basil-surface-alt: #f3efe8;
+  --basil-text: #1a1a14;
+  --basil-text-secondary: #6b6860;
+  --basil-text-muted: #9e9b94;
+  --basil-green: #3d8b6c;
+  --basil-green-mid: #5a9e85;
+  --basil-green-subtle: #eef6f1;
+  --basil-income: #2d7a4f;
+  --basil-expense: #b83c2b;
+  --basil-warning: #c07a1a;
+  --basil-border: #e8e2d8;
+  --basil-shadow-sm: 0 1px 3px rgba(26,26,20,0.06), 0 1px 2px rgba(26,26,20,0.04);
+  --basil-radius-md: 10px;
+  --basil-radius-lg: 16px;
+  --basil-font-display: 'DM Serif Display', Georgia, serif;
+  --basil-font-ui: 'DM Sans', system-ui, sans-serif;
+  --basil-font-mono: 'JetBrains Mono', monospace;
+  --basil-space-1: 4px;
+  --basil-space-2: 8px;
+  --basil-space-3: 12px;
+  --basil-space-4: 16px;
+  --basil-space-5: 24px;
+  --basil-space-6: 32px;
+  --basil-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+body {
+  font-family: var(--basil-font-ui);
+  background: var(--basil-bg);
+  color: var(--basil-text);
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Header ---- */
+.basil-header {
+  background: var(--basil-surface);
+  border-bottom: 1px solid var(--basil-border);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.basil-wordmark {
+  font-family: var(--basil-font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.basil-sync-icon {
+  color: var(--basil-text-muted);
+  font-size: 1.25rem;
+}
+
+/* ---- Cards ---- */
+.basil-card {
+  background: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-lg);
+  margin: var(--basil-space-4);
+  margin-bottom: 0;
+}
+.basil-card-section {
+  padding: var(--basil-space-5);
+}
+.basil-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.basil-card-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--basil-text-muted);
+}
+.basil-card-period {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Section Headers ---- */
+.basil-section-head {
+  padding: var(--basil-space-5) var(--basil-space-4) var(--basil-space-2);
+  display: flex;
+  align-items: baseline;
+  gap: var(--basil-space-2);
+}
+.basil-section-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--basil-text-muted);
+}
+
+/* ---- Stats ---- */
+.basil-stat-row {
+  display: flex;
+  gap: var(--basil-space-5);
+  margin-top: var(--basil-space-3);
+}
+.basil-stat-value {
+  font-family: var(--basil-font-display);
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+.basil-stat-label {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+  margin-top: 2px;
+}
+.basil-stat-divider {
+  width: 1px;
+  background: var(--basil-border);
+  align-self: stretch;
+}
+.basil-hero-value {
+  font-family: var(--basil-font-display);
+  font-size: 2rem;
+  line-height: 1.1;
+  margin-top: var(--basil-space-3);
+}
+.basil-hero-label {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: 2px;
+}
+.basil-divider {
+  height: 1px;
+  background: var(--basil-border);
+  margin: var(--basil-space-4) 0;
+}
+
+/* ---- Unsorted warning ---- */
+.basil-unsorted {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  margin-top: var(--basil-space-3);
+  font-size: 0.8125rem;
+  color: var(--basil-warning);
+  font-weight: 500;
+}
+
+/* ---- Flex Card ---- */
+.basil-flex-card {
+  background: var(--basil-green-subtle);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-lg);
+  margin: 0 var(--basil-space-4);
+  margin-bottom: 0;
+}
+.basil-flex-value {
+  font-family: var(--basil-font-display);
+  font-size: 2.25rem;
+  line-height: 1.1;
+  margin-top: var(--basil-space-2);
+  color: var(--basil-green);
+}
+.basil-flex-sublabel {
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+  margin-top: 2px;
+}
+.basil-flex-bar-track {
+  height: 8px;
+  background: rgba(61, 139, 108, 0.15);
+  border-radius: 4px;
+  margin-top: var(--basil-space-3);
+  overflow: hidden;
+}
+.basil-flex-bar-fill {
+  height: 100%;
+  background: var(--basil-green);
+  border-radius: 4px;
+  transition: width 0.6s var(--basil-ease);
+}
+.basil-flex-detail {
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+  margin-top: var(--basil-space-2);
+}
+
+/* ---- Category Rows ---- */
+.basil-category-row {
+  display: flex;
+  align-items: center;
+  padding: var(--basil-space-3) var(--basil-space-4);
+  gap: var(--basil-space-3);
+  cursor: pointer;
+  transition: background 150ms;
+  border-bottom: 1px solid var(--basil-surface-alt);
+}
+.basil-category-row:last-child {
+  border-bottom: none;
+}
+.basil-category-row:active {
+  background: var(--basil-surface-alt);
+}
+.basil-category-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+.basil-category-info {
+  flex: 1;
+  min-width: 0;
+}
+.basil-category-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-1);
+}
+.basil-category-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.basil-fixed-icon {
+  color: var(--basil-text-muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.basil-category-budget {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: 1px;
+}
+.basil-category-amount {
+  font-family: var(--basil-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-align: right;
+  flex-shrink: 0;
+}
+.basil-amount--expense { color: var(--basil-text); }
+.basil-amount--income { color: var(--basil-income); }
+
+/* ---- Progress Bar ---- */
+.basil-progress-track {
+  height: 4px;
+  background: var(--basil-surface-alt);
+  border-radius: 2px;
+  margin-top: var(--basil-space-1);
+  overflow: hidden;
+}
+.basil-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s var(--basil-ease);
+}
+.basil-progress--ok { background: var(--basil-green); }
+.basil-progress--warn { background: var(--basil-warning); }
+.basil-progress--over { background: var(--basil-expense); }
+
+/* ---- Bottom Nav ---- */
+.basil-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 420px;
+  background: var(--basil-surface);
+  border-top: 1px solid var(--basil-border);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 24px;
+}
+.basil-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.625rem;
+  color: var(--basil-text-muted);
+  text-decoration: none;
+  position: relative;
+}
+.basil-nav-item--active {
+  color: var(--basil-green);
+}
+.basil-nav-icon {
+  font-size: 1.25rem;
+  position: relative;
+}
+.basil-nav-item--active .basil-nav-icon::before {
+  content: '';
+  position: absolute;
+  top: -4px; bottom: -4px; left: -12px; right: -12px;
+  background: var(--basil-green-subtle);
+  border-radius: 12px;
+  z-index: -1;
+}
+
+/* ---- Annotations ---- */
+.mockup-annotation {
+  margin: var(--basil-space-5) var(--basil-space-4);
+  padding: var(--basil-space-4);
+  background: #fffce8;
+  border: 1px dashed #d4c87a;
+  border-radius: var(--basil-radius-md);
+  font-size: 0.8125rem;
+  color: #6b5e00;
+  line-height: 1.5;
+}
+.mockup-annotation strong {
+  display: block;
+  margin-bottom: var(--basil-space-1);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.mockup-title {
+  text-align: center;
+  padding: var(--basil-space-5) var(--basil-space-4) 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--basil-text-muted);
+}
+.mockup-spacer { height: 100px; }
+</style>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+</head>
+<body>
+
+<div class="mockup-title">Mockup: Flex Budget Grouping (Option A)</div>
+
+<!-- ===== HEADER ===== -->
+<div class="basil-header">
+  <span class="material-icons-round" style="color: var(--basil-text-secondary); font-size: 1.5rem">menu</span>
+  <span class="basil-wordmark">Basil</span>
+  <span class="material-icons-round basil-sync-icon">sync</span>
+</div>
+
+<!-- ===== ACTUALS CARD ===== -->
+<div class="basil-card">
+  <div class="basil-card-section">
+    <div class="basil-card-head">
+      <span class="basil-card-label">Actuals</span>
+      <span class="basil-card-period">March 2026</span>
+    </div>
+    <div class="basil-stat-row">
+      <div>
+        <div class="basil-stat-value">$4,119</div>
+        <div class="basil-stat-label">spent</div>
+      </div>
+      <div class="basil-stat-divider"></div>
+      <div>
+        <div class="basil-stat-value" style="color: var(--basil-income)">$4,849</div>
+        <div class="basil-stat-label">earned</div>
+      </div>
+    </div>
+    <div class="basil-divider"></div>
+    <div class="basil-hero-value" style="color: var(--basil-income)">+$730</div>
+    <div class="basil-hero-label">free cash flow</div>
+    <div class="basil-unsorted">
+      <span class="material-icons-round" style="font-size: 1rem">warning</span>
+      $170 unsorted
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROJECTIONS CARD ===== -->
+<div class="basil-card">
+  <div class="basil-card-section">
+    <div class="basil-card-head">
+      <span class="basil-card-label">Projections</span>
+    </div>
+    <div class="basil-hero-value">$1,279</div>
+    <div class="basil-hero-label">left in budgets</div>
+    <div class="basil-divider"></div>
+    <div class="basil-hero-value">~$7,340</div>
+    <div class="basil-hero-label">16 recurring merchants still expected</div>
+  </div>
+</div>
+
+<!-- ===== FIXED SECTION ===== -->
+<div class="basil-section-head">
+  <span class="basil-section-label">Fixed</span>
+</div>
+
+<div style="margin: 0 var(--basil-space-4);">
+  <!-- Rent & Utilities -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #5a9e85">RU</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Rent & Utilities</span>
+        <span class="material-icons-round basil-fixed-icon" title="Fixed expense">lock</span>
+      </div>
+      <div class="basil-category-budget">$1,350 of $1,350</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 100%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$1,350</div>
+  </div>
+
+  <!-- Transportation (marked fixed by user) -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #7a6a5a">TR</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Transportation</span>
+        <span class="material-icons-round basil-fixed-icon" title="Fixed expense">lock</span>
+      </div>
+      <div class="basil-category-budget">$280 of $350</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 80%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$280</div>
+  </div>
+</div>
+
+<!-- ===== FLEX SPENDING CARD ===== -->
+<div class="basil-flex-card" style="margin-top: var(--basil-space-4);">
+  <div class="basil-card-section">
+    <div class="basil-card-head">
+      <span class="basil-card-label">Flexible spending</span>
+    </div>
+    <div class="basil-flex-value">$3,120</div>
+    <div class="basil-flex-sublabel">left to spend</div>
+    <div class="basil-flex-bar-track">
+      <div class="basil-flex-bar-fill" style="width: 42%"></div>
+    </div>
+    <div class="basil-flex-detail">$2,289 of $5,300 spent</div>
+  </div>
+</div>
+
+<!-- ===== FLEXIBLE SECTION ===== -->
+<div class="basil-section-head">
+  <span class="basil-section-label">Flexible</span>
+</div>
+
+<div style="margin: 0 var(--basil-space-4);">
+  <!-- Food & Dining -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #c07a1a">FD</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Food & Dining</span>
+      </div>
+      <div class="basil-category-budget">$482 of $600</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--warn" style="width: 80%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$482</div>
+  </div>
+
+  <!-- Entertainment -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #8b5cf6">EN</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Entertainment</span>
+      </div>
+      <div class="basil-category-budget">$210 of $300</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 70%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$210</div>
+  </div>
+
+  <!-- Shopping -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #e67e22">SH</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Shopping</span>
+      </div>
+      <div class="basil-category-budget">$847 of $500</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--over" style="width: 100%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$847</div>
+  </div>
+
+  <!-- Health -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #2366a8">HE</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Health</span>
+      </div>
+      <div class="basil-category-budget">$89 of $120</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 74%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$89</div>
+  </div>
+
+  <!-- Services -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #6b6860">SE</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Services</span>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$45</div>
+  </div>
+
+  <!-- Travel -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #2d7a4f">TV</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Travel</span>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$616</div>
+  </div>
+
+  <!-- Income -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #2d7a4f">IN</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Income</span>
+      </div>
+      <div class="basil-category-budget">$4,849 of $9,000</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 54%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--income">+$4,849</div>
+  </div>
+
+  <!-- Savings -->
+  <div class="basil-category-row">
+    <div class="basil-category-avatar" style="background: #2366a8">SA</div>
+    <div class="basil-category-info">
+      <div class="basil-category-name-row">
+        <span class="basil-category-name">Savings</span>
+      </div>
+      <div class="basil-category-budget">$2,000 of $2,000</div>
+      <div class="basil-progress-track">
+        <div class="basil-progress-fill basil-progress--ok" style="width: 100%"></div>
+      </div>
+    </div>
+    <div class="basil-category-amount basil-amount--expense">$2,000</div>
+  </div>
+</div>
+
+<!-- ===== ANNOTATIONS ===== -->
+<div class="mockup-annotation">
+  <strong>Design notes</strong>
+  Fixed categories are grouped at the top with a "Fixed" section header. Each has a small lock icon next to the name.<br><br>
+  The flex spending card sits between sections, showing one number: what's left for discretionary spending. Uses the green tint background to stand out as a summary without competing with Actuals/Projections.<br><br>
+  Flexible section contains everything else — same category rows as today, same order. Income, Savings, Payment appear here regardless of any fixed flag.<br><br>
+  When no categories are marked fixed, the entire Fixed section, flex card, and section headers disappear. The view looks exactly like it does today.
+</div>
+
+<div class="mockup-annotation">
+  <strong>Onboarding scenario</strong>
+  New user, no budget limits set. "Rent & Utilities" is seeded as fixed.<br><br>
+  Flex card uses actual income ($4,849) minus actual rent spending ($1,350) = $3,499 flex pool. No configuration needed — the insight is immediate.
+</div>
+
+<div class="mockup-spacer"></div>
+
+<!-- ===== BOTTOM NAV ===== -->
+<div class="basil-bottom-nav">
+  <a class="basil-nav-item" href="#">
+    <span class="material-icons-round basil-nav-icon">account_balance</span>
+    <span>ACCOUNTS</span>
+  </a>
+  <a class="basil-nav-item basil-nav-item--active" href="#">
+    <span class="material-icons-round basil-nav-icon">account_balance_wallet</span>
+    <span>BUDGET</span>
+  </a>
+  <a class="basil-nav-item" href="#">
+    <span class="material-icons-round basil-nav-icon">bar_chart</span>
+    <span>TRENDS</span>
+  </a>
+  <a class="basil-nav-item" href="#">
+    <span class="material-icons-round basil-nav-icon">person</span>
+    <span>PROFILE</span>
+  </a>
+</div>
+
+</body>
+</html>
