@@ -237,20 +237,21 @@ section instead of reading the whole file.
 
 ## Pre-release projects
 
-Three major features prioritized for release readiness. Ship in order — each
-builds on the last.
+Three major features prioritized for release readiness.
 
-### 1. Budget summary hero card — SHIPPED
-BudgetView now leads with a "left to spend" hero card showing income minus
-expenses minus savings, with animated numbers. Compact 3-column Actuals card
-below (earned | spent | free cash flow). Optional "Fixed costs" summary line
-when categories are flagged. Replaces the old Projections card.
-- Fixed toggle available in Edit Category dialog (expense categories only)
+### Flex budgets → Budget hero card — SHIPPED
+Started as Monarch-style fixed/flexible category grouping, pivoted after
+testing to a simpler approach: a "left to spend" hero card at the top of
+BudgetView (income - expenses - savings) with compact 3-column Actuals below.
+No category reorganization. Fixed costs as an optional flag/dimension — when
+categories are marked fixed, a "Fixed costs" summary line appears in the hero
+card. Category list stays flat.
+- Fixed toggle in Edit Category dialog (expense categories only)
 - `Rent & Utilities` seeded as fixed by default for new users
-- Budget Planner (`/plan`) now opens Edit Category dialog on row click
-  (replaces inline editing)
+- Budget Planner (`/plan`) opens Edit Category dialog on row click
+- Research: `plans/flex-budgets-research.md`
 
-### 2. Onboarding: auto-categorize + first insight (NEXT)
+### 1. Onboarding: auto-categorize + first insight (NEXT)
 The current onboarding lands users on a dashboard full of "To Sort" transactions —
 homework, not insight. 73% of fintech users disengage in week one. The fix is
 reducing time-to-value by showing users something meaningful immediately.
@@ -272,7 +273,7 @@ reducing time-to-value by showing users something meaningful immediately.
 **Effort:** Medium. Categorization engine exists. Mostly frontend + summary card.
 **Research:** `plans/onboarding-research.md`
 
-### 3. Transaction splitting
+### 2. Transaction splitting
 Split a single transaction across multiple categories (Costco run = groceries +
 household, Venmo blob = dinner + tickets). Table stakes — all major competitors
 (YNAB, Monarch, Copilot, Lunch Money) support this.
