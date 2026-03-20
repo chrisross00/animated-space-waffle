@@ -4,7 +4,7 @@
  */
 const DEFAULT_CATEGORIES = [
   { category: 'Income',          type: 'income',   monthly_limit: 0, plaid_pfc: ['INCOME', 'TRANSFER_IN'] },
-  { category: 'Rent & Utilities',type: 'expense',  monthly_limit: 0, plaid_pfc: ['HOME_IMPROVEMENT', 'RENT_AND_UTILITIES'] },
+  { category: 'Rent & Utilities',type: 'expense',  monthly_limit: 0, plaid_pfc: ['HOME_IMPROVEMENT', 'RENT_AND_UTILITIES'], fixed: true },
   { category: 'Food & Dining',   type: 'expense',  monthly_limit: 0, plaid_pfc: ['FOOD_AND_DRINK'] },
   { category: 'Transportation',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['TRANSPORTATION'] },
   { category: 'Entertainment',   type: 'expense',  monthly_limit: 0, plaid_pfc: ['ENTERTAINMENT'] },
