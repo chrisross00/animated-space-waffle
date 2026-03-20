@@ -1007,4 +1007,22 @@
   color: var(--basil-warning);
 }
 
+/* ---- Triage auto-learn toast ---- */
+.basil-triage-learn-toast {
+  margin: var(--basil-space-3) var(--basil-space-4);
+  padding: var(--basil-space-3) var(--basil-space-4);
+  background: var(--basil-green-subtle);
+  border-radius: var(--basil-radius-md);
+  font-size: 0.8125rem;
+  color: var(--basil-green);
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  animation: basil-toast-in 200ms var(--basil-ease);
+}
+@keyframes basil-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ---- Fixed costs collapsible group ---- */

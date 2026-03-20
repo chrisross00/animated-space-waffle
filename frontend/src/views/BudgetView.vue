@@ -817,6 +817,12 @@
               @click="triageAccept()"
             />
           </div>
+
+          <!-- Auto-learn feedback toast -->
+          <div v-if="triageLearnToast" class="basil-triage-learn-toast">
+            <q-icon name="auto_awesome" size="16px" />
+            Got it — future {{ triageLearnToast.merchant }} transactions go to {{ triageLearnToast.category }}
+          </div>
         </template>
 
       </q-card>
@@ -1872,6 +1878,8 @@ monthStats() {
         this.triageSkipped = new Set();
         this.triageDone = false;
         this.triageCreateRule = true;
+        this._triageToastShown = false;
+        this.triageLearnToast = null;
         this.triageVenmoCount = 0;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
@@ -1918,6 +1926,12 @@ monthStats() {
               createdFrom: 'triage',
             };
             await applyCompoundRuleToStore(store, payload, targetCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
+          }
+          if (wantsRule && !this._triageToastShown) {
+            const merchantName = txn?.merchant_name || txn?.name || 'similar';
+            this.triageLearnToast = { merchant: merchantName, category: this.triageCategory };
+            this._triageToastShown = true;
+            setTimeout(() => { this.triageLearnToast = null; }, 4000);
           }
         } catch (e) {
           console.error('Triage save error:', e);
