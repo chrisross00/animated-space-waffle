@@ -35,6 +35,47 @@
     <SkeletonBudget v-if="isOnboarded && isLoading" />
       <div v-show="isOnboarded && !isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
+        <!-- Flex spending card (replaces Projections when fixed categories exist) -->
+        <q-card v-if="flexBudget && !showAll" flat bordered class="basil-card q-mb-md">
+          <q-card-section>
+            <div class="basil-card-head">
+              <span class="basil-card-label">Flexible spending</span>
+              <span class="basil-card-period">{{ selectedDate.display }}</span>
+            </div>
+            <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-green)">
+              ${{ flexBudget.remaining.toLocaleString() }}
+            </div>
+            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
+              left to spend this month
+            </div>
+            <div style="margin-top: var(--basil-space-3)">
+              <q-linear-progress
+                :value="Math.min(flexBudget.ratio, 1)"
+                :color="flexBudget.ratio > 1 ? 'negative' : flexBudget.ratio > 0.85 ? 'warning' : 'primary'"
+                :track-color="$store.state.theme === 'dark' ? 'grey-8' : 'grey-3'"
+                rounded
+                style="height: 8px"
+              />
+            </div>
+            <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-top: var(--basil-space-2)">
+              ${{ flexBudget.spent.toLocaleString() }} of ${{ flexBudget.pool.toLocaleString() }} spent
+            </div>
+            <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0">
+              <span>Fixed costs</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ flexBudget.fixedSpent.toLocaleString() }} of ${{ flexBudget.fixedBudget.toLocaleString() }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
+              <span>Savings</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ flexBudget.savingsAmount.toLocaleString() }} of ${{ flexBudget.savingsBudget.toLocaleString() }}</span>
+            </div>
+            <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
+              <span>Recurring expected</span>
+              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+            </div>
+          </q-card-section>
+        </q-card>
+
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-actuals-card">
@@ -81,7 +122,7 @@
           </div>
         </q-card>
         </div>
-        <div style="flex: 1; min-width: 220px;">
+        <div v-if="!flexBudget" style="flex: 1; min-width: 220px;">
         <q-card class="my-card basil-projections-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Projections</span>
@@ -1230,6 +1271,56 @@
           remainingMerchantNames,
         };
       },
+      hasFixedCategories() {
+        if (!this.groupedTransactions) return false;
+        return Object.values(this.groupedTransactions).some(g => g.fixed && g.type === 'expense');
+      },
+      flexBudget() {
+        if (!this.hasFixedCategories || !this.monthlyStats) return null;
+
+        const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === 'income');
+        const incomeBudget = Number(incomeCategory?.monthly_limit) || 0;
+        const income = incomeBudget > 0 ? incomeBudget : (this.monthlyStats.incomeAmount || 0);
+        if (income <= 0) return null;
+
+        let fixedCosts = 0;
+        let fixedSpent = 0;
+        for (const [name, g] of Object.entries(this.groupedTransactions)) {
+          if (g.fixed && g.type === 'expense') {
+            const limit = Number(g.monthly_limit) || 0;
+            const actual = this.categorySum(name);
+            const actualAbs = isNaN(actual) ? 0 : Math.abs(actual);
+            fixedCosts += limit > 0 ? limit : actualAbs;
+            fixedSpent += actualAbs;
+          }
+        }
+
+        const savingsLimit = Object.values(this.groupedTransactions).reduce(
+          (sum, g) => g.type === 'savings' ? sum + (Number(g.monthly_limit) || 0) : sum, 0
+        );
+
+        const pool = income - fixedCosts - savingsLimit;
+        if (pool <= 0) return null;
+
+        const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
+          if (g.type === 'expense' && !g.fixed) {
+            const catSpend = this.categorySum(name);
+            return sum + (isNaN(catSpend) ? 0 : Math.abs(catSpend));
+          }
+          return sum;
+        }, 0);
+
+        return {
+          pool: Math.round(pool),
+          spent: Math.round(spent),
+          remaining: Math.round(pool - spent),
+          ratio: pool > 0 ? spent / pool : 0,
+          fixedSpent: Math.round(fixedSpent),
+          fixedBudget: Math.round(fixedCosts),
+          savingsAmount: Math.round(this.monthlyStats.savingsAmount || 0),
+          savingsBudget: Math.round(savingsLimit),
+        };
+      },
 monthStats() {
         return (groupedTransactions) => {
           let monthlySum = 0; // sum of all categories
@@ -1445,6 +1536,7 @@ monthStats() {
             monthly_limit: this.dialogBody.monthly_limit = this.groupedTransactions[category].monthly_limit,
             categoryName: this.dialogBody.categoryName = this.groupedTransactions[category].categoryName,
             showOnBudgetPage: this.dialogBody.showOnBudgetPage = this.groupedTransactions[category].showOnBudgetPage,
+            fixed: this.dialogBody.fixed = this.groupedTransactions[category].fixed || false,
             plaid_pfc: this.groupedTransactions[category].plaid_pfc || [],
             rules: this.groupedTransactions[category].rules || {},
             merchants: [],
@@ -1568,6 +1660,7 @@ monthStats() {
           this.groupedTransactions[category.category].showOnBudgetPage = category.showOnBudgetPage
           this.groupedTransactions[category.category].originalName = category.category
           this.groupedTransactions[category.category].type = category.type
+          this.groupedTransactions[category.category].fixed = category.fixed || false
           this.groupedTransactions[category.category].plaid_pfc = category.plaid_pfc || []
           this.groupedTransactions[category.category].rules = category.rules || {}
         });
@@ -1648,6 +1741,7 @@ monthStats() {
           'type': e.type.toLowerCase(),
           'showOnBudgetPage': true,
           'plaid_pfc': e.plaid_pfc || [],
+          'fixed': e.fixed || false,
         }
         if (e.dialogType == 'addCategory'){
           const randomId = 'client_id_' + Math.random().toString(36).substring(2, 12);
