@@ -251,29 +251,31 @@ card. Category list stays flat.
 - Budget Planner (`/plan`) opens Edit Category dialog on row click
 - Research: `plans/flex-budgets-research.md`
 
-### 1. Onboarding: auto-categorize + first insight (NEXT)
-The current onboarding lands users on a dashboard full of "To Sort" transactions —
-homework, not insight. 73% of fintech users disengage in week one. The fix is
-reducing time-to-value by showing users something meaningful immediately.
+### Onboarding improvements — SHIPPED
+Rebuilt the onboarding flow based on simulated user research across 3 segments
+(YNAB switchers, privacy-first self-hosters, casual budgeters).
 
-**Three moves, in order:**
-- **Auto-categorize on first sync.** Run PFC mapping + existing rules engine
-  aggressively at first contact. Most transactions should arrive pre-sorted, not
-  in "To Sort." The categorization engine exists — it just needs to run earlier
-  and more aggressively for new users.
-- **"Here's what we found" summary card after sync.** Show spending total, top 3
-  categories by spend, and "N transactions need your help." Transforms first
-  dashboard visit from "here's your homework" to "here's what we already know."
-- **Replace sync spinner with preview cards.** 3-4 animated cards explaining what
-  the app does during the 10-60s Plaid wait. Turns dead time into engagement.
-- **Post-onboarding nudges (behavior-triggered).** After first visit with unsorted
-  transactions: surface triage flow. After categorizing 5: celebrate + show rules
-  created. After first week with no budget set: nudge on Projections card.
+**What shipped:**
+- Active sync progress screen with step checklist (replaces spinner)
+- "Here's what we found" spending summary after first sync — leads with total
+  spend number, top expense categories, sort nudge with time estimate
+- Summary sits on page background (not inside card) matching app style
+- "Add another account" loop during bank connection
+- Trust copy on bank connection: "Your bank sends data directly to this server"
+- Auto-learn toast in triage: "Got it — future [merchant] go to [category]"
+- Pace indicator on budget hero card: "On track" / "Spending faster than usual"
+- Rounded buttons globally
+- 3-second minimum sync display so progress steps register
+- Filters Payment/Income from summary categories
 
-**Effort:** Medium. Categorization engine exists. Mostly frontend + summary card.
-**Research:** `plans/onboarding-research.md`
+**Still on backlog (deferred from onboarding):**
+- Post-onboarding nudges (behavior-triggered, not time-based)
+- YNAB category import ("paste your category names")
+- Spending insights notifications for retention
 
-### 2. Transaction splitting
+**Research:** `plans/onboarding-research.md`, `plans/onboarding-improvements.md`
+
+### 1. Transaction splitting (NEXT)
 Split a single transaction across multiple categories (Costco run = groceries +
 household, Venmo blob = dinner + tickets). Table stakes — all major competitors
 (YNAB, Monarch, Copilot, Lunch Money) support this.
@@ -286,6 +288,20 @@ restores original. No auto-split rules in V1.
 `is_split_parent`. Existing queries add `WHERE is_split_parent IS NOT TRUE`.
 
 **Highest risk:** Plaid sync updating parent amount after user has split it.
+
+**Double-counting prevention:** Every place that sums transaction amounts must
+exclude split parents. Consider a centralized `effectiveTransactions` store getter
+that all consumers use instead of raw `state.transactions`. Known touchpoints:
+- `budgetSummary` computed, `monthStats`, `categorySum`, `groupTransactions`
+- TrendsView charts (all 4 tabs)
+- Search results (client + server side)
+- Rule sweeps (`sweepStore` in ruleUtils.js, `sweepCompoundRule` in api.js)
+- Recurring transaction detection
+- Venmo enrichment matching
+- Tags: `transaction_tags` FK references `transaction_id`. When parent is split,
+  tags need to transfer to children or be preserved on the hidden parent. Same
+  FK constraint issue as the Plaid ID reconciliation (no `ON UPDATE CASCADE`).
+  Tag counts/filtering in "Show all" table must also exclude split parents.
 
 **Effort:** Medium-large. Schema + API + split editor UI + filtering across all views.
 **Research:** `plans/transaction-splitting-research.md`
