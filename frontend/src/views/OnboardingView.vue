@@ -32,6 +32,9 @@
           <div class="basil-onboarding-skip">
             <a href="#" @click.prevent="currentStep = 2">Skip for now →</a>
           </div>
+          <div style="font-size: 0.75rem; color: var(--basil-text-muted); max-width: 260px; text-align: center; margin-top: var(--basil-space-3); line-height: 1.5">
+            Your bank sends data directly to this server. Nothing is shared with anyone else.
+          </div>
         </template>
         <template v-else>
           <div class="basil-onboarding-linking">
