@@ -10,7 +10,7 @@ async function getAccountData(uid) {
       token: item.accessToken,
       next_cursor: item.nextCursor || '',
       account: item.institution,
-      plaidEnv: 'production',
+      plaidEnv: item.accessToken?.startsWith('access-sandbox-') ? 'sandbox' : 'production',
       itemId: item.id,
     }));
   } catch (error) {
@@ -244,7 +244,8 @@ async function fetchAndStoreBalances(uid) {
       continue;
     }
     try {
-      const client = forEnv('production');
+      const plaidEnv = accessToken?.startsWith('access-sandbox-') ? 'sandbox' : 'production';
+      const client = forEnv(plaidEnv);
       const response = await client.accountsBalanceGet({ access_token: accessToken });
       const fetchedAt = new Date();
       const balances = response.data.accounts.map(acct => ({

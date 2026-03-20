@@ -91,36 +91,6 @@
   color: var(--basil-text-secondary);
 }
 
-/* ---- Seeding / seeded state ---- */
-.basil-onboarding-seeding,
-.basil-onboarding-seeded {
-  display: flex;
-  align-items: center;
-  gap: var(--basil-space-3);
-  font-size: 0.9375rem;
-  color: var(--basil-text-secondary);
-  margin-bottom: var(--basil-space-4);
-}
-
-/* ---- Done — summary rows ---- */
-.basil-onboarding-summary {
-  display: flex;
-  flex-direction: column;
-  gap: var(--basil-space-3);
-  margin-bottom: var(--basil-space-5);
-  padding: var(--basil-space-4);
-  background-color: var(--basil-surface-alt);
-  border-radius: var(--basil-radius-md);
-}
-
-.basil-onboarding-summary__row {
-  display: flex;
-  align-items: center;
-  gap: var(--basil-space-3);
-  font-size: 0.9375rem;
-  color: var(--basil-text-secondary);
-}
-
 /* ---- Linking state ---- */
 .basil-onboarding-linking {
   display: flex;
@@ -133,4 +103,156 @@
 
 .basil-onboarding-linking .basil-onboarding-heading {
   margin-bottom: 0;
+}
+
+/* ---- Linked accounts list ---- */
+.basil-onboarding-linked-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-3);
+  margin-bottom: var(--basil-space-4);
+  padding: var(--basil-space-4);
+  background-color: var(--basil-surface-alt);
+  border-radius: var(--basil-radius-md);
+}
+
+.basil-onboarding-linked-row {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  font-size: 0.9375rem;
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Sync progress ---- */
+.basil-onboarding-sync {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--basil-space-4) 0;
+}
+
+.basil-onboarding-sync-steps {
+  width: 100%;
+  max-width: 280px;
+  margin-top: var(--basil-space-2);
+}
+
+.basil-onboarding-sync-step {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  padding: var(--basil-space-2) 0;
+  font-size: 0.8125rem;
+  color: var(--basil-text-secondary);
+}
+
+.basil-onboarding-sync-step__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.basil-onboarding-sync-step--done .basil-onboarding-sync-step__icon {
+  background: var(--basil-green-subtle);
+  color: var(--basil-green);
+}
+
+.basil-onboarding-sync-step--active {
+  color: var(--basil-text);
+  font-weight: 500;
+}
+
+.basil-onboarding-sync-step--active .basil-onboarding-sync-step__icon {
+  background: var(--basil-green);
+  color: white;
+}
+
+.basil-onboarding-sync-step--pending {
+  color: var(--basil-text-muted);
+}
+
+.basil-onboarding-sync-step--pending .basil-onboarding-sync-step__icon {
+  background: var(--basil-surface-alt);
+  color: var(--basil-text-muted);
+}
+
+/* ---- Summary screen (sits on page bg, not inside card) ---- */
+.basil-onboarding-summary-screen {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--basil-space-5);
+  animation: basil-onboarding-in 300ms var(--basil-ease) both;
+}
+
+.basil-onboarding-summary-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--basil-green-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--basil-space-4);
+}
+
+/* ---- Top categories list ---- */
+.basil-onboarding-categories {
+  background: var(--basil-surface);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-md);
+  overflow: hidden;
+  margin-bottom: var(--basil-space-4);
+}
+
+.basil-onboarding-categories__header {
+  padding: var(--basil-space-3) var(--basil-space-4);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--basil-text-muted);
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-onboarding-categories__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--basil-space-3) var(--basil-space-4);
+  font-size: 0.875rem;
+  color: var(--basil-text);
+  border-bottom: 1px solid var(--basil-border);
+}
+
+.basil-onboarding-categories__row:last-child {
+  border-bottom: none;
+}
+
+/* ---- Sort nudge ---- */
+.basil-onboarding-sort-nudge {
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-3);
+  padding: var(--basil-space-4);
+  background: var(--basil-warning-bg);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-md);
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-onboarding-sort-nudge__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--basil-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--basil-warning);
+  flex-shrink: 0;
 }

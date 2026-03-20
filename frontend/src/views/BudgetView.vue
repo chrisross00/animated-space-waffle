@@ -48,6 +48,10 @@
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
               left to spend this month
             </div>
+            <div v-if="budgetSummary" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
+              <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
+              {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
+            </div>
             <div style="margin-top: var(--basil-space-3)">
               <q-linear-progress
                 :value="Math.min(displayedSummary.ratio, 1)"
@@ -813,6 +817,12 @@
               @click="triageAccept()"
             />
           </div>
+
+          <!-- Auto-learn feedback toast -->
+          <div v-if="triageLearnToast" class="basil-triage-learn-toast">
+            <q-icon name="auto_awesome" size="16px" />
+            Got it — future {{ triageLearnToast.merchant }} transactions go to {{ triageLearnToast.category }}
+          </div>
         </template>
 
       </q-card>
@@ -968,6 +978,7 @@
         triageVenmoCount: 0,
         enrichmentOffered: false,
         triageShowEnrichmentPrompt: false,
+        triageLearnToast: null,
         relationshipsExpanded: false,
         relationshipSaving: false,
       };
@@ -1345,6 +1356,16 @@
 
         const remaining = income - savingsLimit - spent;
 
+        // Pace: compare spending rate to days elapsed in month
+        const sel = this.selectedDate.actual;
+        const daysInMonth = sel.daysInMonth();
+        const today = dayjs();
+        const dayOfMonth = (sel.month() === today.month() && sel.year() === today.year())
+          ? today.date() : daysInMonth;
+        const expectedSpendRate = dayOfMonth / daysInMonth;
+        const actualSpendRate = pool > 0 ? spent / pool : 0;
+        const pace = actualSpendRate <= expectedSpendRate + 0.15 ? 'on-track' : 'caution';
+
         return {
           pool: Math.round(income - savingsLimit),
           spent: Math.round(spent),
@@ -1354,6 +1375,7 @@
           fixedBudget: Math.round(fixedCosts),
           savingsAmount: Math.round(this.monthlyStats.savingsAmount || 0),
           savingsBudget: Math.round(savingsLimit),
+          pace,
         };
       },
 monthStats() {
@@ -1856,6 +1878,8 @@ monthStats() {
         this.triageSkipped = new Set();
         this.triageDone = false;
         this.triageCreateRule = true;
+        this._triageToastShown = false;
+        this.triageLearnToast = null;
         this.triageVenmoCount = 0;
         this.triageTotal = this.triageItems.length;
         const first = this.triageItems[0];
@@ -1902,6 +1926,12 @@ monthStats() {
               createdFrom: 'triage',
             };
             await applyCompoundRuleToStore(store, payload, targetCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
+          }
+          if (wantsRule && !this._triageToastShown) {
+            const merchantName = txn?.merchant_name || txn?.name || 'similar';
+            this.triageLearnToast = { merchant: merchantName, category: this.triageCategory };
+            this._triageToastShown = true;
+            setTimeout(() => { this.triageLearnToast = null; }, 4000);
           }
         } catch (e) {
           console.error('Triage save error:', e);

@@ -70,6 +70,8 @@ async function validateIdToken(req) {
  * @returns {boolean} true if test user (response already sent), false if real user
  */
 async function rejectTestUser(uid, res) {
+  // In dev, allow test users to use sandbox Plaid for local testing
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_AUTH_BYPASS_UID) return false;
   // Deterministic test user UIDs all start with 'test-user-'
   if (uid && uid.startsWith('test-user-')) {
     res.status(403).json({ message: 'Plaid operations are not available for test users' });
