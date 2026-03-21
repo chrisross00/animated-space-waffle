@@ -877,6 +877,11 @@
   margin-bottom: var(--basil-space-2);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
 }
+.basil-category--expanded .basil-pfc-breakdown {
+  margin-bottom: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--basil-border);
+}
 
 .basil-pfc-breakdown__row {
   display: flex;
