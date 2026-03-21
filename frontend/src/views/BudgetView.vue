@@ -255,7 +255,7 @@
           <div class="categories">
             <div
               v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
-              v-if="shouldShowCategory(category)"
+              v-show="shouldShowCategory(category)"
               :key="category"
               class="budget-container"
               :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
