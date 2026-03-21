@@ -251,14 +251,13 @@
 
       <!-- If show all is false -->
       <div v-show="isOnboarded && !showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
-        <q-card flat bordered>
         <q-list>
           <div class="categories">
             <div
               v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
               :key="category"
               class="budget-container"
-              :class="{ 'basil-category-reveal': barsReady }"
+              :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
               :style="barsReady ? { animationDelay: `${categoryIndex * 35}ms` } : {}"
             >
 
@@ -307,18 +306,17 @@
                     {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                   </q-item-label>
+                  <!-- PFC sub-breakdown (inside header) -->
+                  <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
+                    <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
+                         class="basil-pfc-breakdown__row">
+                      <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
+                      <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
+                    </div>
+                  </div>
                 </q-item-section>
 
               </q-item>
-
-              <!-- Detailed PFC sub-breakdown (attached to category row) -->
-              <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
-                <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
-                     class="basil-pfc-breakdown__row">
-                  <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
-                  <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
-                </div>
-              </div>
 
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
@@ -423,7 +421,6 @@
             </div>
           </div>
         </q-list>
-        </q-card>
       </div>
 
       <!-- If show all is true -->
