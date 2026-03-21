@@ -885,6 +885,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-left: var(--basil-space-3);
   padding: var(--basil-space-1) 0;
 }
 
