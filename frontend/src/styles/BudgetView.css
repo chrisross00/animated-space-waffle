@@ -152,10 +152,10 @@
       z-index: 1;
     }
 
-    /* Sibling after an expanded card needs top rounding */
+    /* Sibling after an expanded card needs top rounding and reset margin */
     .categories > .budget-container.basil-category--expanded + .budget-container:not(.basil-category--expanded) {
       border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
-      border-top: 1px solid var(--basil-border);
+      margin-top: 0;
     }
 
     /* Sibling before an expanded card needs bottom rounding */
