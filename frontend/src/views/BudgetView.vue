@@ -257,7 +257,7 @@
               v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
               :key="category"
               class="budget-container"
-              :class="{ 'basil-category-reveal': barsReady }"
+              :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
               :style="barsReady ? { animationDelay: `${categoryIndex * 35}ms` } : {}"
             >
 

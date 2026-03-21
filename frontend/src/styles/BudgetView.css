@@ -125,6 +125,28 @@
       background-color: var(--basil-surface-raised);
     }
 
+    /* Expanded category lifts into a card */
+    .basil-category--expanded {
+      background: var(--basil-surface);
+      border-radius: var(--basil-radius-md);
+      box-shadow: var(--basil-shadow-sm);
+      margin: var(--basil-space-2) 0;
+      transition: background var(--basil-t-base) var(--basil-ease),
+                  box-shadow var(--basil-t-base) var(--basil-ease),
+                  border-radius var(--basil-t-base) var(--basil-ease),
+                  margin var(--basil-t-base) var(--basil-ease);
+    }
+    .basil-category--expanded > .q-item {
+      background-color: var(--basil-surface) !important;
+      border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
+    }
+    .budget-container:not(.basil-category--expanded) {
+      transition: background var(--basil-t-base) var(--basil-ease),
+                  box-shadow var(--basil-t-base) var(--basil-ease),
+                  border-radius var(--basil-t-base) var(--basil-ease),
+                  margin var(--basil-t-base) var(--basil-ease);
+    }
+
     .categories {
       flex-direction: column;
       flex-wrap: wrap;
