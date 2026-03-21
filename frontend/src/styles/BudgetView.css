@@ -117,8 +117,60 @@
   }
   
   
-    .budget-container > .q-item {
+    /* Collapsed categories: white background, shared borders to look like one card */
+    .categories > .budget-container {
       background-color: var(--basil-surface);
+      border-left: 1px solid var(--basil-border);
+      border-right: 1px solid var(--basil-border);
+      border-bottom: 1px solid var(--basil-border);
+      transition: margin 0.25s var(--basil-ease),
+                  border-radius 0.25s var(--basil-ease),
+                  box-shadow 0.25s var(--basil-ease);
+    }
+    .categories > .budget-container:first-child {
+      border-top: 1px solid var(--basil-border);
+      border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
+    }
+    .categories > .budget-container:last-child {
+      border-radius: 0 0 var(--basil-radius-md) var(--basil-radius-md);
+    }
+    .categories > .budget-container:only-child {
+      border-radius: var(--basil-radius-md);
+    }
+
+    /* Separator between category header and transactions when expanded */
+    .categories > .budget-container.basil-category--expanded > .q-item {
+      border-bottom: 1px solid var(--basil-border);
+    }
+
+    /* Expanded category: pops out as its own card */
+    .categories > .budget-container.basil-category--expanded {
+      border-radius: var(--basil-radius-md);
+      border-top: 1px solid var(--basil-border);
+      margin: var(--basil-space-2) 0;
+      box-shadow: var(--basil-shadow-sm);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Sibling after an expanded card needs top rounding */
+    .categories > .budget-container.basil-category--expanded + .budget-container:not(.basil-category--expanded) {
+      border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
+      border-top: 1px solid var(--basil-border);
+    }
+
+    /* Sibling before an expanded card needs bottom rounding */
+    .categories > .budget-container:not(.basil-category--expanded):has(+ .budget-container.basil-category--expanded) {
+      border-radius: 0 0 var(--basil-radius-md) var(--basil-radius-md);
+    }
+
+    /* Between two expanded cards: fully rounded */
+    .categories > .budget-container.basil-category--expanded + .budget-container:not(.basil-category--expanded):has(+ .budget-container.basil-category--expanded) {
+      border-radius: var(--basil-radius-md);
+    }
+
+    .budget-container > .q-item {
+      background-color: transparent;
     }
 
     .active {
@@ -154,7 +206,7 @@
   
   
     .category-transactions {
-      padding-top: 8px;
+      padding-top: 0;
     }
   
     .category-transactions table {
@@ -851,8 +903,7 @@
 .basil-pfc-breakdown {
   background-color: var(--basil-surface);
   border-radius: 0 0 var(--basil-radius-sm) var(--basil-radius-sm);
-  padding: var(--basil-space-2) var(--basil-space-4) var(--basil-space-2) 22px;
-  margin-bottom: var(--basil-space-2);
+  padding: var(--basil-space-2) var(--basil-space-4) 0 22px;
   box-shadow: none;
 }
 
