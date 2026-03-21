@@ -9,3 +9,4 @@ renameCollection.js
 admin/dist/
 frontend/.env.production
 .superpowers/
+.worktrees/
