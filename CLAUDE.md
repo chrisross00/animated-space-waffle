@@ -203,31 +203,14 @@ section instead of reading the whole file.
 
 ---
 
-## Next up: Transaction splitting
-
-Split a single transaction across multiple categories (Costco run = groceries +
-household, Venmo blob = dinner + tickets). Table stakes for budgeting apps.
-
-**MVP:** Manual amount-based splitting from transaction detail. Parent row marked
-`is_split_parent` and excluded from totals. Children get own categories. Unsplit
-restores original. No auto-split rules in V1.
-
-**Data model:** Two new columns on `transactions` — `parent_transaction_id` and
-`is_split_parent`. Existing queries add `WHERE is_split_parent IS NOT TRUE`.
-
-**Highest risk:** Plaid sync updating parent amount after user has split it.
-
-**Double-counting prevention:** Every place that sums transaction amounts must
-exclude split parents. Consider a centralized `effectiveTransactions` store getter.
-Known touchpoints: `budgetSummary`, `monthStats`, `categorySum`, `groupTransactions`,
-TrendsView charts, search results, rule sweeps, recurring detection, Venmo enrichment,
-`transaction_tags` FK references.
-
-**Research:** `plans/transaction-splitting-research.md`
-
----
-
 ## Backlog
+
+### High priority
+- [ ] **Mobile: dropdown blur swallows submit tap** — on mobile, tapping a submit
+      button while a Quasar `q-select` has focus requires two taps (first blurs the
+      dropdown, second fires the button). Affects all forms app-wide, not just splitting.
+      Possible fix: `@mousedown.prevent` on submit buttons, or `@touchend.prevent` to
+      fire before blur. Needs investigation for side effects across all form patterns.
 
 ### Medium priority
 - [ ] **Export to CSV** — low effort, useful for taxes/sharing.
