@@ -254,8 +254,7 @@
         <q-list>
           <div class="categories">
             <div
-              v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
-              v-show="shouldShowCategory(category)"
+              v-for="(groupedTransactions, category, categoryIndex) in visibleGroupedTransactions"
               :key="category"
               class="budget-container"
               :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
@@ -1076,6 +1075,15 @@
       },
       hasVisibleCategories() {
         return Object.keys(this.groupedTransactions).some(cat => this.shouldShowCategory(cat));
+      },
+      visibleGroupedTransactions() {
+        const result = {};
+        for (const [category, group] of Object.entries(this.groupedTransactions)) {
+          if (this.shouldShowCategory(category)) {
+            result[category] = group;
+          }
+        }
+        return result;
       },
       tableTransactions() {
         let rows = this.tableServerResults !== null
