@@ -853,7 +853,7 @@
   border-radius: 0 0 var(--basil-radius-sm) var(--basil-radius-sm);
   padding: var(--basil-space-2) var(--basil-space-4) var(--basil-space-2) 22px;
   margin-bottom: var(--basil-space-2);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: none;
 }
 
 .basil-pfc-breakdown__row {
