@@ -849,7 +849,7 @@
 
 /* ---- Detailed PFC sub-breakdown (attached to category row) ---- */
 .basil-pfc-breakdown {
-  background-color: var(--basil-surface-alt);
+  background-color: var(--basil-surface);
   border-radius: 0 0 var(--basil-radius-sm) var(--basil-radius-sm);
   padding: var(--basil-space-2) var(--basil-space-4) var(--basil-space-2) 22px;
   margin-bottom: var(--basil-space-2);
