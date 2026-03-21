@@ -856,7 +856,8 @@
             <template v-if="triageSplitMode">
               <q-btn flat label="Cancel" @click="triageSplitMode = false; triageSplitRows = []" />
               <q-btn unelevated color="primary" label="Save split"
-                :disable="Math.abs(triageSplitRemaining) > 0.01 || triageSplitRows.length < 2 || !triageSplitRows.every(r => r.amount > 0 && r.categoryName)"
+                :disable="Math.abs(triageSplitRemaining) > 0.01 || triageSplitRows.length < 2 || !triageSplitRows.every(r => r.amount > 0 && r.categoryName) || triageSaving"
+                :loading="triageSaving"
                 @click="handleSplit({ transaction_id: triageItems[0].transaction_id, splits: triageSplitRows })" />
             </template>
             <template v-else>
@@ -2032,10 +2033,12 @@ monthStats() {
         });
       },
       async handleSplit({ transaction_id, splits }) {
+        const fromTriage = this.triageOpen && this.triageSplitMode;
+        if (fromTriage) this.triageSaving = true;
         const result = await splitTransaction(transaction_id, splits);
+        if (fromTriage) this.triageSaving = false;
         if (!result) return;
         this.$store.commit('splitTransaction', result);
-        const fromTriage = this.triageOpen && this.triageSplitMode;
         // Close dialogs (but not triage — it advances instead)
         this.clicker = false;
         this.tableDialogOpen = false;

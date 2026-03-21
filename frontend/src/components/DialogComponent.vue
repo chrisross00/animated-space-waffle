@@ -160,7 +160,8 @@
           <q-btn flat label="Cancel" @click="exitSplitMode()" />
           <q-btn
             unelevated label="Save split" color="primary"
-            :disable="!splitValid"
+            :disable="!splitValid || splitSaving"
+            :loading="splitSaving"
             @click="saveSplit()"
           />
         </template>
@@ -603,6 +604,7 @@
             newRuleValue: null,
             filteredMerchants: [],
             splitMode: false,
+            splitSaving: false,
             splitRows: [],
         };
       },
@@ -755,6 +757,7 @@ computed: {
         },
         exitSplitMode() {
             this.splitMode = false;
+            this.splitSaving = false;
             this.splitRows = [];
         },
         updateSplitAmount(index, value) {
@@ -778,7 +781,8 @@ computed: {
             this.splitRows.splice(index, 1);
         },
         saveSplit() {
-            if (!this.splitValid) return;
+            if (!this.splitValid || this.splitSaving) return;
+            this.splitSaving = true;
             this.$emit('save-split', {
                 transaction_id: this.item.transaction_id,
                 splits: this.splitRows.map(r => ({
