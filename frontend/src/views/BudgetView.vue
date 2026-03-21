@@ -255,6 +255,7 @@
           <div class="categories">
             <div
               v-for="(groupedTransactions, category, categoryIndex) in groupedTransactions"
+              v-if="shouldShowCategory(category)"
               :key="category"
               class="budget-container"
               :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
@@ -263,7 +264,6 @@
 
               <!-- Make a category List Item -->
               <q-item
-                v-show="shouldShowCategory(category)"
                 clickable v-ripple
                 @click="toggleCategory(category)"
                 category="category"
