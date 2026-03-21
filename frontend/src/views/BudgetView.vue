@@ -306,18 +306,17 @@
                     {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                   </q-item-label>
+                  <!-- PFC sub-breakdown (inside header) -->
+                  <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
+                    <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
+                         class="basil-pfc-breakdown__row">
+                      <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
+                      <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
+                    </div>
+                  </div>
                 </q-item-section>
 
               </q-item>
-
-              <!-- Detailed PFC sub-breakdown (attached to category row) -->
-              <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
-                <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
-                     class="basil-pfc-breakdown__row">
-                  <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
-                  <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
-                </div>
-              </div>
 
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
