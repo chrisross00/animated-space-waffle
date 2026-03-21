@@ -213,6 +213,10 @@ section instead of reading the whole file.
       fire before blur. Needs investigation for side effects across all form patterns.
 
 ### Medium priority
+- [ ] **Show/hide empty budget categories** — user setting to toggle whether categories
+      with zero activity and no budget limit are visible on the budget page. Currently
+      hidden via `shouldShowCategory` (requires limit, activity, or transactions).
+      Setting should persist per-user (DB or localStorage).
 - [ ] **Export to CSV** — low effort, useful for taxes/sharing.
 - [ ] **Rules & suggestion engine: user control** — "exclude from rules" checkbox in
       Edit Transaction dialog; confidence reason chips; merchant exclusion from auto-suggest.
