@@ -361,6 +361,14 @@
                               {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
                               <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
                             </span>
+                            <q-icon
+                              v-if="item.parentTransactionId"
+                              name="call_split"
+                              size="14px"
+                              class="basil-split-icon"
+                            >
+                              <q-tooltip>Part of a split transaction</q-tooltip>
+                            </q-icon>
                           </div>
                           <div class="basil-txn-label__secondary">
                             {{ formatDate(item.date) }}
@@ -393,7 +401,9 @@
                       @update-transaction="onSubmit"
                       @view-rule="handleViewRule"
                       @relationship-confirm="relationshipConfirm"
-                      @relationship-dismiss="relationshipDismiss"/>
+                      @relationship-dismiss="relationshipDismiss"
+                      @save-split="handleSplit"
+                      @unsplit="handleUnsplit"/>
                     </BasilTray>
                   </div>
                 </div>
@@ -581,6 +591,13 @@
                       {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
                       <q-tooltip>{{ relationshipTooltip(item) }}</q-tooltip>
                     </span>
+                    <span
+                      v-if="item.parentTransactionId"
+                      class="basil-relationship-badge"
+                    >
+                      Split
+                      <q-tooltip>Part of a split transaction</q-tooltip>
+                    </span>
                   </div>
                   <div class="basil-txn-label__secondary">
                     {{ formatDate(item.date) }}
@@ -650,6 +667,8 @@
             @view-rule="handleViewRule"
             @relationship-confirm="relationshipConfirm"
             @relationship-dismiss="relationshipDismiss"
+            @save-split="handleSplit"
+            @unsplit="handleUnsplit"
           />
         </BasilTray>
       </div>
@@ -763,59 +782,95 @@
             </div>
           </div>
 
-          <!-- Suggestion chip -->
-          <div v-if="triageItems[0].suggestion" class="basil-triage__suggestion-area">
-            <q-chip
-              clickable
-              :outline="triageCategory !== triageItems[0].suggestion"
-              :color="triageCategory === triageItems[0].suggestion ? 'primary' : undefined"
-              :text-color="triageCategory === triageItems[0].suggestion ? 'white' : undefined"
-              icon="auto_awesome"
-              @click="triageCategory = triageItems[0].suggestion"
-            >
-              {{ triageItems[0].suggestion }}
-            </q-chip>
-            <div class="basil-triage__reason">{{ triageItems[0].reason }}</div>
-          </div>
-
-          <!-- Category picker -->
-          <div class="basil-triage__picker">
-            <q-select
-              v-model="triageCategory"
-              :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
-              label="Category"
-              outlined
-              dense
-              @touchmove.stop.prevent
-            />
-          </div>
-
-          <!-- Similar transactions toggle -->
-          <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
-            <q-checkbox v-model="triageCreateRule" dense color="primary">
-              <template #default>
-                <span v-if="triageActionableCount > 0">
-                  Also categorize {{ triageActionableCount }} similar
-                </span>
-                <span v-else>Remember for future "{{ triageSimilar.label }}"</span>
-              </template>
-            </q-checkbox>
-            <div class="basil-triage__similar-hint">
-              Matched by {{ triageSimilar.strategy === 'merchant_name' ? 'merchant' : triageSimilar.strategy === 'name_account' ? 'name + institution' : 'name' }}
+          <!-- Split mode -->
+          <template v-if="triageSplitMode">
+            <div style="text-align: center; padding: var(--basil-space-2) 0 var(--basil-space-3);">
+              <span class="basil-split__remaining" :class="{ 'basil-split__remaining--done': Math.abs(triageSplitRemaining) < 0.01 }">
+                {{ Math.abs(triageSplitRemaining) < 0.01 ? 'Balanced' : `$${triageSplitRemaining.toFixed(2)} remaining` }}
+              </span>
             </div>
-          </div>
+            <div class="basil-split__rows" style="padding: 0 var(--basil-space-4);">
+              <div v-for="(row, i) in triageSplitRows" :key="i" class="basil-split__row">
+                <q-input outlined dense type="number" :model-value="row.amount"
+                  @update:model-value="triageUpdateSplitAmount(i, $event)" prefix="$" class="basil-split__amount" step="0.01" min="0.01" />
+                <q-select outlined dense :model-value="row.categoryName"
+                  @update:model-value="triageUpdateSplitCategory(i, $event)"
+                  :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
+                  label="Category" class="basil-split__category" @touchmove.stop.prevent />
+                <q-btn v-if="triageSplitRows.length > 2" flat round dense icon="close" size="sm" color="negative"
+                  @click="triageSplitRows.splice(i, 1)" />
+                <div v-else style="width: 36px" />
+              </div>
+            </div>
+            <div v-if="triageSplitRemaining > 0.01" style="text-align: center; padding: var(--basil-space-1) 0;">
+              <q-btn flat dense label="+ Add row" color="primary" @click="triageSplitRows.push({ amount: triageSplitRemaining, categoryName: '' })" />
+            </div>
+          </template>
+          <!-- Normal triage category picker + similar -->
+          <template v-else>
+            <!-- Suggestion chip -->
+            <div v-if="triageItems[0].suggestion" class="basil-triage__suggestion-area">
+              <q-chip
+                clickable
+                :outline="triageCategory !== triageItems[0].suggestion"
+                :color="triageCategory === triageItems[0].suggestion ? 'primary' : undefined"
+                :text-color="triageCategory === triageItems[0].suggestion ? 'white' : undefined"
+                icon="auto_awesome"
+                @click="triageCategory = triageItems[0].suggestion"
+              >
+                {{ triageItems[0].suggestion }}
+              </q-chip>
+              <div class="basil-triage__reason">{{ triageItems[0].reason }}</div>
+            </div>
+
+            <!-- Category picker -->
+            <div class="basil-triage__picker">
+              <q-select
+                v-model="triageCategory"
+                :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
+                label="Category"
+                outlined
+                dense
+                @touchmove.stop.prevent
+              />
+            </div>
+
+            <!-- Similar transactions toggle -->
+            <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
+              <q-checkbox v-model="triageCreateRule" dense color="primary">
+                <template #default>
+                  <span v-if="triageActionableCount > 0">
+                    Also categorize {{ triageActionableCount }} similar
+                  </span>
+                  <span v-else>Remember for future "{{ triageSimilar.label }}"</span>
+                </template>
+              </q-checkbox>
+              <div class="basil-triage__similar-hint">
+                Matched by {{ triageSimilar.strategy === 'merchant_name' ? 'merchant' : triageSimilar.strategy === 'name_account' ? 'name + institution' : 'name' }}
+              </div>
+            </div>
+          </template>
 
           <!-- Actions -->
           <div class="basil-triage__actions">
-            <q-btn flat label="Skip" @click="triageSkip()" :disable="triageSaving" />
-            <q-btn
-              unelevated
-              color="primary"
-              label="Save"
-              :disable="!triageCategory || triageSaving"
-              :loading="triageSaving"
-              @click="triageAccept()"
-            />
+            <template v-if="triageSplitMode">
+              <q-btn flat label="Cancel" @click="triageSplitMode = false; triageSplitRows = []" />
+              <q-btn unelevated color="primary" label="Save split"
+                :disable="Math.abs(triageSplitRemaining) > 0.01 || triageSplitRows.length < 2 || !triageSplitRows.every(r => r.amount > 0 && r.categoryName)"
+                @click="handleSplit({ transaction_id: triageItems[0].transaction_id, splits: triageSplitRows })" />
+            </template>
+            <template v-else>
+              <q-btn flat label="Skip" @click="triageSkip()" :disable="triageSaving" />
+              <q-btn v-if="triageCanSplit" flat label="Split" @click="triageEnterSplitMode()" :disable="triageSaving" />
+              <q-btn
+                unelevated
+                color="primary"
+                label="Save"
+                :disable="!triageCategory || triageSaving"
+                :loading="triageSaving"
+                @click="triageAccept()"
+              />
+            </template>
           </div>
 
           <!-- Auto-learn feedback toast -->
@@ -871,7 +926,7 @@
   import EmptyState from '../components/EmptyState.vue'
   import TagPicker from '../components/TagPicker.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi } from '@/api';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi, splitTransaction, unsplitTransaction } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
@@ -981,6 +1036,9 @@
         triageLearnToast: null,
         relationshipsExpanded: false,
         relationshipSaving: false,
+        splitUndoData: null,
+        triageSplitMode: false,
+        triageSplitRows: [],
       };
     },
     computed: {
@@ -1248,6 +1306,17 @@
         return this.triageSimilar.matches.filter(t =>
           t.mappedCategory !== this.triageCategory && !t.manually_set
         ).length;
+      },
+      triageCanSplit() {
+        const txn = this.triageItems[0];
+        if (!txn) return false;
+        return !txn.pending && txn.amount >= 0 && !txn.parentTransactionId && !txn.isSplitParent;
+      },
+      triageSplitRemaining() {
+        const txn = this.triageItems[0];
+        const total = Number(txn?.amount || 0);
+        const used = this.triageSplitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        return Math.round((total - used) * 100) / 100;
       },
       triageAttribution() {
         if (!this.triageItems?.length) return null;
@@ -1950,6 +2019,8 @@ monthStats() {
         this.triageAdvance();
       },
       triageAdvance() {
+        this.triageSplitMode = false;
+        this.triageSplitRows = [];
         this.$nextTick(() => {
           if (this.triageItems.length === 0) {
             this.triageDone = true;
@@ -1959,6 +2030,99 @@ monthStats() {
             this.triageCreateRule = true;
           }
         });
+      },
+      async handleSplit({ transaction_id, splits }) {
+        const result = await splitTransaction(transaction_id, splits);
+        if (!result) return;
+        this.$store.commit('splitTransaction', result);
+        const fromTriage = this.triageOpen && this.triageSplitMode;
+        // Close dialogs (but not triage — it advances instead)
+        this.clicker = false;
+        this.tableDialogOpen = false;
+        Object.keys(this.transactionClickers).forEach(k => { this.transactionClickers[k] = false; });
+        // Rebuild page data
+        this.groupTransactions();
+        // If from triage, advance to next item instead of closing
+        if (fromTriage) {
+          this.triageAdvance();
+        }
+        // Undo toast
+        this.splitUndoData = { transaction_id, result };
+        this.$q.notify({
+          message: `Split into ${splits.length} categories`,
+          color: 'dark',
+          actions: [{
+            label: 'Undo',
+            color: 'white',
+            handler: () => this.undoSplit(),
+          }],
+          timeout: 5000,
+        });
+      },
+      async handleUnsplit({ transaction_id }) {
+        const result = await unsplitTransaction(transaction_id);
+        if (!result) return;
+        this.$store.commit('unsplitTransaction', result);
+        // Close dialog
+        this.clicker = false;
+        this.tableDialogOpen = false;
+        Object.keys(this.transactionClickers).forEach(k => { this.transactionClickers[k] = false; });
+        // Rebuild page data
+        this.groupTransactions();
+        // Undo toast (re-split with previous data)
+        const previousSplits = result.previousSplits;
+        if (previousSplits?.length) {
+          this.$q.notify({
+            message: 'Restored original transaction',
+            color: 'dark',
+            actions: [{
+              label: 'Undo',
+              color: 'white',
+              handler: async () => {
+                const reSplit = await splitTransaction(
+                  result.parent.transaction_id,
+                  previousSplits.map(c => ({
+                    amount: Number(c.amount),
+                    categoryName: c.mappedCategory,
+                    note: c.note,
+                  }))
+                );
+                if (reSplit) {
+                  this.$store.commit('splitTransaction', reSplit);
+                  this.groupTransactions();
+                }
+              },
+            }],
+            timeout: 5000,
+          });
+        }
+      },
+      async undoSplit() {
+        if (!this.splitUndoData) return;
+        const { transaction_id } = this.splitUndoData;
+        const result = await unsplitTransaction(transaction_id);
+        if (result) {
+          this.$store.commit('unsplitTransaction', result);
+          this.groupTransactions();
+        }
+        this.splitUndoData = null;
+      },
+      triageEnterSplitMode() {
+        this.triageSplitMode = true;
+        this.triageSplitRows = [
+          { amount: null, categoryName: '' },
+          { amount: null, categoryName: '' },
+        ];
+      },
+      triageUpdateSplitAmount(index, value) {
+        const num = Number(value) || 0;
+        const total = Number(this.triageItems[0].amount);
+        const othersSum = this.triageSplitRows.reduce((sum, r, i) => i === index ? sum : sum + (Number(r.amount) || 0), 0);
+        const max = Math.round((total - othersSum) * 100) / 100;
+        this.triageSplitRows[index].amount = Math.min(Math.max(num, 0), max);
+      },
+      triageUpdateSplitCategory(index, value) {
+        this.triageSplitRows[index].categoryName = value;
       },
       relKey(rel) {
         const ids = rel.type === 'split'

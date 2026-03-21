@@ -44,57 +44,106 @@
           <span>{{ attribution.label }}</span>
           <q-icon v-if="attribution.linkable" name="chevron_right" size="14px" />
         </div>
-      </div>
-
-      <div class="basil-dialog-fields">
-        <q-input
-          type="date"
-          outlined
-          v-model="dialogBody.date"
-          label="Date"
-          @change="isFormSubmittable()"
-        />
-        <q-select
-          outlined
-          v-model="dialogBody.mappedCategory"
-          label="Category"
-          :options="dropDownOptions"
-          @touchmove.stop.prevent
-        />
-        <q-input
-          type="text"
-          outlined
-          v-model="dialogBody.note"
-          label="Note"
-          @change="isFormSubmittable()"
-        />
-      </div>
-
-      <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
-        <TagPicker v-model="selectedTags" @update:modelValue="isFormSubmittable()" />
-      </div>
-
-      <div class="basil-dialog-toggles">
-        <q-toggle
-          color="primary"
-          label="Exclude from total"
-          v-model="dialogBody.excludeFromTotal"
-          @update:model-value="isFormSubmittable()"
-        />
-        <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
-          <q-checkbox v-model="dialogBody.createRule" dense color="primary">
-            <template #default>
-              <span v-if="actionableCount > 0">
-                Also categorize {{ actionableCount }} similar
-              </span>
-              <span v-else>Remember for future "{{ similarityData.label }}"</span>
-            </template>
-          </q-checkbox>
-          <div class="basil-dialog-similar__hint">
-            Matched by {{ similarityData.strategy === 'merchant_name' ? 'merchant' : similarityData.strategy === 'name_account' ? 'name + institution' : 'name' }}
-          </div>
+        <div v-if="isSplitChild" class="basil-dialog-txn-attribution">
+          <q-icon name="call_split" size="14px" />
+          <span>Split from ${{ parentAmount != null ? Math.abs(parentAmount).toFixed(2) : '?' }} {{ item.merchant_name || item.name }}</span>
         </div>
       </div>
+
+      <template v-if="!splitMode">
+        <div class="basil-dialog-fields">
+          <q-input
+            type="date"
+            outlined
+            v-model="dialogBody.date"
+            label="Date"
+            @change="isFormSubmittable()"
+          />
+          <q-select
+            outlined
+            v-model="dialogBody.mappedCategory"
+            label="Category"
+            :options="dropDownOptions"
+            @touchmove.stop.prevent
+          />
+          <q-input
+            type="text"
+            outlined
+            v-model="dialogBody.note"
+            label="Note"
+            @change="isFormSubmittable()"
+          />
+        </div>
+
+        <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
+          <TagPicker v-model="selectedTags" @update:modelValue="isFormSubmittable()" />
+        </div>
+
+        <div class="basil-dialog-toggles">
+          <q-toggle
+            color="primary"
+            label="Exclude from total"
+            v-model="dialogBody.excludeFromTotal"
+            @update:model-value="isFormSubmittable()"
+          />
+          <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
+            <q-checkbox v-model="dialogBody.createRule" dense color="primary">
+              <template #default>
+                <span v-if="actionableCount > 0">
+                  Also categorize {{ actionableCount }} similar
+                </span>
+                <span v-else>Remember for future "{{ similarityData.label }}"</span>
+              </template>
+            </q-checkbox>
+            <div class="basil-dialog-similar__hint">
+              Matched by {{ similarityData.strategy === 'merchant_name' ? 'merchant' : similarityData.strategy === 'name_account' ? 'name + institution' : 'name' }}
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div style="text-align: center; padding: var(--basil-space-2) 0 var(--basil-space-3);">
+          <span class="basil-split__remaining" :class="{ 'basil-split__remaining--done': Math.abs(splitRemaining) < 0.01 }">
+            {{ Math.abs(splitRemaining) < 0.01 ? 'Balanced' : `$${splitRemaining.toFixed(2)} remaining` }}
+          </span>
+        </div>
+        <div class="basil-split__rows">
+          <div v-for="(row, i) in splitRows" :key="i" class="basil-split__row">
+            <q-input
+              outlined dense
+              type="number"
+              :model-value="row.amount"
+              @update:model-value="updateSplitAmount(i, $event)"
+              prefix="$"
+              class="basil-split__amount"
+              step="0.01"
+              min="0.01"
+            />
+            <q-select
+              outlined dense
+              :model-value="row.categoryName"
+              @update:model-value="updateSplitCategory(i, $event)"
+              :options="dropDownOptions"
+              label="Category"
+              class="basil-split__category"
+              @touchmove.stop.prevent
+            />
+            <q-btn
+              v-if="splitRows.length > 2"
+              flat round dense
+              icon="close"
+              size="sm"
+              color="negative"
+              @click="removeSplitRow(i)"
+            />
+            <div v-else style="width: 36px" />
+          </div>
+          <div v-if="splitRemaining > 0.01" style="text-align: center; padding: var(--basil-space-1) 0;">
+            <q-btn flat dense label="+ Add row" color="primary" @click="addSplitRow()" />
+          </div>
+        </div>
+      </template>
 
       <!-- Detected relationship -->
       <div v-if="relationship" class="basil-dialog-section">
@@ -107,11 +156,25 @@
       </div>
 
       <div class="basil-dialog-actions">
-        <q-btn flat label="Cancel" v-close-popup />
-        <div class="basil-dialog-actions__right">
-          <q-btn flat label="Reset" @click="resetData()" />
-          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateTransaction" />
-        </div>
+        <template v-if="splitMode">
+          <q-btn flat label="Cancel" @click="exitSplitMode()" />
+          <q-btn
+            unelevated label="Save split" color="primary"
+            :disable="!splitValid"
+            @click="saveSplit()"
+          />
+        </template>
+        <template v-else>
+          <div style="display: flex; gap: var(--basil-space-1);">
+            <q-btn flat label="Cancel" v-close-popup />
+            <q-btn v-if="canSplit" flat label="Split" @click="enterSplitMode()" />
+            <q-btn v-if="isSplitChild" flat label="Unsplit" @click="requestUnsplit()" />
+          </div>
+          <div class="basil-dialog-actions__right">
+            <q-btn flat label="Reset" @click="resetData()" />
+            <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateTransaction" />
+          </div>
+        </template>
       </div>
     </div>
 
@@ -539,10 +602,12 @@
             pendingRuleAdditions: [],
             newRuleValue: null,
             filteredMerchants: [],
+            splitMode: false,
+            splitRows: [],
         };
       },
 
-emits: ['update-transaction', 'update-category', 'add-category', 'view-rule', 'relationship-confirm', 'relationship-dismiss'],
+emits: ['update-transaction', 'update-category', 'add-category', 'view-rule', 'relationship-confirm', 'relationship-dismiss', 'save-split', 'unsplit'],
 computed: {
     dialogSubtitle() {
         if (this.dialogType === 'editCategory') return 'Edit Category';
@@ -586,6 +651,35 @@ computed: {
         return this.similarityData.matches.filter(t =>
             t.mappedCategory !== this.dialogBody.mappedCategory && !t.manually_set
         ).length;
+    },
+    canSplit() {
+        if (!this.item) return false;
+        if (this.item.pending) return false;
+        if (this.item.amount < 0) return false;
+        if (this.item.parentTransactionId) return false;
+        if (this.item.isSplitParent) return false;
+        return this.dialogType === 'transaction';
+    },
+    splitRemaining() {
+        const total = Number(this.item?.amount || 0);
+        const used = this.splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+        return Math.round((total - used) * 100) / 100;
+    },
+    splitValid() {
+        return Math.abs(this.splitRemaining) < 0.01
+            && this.splitRows.length >= 2
+            && this.splitRows.every(r => r.amount > 0 && r.categoryName);
+    },
+    isSplitChild() {
+        return !!this.item?.parentTransactionId;
+    },
+    parentAmount() {
+        if (!this.item?.parentTransactionId) return null;
+        for (const month of Object.values(this.$store.state.transactionsByMonth)) {
+            const parent = month.find(t => t.id === this.item.parentTransactionId);
+            if (parent) return parent.amount;
+        }
+        return null;
     },
   },
   methods: {
@@ -651,6 +745,51 @@ computed: {
                     return { value: m, conflict };
                 });
             });
+        },
+        enterSplitMode() {
+            this.splitMode = true;
+            this.splitRows = [
+                { amount: null, categoryName: '' },
+                { amount: null, categoryName: '' },
+            ];
+        },
+        exitSplitMode() {
+            this.splitMode = false;
+            this.splitRows = [];
+        },
+        updateSplitAmount(index, value) {
+            const num = Number(value) || 0;
+            const max = this.splitMaxForRow(index);
+            this.splitRows[index].amount = Math.min(Math.max(num, 0), max);
+        },
+        updateSplitCategory(index, value) {
+            this.splitRows[index].categoryName = value;
+        },
+        splitMaxForRow(index) {
+            const total = Number(this.item.amount);
+            const othersSum = this.splitRows.reduce((sum, r, i) => i === index ? sum : sum + (Number(r.amount) || 0), 0);
+            return Math.round((total - othersSum) * 100) / 100;
+        },
+        addSplitRow() {
+            this.splitRows.push({ amount: this.splitRemaining, categoryName: '' });
+        },
+        removeSplitRow(index) {
+            if (this.splitRows.length <= 2) return;
+            this.splitRows.splice(index, 1);
+        },
+        saveSplit() {
+            if (!this.splitValid) return;
+            this.$emit('save-split', {
+                transaction_id: this.item.transaction_id,
+                splits: this.splitRows.map(r => ({
+                    amount: Number(r.amount),
+                    categoryName: r.categoryName,
+                    note: null,
+                })),
+            });
+        },
+        requestUnsplit() {
+            this.$emit('unsplit', { transaction_id: this.item.transaction_id });
         },
         addCategory() {
             this.addedCategory = {...this.dialogBody}

@@ -263,6 +263,42 @@ export async function deleteManualAccountApi(accountId) {
   }
 }
 
+// ---- Transaction splitting ----
+
+export async function splitTransaction(transactionId, splits) {
+  const headers = getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/split', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transaction_id: transactionId, splits }),
+  });
+  if (response.ok) {
+    return response.json();
+  } else {
+    const err = await response.json().catch(() => ({}));
+    _notify({ type: 'negative', message: err.message || 'Failed to split transaction' });
+  }
+}
+
+export async function unsplitTransaction(transactionId) {
+  const headers = getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/unsplit', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ transaction_id: transactionId }),
+  });
+  if (response.ok) {
+    return response.json();
+  } else {
+    const err = await response.json().catch(() => ({}));
+    _notify({ type: 'negative', message: err.message || 'Failed to unsplit transaction' });
+  }
+}
+
 // ---- Tags ----
 
 export async function fetchTags() {

@@ -4,8 +4,8 @@
   display: inline-block;
   max-width: 80px;
   padding: 1px var(--basil-space-1);
-  background: var(--basil-surface-alt);
-  color: var(--basil-text-secondary);
+  background: var(--basil-green-subtle);
+  color: var(--basil-green);
   font-size: 0.6875rem;
   border-radius: var(--basil-radius-sm);
   white-space: nowrap;

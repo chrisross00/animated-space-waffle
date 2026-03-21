@@ -112,3 +112,32 @@
   border-radius: 2px;
   background-color: var(--basil-border);
 }
+
+/* ── Split editor ──────────────────────────────── */
+.basil-split__remaining {
+  font-size: 0.75rem;
+  padding: var(--basil-space-1) var(--basil-space-3);
+  border-radius: var(--basil-radius-pill);
+  background: var(--basil-warning-bg);
+  color: var(--basil-warning);
+  display: inline-block;
+}
+.basil-split__remaining--done {
+  background: var(--basil-positive-bg);
+  color: var(--basil-positive);
+}
+.basil-split__rows {
+  padding: 0 var(--basil-space-4);
+}
+.basil-split__row {
+  display: flex;
+  gap: var(--basil-space-2);
+  align-items: center;
+  margin-bottom: var(--basil-space-2);
+}
+.basil-split__amount {
+  flex: 1;
+}
+.basil-split__category {
+  flex: 1.5;
+}

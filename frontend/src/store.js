@@ -3,6 +3,14 @@ import createPersistedState from 'vuex-persistedstate';
 // import { firestore } from '@/firebase';
 // import { auth } from '@/firebase'
 
+/** Rebuild flat transactions array from month buckets, excluding split parents. */
+function rebuildFlatArray(state) {
+  state.transactions = Object.keys(state.transactionsByMonth)
+    .sort().reverse()
+    .flatMap(k => state.transactionsByMonth[k])
+    .filter(t => !t.isSplitParent);
+}
+
 const store = createStore({
     state: {
         user: null,
@@ -65,7 +73,6 @@ const store = createStore({
         },
         setTransactions(state, transactions) {
             // Legacy setter — also populate month-keyed cache
-            state.transactions = transactions;
             const byMonth = {};
             for (const txn of transactions) {
                 const month = (txn.effectiveDate || txn.date)?.substring(0, 7);
@@ -75,13 +82,13 @@ const store = createStore({
                 }
             }
             state.transactionsByMonth = byMonth;
+            // Rebuild flat array with split parent filter applied
+            rebuildFlatArray(state);
         },
         setMonthTransactions(state, { month, transactions }) {
             state.transactionsByMonth = { ...state.transactionsByMonth, [month]: transactions };
             // Rebuild flat compatibility array from all loaded months, newest first
-            state.transactions = Object.keys(state.transactionsByMonth)
-                .sort().reverse()
-                .flatMap(k => state.transactionsByMonth[k]);
+            rebuildFlatArray(state);
         },
         setLastSyncedAt(state, timestamp) {
             state.lastSyncedAt = timestamp;
@@ -131,9 +138,7 @@ const store = createStore({
 
             // Rebuild flat array if month changed
             if (needsRebucket) {
-                state.transactions = Object.keys(state.transactionsByMonth)
-                    .sort().reverse()
-                    .flatMap(k => state.transactionsByMonth[k]);
+                rebuildFlatArray(state);
             } else {
                 // Update flat array in-place
                 const flatTxn = state.transactions.find(t => t.transaction_id === updatedTransaction.transaction_id);
@@ -168,9 +173,7 @@ const store = createStore({
                             monthTxns.splice(idx, 1);
                             if (!state.transactionsByMonth[newMonth]) state.transactionsByMonth[newMonth] = [];
                             state.transactionsByMonth[newMonth].push(txn);
-                            state.transactions = Object.keys(state.transactionsByMonth)
-                                .sort().reverse()
-                                .flatMap(k => state.transactionsByMonth[k]);
+                            rebuildFlatArray(state);
                         }
                         break;
                     }
@@ -242,9 +245,7 @@ const store = createStore({
                 if (flat) flat.mappedCategory = revertCategory;
             }
             if (needsRebuild) {
-                state.transactions = Object.keys(state.transactionsByMonth)
-                    .sort().reverse()
-                    .flatMap(k => state.transactionsByMonth[k]);
+                rebuildFlatArray(state);
             }
         },
         undoDismissRelationship(state, { transactionId, partnerId }) {
@@ -283,9 +284,7 @@ const store = createStore({
                     }
                 }
                 // Rebuild flat array, newest first
-                state.transactions = Object.keys(state.transactionsByMonth)
-                    .sort().reverse()
-                    .flatMap(k => state.transactionsByMonth[k]);
+                rebuildFlatArray(state);
             }
         },
         updateCategoryRules(state, { categoryId, ruleType, ruleValue }) {
@@ -427,6 +426,37 @@ const store = createStore({
                 }
 
                 state.categories.push(category)
+        },
+        splitTransaction(state, { parent, children }) {
+            // Update parent in month bucket
+            const parentMonth = (parent.effectiveDate || parent.date || '').slice(0, 7);
+            if (state.transactionsByMonth[parentMonth]) {
+                const idx = state.transactionsByMonth[parentMonth].findIndex(t => t.id === parent.id);
+                if (idx !== -1) state.transactionsByMonth[parentMonth][idx] = parent;
+            }
+            // Insert children into their month buckets
+            for (const child of children) {
+                const childMonth = (child.effectiveDate || child.date || '').slice(0, 7);
+                if (!state.transactionsByMonth[childMonth]) {
+                    state.transactionsByMonth[childMonth] = [];
+                }
+                state.transactionsByMonth[childMonth].push(child);
+            }
+            rebuildFlatArray(state);
+        },
+        unsplitTransaction(state, { parent }) {
+            // Remove children from all month buckets
+            for (const month of Object.keys(state.transactionsByMonth)) {
+                state.transactionsByMonth[month] = state.transactionsByMonth[month]
+                    .filter(t => t.parentTransactionId !== parent.id);
+            }
+            // Update parent in its month bucket
+            const parentMonth = (parent.effectiveDate || parent.date || '').slice(0, 7);
+            if (state.transactionsByMonth[parentMonth]) {
+                const idx = state.transactionsByMonth[parentMonth].findIndex(t => t.id === parent.id);
+                if (idx !== -1) state.transactionsByMonth[parentMonth][idx] = parent;
+            }
+            rebuildFlatArray(state);
         },
     },
     actions: {

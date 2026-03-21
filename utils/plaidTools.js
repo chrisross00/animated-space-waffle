@@ -1,5 +1,5 @@
 const { forEnv } = require('./plaidClient');
-const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, upsertBalanceSnapshot, insertSyncLog } = require('../db/database');
+const { findPlaidItems, findCategories, updatePlaidItem, updatePlaidItemByToken, insertTransactions, updateTransaction, deleteTransactionsByIds, findUserRules, upsertPlaidAccounts, updatePlaidAccountBalances, upsertBalanceSnapshot, insertSyncLog, getPool } = require('../db/database');
 const { getMappingRuleList, mapTransactions } = require('./categoryMapping');
 
 async function getAccountData(uid) {
@@ -142,9 +142,18 @@ async function getNewPlaidTransactions(uid) {
 
     // Handle modified transactions — update mutable fields without touching mappedCategory
     const modifiedTxns = updatedResponses.flatMap(r => r.modified || []);
+    const modPool = getPool();
     for (const txn of modifiedTxns) {
+      // Guard: if this transaction has been split, skip the amount update to avoid
+      // overwriting the parent amount after the user has already divided it.
+      const { rows: parentCheck } = await modPool.query(
+        `SELECT is_split_parent FROM transactions WHERE transaction_id = $1 LIMIT 1`,
+        [txn.transaction_id]
+      );
+      const isSplitParent = parentCheck.length > 0 && parentCheck[0].is_split_parent === true;
+
       await updateTransaction(userId, txn.transaction_id, {
-        amount: txn.amount,
+        ...(isSplitParent ? {} : { amount: txn.amount }),
         date: txn.date,
         name: txn.name,
         merchant_name: txn.merchant_name,

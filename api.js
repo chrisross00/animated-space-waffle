@@ -2,7 +2,7 @@
 const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
-const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool, findTags, insertTag, deleteTag, tagTransactions, untagTransactions, findTagSummary, findTagCategoryBreakdown, findTagTransactions } = require('./db/database');
+const { findUser, insertUser, updateUser, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool, findTags, insertTag, deleteTag, tagTransactions, untagTransactions, findTagSummary, findTagCategoryBreakdown, findTagTransactions, insertSplitChildren, deleteSplitChildren, findSplitChildren, TXN_COLUMNS } = require('./db/database');
 const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
@@ -1298,6 +1298,153 @@ router.post('/venmoEnrichment/apply', async (req, res) => {
   } catch (error) {
     console.error('/venmoEnrichment/apply error:', error.message);
     res.status(500).json({ message: 'Failed to apply Venmo enrichment' });
+  }
+});
+
+// ---- Transaction splitting ----
+
+router.post('/split', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transaction_id, splits } = req.body;
+
+    // Validate splits array
+    if (!Array.isArray(splits) || splits.length < 2) {
+      return res.status(400).json({ message: 'At least 2 splits required' });
+    }
+    if (splits.length > 20) {
+      return res.status(400).json({ message: 'Maximum 20 splits allowed' });
+    }
+
+    // Find parent transaction
+    const pool = getPool();
+    const parentResult = await pool.query(
+      `SELECT ${TXN_COLUMNS} FROM transactions WHERE transaction_id = $1 AND user_id = $2`,
+      [transaction_id, uid]
+    );
+    if (parentResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+    const parent = parentResult.rows[0];
+
+    // Gate checks
+    if (parent.pending) {
+      return res.status(400).json({ message: 'Cannot split pending transactions' });
+    }
+    if (parent.amount < 0) {
+      return res.status(400).json({ message: 'Cannot split income transactions' });
+    }
+    if (parent.parentTransactionId) {
+      return res.status(400).json({ message: 'Cannot split a split child' });
+    }
+    if (parent.isSplitParent) {
+      return res.status(400).json({ message: 'Transaction is already split. Unsplit first.' });
+    }
+
+    // Validate split amounts
+    for (const s of splits) {
+      if (typeof s.amount !== 'number' || s.amount <= 0) {
+        return res.status(400).json({ message: 'All split amounts must be positive numbers' });
+      }
+      if (!s.categoryName || typeof s.categoryName !== 'string') {
+        return res.status(400).json({ message: 'All splits must have a categoryName' });
+      }
+    }
+
+    const splitSum = splits.reduce((sum, s) => sum + s.amount, 0);
+    if (Math.abs(splitSum - parent.amount) > 0.01) {
+      return res.status(400).json({
+        message: `Split amounts ($${splitSum.toFixed(2)}) must equal transaction amount ($${Number(parent.amount).toFixed(2)})`
+      });
+    }
+
+    // Validate categories exist
+    const categories = await findCategories(uid);
+    const categoryNames = new Set(categories.map(c => c.category));
+    for (const s of splits) {
+      if (!categoryNames.has(s.categoryName)) {
+        return res.status(400).json({ message: `Category "${s.categoryName}" not found` });
+      }
+    }
+
+    // Execute split (parent UPDATE + child INSERTs are wrapped in a DB transaction inside insertSplitChildren)
+    const parentFields = {
+      userId: uid,
+      date: parent.date,
+      effectiveDate: parent.effectiveDate,
+      account: parent.account,
+      accountId: parent.account_id,
+      name: parent.name,
+      merchantName: parent.merchant_name,
+      plaidPfc: parent.plaid_pfc,
+      plaidPfcDetail: parent.plaidPfcDetail,
+      excludeFromTotal: parent.excludeFromTotal,
+    };
+
+    const children = await insertSplitChildren(
+      parent.id, parent.transaction_id, parentFields, splits
+    );
+
+    // Return updated parent
+    const updatedParent = await pool.query(
+      `SELECT ${TXN_COLUMNS} FROM transactions WHERE id = $1`,
+      [parent.id]
+    );
+
+    res.json({ parent: updatedParent.rows[0], children });
+  } catch (error) {
+    console.error('/split error:', error.message);
+    res.status(500).json({ message: 'Failed to split transaction' });
+  }
+});
+
+router.post('/unsplit', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    const uid = decodedToken.uid;
+    const { transaction_id } = req.body;
+
+    // Find the transaction (could be parent or child)
+    const pool = getPool();
+    const txnResult = await pool.query(
+      `SELECT ${TXN_COLUMNS} FROM transactions WHERE transaction_id = $1 AND user_id = $2`,
+      [transaction_id, uid]
+    );
+    if (txnResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    const txn = txnResult.rows[0];
+
+    // Resolve to parent (ownership already verified by user_id in initial query)
+    let parentId;
+    if (txn.isSplitParent) {
+      parentId = txn.id;
+    } else if (txn.parentTransactionId) {
+      // Verify the parent also belongs to this user
+      const parentCheck = await pool.query(
+        'SELECT id, user_id FROM transactions WHERE id = $1',
+        [txn.parentTransactionId]
+      );
+      if (!parentCheck.rows[0] || parentCheck.rows[0].user_id !== uid) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+      parentId = txn.parentTransactionId;
+    } else {
+      return res.status(400).json({ message: 'Transaction is not split' });
+    }
+
+    // Get children before deleting (for undo data in response)
+    const children = await findSplitChildren(parentId);
+
+    // Delete children and unflag parent
+    const parent = await deleteSplitChildren(parentId);
+
+    res.json({ parent, previousSplits: children });
+  } catch (error) {
+    console.error('/unsplit error:', error.message);
+    res.status(500).json({ message: 'Failed to unsplit transaction' });
   }
 });
 

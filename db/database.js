@@ -37,6 +37,8 @@ const TXN_COLUMNS = [
   'linked_transaction AS "linkedTransaction"',
   'dismissed_relationship AS "dismissedRelationship"',
   'inserted_at AS "insertDate"',
+  'parent_transaction_id AS "parentTransactionId"',
+  'is_split_parent AS "isSplitParent"',
 ].join(', ');
 
 const TXN_TAGS_SUBQUERY = `
@@ -66,6 +68,8 @@ const TXN_FIELD_MAP = {
   venmo_counterparty: 'venmo_counterparty',
   plaidPfcDetail: 'plaid_pfc_detail',
   category: 'category',
+  parentTransactionId: 'parent_transaction_id',
+  isSplitParent: 'is_split_parent',
 };
 
 const JSONB_FIELDS = new Set(['linked_transaction']);
@@ -407,13 +411,13 @@ async function findTransactionsPaginated(userId, { page = 1, limit = 100, search
   const [txnResult, countResult] = await Promise.all([
     pool.query(
       `SELECT ${TXN_COLUMNS}, ${TXN_TAGS_SUBQUERY} FROM transactions t
-       WHERE user_id = $1${whereExtra}
+       WHERE user_id = $1 AND (is_split_parent IS NOT TRUE)${whereExtra}
        ORDER BY date DESC
        LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
       params
     ),
     pool.query(
-      `SELECT COUNT(*)::int AS count FROM transactions WHERE user_id = $1${whereExtra}`,
+      `SELECT COUNT(*)::int AS count FROM transactions WHERE user_id = $1 AND (is_split_parent IS NOT TRUE)${whereExtra}`,
       countParams
     ),
   ]);
@@ -539,7 +543,7 @@ async function updateTransactionsByMerchant(userId, merchantName, fields, exclud
   if (setClauses.length === 0) return { modifiedCount: 0 };
   const result = await pool.query(
     `UPDATE transactions SET ${setClauses.join(', ')}
-     WHERE user_id = $1 AND merchant_name = $2${manualClause}`,
+     WHERE user_id = $1 AND merchant_name = $2${manualClause} AND (is_split_parent IS NOT TRUE)`,
     [userId, merchantName, ...params]
   );
   return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
@@ -552,7 +556,7 @@ async function updateTransactionsByName(userId, txnName, fields, excludeManually
   if (setClauses.length === 0) return { modifiedCount: 0 };
   const result = await pool.query(
     `UPDATE transactions SET ${setClauses.join(', ')}
-     WHERE user_id = $1 AND name = $2${manualClause}`,
+     WHERE user_id = $1 AND name = $2${manualClause} AND (is_split_parent IS NOT TRUE)`,
     [userId, txnName, ...params]
   );
   return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
@@ -596,13 +600,91 @@ async function sweepTransactionsByConditions(userId, conditions, fields) {
   const { setClauses, params: setParams } = buildSetClause(fields, TXN_FIELD_MAP, 2 + condParams.length);
   if (setClauses.length === 0) return { matchedCount: 0, modifiedCount: 0 };
 
-  const where = `user_id = $1 AND ${clause} AND (manually_set IS NULL OR manually_set = false)`;
+  const where = `user_id = $1 AND ${clause} AND (manually_set IS NULL OR manually_set = false) AND (is_split_parent IS NOT TRUE)`;
   const result = await pool.query(
     `UPDATE transactions SET ${setClauses.join(', ')} WHERE ${where}`,
     [userId, ...condParams, ...setParams]
   );
   console.log(`DB: sweepTransactionsByConditions matched ${result.rowCount}`);
   return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
+}
+
+// ========================
+//  SPLIT TRANSACTIONS
+// ========================
+
+async function insertSplitChildren(parentId, parentTransactionId, parentFields, splits) {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'UPDATE transactions SET is_split_parent = true WHERE id = $1',
+      [parentId]
+    );
+    const children = [];
+    for (let i = 0; i < splits.length; i++) {
+      const txnId = `split-${parentTransactionId}-${i}`;
+      const result = await client.query(
+        `INSERT INTO transactions (
+          transaction_id, user_id, date, effective_date, account, account_id,
+          name, merchant_name, plaid_pfc, plaid_pfc_detail, exclude_from_total,
+          amount, mapped_category, note, manually_set, parent_transaction_id
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true,$15)
+        RETURNING ${TXN_COLUMNS}`,
+        [
+          txnId, parentFields.userId, parentFields.date, parentFields.effectiveDate || null,
+          parentFields.account || null, parentFields.accountId || null, parentFields.name,
+          parentFields.merchantName || null, parentFields.plaidPfc || null,
+          parentFields.plaidPfcDetail || null,
+          parentFields.excludeFromTotal || false,
+          splits[i].amount, splits[i].categoryName, splits[i].note || null, parentId,
+        ]
+      );
+      children.push(result.rows[0]);
+    }
+    await client.query('COMMIT');
+    return children;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteSplitChildren(parentId) {
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      'DELETE FROM transactions WHERE parent_transaction_id = $1',
+      [parentId]
+    );
+    const result = await client.query(
+      `UPDATE transactions SET is_split_parent = false
+       WHERE id = $1 RETURNING ${TXN_COLUMNS}`,
+      [parentId]
+    );
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function findSplitChildren(parentId) {
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT ${TXN_COLUMNS} FROM transactions t
+     WHERE parent_transaction_id = $1 ORDER BY amount DESC`,
+    [parentId]
+  );
+  return result.rows;
 }
 
 async function deleteTransactions(userId) {
@@ -626,8 +708,8 @@ async function deleteTransactionsByIds(userId, transactionIds) {
 async function findUnmappedTransactions(userId) {
   const pool = getPool();
   const where = userId
-    ? `user_id = $1 AND mapped_category IS NULL`
-    : `mapped_category IS NULL`;
+    ? `user_id = $1 AND mapped_category IS NULL AND (is_split_parent IS NOT TRUE)`
+    : `mapped_category IS NULL AND (is_split_parent IS NOT TRUE)`;
   const params = userId ? [userId] : [];
   const { rows } = await pool.query(
     `SELECT ${TXN_COLUMNS} FROM transactions WHERE ${where}`, params
@@ -672,7 +754,7 @@ async function renameTransactionCategory(userId, oldName, newName) {
   const pool = getPool();
   const result = await pool.query(
     `UPDATE transactions SET mapped_category = $3
-     WHERE user_id = $1 AND mapped_category = $2`,
+     WHERE user_id = $1 AND mapped_category = $2 AND (is_split_parent IS NOT TRUE)`,
     [userId, oldName, newName]
   );
   return { matchedCount: result.rowCount, modifiedCount: result.rowCount };
@@ -1065,6 +1147,7 @@ async function findTagSummary(tagId, userId) {
      FROM tags t
      LEFT JOIN transaction_tags tt ON tt.tag_id = t.id
      LEFT JOIN transactions txn ON txn.transaction_id = tt.transaction_id
+       AND (txn.is_split_parent IS NOT TRUE)
      WHERE t.id = $1 AND t.user_id = $2
      GROUP BY t.id, t.name`,
     [tagId, userId]
@@ -1079,7 +1162,7 @@ async function findTagCategoryBreakdown(tagId, userId) {
     `SELECT txn.mapped_category AS "category", SUM(txn.amount) AS "amount"
      FROM transaction_tags tt
      JOIN transactions txn ON txn.transaction_id = tt.transaction_id
-     WHERE tt.tag_id = $1 AND txn.user_id = $2
+     WHERE tt.tag_id = $1 AND txn.user_id = $2 AND (txn.is_split_parent IS NOT TRUE)
      GROUP BY txn.mapped_category
      ORDER BY SUM(txn.amount) DESC`,
     [tagId, userId]
@@ -1094,7 +1177,7 @@ async function findTagTransactions(tagId, userId) {
      FROM transactions t
      WHERE t.transaction_id IN (
        SELECT transaction_id FROM transaction_tags WHERE tag_id = $1
-     ) AND t.user_id = $2
+     ) AND t.user_id = $2 AND (t.is_split_parent IS NOT TRUE)
      ORDER BY t.date DESC`,
     [tagId, userId]
   );
@@ -1112,7 +1195,7 @@ async function findMerchantsWithStats(userId) {
             ARRAY_AGG(DISTINCT mapped_category)
               FILTER (WHERE mapped_category IS NOT NULL) AS categories
      FROM transactions
-     WHERE user_id = $1 AND merchant_name IS NOT NULL
+     WHERE user_id = $1 AND merchant_name IS NOT NULL AND (is_split_parent IS NOT TRUE)
      GROUP BY merchant_name
      ORDER BY merchant_name`,
     [userId]
@@ -1149,7 +1232,7 @@ async function findHistoricalCategoryMap(userId, monthsBack = 12) {
        FROM transactions
        WHERE user_id = $1 AND merchant_name IS NOT NULL
          AND mapped_category IS NOT NULL AND mapped_category != 'To Sort'
-         AND date >= $2
+         AND date >= $2 AND (is_split_parent IS NOT TRUE)
      )
      SELECT merchant_name, mapped_category AS category, count
      FROM ranked WHERE rn = 1
@@ -1240,6 +1323,10 @@ module.exports = {
   deduplicateTransactions,
   clearManualOverrides,
   clearVenmoEnrichment,
+  // Split Transactions
+  insertSplitChildren,
+  deleteSplitChildren,
+  findSplitChildren,
   // Plaid Items + Accounts
   findPlaidItems,
   findPlaidItemByInstitution,
@@ -1275,5 +1362,6 @@ module.exports = {
   buildSetClause,
   conditionsToSqlWhere,
   TXN_FIELD_MAP,
+  TXN_COLUMNS,
   getPool,
 };
