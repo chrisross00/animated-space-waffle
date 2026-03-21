@@ -7,4 +7,5 @@ data
 renameCollection.js
 *notes.txt
 admin/dist/
-frontend/.env.production.superpowers/
+frontend/.env.production
+.superpowers/
