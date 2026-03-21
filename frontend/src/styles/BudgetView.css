@@ -118,11 +118,11 @@
   
   
     .budget-container > .q-item {
-      background-color: var(--basil-surface-alt);
+      background-color: var(--basil-surface);
     }
 
     .active {
-      background-color: var(--basil-surface-raised);
+      background-color: var(--basil-surface);
     }
 
     /* Expanded category lifts into a card */
@@ -137,7 +137,6 @@
                   margin var(--basil-t-base) var(--basil-ease);
     }
     .basil-category--expanded > .q-item {
-      background-color: var(--basil-surface) !important;
       border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
     }
     .budget-container:not(.basil-category--expanded) {
