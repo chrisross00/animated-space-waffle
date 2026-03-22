@@ -26,6 +26,11 @@ export default {
     },
     async initializePlaid() {
       const linkToken = this.linkToken || await this.createLinkToken();
+      if (!linkToken) {
+        console.error('PlaidLinkHandler: no link token available');
+        this.$emit('onPlaidExit');
+        return;
+      }
       this.linkHandler = window.Plaid.create({
         token: linkToken,
         onSuccess: async (publicToken, metadata) => {
