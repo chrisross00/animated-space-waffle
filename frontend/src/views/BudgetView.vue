@@ -35,48 +35,66 @@
     <SkeletonBudget v-if="isOnboarded && isLoading" />
       <div v-show="isOnboarded && !isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
 
-        <!-- Flex spending card (replaces Projections when fixed categories exist) -->
+        <!-- Hero card — always visible when data exists -->
         <q-card v-if="budgetSummary && !showAll" flat bordered class="basil-card q-mb-md">
           <q-card-section>
             <div class="basil-card-head">
-              <span class="basil-card-label">Flexible spending</span>
+              <span class="basil-card-label">{{ budgetSummary.noIncome ? 'Spending' : 'Flexible spending' }}</span>
               <span class="basil-card-period">{{ selectedDate.display }}</span>
             </div>
-            <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-green)">
-              ${{ Math.round(displayedSummary.remaining).toLocaleString() }}
-            </div>
-            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
-              left to spend this month
-            </div>
-            <div v-if="budgetSummary" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
-              <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
-              {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
-            </div>
-            <div style="margin-top: var(--basil-space-3)">
-              <q-linear-progress
-                :value="Math.min(displayedSummary.ratio, 1)"
-                :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
-                :track-color="$store.state.theme === 'dark' ? 'grey-8' : 'grey-3'"
-                rounded
-                style="height: 8px"
-              />
-            </div>
-            <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-top: var(--basil-space-2)">
-              ${{ Math.round(displayedSummary.spent).toLocaleString() }} of ${{ Math.round(displayedSummary.pool).toLocaleString() }} spent
-            </div>
-            <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
-            <div v-if="hasFixedCategories" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0">
-              <span>Fixed costs</span>
-              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
-            </div>
-            <div class="basil-flex-detail-row" :class="{ 'basil-flex-detail-row--bordered': hasFixedCategories }">
-              <span>Savings</span>
-              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
-            </div>
-            <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
-              <span>Recurring expected</span>
-              <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
-            </div>
+
+            <!-- No-income mode: spent so far -->
+            <template v-if="budgetSummary.noIncome">
+              <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-text)">
+                ${{ Math.round(displayedSummary.spent).toLocaleString() }}
+              </div>
+              <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
+                spent this month
+              </div>
+              <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
+              <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; line-height: 1.5">
+                Set your income budget to see how much you have left to spend.
+              </div>
+            </template>
+
+            <!-- Full mode: left to spend -->
+            <template v-else>
+              <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-green)">
+                ${{ Math.round(displayedSummary.remaining).toLocaleString() }}
+              </div>
+              <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
+                left to spend this month
+              </div>
+              <div v-if="budgetSummary.pace" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
+                <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
+                {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
+              </div>
+              <div style="margin-top: var(--basil-space-3)">
+                <q-linear-progress
+                  :value="Math.min(displayedSummary.ratio, 1)"
+                  :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
+                  :track-color="$store.state.theme === 'dark' ? 'grey-8' : 'grey-3'"
+                  rounded
+                  style="height: 8px"
+                />
+              </div>
+              <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-top: var(--basil-space-2)">
+                ${{ Math.round(displayedSummary.spent).toLocaleString() }} of ${{ Math.round(displayedSummary.pool).toLocaleString() }} spent
+              </div>
+              <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
+              <div v-if="hasFixedCategories" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0">
+                <span>Fixed costs</span>
+                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
+              </div>
+              <div class="basil-flex-detail-row" :class="{ 'basil-flex-detail-row--bordered': hasFixedCategories }">
+                <span>Savings</span>
+                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
+              </div>
+              <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
+                <span>Recurring expected</span>
+                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+              </div>
+            </template>
           </q-card-section>
         </q-card>
 
@@ -1415,7 +1433,31 @@
         const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === 'income');
         const incomeBudget = Number(incomeCategory?.monthly_limit) || 0;
         const income = incomeBudget > 0 ? incomeBudget : (this.monthlyStats.incomeAmount || 0);
-        if (income <= 0) return null;
+
+        // Total expense spending (needed for both modes)
+        const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
+          if (g.type === 'expense') {
+            const catSpend = this.categorySum(name);
+            return sum + (isNaN(catSpend) ? 0 : Math.abs(catSpend));
+          }
+          return sum;
+        }, 0);
+
+        // Pace: compare spending rate to days elapsed in month (works without income)
+        const sel = this.selectedDate.actual;
+        const daysInMonth = sel.daysInMonth();
+        const today = dayjs();
+        const dayOfMonth = (sel.month() === today.month() && sel.year() === today.year())
+          ? today.date() : daysInMonth;
+
+        // No income — show "spent so far" mode
+        if (income <= 0) {
+          return {
+            noIncome: true,
+            spent: Math.round(spent),
+            pace: null, // no pace without income
+          };
+        }
 
         // Fixed costs (optional — only when user has flagged categories)
         let fixedCosts = 0;
@@ -1435,30 +1477,20 @@
         );
 
         const pool = income - savingsLimit;
-        if (pool <= 0) return null;
-
-        // Total expense spending
-        const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
-          if (g.type === 'expense') {
-            const catSpend = this.categorySum(name);
-            return sum + (isNaN(catSpend) ? 0 : Math.abs(catSpend));
-          }
-          return sum;
-        }, 0);
+        if (pool <= 0) return {
+          noIncome: true,
+          spent: Math.round(spent),
+          pace: null,
+        };
 
         const remaining = income - savingsLimit - spent;
 
-        // Pace: compare spending rate to days elapsed in month
-        const sel = this.selectedDate.actual;
-        const daysInMonth = sel.daysInMonth();
-        const today = dayjs();
-        const dayOfMonth = (sel.month() === today.month() && sel.year() === today.year())
-          ? today.date() : daysInMonth;
         const expectedSpendRate = dayOfMonth / daysInMonth;
         const actualSpendRate = pool > 0 ? spent / pool : 0;
         const pace = actualSpendRate <= expectedSpendRate + 0.15 ? 'on-track' : 'caution';
 
         return {
+          noIncome: false,
           pool: Math.round(income - savingsLimit),
           spent: Math.round(spent),
           remaining: Math.round(remaining),
