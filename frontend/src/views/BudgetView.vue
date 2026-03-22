@@ -839,23 +839,18 @@
               <div class="basil-triage__reason">{{ triageItems[0].reason }}</div>
             </div>
 
-            <!-- Category picker -->
-            <div class="basil-triage__picker">
+            <!-- Category / Note / Tags — matches DialogComponent field sizing -->
+            <div class="basil-triage__fields">
               <q-select
                 v-model="triageCategory"
                 :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
                 label="Category"
                 outlined
-                dense
                 @touchmove.stop.prevent
               />
-            </div>
-
-            <!-- Note + Tags -->
-            <div class="basil-triage__picker">
               <q-input
                 v-model="triageNote"
-                outlined dense
+                outlined
                 label="Note"
               />
             </div>

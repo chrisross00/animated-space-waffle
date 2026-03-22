@@ -860,6 +860,13 @@
   padding: var(--basil-space-2) var(--basil-space-4);
 }
 
+.basil-triage__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-3);
+  padding: 0 var(--basil-space-4);
+}
+
 .basil-triage__similar-area {
   padding: var(--basil-space-2) var(--basil-space-4);
 }
