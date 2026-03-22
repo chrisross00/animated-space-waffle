@@ -833,6 +833,18 @@
               />
             </div>
 
+            <!-- Note + Tags -->
+            <div class="basil-triage__picker">
+              <q-input
+                v-model="triageNote"
+                outlined dense
+                label="Note"
+              />
+            </div>
+            <div class="q-px-md q-mb-sm">
+              <TagPicker v-model="triageTags" />
+            </div>
+
             <!-- Similar transactions toggle -->
             <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
               <q-checkbox v-model="triageCreateRule" dense color="primary">
@@ -1026,6 +1038,8 @@
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
+        triageNote: '',
+        triageTags: [],
         triageCreateRule: false,
         triageSaving: false,
         triageDone: false,
@@ -1984,7 +1998,7 @@ monthStats() {
           updateType: 'transaction',
           mappedCategory: this.triageCategory,
           date: txn.date,
-          note: txn.note || '',
+          note: this.triageNote || txn.note || '',
           name: txn.name,
           merchantName: txn.merchant_name || '',
           createRule: wantsRule && sim.ruleType === 'merchant',
@@ -1996,6 +2010,16 @@ monthStats() {
         try {
           const data = await handleDialogSubmit(JSON.stringify(d));
           this.updatedTransaction = { ...data };
+
+          // Apply tags if any were selected
+          if (this.triageTags.length > 0) {
+            const tagIds = this.triageTags.map(t => t.id || t.value);
+            await tagTransactionsApi([txn.transaction_id], tagIds);
+            store.commit('setTransactionTags', {
+              transactionIds: [txn.transaction_id],
+              tags: this.triageTags.map(t => ({ id: t.id || t.value, name: t.label || t.name })),
+            });
+          }
 
           const targetCategory = this.triageCategory;
 
@@ -2038,6 +2062,8 @@ monthStats() {
       triageAdvance() {
         this.triageSplitMode = false;
         this.triageSplitRows = [];
+        this.triageNote = '';
+        this.triageTags = [];
         this.$nextTick(() => {
           if (this.triageItems.length === 0) {
             this.triageDone = true;
