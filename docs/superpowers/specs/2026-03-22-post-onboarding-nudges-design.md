@@ -103,8 +103,9 @@ Replaces the normal plan content for first-time users:
 - Heading: "Set up your budget"
 - Body: "Choose how you'd like to get started."
 - **"Guided setup"** button → enters guided mode (inline, same page)
-- **"I'll do it myself"** link → dismisses prompt, shows normal `/plan`
-- Track choice as analytics event
+- **"I'll do it myself"** link → sets `preferences.dismissed_budget_setup = true`
+  and `preferences.budget_setup_mode = 'manual'`, shows normal `/plan`
+- Track choice: `budget_setup_mode` set to `guided` or `manual`
 
 ### Guided mode
 
@@ -144,7 +145,7 @@ Two actions that both go to `/budget`:
 
 Three distinct paths:
 1. **"Sort transactions"** (shown only if toSort > 0) → `/budget?triage=1`
-2. **"Set up budgets"** → `/plan`
+2. **"Set up budgets"** → `/plan` (first-timers will see the guided/manual choice)
 3. **"Explore your budget"** → `/budget`
 
 Primary CTA: "Sort transactions" if items to sort, otherwise "Set up budgets"
@@ -162,6 +163,10 @@ for V1 — just write to the user's preferences object.
 | `post_onboarding_choice` | User picks path on completion screen | `sort_first` / `setup_budgets` / `explore` |
 | `budget_setup_mode` | User picks guided vs manual on `/plan` | `guided` / `manual` |
 | `budget_setup_completed_at` | User saves limits via guided flow | ISO timestamp |
+| `dismissed_budget_nudge` | User dismisses generic budget nudge | `true` |
+| `dismissed_category_nudges` | User dismisses per-category nudge | array of category names |
+| `dismissed_trends_nudge` | User dismisses trends nudge | `true` |
+| `dismissed_budget_setup` | User clicks "I'll do it myself" on `/plan` | `true` |
 
 ## 6. API Changes
 
@@ -175,12 +180,20 @@ Response: { success: true }
 Merges provided keys into user's `preferences` JSONB. Does not overwrite
 existing keys not in the request. Auth required.
 
+For array values (like `dismissed_category_nudges`), the frontend builds the
+full updated array and sends it — the backend does a simple key merge, not
+an array append. The frontend reads the current array from the store, appends
+the new value, and sends the complete array.
+
 ### Backend: `updateUserPreferences(userId, prefs)`
 
 DB helper that does a JSONB merge:
 ```sql
 UPDATE users SET preferences = preferences || $2::jsonb WHERE id = $1
+RETURNING preferences
 ```
+
+Returns updated preferences so the frontend can sync its store.
 
 ### Frontend: `updatePreferences(prefs)` in `api.js`
 
