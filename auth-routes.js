@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { findUser, insertUser, updateUser } = require('./db/database');
+const { findUser, insertUser, updateUser, getPool } = require('./db/database');
 
 const router = express.Router();
 
@@ -127,7 +127,19 @@ router.get('/google/callback', async (req, res) => {
         await updateUser(user.id, { name, picture });
       }
     } else {
-      // New user — use Google sub as user ID
+      // New user — check whitelist before creating
+      const pool = getPool();
+      const { rows: allowed } = await pool.query(
+        'SELECT email FROM allowed_emails WHERE LOWER(email) = LOWER($1)',
+        [email]
+      );
+      if (allowed.length === 0) {
+        console.log('User not on whitelist, redirecting to waitlist:', email);
+        const redirect = stateData.redirect || '/';
+        const sep = redirect.includes('?') ? '&' : '?';
+        return res.redirect(`${redirect}${sep}waitlisted=true`);
+      }
+
       await insertUser({ userId: googleSub, email, name, picture });
       user = { id: googleSub };
     }

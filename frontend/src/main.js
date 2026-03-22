@@ -39,6 +39,18 @@ import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 // Consume ?token= from OAuth callback redirect (must run before auth hydration)
 consumeAuthToken();
 
+// Check for ?waitlisted= from OAuth redirect (user not on whitelist)
+;(function checkWaitlisted() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('waitlisted')) {
+    store.commit('setWaitlisted', true);
+    params.delete('waitlisted');
+    const clean = params.toString();
+    const url = window.location.pathname + (clean ? `?${clean}` : '');
+    window.history.replaceState({}, '', url);
+  }
+})();
+
 // Hydrate auth state from token (JWT in sessionStorage, dev-bypass, or impersonation).
 // Stored as a promise so the router guard can await it before deciding redirects.
 const authReady = (async function hydrateAuth() {
@@ -49,9 +61,7 @@ const authReady = (async function hydrateAuth() {
   if (hasToken || hasImpersonation || isDevBypass) {
     try {
       const appUser = await getOrAddUser();
-      if (appUser?.waitlisted) {
-        store.commit('setWaitlisted', true);
-      } else if (appUser) {
+      if (appUser) {
         store.commit('setUser', appUser);
         if (!store.state.session) store.commit('setSession', { isSessionActive: true });
         ensureAppData(store);
