@@ -102,11 +102,7 @@ router.beforeEach(async (to, _from, next) => {
   ) {
     next('/onboarding');
   } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
-    next('/accounts');
-  } else if (firstNav && (to.path === '/' || to.path === '/budget') && store.state.user?.onboarded_at && consumedToken) {
-    // After OAuth callback redirect (consumed ?token=) — send onboarded
-    // users to Accounts. Normal refreshes on /budget pass through.
-    next('/accounts');
+    next('/budget');
   } else {
     next();
   }
