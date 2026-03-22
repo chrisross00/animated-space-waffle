@@ -73,11 +73,22 @@ describe('mapTransactions', () => {
     expect(result[0].mappedCategory).toBe('Groceries')
   })
 
-  it('maps by personal_finance_category (PFC)', async () => {
-    const rules = [{ category: 'Food', rules: {}, plaid_pfc: ['FOOD_AND_DRINK'] }]
-    const txns = [txn({ name: 'Mystery Restaurant', personal_finance_category: { primary: 'FOOD_AND_DRINK' } })]
-    const result = await mapTransactions(txns, rules)
-    expect(result[0].mappedCategory).toBe('Food')
+  it('maps by PFC detail code via curated mapping', async () => {
+    const txns = [txn({ name: 'Mystery Restaurant', personal_finance_category: { primary: 'FOOD_AND_DRINK', detailed: 'FOOD_AND_DRINK_RESTAURANT' } })]
+    const result = await mapTransactions(txns, [])
+    expect(result[0].mappedCategory).toBe('Food & Dining')
+  })
+
+  it('maps TRANSFER_IN_ACCOUNT_TRANSFER to Payments & Transfers', async () => {
+    const txns = [txn({ name: 'Transfer from Savings', personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' } })]
+    const result = await mapTransactions(txns, [])
+    expect(result[0].mappedCategory).toBe('Payments & Transfers')
+  })
+
+  it('maps P2P transfers to To Sort regardless of PFC code', async () => {
+    const txns = [txn({ name: 'Venmo', personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' } })]
+    const result = await mapTransactions(txns, [])
+    expect(result[0].mappedCategory).toBe('To Sort')
   })
 
   it('falls back to "To Sort" when no rules match', async () => {

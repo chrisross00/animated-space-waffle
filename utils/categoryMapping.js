@@ -1,3 +1,15 @@
+const { PFC_DETAIL_TO_CATEGORY } = require('./pfcDetailMapping');
+
+const P2P_PATTERNS = [
+  /venmo/i, /zelle/i, /cash app/i, /cashapp/i,
+  /paypal/i, /apple cash/i,
+];
+
+function isP2PTransaction(txn) {
+  const sources = [txn.account, txn.merchant_name, txn.name].filter(Boolean);
+  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
+}
+
 function matchesCondition(txn, condition) {
   const { field, op, value, min, max } = condition;
   switch (field) {
@@ -130,15 +142,20 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
     }
   });
 
-  // RULE: Plaid personal_finance_category (good default, lower priority than custom rules)
+  // RULE: Plaid PFC detail code → curated category mapping
+  // Exception: P2P transactions (Venmo, Zelle, etc.) go to To Sort regardless
+  // of PFC code, since they could be any spending category.
   transactions.forEach(transaction => {
-    if (!transaction.mappedCategory && transaction.personal_finance_category?.primary) {
-      const pfc = transaction.personal_finance_category.primary;
-      ruleList.forEach(rule => {
-        if (!transaction.mappedCategory && rule.plaid_pfc && rule.plaid_pfc.includes(pfc)) {
-          transaction.mappedCategory = rule.category;
+    if (!transaction.mappedCategory && transaction.personal_finance_category?.detailed) {
+      if (isP2PTransaction(transaction)) {
+        transaction.mappedCategory = 'To Sort';
+      } else {
+        const detail = transaction.personal_finance_category.detailed;
+        const mapped = PFC_DETAIL_TO_CATEGORY[detail];
+        if (mapped) {
+          transaction.mappedCategory = mapped;
         }
-      });
+      }
     }
   });
 

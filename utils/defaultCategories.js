@@ -14,7 +14,7 @@ const DEFAULT_CATEGORIES = [
   { category: 'Services',        type: 'expense',  monthly_limit: 0, plaid_pfc: ['GENERAL_SERVICES'] },
   { category: 'Taxes & Giving',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['GOVERNMENT_AND_NON_PROFIT'] },
   { category: 'To Sort',         type: 'expense',  monthly_limit: 0, plaid_pfc: [] },
-  { category: 'Payment',         type: 'payment',  monthly_limit: 0, plaid_pfc: ['TRANSFER_OUT', 'LOAN_PAYMENTS', 'BANK_FEES'] },
+  { category: 'Payments & Transfers', type: 'payment',  monthly_limit: 0, plaid_pfc: ['TRANSFER_OUT', 'TRANSFER_IN', 'LOAN_PAYMENTS', 'LOAN_DISBURSEMENTS', 'BANK_FEES'] },
 ];
 
 module.exports = { DEFAULT_CATEGORIES };

@@ -189,8 +189,8 @@
     {
       "category": "Income",
       "type": "income",
-      "plaid_pfc": ["INCOME", "TRANSFER_IN"],
-      "hint": "paychecks, deposits, transfers in"
+      "plaid_pfc": ["INCOME"],
+      "hint": "paychecks, dividends, tax refunds"
     },
     {
       "category": "Rent & Utilities",
@@ -253,10 +253,10 @@
       "hint": "uncategorized transactions land here"
     },
     {
-      "category": "Payment",
+      "category": "Payments & Transfers",
       "type": "payment",
-      "plaid_pfc": ["TRANSFER_OUT", "LOAN_PAYMENTS", "BANK_FEES"],
-      "hint": "credit card payments, loans, bank fees"
+      "plaid_pfc": ["TRANSFER_OUT", "TRANSFER_IN", "LOAN_PAYMENTS", "LOAN_DISBURSEMENTS", "BANK_FEES"],
+      "hint": "credit card payments, loans, transfers between accounts"
     }
   ]
 }
