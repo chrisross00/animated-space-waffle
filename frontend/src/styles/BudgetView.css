@@ -117,18 +117,17 @@
   }
   
   
-    /* Collapsed categories: white background, shared borders to look like one card */
+    /* Collapsed categories: white background, full border, collapsed with margin */
     .categories > .budget-container {
       background-color: var(--basil-surface);
-      border-left: 1px solid var(--basil-border);
-      border-right: 1px solid var(--basil-border);
-      border-bottom: 1px solid var(--basil-border);
+      border: 1px solid var(--basil-border);
+      margin-top: -1px;
       transition: margin 0.25s var(--basil-ease),
                   border-radius 0.25s var(--basil-ease),
                   box-shadow 0.25s var(--basil-ease);
     }
     .categories > .budget-container:first-child {
-      border-top: 1px solid var(--basil-border);
+      margin-top: 0;
       border-radius: var(--basil-radius-md) var(--basil-radius-md) 0 0;
     }
     .categories > .budget-container:last-child {
