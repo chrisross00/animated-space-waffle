@@ -64,6 +64,8 @@ const MERCHANTS = {
   Income: [
     { merchant_name: null, name: 'GUSTO-OSV PAYROLL1 CITIZENS PAID EARLY', min: 3500, max: 5000, recurring: true, isIncome: true, pfc: 'INCOME', pfcDetailed: 'INCOME_WAGES' },
     { merchant_name: null, name: 'DIRECT DEPOSIT EMPLOYER PAYROLL ACH', min: 3500, max: 3500, recurring: true, isIncome: true, pfc: 'INCOME', pfcDetailed: 'INCOME_WAGES' },
+  ],
+  'To Sort': [
     { merchant_name: 'Venmo', name: 'VENMO CASHOUT', min: 20, max: 200, recurring: false, isIncome: true, pfc: 'TRANSFER_IN', pfcDetailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
   ],
   'Payments & Transfers': [
