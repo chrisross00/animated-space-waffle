@@ -2009,7 +2009,7 @@ monthStats() {
       openTriageFlow() {
         this.triageSkipped = new Set();
         this.triageDone = false;
-        this.triageCreateRule = true;
+        this.triageCreateRule = false;
         this._triageToastShown = false;
         this.triageLearnToast = null;
         this.triageVenmoCount = 0;
