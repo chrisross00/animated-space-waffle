@@ -1,39 +1,27 @@
 # Post-Onboarding Nudges & Budget Setup Flow
 
-> **Status:** In progress — brainstorming
+> **Status:** Decisions finalized — ready to spec/build
 > **Date:** 2026-03-22
 
 ## Problem
 
 After onboarding (connect bank → sync), users land on the budget page with no
-guidance on what to do next. The onboarding completion screen has "Start sorting"
-and "Go to budget" but both go to the same place. There's no step where users
-set up budget limits, and no nudge to do so once they're on the dashboard.
+guidance on what to do next. There's no step where users set up budget limits,
+and no nudge to do so once they're on the dashboard.
 
-## Current state
+## Decisions
 
-**Onboarding completion screen:**
-- Shows spending summary after first sync
-- "Start sorting" button → navigates to `/budget` (should open triage directly)
-- "See your budget" link → navigates to `/budget` (same destination)
-- No mention of budget setup / planning
+### 1. Onboarding completion screen → choice point
 
-**Budget page (new user, post-onboarding):**
-- Hero card shows "spent so far" with CTA to set income (if no income budget set)
-- To Sort card shows if unsorted transactions exist
-- Relationship card shows if detected matches exist
-- No nudge to set up budget limits on `/plan`
-- No nudge to set up budget limits if nothing else to do
+After sync summary, show three distinct paths:
+1. **"Sort transactions"** (X to sort) → opens triage flow directly
+2. **"Set up budgets"** → navigates to `/plan` (guided experience for first-timers)
+3. **"Explore your budget"** → navigates to `/budget`
 
-## What needs to happen
+Track which path the user takes (analytics — understand user priorities).
+Store as event on user record: `sort_first`, `setup_budgets`, or `explore`.
 
-### 1. Fix onboarding completion screen (quick)
-
-- "Start sorting" → should open triage flow directly, not just navigate to budget
-- "See your budget" → navigates to `/budget` (keep as-is)
-- Consider: third action to go to `/plan` for budget setup
-
-### 2. Post-onboarding nudges on budget page (design needed)
+### 2. Post-onboarding nudge cards on budget page
 
 When a user has no actionable items (no unsorted txns, no pending relationships),
 show a nudge card. Priority order:
@@ -43,27 +31,60 @@ show a nudge card. Priority order:
 2. **Set up budget limits** — if no expense categories have limits set
    - "Set spending limits to track your budget" → link to `/plan`
 3. **Explore your spending** — if budgets are set, nothing to sort
-   - Maybe: "Check out your spending trends" → link to `/trends`
+   - "Check out your spending trends" → link to `/trends`
 
-These should be dismissable (don't nag forever) and behavior-triggered (not
-time-based). Per onboarding research: behavior-triggered nudges outperform
-scheduled ones.
+Nudges are dismissable and behavior-triggered (not time-based).
 
-### 3. Budget Planner improvements (future)
+### 3. Guided budget setup on `/plan`
 
-The `/plan` page exists but doesn't guide first-time users. Ideas from
-`onboarding-v2.md`:
-- Pre-fill suggested budget amounts from last month's actual spending
-- Show "You spent $X last month" context on each category row
+No separate route. `/plan` detects first-time visitors and shows a choice:
+"Guided setup" or "Set up manually". Both live on `/plan` as inline states.
+
+**First-time detection:** No expense categories have budget limits set AND user
+hasn't dismissed the guided setup prompt.
+
+**Dismissal:** Stored in `preferences JSONB` column on `users` table.
+`preferences->>'dismissed_budget_setup'`. One column for all future preferences.
+
+**Guided flow:**
+- Step 1: Set income (hint from actual deposits if available)
+- Step 2: Set category limits
+  - Categories with spending shown first (with "You spent $X last month" hint,
+    or "Spent $X so far" if no prior month)
+  - Categories without spending shown below (no collapse, just no hint)
+  - All amounts blank — user types intentionally, hint is context only
 - Sticky footer: total budget vs total income
-- Income row at top with same suggested amount
+- "Start budgeting" saves all limits
+- "Skip for now" dismisses prompt, goes to normal `/plan`
 
-## Open questions
+Track "Guided" vs "Manual" choice as analytics event.
 
-- Should "Start sorting" appear on the completion screen if there are 0 unsorted
-  transactions? (Could happen if all synced transactions were auto-categorized)
-- Should the nudge card be a new component or reuse EmptyState?
-- How persistent should nudges be? Dismiss once and never show again? Or re-show
-  after N days if they still haven't set up budgets?
-- Should we add a "quick setup" flow that's lighter than `/plan` — e.g., just
-  income + top 3 categories?
+### 4. User preferences column
+
+Add `preferences JSONB DEFAULT '{}' ` to `users` table. Single column for all
+user preferences — avoids per-preference migrations. Keys so far:
+- `dismissed_budget_setup` — boolean, hides guided setup prompt on `/plan`
+
+### 5. Analytics events to capture
+
+| Event | When | Value |
+|-------|------|-------|
+| `post_onboarding_choice` | User picks path on completion screen | `sort_first` / `setup_budgets` / `explore` |
+| `budget_setup_mode` | User picks guided vs manual on `/plan` | `guided` / `manual` |
+| `budget_setup_dismissed` | User clicks "Skip for now" | timestamp |
+| `budget_setup_completed` | User saves limits via guided flow | timestamp + category count |
+
+## Implementation order
+
+1. **Schema:** Add `preferences JSONB DEFAULT '{}'` to `users` table
+2. **Nudge cards:** Budget page nudge when no limits set → link to `/plan`
+3. **`/plan` guided mode:** First-time detection, guided/manual choice, step flow
+4. **Onboarding completion:** Three-path choice point with analytics
+5. **Analytics events:** Track choices across all touchpoints
+
+## Not in scope (V1)
+
+- ML/AI-based budget suggestions
+- YNAB category import
+- Multi-month budget history in setup flow
+- Category-level benchmarking from aggregate user data
