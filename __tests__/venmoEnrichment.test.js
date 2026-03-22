@@ -17,7 +17,7 @@ Account Activity,,,,,,,,,,,,,,,,,,,,,
 describe('parseVenmoCsv', () => {
   test('parses valid rows and skips headers, footer, and pending', () => {
     const rows = parseVenmoCsv(SAMPLE_CSV);
-    expect(rows).toHaveLength(4); // 3 Complete + 1 Issued, 1 Pending skipped
+    expect(rows).toHaveLength(4); // 3 Complete; Pending and Standard Transfer skipped
   });
 
   test('extracts correct fields', () => {

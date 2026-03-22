@@ -60,6 +60,16 @@ function parseVenmoCsv(csvText) {
     const amount = parseVenmoAmount(amountRaw);
     if (amount === null) continue;
 
+    // Standard Transfers (cashouts to bank) — no counterparty, use destination
+    if (type === 'Standard Transfer') {
+      const destination = fields[14]?.trim() || '';
+      const counterparty = destination ? `Standard Transfer to ${destination}` : 'Standard Transfer';
+      const date = datetime ? datetime.split('T')[0] : null;
+      if (!date) continue;
+      rows.push({ id, date, amount, note: 'Standard Transfer', counterparty, type });
+      continue;
+    }
+
     // Determine counterparty: the other person in the transaction.
     // The CSV "From" and "To" are from the perspective of the charge/payment:
     //   - Negative (you paid):    From = the person who charged you (counterparty)
