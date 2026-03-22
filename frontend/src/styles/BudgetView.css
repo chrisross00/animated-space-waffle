@@ -151,6 +151,7 @@
       box-shadow: var(--basil-shadow-sm);
       position: relative;
       z-index: 1;
+      overflow: hidden;
     }
 
     /* Sibling after an expanded card needs top rounding */
