@@ -3,7 +3,7 @@
  * Consumed by api.js (seed route) and utils/seedCategories.js.
  */
 const DEFAULT_CATEGORIES = [
-  { category: 'Income',          type: 'income',   monthly_limit: 0, plaid_pfc: ['INCOME', 'TRANSFER_IN'] },
+  { category: 'Income',          type: 'income',   monthly_limit: 0, plaid_pfc: ['INCOME'] },
   { category: 'Rent & Utilities',type: 'expense',  monthly_limit: 0, plaid_pfc: ['HOME_IMPROVEMENT', 'RENT_AND_UTILITIES'], fixed: true },
   { category: 'Food & Dining',   type: 'expense',  monthly_limit: 0, plaid_pfc: ['FOOD_AND_DRINK'] },
   { category: 'Transportation',  type: 'expense',  monthly_limit: 0, plaid_pfc: ['TRANSPORTATION'] },
