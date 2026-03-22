@@ -23,6 +23,8 @@ ALTER TABLE users ADD COLUMN preferences JSONB DEFAULT '{}';
 
 Keys used by this feature:
 - `dismissed_budget_setup` (boolean) — hides guided setup prompt on `/plan`
+- `dismissed_budget_nudge` (boolean) — hides "Set up budgets" nudge on `/budget`
+- `dismissed_trends_nudge` (boolean) — hides "Explore trends" nudge on `/budget`
 - `post_onboarding_choice` (string) — which path they took from completion screen
 - `budget_setup_mode` (string) — `guided` or `manual`
 - `budget_setup_completed_at` (ISO timestamp) — when they finished guided setup
@@ -31,22 +33,35 @@ Keys used by this feature:
 
 ### When to show
 
-Show a nudge card when ALL of these are true:
-- User is onboarded
-- No unsorted transactions (To Sort count = 0)
-- No pending relationship cards
+Show a nudge card when ALL three of these conditions are true:
+1. User is onboarded (`user.onboarded_at` is set)
+2. Zero transactions have `mappedCategory === 'To Sort'` (nothing to sort)
+3. Zero pending relationship cards are visible
 
-### What to show (priority order, show first match only)
+When these three conditions are met, evaluate which nudge to show using the
+priority list below. Show the first one that matches. If none match, show nothing.
 
-1. **Set up budgets** — if no expense categories have budget limits > 0
-   - Card text: "Set spending limits to track your budget."
-   - CTA: "Set up budgets" → `/plan`
-   - Dismissable: no (goes away naturally once they set any limit)
+### Nudge priority list (show first match only)
 
-2. **Explore trends** — if budgets are set, nothing else to do
-   - Card text: "See where your money goes each month."
-   - CTA: "View trends" → `/trends`
-   - Dismissable: yes (store in preferences, don't nag)
+**Nudge A: "Set up budgets"**
+
+Show when: zero expense-type categories have `monthly_limit > 0` (the user has
+not set a budget limit on even one expense category) AND `preferences.dismissed_budget_nudge`
+is not `true`.
+
+- Card text: "Set spending limits to track your budget."
+- CTA: "Set up budgets" → `/plan`
+- Dismiss button: yes — sets `preferences.dismissed_budget_nudge = true`
+- Auto-hides: when at least one expense category gets a `monthly_limit > 0`
+
+**Nudge B: "Explore trends"**
+
+Show when: at least one expense category has `monthly_limit > 0` (budgets are
+set up) AND `preferences.dismissed_trends_nudge` is not `true`.
+
+- Card text: "See where your money goes each month."
+- CTA: "View trends" → `/trends`
+- Dismiss button: yes — sets `preferences.dismissed_trends_nudge = true`
 
 ### Design
 
@@ -58,11 +73,12 @@ the category list.
 
 ### First-time detection
 
-`/plan` checks on mount:
-- Do any expense categories have `monthly_limit > 0`?
-- Has user dismissed the guided setup? (`preferences.dismissed_budget_setup`)
+`/plan` checks on mount. Show the guided setup choice when BOTH are true:
+1. Zero expense-type categories have `monthly_limit > 0`
+2. `preferences.dismissed_budget_setup` is not `true`
 
-If no limits AND not dismissed → show choice: "Guided setup" or "Set up manually"
+If either condition is false (user has set at least one limit, or has
+dismissed the prompt), show the normal `/plan` page.
 
 ### Choice screen (inline on `/plan`)
 
