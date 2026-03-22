@@ -858,6 +858,14 @@
               <TagPicker v-model="triageTags" />
             </div>
 
+            <div class="q-px-md">
+              <q-toggle
+                v-model="triageExclude"
+                color="primary"
+                label="Exclude from total"
+              />
+            </div>
+
             <!-- Similar transactions toggle -->
             <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
               <q-checkbox v-model="triageCreateRule" dense color="primary">
@@ -1052,6 +1060,7 @@
         triageOpen: false,
         triageCategory: null,
         triageNote: '',
+        triageExclude: false,
         triageTags: [],
         triageCreateRule: false,
         triageSaving: false,
@@ -2032,7 +2041,7 @@ monthStats() {
           ruleMode: wantsRule ? sim.ruleType : null,
           transaction_id: txn.transaction_id,
           originalCategoryName: txn.mappedCategory || '',
-          excludeFromTotal: txn.excludeFromTotal || false,
+          excludeFromTotal: this.triageExclude,
         };
         try {
           const data = await handleDialogSubmit(JSON.stringify(d));
@@ -2091,6 +2100,7 @@ monthStats() {
         this.triageSplitRows = [];
         this.triageNote = '';
         this.triageTags = [];
+        this.triageExclude = false;
         this.$nextTick(() => {
           if (this.triageItems.length === 0) {
             this.triageDone = true;
