@@ -634,3 +634,19 @@ cd frontend && npx vitest run
 4. Verify analytics preference saved
 
 - [ ] **Step 6: Commit any fixes**
+
+---
+
+## Future iteration: Polished guided setup UX
+
+The V1 guided setup is a basic two-step form (income → category list). The
+next iteration should feel more like a conversation:
+
+- Show only the user's top 3-4 spending categories as cards (not a full list)
+- Each card shows actual spending and asks "Want to set a limit?"
+- User makes 3-4 decisions instead of 12
+- Remaining categories can be set up later from the normal `/plan` page
+- The key differentiator: "here are the decisions that matter" vs "fill in all these numbers"
+
+This is a UX/design task, not infrastructure — all the plumbing (preferences,
+analytics, first-time detection) ships in V1.
