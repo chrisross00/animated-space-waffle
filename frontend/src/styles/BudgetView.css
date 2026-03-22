@@ -164,6 +164,16 @@
       border-radius: 0 0 var(--basil-radius-md) var(--basil-radius-md);
     }
 
+    /* First child before an expanded card: fully rounded (top from first-child + bottom from :has) */
+    .categories > .budget-container:first-child:not(.basil-category--expanded):has(+ .budget-container.basil-category--expanded) {
+      border-radius: var(--basil-radius-md);
+    }
+
+    /* Last child after an expanded card: fully rounded (bottom from last-child + top from sibling rule) */
+    .categories > .budget-container.basil-category--expanded + .budget-container:last-child:not(.basil-category--expanded) {
+      border-radius: var(--basil-radius-md);
+    }
+
     /* Between two expanded cards: fully rounded */
     .categories > .budget-container.basil-category--expanded + .budget-container:not(.basil-category--expanded):has(+ .budget-container.basil-category--expanded) {
       border-radius: var(--basil-radius-md);
