@@ -693,6 +693,17 @@ async function getOrAddUser(decodedToken) {
   try {
     const user = await findUser(decodedToken.uid);
     if (user.length === 0) {
+      // Check whitelist before creating new user
+      const pool = getPool();
+      const { rows: allowed } = await pool.query(
+        'SELECT email FROM allowed_emails WHERE LOWER(email) = LOWER($1)',
+        [decodedToken.email]
+      );
+      if (allowed.length === 0) {
+        console.log('User not on whitelist, waitlisting:', decodedToken.email);
+        return { waitlisted: true, email: decodedToken.email };
+      }
+
       const adminUids = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
       const newUser = {
         userId: decodedToken.uid,

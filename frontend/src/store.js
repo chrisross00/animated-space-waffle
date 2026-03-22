@@ -15,6 +15,7 @@ const store = createStore({
     state: {
         user: null,
         session: null,
+        waitlisted: false,
         theme: localStorage?.getItem?.('basil-theme') || '',
         rules: [],
         tags: [],
@@ -35,6 +36,9 @@ const store = createStore({
         reducer: state => ({ session: state.session, user: state.user, lastSyncedAt: state.lastSyncedAt }),
     })],
     mutations: {
+        setWaitlisted(state, value) {
+            state.waitlisted = value;
+        },
         setUser(state, user) {
             // Extract accountBalances and snapshots if present from getOrAddUser response
             if (user?.accountBalances) {

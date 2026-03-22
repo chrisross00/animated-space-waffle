@@ -49,7 +49,9 @@ const authReady = (async function hydrateAuth() {
   if (hasToken || hasImpersonation || isDevBypass) {
     try {
       const appUser = await getOrAddUser();
-      if (appUser) {
+      if (appUser?.waitlisted) {
+        store.commit('setWaitlisted', true);
+      } else if (appUser) {
         store.commit('setUser', appUser);
         if (!store.state.session) store.commit('setSession', { isSessionActive: true });
         ensureAppData(store);

@@ -252,6 +252,19 @@
 
     </div>
 
+    <!-- Waitlist screen -->
+    <div v-else-if="$store.state.waitlisted" class="basil-landing">
+      <div class="basil-landing__hero">
+        <div class="basil-landing__icon">
+          <q-icon name="eco" size="32px" color="primary" />
+        </div>
+        <h1 class="basil-landing__headline basil-display">You're on the list.</h1>
+        <p class="basil-landing__sub">
+          Basil is currently in early access. We'll let you know when your account is ready.
+        </p>
+      </div>
+    </div>
+
     <!-- Landing / login screen -->
     <div v-else class="basil-landing">
       <div class="basil-landing__hero">
