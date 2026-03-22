@@ -63,18 +63,14 @@ describe('isCommonSplitRatio', () => {
     expect(result.exact).toBe(true)
   })
 
-  it('detects 3-way split', () => {
+  it('rejects 3-way split (only 1/2 supported)', () => {
     const result = isCommonSplitRatio(-50, 150)
-    expect(result).toBeTruthy()
-    expect(result.n).toBe(3)
-    expect(result.exact).toBe(true)
+    expect(result).toBeNull()
   })
 
-  it('detects 4-way split', () => {
+  it('rejects 4-way split (only 1/2 supported)', () => {
     const result = isCommonSplitRatio(-100, 400)
-    expect(result).toBeTruthy()
-    expect(result.n).toBe(4)
-    expect(result.exact).toBe(true)
+    expect(result).toBeNull()
   })
 
   it('allows 1% tolerance', () => {
@@ -158,10 +154,10 @@ describe('detectSplits', () => {
 
   it('only matches one P2P payment per purchase (1:1)', () => {
     const transactions = [
-      txn({ name: 'CONCERT', merchant_name: 'Ticketmaster', amount: 150, date: '2026-03-02',
+      txn({ name: 'CONCERT', merchant_name: 'Ticketmaster', amount: 100, date: '2026-03-02',
         personal_finance_category: { primary: 'ENTERTAINMENT', detailed: '' } }),
       txn({ name: 'VENMO PAYMENT', amount: -50, date: '2026-03-03', account: 'Venmo' }),
-      txn({ name: 'ZELLE PAYMENT FROM', amount: -38, date: '2026-03-04', account: 'Chase' }),
+      txn({ name: 'ZELLE PAYMENT FROM', amount: -50, date: '2026-03-04', account: 'Chase' }),
     ]
     const results = detectSplits(transactions)
     expect(results).toHaveLength(1)

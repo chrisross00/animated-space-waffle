@@ -67,21 +67,14 @@ describe('isCommonSplitRatio', () => {
     expect(result).toEqual({ n: 2, exact: true })
   })
 
-  it('detects exact 1/3 split', () => {
+  it('rejects 1/3 split (only 1/2 supported)', () => {
     const result = isCommonSplitRatio(-30, 90)
-    expect(result).toEqual({ n: 3, exact: true })
+    expect(result).toBeNull()
   })
 
-  it('detects exact 1/4 split', () => {
+  it('rejects 1/4 split (only 1/2 supported)', () => {
     const result = isCommonSplitRatio(-25, 100)
-    expect(result).toEqual({ n: 4, exact: true })
-  })
-
-  it('detects approximate 1/3 as non-exact', () => {
-    // 33.33 * 3 = 99.99, not exactly 100
-    const result = isCommonSplitRatio(-33.33, 100)
-    expect(result.n).toBe(3)
-    expect(result.exact).toBe(false)
+    expect(result).toBeNull()
   })
 
   it('allows small tolerance but marks as non-exact', () => {
@@ -118,13 +111,13 @@ describe('detectSplits', () => {
     expect(results[0].p2pTxn.transaction_id).toBe('txn_2')
   })
 
-  it('detects 1/3 split', () => {
+  it('rejects 1/3 split (only 1/2 supported)', () => {
     const transactions = [
       txn({ amount: 90, date: '2025-03-01', merchant_name: 'Restaurant' }),
       txn({ amount: -30, date: '2025-03-02', name: 'Zelle', merchant_name: 'Zelle' }),
     ]
     const results = detectSplits(transactions)
-    expect(results).toHaveLength(1)
+    expect(results).toHaveLength(0)
   })
 
   it('rejects if P2P comes before purchase', () => {
@@ -221,27 +214,26 @@ describe('detectSplits', () => {
     expect(results[0].confidence).toBe('medium')
   })
 
-  it('prefers 1/2 split over 1/3 split for the same P2P', () => {
+  it('matches 1/2 split and ignores non-matching purchase', () => {
     const transactions = [
-      // Two purchases: one is a 1/3 match, one is a 1/2 match
+      // $150 purchase is not a 1/2 match for $50 P2P, $100 purchase is
       txn({ amount: 150, date: '2025-03-01', merchant_name: 'Restaurant A' }),
       txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant B' }),
       txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
     ]
     const results = detectSplits(transactions)
     expect(results).toHaveLength(1)
-    // Should prefer Restaurant B ($100 → $50 = 1/2) over Restaurant A ($150 → $50 = 1/3)
     expect(results[0].purchaseTxn.merchant_name).toBe('Restaurant B')
     expect(results[0].ratio).toBe(2)
   })
 
   it('includes ratio in results', () => {
     const transactions = [
-      txn({ amount: 90, date: '2025-03-01', merchant_name: 'Restaurant' }),
-      txn({ amount: -30, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
+      txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant' }),
+      txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
     ]
     const results = detectSplits(transactions)
-    expect(results[0].ratio).toBe(3)
+    expect(results[0].ratio).toBe(2)
   })
 
   it('prefers exact ratio over approximate at same confidence and N', () => {

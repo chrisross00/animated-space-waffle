@@ -67,7 +67,7 @@ function daysBetween(dateStrA, dateStrB) {
  */
 function isCommonSplitRatio(p2pAmount, purchaseAmount) {
   const ratio = Math.abs(p2pAmount) / purchaseAmount;
-  for (const n of [2, 3, 4]) {
+  for (const n of [2]) {
     const target = 1 / n;
     const diff = Math.abs(ratio - target);
     if (diff <= RATIO_TOLERANCE) {
