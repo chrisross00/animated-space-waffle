@@ -81,7 +81,7 @@ const router = VueRouter.createRouter({
 })
 
 const PUBLIC_ROUTES = ['/profile', '/onboarding', '/privacy'];
-const ONBOARDING_ALLOWED = ['/', '/plan', '/profile', '/onboarding'];
+const ONBOARDING_ALLOWED = ['/profile', '/onboarding', '/privacy'];
 let isFirstNavigation = true;
 router.beforeEach(async (to, _from, next) => {
   // Wait for auth hydration to finish before the first guard decision.

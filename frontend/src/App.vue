@@ -3,6 +3,7 @@
     <q-header :class="['basil-header', headerScrolled && 'basil-header--scrolled']">
       <q-toolbar>
         <q-btn
+          v-if="$store.state.user?.onboarded_at"
           dense flat round
           icon="menu"
           class="basil-menu-btn"
@@ -22,7 +23,7 @@
 
         <!-- Sync button -->
         <q-btn
-          v-if="$store.state.session"
+          v-if="$store.state.session && $store.state.user?.onboarded_at"
           flat round dense
           icon="sync"
           class="basil-sync-btn q-ml-sm"
@@ -36,17 +37,13 @@
 
       <!-- Desktop tab bar — hidden on mobile -->
       <q-tabs align="left" class="basil-tabs gt-xs">
-        <template v-if="$store.state.session">
-          <template v-if="$store.state.user?.onboarded_at">
-            <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
-          </template>
+        <template v-if="$store.state.session && $store.state.user?.onboarded_at">
+          <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
           <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
           <q-route-tab to="/plan" icon="edit_note" label="Plan" />
-          <template v-if="$store.state.user?.onboarded_at">
-            <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
-            <q-route-tab to="/rules" icon="rule" label="Rules" />
-            <q-route-tab to="/tags" icon="sell" label="Tags" />
-          </template>
+          <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
+          <q-route-tab to="/rules" icon="rule" label="Rules" />
+          <q-route-tab to="/tags" icon="sell" label="Tags" />
         </template>
         <q-route-tab to="/profile" icon="person" label="Profile" />
       </q-tabs>
@@ -67,7 +64,7 @@
       elevated
     >
       <q-list>
-        <template v-if="$store.state.session">
+        <template v-if="$store.state.session && $store.state.user?.onboarded_at">
           <q-item-label header class="basil-drawer-section-label">Navigation</q-item-label>
           <q-item clickable to="/plan" @click="leftDrawerOpen = false">
             <q-item-section avatar>
@@ -129,7 +126,7 @@
     </q-drawer>
 
     <!-- Mobile bottom nav — hidden on desktop and when keyboard is open -->
-    <q-footer v-if="$store.state.session" v-show="!keyboardOpen" class="lt-sm basil-bottom-nav">
+    <q-footer v-if="$store.state.session && $store.state.user?.onboarded_at" v-show="!keyboardOpen" class="lt-sm basil-bottom-nav">
       <q-tabs align="justify" class="basil-bottom-tabs">
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
         <q-route-tab to="/" icon="account_balance_wallet" label="Budget" />
