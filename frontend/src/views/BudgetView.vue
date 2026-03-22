@@ -2548,6 +2548,12 @@ monthStats() {
         // Render from cached DB data immediately
         await this.buildPage('refresh');
 
+        // Auto-open triage if directed from onboarding (?triage=1)
+        if (this.$route.query.triage && this.triageItems.length > 0) {
+          this.$router.replace({ path: '/budget' }); // strip query param
+          this.$nextTick(() => this.openTriageFlow());
+        }
+
         // Background sync: if data is stale (>4 hours), sync with Plaid without blocking the UI
         const STALE_MS = 4 * 60 * 60 * 1000;
         const lastSync = store.state.lastSyncedAt ? new Date(store.state.lastSyncedAt).getTime() : 0;

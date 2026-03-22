@@ -159,7 +159,7 @@
         color="primary"
         :label="summaryStats.toSort > 0 ? 'Start sorting' : 'See your budget'"
         class="basil-onboarding-cta q-mt-md"
-        @click="$router.push('/budget')"
+        @click="$router.push(summaryStats.toSort > 0 ? '/budget?triage=1' : '/budget')"
       />
       <div v-if="summaryStats.toSort > 0" class="basil-onboarding-skip">
         <a href="#" @click.prevent="$router.push('/budget')">See your budget →</a>
