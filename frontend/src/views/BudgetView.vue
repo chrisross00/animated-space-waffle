@@ -53,7 +53,7 @@
               </div>
               <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
               <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; line-height: 1.5">
-                Set your income budget to see how much you have left to spend.
+                <router-link to="/plan" style="color: var(--basil-green); text-decoration: none;">Set your income</router-link> to see what's left to spend.
               </div>
             </template>
 
