@@ -39,12 +39,12 @@
         <q-card v-if="budgetSummary && !showAll" flat bordered class="basil-card q-mb-md">
           <q-card-section>
             <div class="basil-card-head">
-              <span class="basil-card-label">{{ budgetSummary.noIncome ? 'Spending' : 'Flexible spending' }}</span>
+              <span class="basil-card-label">{{ budgetSummary.incomeState === 'none' ? 'Spending' : 'Flexible spending' }}</span>
               <span class="basil-card-period">{{ selectedDate.display }}</span>
             </div>
 
-            <!-- No-income mode: spent so far -->
-            <template v-if="budgetSummary.noIncome">
+            <!-- No income at all: spent so far -->
+            <template v-if="budgetSummary.incomeState === 'none'">
               <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-text)">
                 ${{ Math.round(displayedSummary.spent).toLocaleString() }}
               </div>
@@ -93,6 +93,9 @@
               <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
                 <span>Recurring expected</span>
                 <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+              </div>
+              <div v-if="budgetSummary.incomeState === 'estimated'" style="color: var(--basil-text-muted); font-size: 0.8125rem; margin-top: var(--basil-space-3); line-height: 1.5">
+                Based on deposits this month. <router-link to="/plan" style="color: var(--basil-green); text-decoration: none;">Set your income</router-link> for a more accurate number.
               </div>
             </template>
           </q-card-section>
@@ -1436,7 +1439,9 @@
         // Income: prefer budget limit, fall back to actual
         const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === 'income');
         const incomeBudget = Number(incomeCategory?.monthly_limit) || 0;
-        const income = incomeBudget > 0 ? incomeBudget : (this.monthlyStats.incomeAmount || 0);
+        const incomeActual = this.monthlyStats.incomeAmount || 0;
+        const hasIncomeBudget = incomeBudget > 0;
+        const income = hasIncomeBudget ? incomeBudget : incomeActual;
 
         // Total expense spending (needed for both modes)
         const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
@@ -1454,14 +1459,17 @@
         const dayOfMonth = (sel.month() === today.month() && sel.year() === today.year())
           ? today.date() : daysInMonth;
 
-        // No income — show "spent so far" mode
+        // No income at all — show "spent so far" mode
         if (income <= 0) {
           return {
-            noIncome: true,
+            incomeState: 'none',
             spent: Math.round(spent),
-            pace: null, // no pace without income
+            pace: null,
           };
         }
+
+        // Has income transactions but no budget limit — show card but flag as estimated
+        const incomeState = hasIncomeBudget ? 'set' : 'estimated';
 
         // Fixed costs (optional — only when user has flagged categories)
         let fixedCosts = 0;
@@ -1482,7 +1490,7 @@
 
         const pool = income - savingsLimit;
         if (pool <= 0) return {
-          noIncome: true,
+          incomeState: 'none',
           spent: Math.round(spent),
           pace: null,
         };
@@ -1494,7 +1502,7 @@
         const pace = actualSpendRate <= expectedSpendRate + 0.15 ? 'on-track' : 'caution';
 
         return {
-          noIncome: false,
+          incomeState,
           pool: Math.round(income - savingsLimit),
           spent: Math.round(spent),
           remaining: Math.round(remaining),
