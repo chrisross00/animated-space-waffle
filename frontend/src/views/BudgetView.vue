@@ -2549,9 +2549,12 @@ monthStats() {
         await this.buildPage('refresh');
 
         // Auto-open triage if directed from onboarding (?triage=1)
-        if (this.$route.query.triage && this.triageItems.length > 0) {
+        if (this.$route.query.triage) {
           this.$router.replace({ path: '/budget' }); // strip query param
-          this.$nextTick(() => this.openTriageFlow());
+          // Wait for DOM + data to settle, then open triage if items exist
+          setTimeout(() => {
+            if (this.triageItems.length > 0) this.openTriageFlow();
+          }, 300);
         }
 
         // Background sync: if data is stale (>4 hours), sync with Plaid without blocking the UI
