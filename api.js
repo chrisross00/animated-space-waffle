@@ -808,6 +808,52 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Admin-only: manage email whitelist
+router.get('/allowedEmails', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    if (!(await requireAdmin(decodedToken.uid, res))) return;
+    const pool = getPool();
+    const { rows } = await pool.query('SELECT email, created_at FROM allowed_emails ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (error) {
+    console.error('/allowedEmails error:', error);
+    res.status(500).json({ message: 'Failed to fetch allowed emails' });
+  }
+});
+
+router.post('/allowedEmails', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    if (!(await requireAdmin(decodedToken.uid, res))) return;
+    const { email } = req.body;
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    const pool = getPool();
+    await pool.query('INSERT INTO allowed_emails (email) VALUES (LOWER($1)) ON CONFLICT DO NOTHING', [email.trim()]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('/allowedEmails POST error:', error);
+    res.status(500).json({ message: 'Failed to add email' });
+  }
+});
+
+router.post('/deleteAllowedEmail', async (req, res) => {
+  try {
+    const decodedToken = await validateIdToken(req);
+    if (!(await requireAdmin(decodedToken.uid, res))) return;
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+    const pool = getPool();
+    await pool.query('DELETE FROM allowed_emails WHERE LOWER(email) = LOWER($1)', [email]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('/deleteAllowedEmail error:', error);
+    res.status(500).json({ message: 'Failed to remove email' });
+  }
+});
+
 // Shared admin helpers — used by nuke routes below
 async function nukeTransactions(uid) {
   return deleteTransactions(uid);

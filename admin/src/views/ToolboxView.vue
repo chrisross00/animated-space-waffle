@@ -29,6 +29,35 @@
         />
       </div>
 
+      <!-- Email Whitelist -->
+      <div class="admin-section">
+        <div class="admin-section-header">
+          <h6 class="admin-section-title">Email Whitelist</h6>
+          <q-btn flat dense icon="refresh" @click="loadWhitelist" :loading="loadingWhitelist" />
+        </div>
+        <div class="admin-tool-list">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <q-input
+              v-model="newEmail"
+              outlined dense
+              placeholder="email@example.com"
+              style="flex: 1;"
+              @keyup.enter="addEmail"
+            />
+            <q-btn unelevated dense color="primary" label="Add" :disable="!newEmail" @click="addEmail" />
+          </div>
+          <div v-for="item in allowedEmails" :key="item.email" class="admin-tool-row" style="padding: 4px 0;">
+            <div class="admin-tool-info">
+              <div class="admin-tool-name">{{ item.email }}</div>
+            </div>
+            <q-btn flat dense icon="close" color="negative" @click="removeEmail(item.email)" />
+          </div>
+          <div v-if="allowedEmails.length === 0 && !loadingWhitelist" style="color: #999; font-size: 0.875rem;">
+            No emails on whitelist.
+          </div>
+        </div>
+      </div>
+
       <!-- Data Maintenance -->
       <div class="admin-section">
         <div class="admin-section-header">
@@ -170,6 +199,9 @@ import {
   nukeTransactions,
   nukeAllData,
   sandboxResetLogin,
+  fetchAllowedEmails,
+  addAllowedEmail,
+  deleteAllowedEmail,
 } from '../api';
 
 const SELF_OPTION = { label: 'Self (my account)', value: '__self__' };
@@ -181,6 +213,9 @@ export default {
       selectedUser: null,
       loadingUsers: false,
       sandboxInstitution: '',
+      allowedEmails: [],
+      loadingWhitelist: false,
+      newEmail: '',
       running: {},
       results: {},
 
@@ -240,9 +275,40 @@ export default {
 
   mounted() {
     this.loadUsers();
+    this.loadWhitelist();
   },
 
   methods: {
+    async loadWhitelist() {
+      this.loadingWhitelist = true;
+      try {
+        this.allowedEmails = await fetchAllowedEmails();
+      } catch (err) {
+        Notify.create({ type: 'negative', message: `Failed to load whitelist: ${err.message}` });
+      } finally {
+        this.loadingWhitelist = false;
+      }
+    },
+    async addEmail() {
+      if (!this.newEmail) return;
+      try {
+        await addAllowedEmail(this.newEmail.trim());
+        this.newEmail = '';
+        await this.loadWhitelist();
+        Notify.create({ type: 'positive', message: 'Email added' });
+      } catch (err) {
+        Notify.create({ type: 'negative', message: `Failed to add email: ${err.message}` });
+      }
+    },
+    async removeEmail(email) {
+      try {
+        await deleteAllowedEmail(email);
+        await this.loadWhitelist();
+        Notify.create({ type: 'positive', message: 'Email removed' });
+      } catch (err) {
+        Notify.create({ type: 'negative', message: `Failed to remove email: ${err.message}` });
+      }
+    },
     async loadUsers() {
       this.loadingUsers = true;
       try {

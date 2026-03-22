@@ -99,6 +99,23 @@ export function clearManualOverrides(targetUserId) { return toolPost('/api/clear
 export function nukeTransactions(targetUserId) { return toolPost('/api/nukeTransactions', targetUserId); }
 export function nukeAllData(targetUserId) { return toolPost('/api/nukeAllData', targetUserId); }
 
+// Whitelist management
+export function fetchAllowedEmails() { return request('/api/allowedEmails'); }
+export function addAllowedEmail(email) {
+  return request('/api/allowedEmails', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+}
+export function deleteAllowedEmail(email) {
+  return request('/api/deleteAllowedEmail', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+}
+
 export function sandboxResetLogin(institution) {
   return request('/plaid-api/sandbox_reset_login', {
     method: 'POST',
