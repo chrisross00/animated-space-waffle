@@ -159,10 +159,10 @@
         color="primary"
         :label="summaryStats.toSort > 0 ? 'Start sorting' : 'See your budget'"
         class="basil-onboarding-cta q-mt-md"
-        @click="$router.push('/')"
+        @click="$router.push('/budget')"
       />
       <div v-if="summaryStats.toSort > 0" class="basil-onboarding-skip">
-        <a href="#" @click.prevent="$router.push('/')">See your budget →</a>
+        <a href="#" @click.prevent="$router.push('/budget')">See your budget →</a>
       </div>
     </div>
 
@@ -227,7 +227,7 @@ export default {
       } catch (err) {
         console.error('skipToApp error:', err);
       }
-      this.$router.push('/');
+      this.$router.push('/budget');
     },
 
     async startSync() {

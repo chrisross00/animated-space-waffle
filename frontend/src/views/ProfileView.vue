@@ -408,7 +408,7 @@ export default {
         ]);
 
         this.isLoading = false;
-        this.$router.push('/');
+        this.$router.push('/budget');
       } catch (error) {
         console.error('devTestLogin error:', error);
         this.isLoading = false;

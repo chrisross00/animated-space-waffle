@@ -27,9 +27,13 @@ const routes = [
     component: RulesView
   },
   {
-    path: '/',
+    path: '/budget',
     name: 'BudgetView',
     component: BudgetView
+  },
+  {
+    path: '/',
+    redirect: '/budget',
   },
   {
     path: '/profile',
