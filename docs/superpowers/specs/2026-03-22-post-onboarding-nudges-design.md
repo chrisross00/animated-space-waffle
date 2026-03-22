@@ -23,7 +23,8 @@ ALTER TABLE users ADD COLUMN preferences JSONB DEFAULT '{}';
 
 Keys used by this feature:
 - `dismissed_budget_setup` (boolean) — hides guided setup prompt on `/plan`
-- `dismissed_budget_nudge` (boolean) — hides "Set up budgets" nudge on `/budget`
+- `dismissed_budget_nudge` (boolean) — hides generic "Set up budgets" nudge on `/budget`
+- `dismissed_category_nudges` (string array) — category names dismissed from per-category nudge
 - `dismissed_trends_nudge` (boolean) — hides "Explore trends" nudge on `/budget`
 - `post_onboarding_choice` (string) — which path they took from completion screen
 - `budget_setup_mode` (string) — `guided` or `manual`
@@ -41,9 +42,9 @@ Show a nudge card when ALL three of these conditions are true:
 When these three conditions are met, evaluate which nudge to show using the
 priority list below. Show the first one that matches. If none match, show nothing.
 
-### Nudge priority list (show first match only)
+### Nudge priority list (evaluate in order, show first match only)
 
-**Nudge A: "Set up budgets"**
+**Nudge A: "Set up budgets" (generic)**
 
 Show when: zero expense-type categories have `monthly_limit > 0` (the user has
 not set a budget limit on even one expense category) AND `preferences.dismissed_budget_nudge`
@@ -54,10 +55,26 @@ is not `true`.
 - Dismiss button: yes — sets `preferences.dismissed_budget_nudge = true`
 - Auto-hides: when at least one expense category gets a `monthly_limit > 0`
 
-**Nudge B: "Explore trends"**
+**Nudge B: "Set a limit on [category]" (category-specific)**
 
-Show when: at least one expense category has `monthly_limit > 0` (budgets are
-set up) AND `preferences.dismissed_trends_nudge` is not `true`.
+Show when: at least one expense category has `monthly_limit > 0` (user has
+started setting up budgets) AND at least one other expense category has
+spending this month (`categorySum > 0`) but `monthly_limit` is 0 or null.
+
+Pick the category with the highest spending that has no limit. Show one at a time.
+
+- Card text: "You spent $X on [Category] this month. Set a limit?"
+- CTA: "Set limit" → opens Edit Category dialog for that category
+- Dismiss button: yes — dismisses this specific category nudge
+  (`preferences.dismissed_category_nudges` array, append category name)
+- Auto-hides for a category: when that category gets a `monthly_limit > 0`
+- Skips categories in `preferences.dismissed_category_nudges`
+
+**Nudge C: "Explore trends"**
+
+Show when: every expense category with spending this month has `monthly_limit > 0`
+(all active categories are budgeted) AND `preferences.dismissed_trends_nudge`
+is not `true`.
 
 - Card text: "See where your money goes each month."
 - CTA: "View trends" → `/trends`
