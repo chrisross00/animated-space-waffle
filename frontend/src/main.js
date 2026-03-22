@@ -37,7 +37,7 @@ import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 })();
 
 // Consume ?token= from OAuth callback redirect (must run before auth hydration)
-const consumedToken = consumeAuthToken();
+consumeAuthToken();
 
 // Check for ?waitlisted= from OAuth redirect (user not on whitelist)
 ;(function checkWaitlisted() {
@@ -81,7 +81,6 @@ const router = VueRouter.createRouter({
 })
 
 const PUBLIC_ROUTES = ['/profile', '/onboarding', '/privacy'];
-const ONBOARDING_ALLOWED = ['/profile', '/onboarding', '/privacy'];
 let isFirstNavigation = true;
 router.beforeEach(async (to, _from, next) => {
   // Wait for auth hydration to finish before the first guard decision.
@@ -89,7 +88,6 @@ router.beforeEach(async (to, _from, next) => {
   if (isFirstNavigation) {
     await authReady;
   }
-  const firstNav = isFirstNavigation;
   isFirstNavigation = false;
 
   if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
@@ -98,7 +96,7 @@ router.beforeEach(async (to, _from, next) => {
     store.state.session &&
     !store.state.user?.onboarded_at &&
     !store.state.bootstrapping &&
-    !ONBOARDING_ALLOWED.includes(to.path)
+    !PUBLIC_ROUTES.includes(to.path)
   ) {
     next('/onboarding');
   } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
