@@ -591,7 +591,7 @@
                 excludeFromTotal: this.item?.excludeFromTotal ? this.item.excludeFromTotal : false,
                 plaid_pfc: this.item?.plaid_pfc ? [...this.item.plaid_pfc] : [],
                 fixed: this.item?.fixed || false,
-                createRule: this.similarityData?.matches?.some(t => t.mappedCategory !== (this.item?.mappedCategory || '') && !t.manually_set) ?? false,
+                createRule: false,
                 dialogType: this.dialogType
             },
             originalDialogBody: {},

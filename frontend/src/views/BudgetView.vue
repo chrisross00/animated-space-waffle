@@ -1025,7 +1025,7 @@
         triageSkipped: new Set(),
         triageOpen: false,
         triageCategory: null,
-        triageCreateRule: true,
+        triageCreateRule: false,
         triageSaving: false,
         triageDone: false,
         triageTotal: 0,

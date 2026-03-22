@@ -66,15 +66,11 @@ function daysBetween(dateStrA, dateStrB) {
  * Returns null if no match.
  */
 function isCommonSplitRatio(p2pAmount, purchaseAmount) {
-  const ratio = Math.abs(p2pAmount) / purchaseAmount;
-  for (const n of [2]) {
-    const target = 1 / n;
-    const diff = Math.abs(ratio - target);
-    if (diff <= RATIO_TOLERANCE) {
-      // Exact: p2p * n === purchase (using cents to avoid floating point)
-      const exact = Math.round(Math.abs(p2pAmount) * 100) * n === Math.round(purchaseAmount * 100);
-      return { n, exact };
-    }
+  // Exact 50/50 only — compare in cents to avoid floating point issues
+  const p2pCents = Math.round(Math.abs(p2pAmount) * 100);
+  const purchaseCents = Math.round(purchaseAmount * 100);
+  if (p2pCents * 2 === purchaseCents) {
+    return { n: 2, exact: true };
   }
   return null;
 }

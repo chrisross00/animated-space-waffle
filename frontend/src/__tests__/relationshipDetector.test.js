@@ -73,16 +73,12 @@ describe('isCommonSplitRatio', () => {
     expect(result).toBeNull()
   })
 
-  it('allows 1% tolerance', () => {
-    // 50.50/100 = 0.505, target 0.50, diff 0.005 < 0.01
-    const result = isCommonSplitRatio(-50.50, 100)
-    expect(result).toBeTruthy()
-    expect(result.n).toBe(2)
-    expect(result.exact).toBe(false)
+  it('rejects near-50% that is not exactly 50% (no tolerance)', () => {
+    expect(isCommonSplitRatio(-50.50, 100)).toBeNull()
+    expect(isCommonSplitRatio(-49.50, 100)).toBeNull()
   })
 
-  it('rejects ratios outside tolerance', () => {
-    // 15/100 = 0.15, not close to 1/2 (0.50), 1/3 (0.333), or 1/4 (0.25)
+  it('rejects non-standard ratios', () => {
     expect(isCommonSplitRatio(-15, 100)).toBeNull()
   })
 })

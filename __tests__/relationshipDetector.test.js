@@ -77,11 +77,9 @@ describe('isCommonSplitRatio', () => {
     expect(result).toBeNull()
   })
 
-  it('allows small tolerance but marks as non-exact', () => {
-    // 50.50 / 100 = 0.505, within 1% of 0.5 but not exact
-    const result = isCommonSplitRatio(-50.50, 100)
-    expect(result.n).toBe(2)
-    expect(result.exact).toBe(false)
+  it('rejects near-50% that is not exactly 50% (no tolerance)', () => {
+    expect(isCommonSplitRatio(-50.50, 100)).toBeNull()
+    expect(isCommonSplitRatio(-49.50, 100)).toBeNull()
   })
 
   it('rejects non-standard ratios', () => {
@@ -236,16 +234,15 @@ describe('detectSplits', () => {
     expect(results[0].ratio).toBe(2)
   })
 
-  it('prefers exact ratio over approximate at same confidence and N', () => {
+  it('only matches exact 50% — ignores near-50% purchase', () => {
     const transactions = [
-      // Two purchases: $100 (exact 50) and $101 (approximate 50.50/101 ≈ 0.5)
+      // $100 is exact 50% match, $101 is not
       txn({ amount: 100, date: '2025-03-01', merchant_name: 'Restaurant A' }),
       txn({ amount: 101, date: '2025-03-01', merchant_name: 'Restaurant B' }),
       txn({ amount: -50, date: '2025-03-02', name: 'Venmo', account: 'Venmo' }),
     ]
     const results = detectSplits(transactions)
     expect(results).toHaveLength(1)
-    // Should prefer Restaurant A ($100 → $50 = exact 1/2)
     expect(results[0].purchaseTxn.merchant_name).toBe('Restaurant A')
   })
 

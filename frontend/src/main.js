@@ -37,7 +37,7 @@ import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 })();
 
 // Consume ?token= from OAuth callback redirect (must run before auth hydration)
-consumeAuthToken();
+const consumedToken = consumeAuthToken();
 
 // Check for ?waitlisted= from OAuth redirect (user not on whitelist)
 ;(function checkWaitlisted() {
@@ -103,9 +103,9 @@ router.beforeEach(async (to, _from, next) => {
     next('/onboarding');
   } else if (to.path === '/onboarding' && store.state.user?.onboarded_at) {
     next('/accounts');
-  } else if (firstNav && to.path === '/' && store.state.user?.onboarded_at) {
-    // Initial page load on / (e.g. after OAuth callback) — send onboarded
-    // users to Accounts. Subsequent navigations to / (Budget tab) pass through.
+  } else if (firstNav && to.path === '/' && store.state.user?.onboarded_at && consumedToken) {
+    // After OAuth callback redirect (consumed ?token=) — send onboarded
+    // users to Accounts. Normal refreshes on / pass through.
     next('/accounts');
   } else {
     next();
