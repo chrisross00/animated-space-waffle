@@ -7,11 +7,11 @@
 const MERCHANTS = {
   'Food & Dining': [
     { merchant_name: 'Starbucks', name: 'STARBUCKS STORE #1234', min: 4, max: 12, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_COFFEE' },
-    { merchant_name: 'Chipotle', name: 'CHIPOTLE ONLINE ORDER', min: 10, max: 18, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+    { merchant_name: 'Chipotle', name: 'CHIPOTLE ONLINE ORDER', min: 10, max: 18, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANT' },
     { merchant_name: 'Whole Foods', name: 'WHOLE FOODS MKT #10234', min: 40, max: 150, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_GROCERIES' },
-    { merchant_name: 'DoorDash', name: 'DOORDASH*ORDER', min: 15, max: 55, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+    { merchant_name: 'DoorDash', name: 'DOORDASH*ORDER', min: 15, max: 55, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANT' },
     { merchant_name: 'Trader Joe\'s', name: 'TRADER JOE\'S #567', min: 25, max: 90, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_GROCERIES' },
-    { merchant_name: 'Sweetgreen', name: 'SWEETGREEN NYC', min: 12, max: 20, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANTS' },
+    { merchant_name: 'Sweetgreen', name: 'SWEETGREEN NYC', min: 12, max: 20, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_RESTAURANT' },
     { merchant_name: 'Groundwork Coffee', name: 'TST*GROUNDWORK COFFEE - VENICE BLVD', min: 10, max: 35, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_COFFEE' },
     { merchant_name: null, name: 'SQ *CORNER CAFE BROOKLYN HEIGHTS', min: 5, max: 15, recurring: false, pfc: 'FOOD_AND_DRINK', pfcDetailed: 'FOOD_AND_DRINK_COFFEE' },
   ],
@@ -66,7 +66,7 @@ const MERCHANTS = {
     { merchant_name: null, name: 'DIRECT DEPOSIT EMPLOYER PAYROLL ACH', min: 3500, max: 3500, recurring: true, isIncome: true, pfc: 'INCOME', pfcDetailed: 'INCOME_WAGES' },
     { merchant_name: 'Venmo', name: 'VENMO CASHOUT', min: 20, max: 200, recurring: false, isIncome: true, pfc: 'TRANSFER_IN', pfcDetailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
   ],
-  Payment: [
+  'Payments & Transfers': [
     { merchant_name: null, name: 'CHASE CREDIT CRD AUTOPAY CHECKING', min: 500, max: 3000, recurring: true, isPayment: true, pfc: 'LOAN_PAYMENTS', pfcDetailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' },
     { merchant_name: null, name: 'TRANSFER TO SAVINGS ACCOUNT XXXXXX1234', min: 200, max: 500, recurring: true, isPayment: true, pfc: 'TRANSFER_OUT', pfcDetailed: 'TRANSFER_OUT_SAVINGS' },
   ],

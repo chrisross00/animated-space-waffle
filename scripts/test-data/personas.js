@@ -105,7 +105,7 @@ const PERSONAS = {
       {
         label: 'Chase credit card payment',
         conditions: [{ field: 'name', op: 'contains', value: 'CHASE CREDIT CRD' }],
-        categoryName: 'Payment',
+        categoryName: 'Payments & Transfers',
         createdFrom: 'triage',
       },
     ],
