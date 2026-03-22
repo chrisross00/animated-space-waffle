@@ -725,7 +725,7 @@
               color="primary"
               icon="upload_file"
               label="Import Venmo CSV"
-              @click="triageOpen = false; $nextTick(() => openVenmoImport())"
+              @click="triageOpen = false; venmoLaunchedFromTriage = true; $nextTick(() => openVenmoImport())"
             />
           </div>
           <div class="basil-triage__actions">
@@ -749,7 +749,7 @@
               color="primary"
               icon="upload_file"
               label="Import CSV"
-              @click="triageOpen = false; enrichmentOffered = true; $nextTick(() => openVenmoImport())"
+              @click="triageOpen = false; enrichmentOffered = true; venmoLaunchedFromTriage = true; $nextTick(() => openVenmoImport())"
             />
           </div>
         </template>
@@ -975,6 +975,7 @@
         newCategory: false,
         categoryClickers: {},
         venmoDialogOpen: false,
+        venmoLaunchedFromTriage: false,
         bulkTagOpen: false,
         bulkTagSelection: [],
         bulkTagOriginal: [],
@@ -1519,6 +1520,14 @@ monthStats() {
       },
     },
     watch: {
+      venmoDialogOpen(val) {
+        if (!val && this.venmoLaunchedFromTriage) {
+          this.venmoLaunchedFromTriage = false;
+          this.$nextTick(() => {
+            this.triageOpen = true;
+          });
+        }
+      },
       showAll(val) {
         if (!val) {
           this.tableNoMoreMonths = false;
@@ -2035,7 +2044,7 @@ monthStats() {
           } else {
             const next = this.triageItems[0];
             this.triageCategory = next?.suggestion || null;
-            this.triageCreateRule = true;
+            this.triageCreateRule = false;
           }
         });
       },
