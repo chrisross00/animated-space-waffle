@@ -368,7 +368,7 @@ export default {
     },
     guidedCategories() {
       const categories = this.$store.state.categories || [];
-      const expense = categories.filter(c => c.type === 'expense' && c.category !== 'To Sort');
+      const expense = categories.filter(c => (c.type === 'expense' || c.type === 'savings') && c.category !== 'To Sort');
       const txns = this.$store.state.transactions || [];
       const spending = {};
       txns.forEach(t => {
