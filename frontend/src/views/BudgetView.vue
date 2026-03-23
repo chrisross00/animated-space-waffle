@@ -263,6 +263,28 @@
         </q-card>
       </div>
 
+      <!-- Post-onboarding nudge card -->
+      <div
+        v-if="nudgeCard && !showAll && !isLoading && !isRefreshing"
+        class="q-pa-md"
+        style="max-width: 800px; margin: 0 auto; padding-top: 0;"
+      >
+        <q-card class="basil-tosort-card">
+          <div class="basil-card-head">
+            <span class="basil-card-label">{{ nudgeCard.type === 'budget' ? 'Get started' : nudgeCard.type === 'category' ? 'Budget tip' : 'Next step' }}</span>
+            <q-btn flat round dense icon="close" size="sm" @click.stop="dismissNudge()" />
+          </div>
+          <div style="padding: 0 var(--basil-space-4) var(--basil-space-4);">
+            <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-bottom: var(--basil-space-3);">{{ nudgeCard.text }}</div>
+            <q-btn
+              unelevated color="primary"
+              :label="nudgeCard.cta"
+              @click="handleNudgeCta()"
+            />
+          </div>
+        </q-card>
+      </div>
+
       <!-- Button Container -->
       <div v-if="isOnboarded" class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
         <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
@@ -961,8 +983,9 @@
   import EmptyState from '../components/EmptyState.vue'
   import TagPicker from '../components/TagPicker.vue'
   import store from '../store'
-  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi, splitTransaction, unsplitTransaction } from '@/api';
+  import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi, splitTransaction, unsplitTransaction, updatePreferences } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
+  import { evaluateNudge } from '@/utils/budgetSetup';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
@@ -1064,6 +1087,7 @@
         triageCategory: null,
         triageNote: '',
         triageExclude: false,
+        nudgeDismissedThisSession: false,
         triageTags: [],
         triageCreateRule: false,
         triageSaving: false,
@@ -1576,6 +1600,21 @@ monthStats() {
           }
         }
       },
+      nudgeCard() {
+        if (this.nudgeDismissedThisSession) return null;
+        const user = this.$store.state.user;
+        return evaluateNudge({
+          isOnboarded: !!user?.onboarded_at,
+          toSortCount: this.toSortSuggestionStats.total,
+          pendingRelationshipCount: this.pendingRelationships?.length || 0,
+          categories: this.$store.state.categories || [],
+          preferences: user?.preferences || {},
+          getCategorySpend: (name) => {
+            if (!this.groupedTransactions?.[name]) return 0;
+            return Math.abs(this.categorySum(name) || 0);
+          },
+        });
+      },
     },
     watch: {
       venmoDialogOpen(val) {
@@ -1604,6 +1643,33 @@ monthStats() {
       },
     },
     methods: {
+      async dismissNudge() {
+        const card = this.nudgeCard;
+        if (!card) return;
+        let prefs = {};
+        if (card.type === 'budget') {
+          prefs.dismissed_budget_nudge = true;
+        } else if (card.type === 'category') {
+          const existing = this.$store.state.user.preferences?.dismissed_category_nudges || [];
+          prefs.dismissed_category_nudges = [...existing, card.category];
+        } else if (card.type === 'trends') {
+          prefs.dismissed_trends_nudge = true;
+        }
+        const result = await updatePreferences(prefs);
+        if (result) this.$store.commit('updatePreferences', prefs);
+        this.nudgeDismissedThisSession = true;
+      },
+      async handleNudgeCta() {
+        const card = this.nudgeCard;
+        if (!card) return;
+        if (card.type === 'category') {
+          await this.dismissNudge();
+          this.$router.push('/plan');
+        } else if (card.to) {
+          await this.dismissNudge();
+          this.$router.push(card.to);
+        }
+      },
       relationshipTooltip(txn) {
         const rel = this.relationshipMap[txn.transaction_id];
         if (!rel) return '';

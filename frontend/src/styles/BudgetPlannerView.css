@@ -267,3 +267,22 @@
   color: var(--basil-text-secondary);
   margin-top: 3px;
 }
+
+/* ---- Guided setup sticky footer ---- */
+.basil-guided-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--basil-surface);
+  padding: var(--basil-space-4) var(--basil-space-5);
+  border-top: 1px solid var(--basil-border);
+  box-shadow: var(--basil-shadow-md);
+  z-index: 100;
+}
+
+@media (max-width: 599px) {
+  .basil-guided-footer {
+    bottom: var(--basil-bottom-nav-height);
+  }
+}

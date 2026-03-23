@@ -105,7 +105,7 @@ async function findUser(userId, email) {
   const { rows } = await pool.query(
     `SELECT id, id AS "userId", email, name, picture,
             is_admin AS "isAdmin", onboarded_at, last_synced_at AS "lastSyncedAt",
-            is_test_user AS "isTestUser", created_at
+            is_test_user AS "isTestUser", created_at, preferences
      FROM users WHERE ${where}`,
     [param]
   );
@@ -139,6 +139,16 @@ async function updateUser(userId, fields) {
     `UPDATE users SET ${setClauses.join(', ')} WHERE id = $1`,
     [userId, ...params]
   );
+}
+
+async function updateUserPreferences(userId, prefs) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `UPDATE users SET preferences = COALESCE(preferences, '{}') || $2::jsonb
+     WHERE id = $1 RETURNING preferences`,
+    [userId, JSON.stringify(prefs)]
+  );
+  return rows[0]?.preferences || {};
 }
 
 async function findAllUsers() {
@@ -1288,6 +1298,7 @@ module.exports = {
   findUser,
   insertUser,
   updateUser,
+  updateUserPreferences,
   findAllUsers,
   // Categories
   findCategories,

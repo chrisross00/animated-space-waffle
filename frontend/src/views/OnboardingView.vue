@@ -154,15 +154,18 @@
         </div>
       </div>
 
+      <!-- Primary CTA -->
       <q-btn
-        unelevated
-        color="primary"
-        :label="summaryStats.toSort > 0 ? 'Start sorting' : 'See your budget'"
+        unelevated color="primary"
+        :label="summaryStats.toSort > 0 ? 'Start sorting' : 'Set up budgets'"
         class="basil-onboarding-cta q-mt-md"
-        @click="$router.push(summaryStats.toSort > 0 ? '/budget?triage=1' : '/budget')"
+        @click="onboardingChoice(summaryStats.toSort > 0 ? 'sort_first' : 'setup_budgets')"
       />
-      <div v-if="summaryStats.toSort > 0" class="basil-onboarding-skip">
-        <a href="#" @click.prevent="$router.push('/budget')">See your budget →</a>
+
+      <!-- Secondary links -->
+      <div class="basil-onboarding-skip" style="display: flex; flex-direction: column; gap: var(--basil-space-2);">
+        <a v-if="summaryStats.toSort > 0" href="#" @click.prevent="onboardingChoice('setup_budgets')">Set up budgets →</a>
+        <a href="#" @click.prevent="onboardingChoice('explore')">Explore your budget →</a>
       </div>
     </div>
 
@@ -171,7 +174,7 @@
 
 <script>
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
-import { getOrAddUser, seedCategories, fetchCategories, triggerSync, ensureAppData } from '@/api';
+import { getOrAddUser, seedCategories, fetchCategories, triggerSync, ensureAppData, updatePreferences } from '@/api';
 import store from '../store';
 
 export default {
@@ -215,6 +218,19 @@ export default {
         console.error('onPlaidSuccess error:', err);
       }
       this.linking = false;
+    },
+
+    async onboardingChoice(choice) {
+      const result = await updatePreferences({ post_onboarding_choice: choice });
+      if (result) store.commit('updatePreferences', { post_onboarding_choice: choice });
+
+      if (choice === 'sort_first') {
+        this.$router.push('/budget?triage=1');
+      } else if (choice === 'setup_budgets') {
+        this.$router.push('/plan');
+      } else {
+        this.$router.push('/budget');
+      }
     },
 
     async skipToApp() {

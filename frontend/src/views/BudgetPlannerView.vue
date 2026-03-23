@@ -32,6 +32,78 @@
         </q-card>
       </div>
 
+      <!-- First-time setup choice -->
+      <template v-else-if="isFirstTimeSetup && !guidedMode">
+        <div style="text-align: center; padding: var(--basil-space-7) var(--basil-space-5);">
+          <h2 class="basil-display" style="font-size: 1.75rem; margin: 0 0 var(--basil-space-3);">Set up your budget</h2>
+          <p style="color: var(--basil-text-secondary); margin: 0 0 var(--basil-space-5);">Choose how you'd like to get started.</p>
+          <q-btn unelevated color="primary" label="Guided setup" class="q-mb-md" style="min-width: 200px;" @click="startGuidedSetup()" />
+          <div>
+            <a href="#" style="color: var(--basil-text-muted); font-size: 0.875rem;" @click.prevent="dismissGuidedSetup()">I'll do it myself</a>
+          </div>
+        </div>
+      </template>
+
+      <!-- Guided setup flow -->
+      <template v-else-if="guidedMode">
+        <!-- Step 1: Income -->
+        <div v-if="guidedStep === 1" style="max-width: 500px; margin: 0 auto; padding: var(--basil-space-5);">
+          <h2 class="basil-display" style="font-size: 1.5rem; margin: 0 0 var(--basil-space-3);">What's your monthly income?</h2>
+          <q-input
+            :model-value="formatWithCommas(guidedIncome)"
+            @update:model-value="guidedIncome = parseAmount($event)"
+            outlined
+            inputmode="numeric"
+            prefix="$"
+            label="Monthly income"
+            :hint="incomeHint"
+            @keypress="$event.key.match(/[^0-9]/) && $event.preventDefault()"
+          />
+          <div style="display: flex; justify-content: flex-end; margin-top: var(--basil-space-4);">
+            <q-btn unelevated color="primary" label="Next" :disable="!guidedIncome || guidedIncome <= 0" @click="guidedStep = 2" />
+          </div>
+        </div>
+
+        <!-- Step 2: Category limits -->
+        <div v-if="guidedStep === 2" style="max-width: 500px; margin: 0 auto; padding: var(--basil-space-5);">
+          <h2 class="basil-display" style="font-size: 1.5rem; margin: 0 0 var(--basil-space-3);">Set your spending limits</h2>
+          <div style="display: flex; flex-direction: column; gap: var(--basil-space-3);">
+            <div v-for="cat in guidedCategories" :key="cat.category">
+              <q-input
+                :model-value="formatWithCommas(guidedLimits[cat.category])"
+                @update:model-value="guidedLimits[cat.category] = parseAmount($event)"
+                outlined
+                inputmode="numeric"
+                prefix="$"
+                @keypress="$event.key.match(/[^0-9]/) && $event.preventDefault()"
+                :label="cat.category"
+                :hint="cat.spendingHint"
+              />
+            </div>
+          </div>
+
+          <!-- Sticky footer -->
+          <div class="basil-guided-footer">
+            <div style="max-width: 500px; margin: 0 auto;">
+              <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 600; color: var(--basil-text); margin-bottom: var(--basil-space-3);">
+                <span>Total limits</span>
+                <span class="basil-mono">${{ guidedTotal.toLocaleString() }} / ${{ Number(guidedIncome || 0).toLocaleString() }}</span>
+              </div>
+              <div style="display: flex; gap: var(--basil-space-2); justify-content: space-between;">
+                <q-btn flat label="Back" @click="guidedStep = 1" />
+                <div style="display: flex; gap: var(--basil-space-2);">
+                  <q-btn flat label="Skip" @click="dismissGuidedSetup()" />
+                  <q-btn unelevated color="primary" label="Start budgeting" :loading="guidedSaving" :disable="guidedSaving" @click="saveGuidedSetup()" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Spacer so content isn't hidden behind fixed footer -->
+          <div style="height: 120px;"></div>
+        </div>
+      </template>
+
+      <!-- Normal plan view -->
       <div v-else class="basil-planner-content">
 
         <!-- ── Summary bar ── -->
@@ -149,6 +221,11 @@
         </div>
 
       </div>
+
+      <!-- Guided setup re-entry -->
+      <div v-if="!guidedMode && !isFirstTimeSetup" style="text-align: center; padding: var(--basil-space-5) 0;">
+        <a href="#" style="color: var(--basil-text-muted); font-size: 0.8125rem; text-decoration: none;" @click.prevent="reenterGuidedSetup()">Help me set up my budget</a>
+      </div>
     </div>
 
     <!-- Edit category dialog -->
@@ -181,7 +258,8 @@ import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import BasilTray from '../components/BasilTray.vue';
 import DialogComponent from '../components/DialogComponent.vue';
 import SwipeReveal from '../components/SwipeReveal.vue';
-import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory, fetchMerchants } from '@/api';
+import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory, fetchMerchants, updatePreferences, fetchCategories } from '@/api';
+import { formatWithCommas, parseAmount, getLastMonthKey, getCurrentMonthKey } from '@/utils/budgetSetup';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 
@@ -229,6 +307,13 @@ export default {
       editCatDialogOpen: false,
       editCatItem: null,
       editCatDialogBody: {},
+
+      // Guided setup
+      guidedMode: false,
+      guidedStep: 1, // 1 = income, 2 = categories
+      guidedIncome: null,
+      guidedLimits: {},
+      guidedSaving: false,
     };
   },
 
@@ -257,6 +342,49 @@ export default {
     summarySavings()  { return this.sectionTotal('savings'); },
     summaryNet() {
       return this.summaryIncome - this.summaryExpenses - this.summarySavings;
+    },
+    isFirstTimeSetup() {
+      const categories = this.$store.state.categories || [];
+      const hasAnyLimit = categories.some(c => c.type === 'expense' && Number(c.monthly_limit) > 0);
+      const dismissed = this.$store.state.user?.preferences?.dismissed_budget_setup;
+      return !hasAnyLimit && !dismissed;
+    },
+    incomeHint() {
+      const categories = this.$store.state.categories || [];
+      const incomeCat = categories.find(c => c.type === 'income');
+      if (!incomeCat) return null;
+      const now = new Date();
+      // Check last month
+      const lastMonth = getLastMonthKey(now);
+      const txns = this.$store.state.transactionsByMonth[lastMonth] || [];
+      const incomeTotal = txns.filter(t => t.mappedCategory === incomeCat.category).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      if (incomeTotal > 0) return `You received $${Math.round(incomeTotal).toLocaleString()} last month`;
+      // Fall back to current month
+      const currentMonth = getCurrentMonthKey(now);
+      const currentTxns = this.$store.state.transactionsByMonth[currentMonth] || [];
+      const currentIncome = currentTxns.filter(t => t.mappedCategory === incomeCat.category).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      if (currentIncome > 0) return `$${Math.round(currentIncome).toLocaleString()} received so far this month`;
+      return null;
+    },
+    guidedCategories() {
+      const categories = this.$store.state.categories || [];
+      const expense = categories.filter(c => c.type === 'expense' && c.category !== 'To Sort');
+      const txns = this.$store.state.transactions || [];
+      const spending = {};
+      txns.forEach(t => {
+        if (t.amount > 0 && t.mappedCategory) {
+          spending[t.mappedCategory] = (spending[t.mappedCategory] || 0) + t.amount;
+        }
+      });
+      const withSpending = expense.filter(c => spending[c.category] > 0)
+        .sort((a, b) => (spending[b.category] || 0) - (spending[a.category] || 0))
+        .map(c => ({ ...c, spendingHint: `$${Math.round(spending[c.category]).toLocaleString()} spent recently` }));
+      const withoutSpending = expense.filter(c => !spending[c.category])
+        .map(c => ({ ...c, spendingHint: null }));
+      return [...withSpending, ...withoutSpending];
+    },
+    guidedTotal() {
+      return Object.values(this.guidedLimits).reduce((sum, v) => sum + (Number(v) || 0), 0);
     },
   },
 
@@ -385,6 +513,73 @@ export default {
       if (data) store.commit('updateCategory', data);
       this.editCatDialogOpen = false;
       this.editCatItem = null;
+    },
+
+    // ── Guided setup ────────────────────────────────
+    formatWithCommas,
+    parseAmount,
+    reenterGuidedSetup() {
+      this.guidedMode = true;
+      this.guidedStep = 1;
+      this.guidedLimits = {};
+      // Pre-fill income from existing limit if set
+      const categories = this.$store.state.categories || [];
+      const incomeCat = categories.find(c => c.type === 'income');
+      this.guidedIncome = incomeCat && Number(incomeCat.monthly_limit) > 0 ? Number(incomeCat.monthly_limit) : null;
+    },
+    async startGuidedSetup() {
+      this.guidedMode = true;
+      this.guidedStep = 1;
+      this.guidedLimits = {};
+      await updatePreferences({ budget_setup_mode: 'guided' });
+      this.$store.commit('updatePreferences', { budget_setup_mode: 'guided' });
+    },
+    async dismissGuidedSetup() {
+      const prefs = { dismissed_budget_setup: true, dismissed_budget_nudge: true };
+      if (!this.$store.state.user.preferences?.budget_setup_mode) {
+        prefs.budget_setup_mode = 'manual';
+      }
+      await updatePreferences(prefs);
+      this.$store.commit('updatePreferences', prefs);
+      this.guidedMode = false;
+    },
+    async saveGuidedSetup() {
+      if (this.guidedSaving) return;
+      this.guidedSaving = true;
+      try {
+        const categories = this.$store.state.categories || [];
+        const saves = [];
+
+        // Save income limit
+        const incomeCat = categories.find(c => c.type === 'income');
+        if (incomeCat && this.guidedIncome > 0) {
+          saves.push(updateBudgetLimit(incomeCat._id || incomeCat.id, Number(this.guidedIncome)));
+        }
+
+        // Save category limits in parallel
+        for (const [catName, limit] of Object.entries(this.guidedLimits)) {
+          if (limit > 0) {
+            const cat = categories.find(c => c.category === catName);
+            if (cat) {
+              saves.push(updateBudgetLimit(cat._id || cat.id, Number(limit)));
+            }
+          }
+        }
+
+        await Promise.all(saves);
+
+        // Mark setup complete
+        const prefs = { budget_setup_completed_at: new Date().toISOString(), dismissed_budget_setup: true };
+        await updatePreferences(prefs);
+        this.$store.commit('updatePreferences', prefs);
+
+        // Refresh categories in store and navigate to budget
+        const updatedCats = await fetchCategories();
+        if (updatedCats) this.$store.commit('setCategories', updatedCats);
+        this.$router.push('/budget');
+      } finally {
+        this.guidedSaving = false;
+      }
     },
 
     isUserCreated(cat) {

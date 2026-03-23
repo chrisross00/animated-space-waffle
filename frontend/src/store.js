@@ -55,6 +55,9 @@ const store = createStore({
             }
             state.user = user;
         },
+        updatePreferences(state, preferences) {
+            state.user = { ...state.user, preferences: { ...(state.user?.preferences || {}), ...preferences } };
+        },
         clearState(state) {
           state.user = null;
           state.session = null;

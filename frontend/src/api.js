@@ -618,6 +618,22 @@ export async function deleteAccount() {
   _notify({ type: 'negative', message: `Failed to delete account (${response.status})` });
 }
 
+export async function updatePreferences(preferences) {
+  const headers = getAuthHeaders();
+  if (!headers) return;
+  headers['Content-Type'] = 'application/json';
+  const response = await fetch('/api/updatePreferences', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ preferences }),
+  });
+  if (response.ok) {
+    return response.json();
+  } else {
+    _notify({ type: 'negative', message: `Failed to save preferences (${response.status})` });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // App bootstrap — fetch all core data if the store is empty.
 // Singleton promise prevents duplicate in-flight requests when multiple
