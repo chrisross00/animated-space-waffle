@@ -250,6 +250,13 @@ name pattern / amount / amount + institution".
 ## Backlog
 
 ### High priority
+- [ ] **Income detection nudge + quick-fix** — When the current month has zero Income
+      but large inbound transfers exist, surface a nudge on the budget page showing
+      the suspected paycheck(s) inline: "We found a $4,700 deposit — is this income?"
+      Two actions: "Yes" (recategorizes + creates rule in one tap) and "Review all"
+      (opens triage filtered to large incoming transfers). Solves the problem where
+      PFC misclassifies payroll as transfers and the user has no way to know.
+      Design validated via UX analysis + competitor research (see `plans/`).
 - [ ] **Mobile: dropdown blur swallows submit tap** — on mobile, tapping a submit
       button while a Quasar `q-select` has focus requires two taps (first blurs the
       dropdown, second fires the button). Affects all forms app-wide, not just splitting.

@@ -10,3 +10,4 @@ admin/dist/
 frontend/.env.production
 .superpowers/
 .worktrees/
+scripts/txn-dump.json
