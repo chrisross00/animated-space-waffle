@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution, formatConditions } from '@/utils/ruleUtils'
+import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution, formatConditions, extractStablePrefix, isP2P } from '@/utils/ruleUtils'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -460,12 +460,14 @@ describe('applyCompoundRuleToStore', () => {
 // ---------------------------------------------------------------------------
 
 describe('findSimilarTransactions', () => {
-  it('matches by merchant_name (strategy 1)', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
+  // --- Tier 1: merchant_name ---
+
+  it('tier 1: matches by merchant_name', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks', name: 'Starbucks Store #100' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', merchant_name: 'Starbucks', mappedCategory: 'To Sort' }),
-      txn({ transaction_id: 'c', merchant_name: 'Uber', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'b', merchant_name: 'Starbucks', name: 'Starbucks Store #200', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', merchant_name: 'Uber', name: 'Uber Trip', mappedCategory: 'To Sort' }),
     ]
     const result = findSimilarTransactions(anchor, all)
     expect(result.strategy).toBe('merchant_name')
@@ -476,58 +478,147 @@ describe('findSimilarTransactions', () => {
     expect(result.label).toBe('Starbucks')
   })
 
-  it('is case-insensitive for merchant_name', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: 'STARBUCKS' })
+  it('tier 1: is case-insensitive for merchant_name', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'STARBUCKS', name: 'STARBUCKS #100' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', merchant_name: 'starbucks', mappedCategory: 'Coffee' }),
+      txn({ transaction_id: 'b', merchant_name: 'starbucks', name: 'starbucks #200', mappedCategory: 'Coffee' }),
     ]
     const result = findSimilarTransactions(anchor, all)
     expect(result.allCount).toBe(1)
     expect(result.strategy).toBe('merchant_name')
   })
 
-  it('uses name + account when merchant_name is null (strategy 2)', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Venmo Payment', account: 'Chase' })
+  it('tier 1: skips merchant for P2P transactions', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Venmo', name: 'Venmo', amount: -50, account: 'Chase' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', name: 'Venmo Payment', account: 'Chase', mappedCategory: 'To Sort' }),
-      txn({ transaction_id: 'c', name: 'Venmo Payment', account: 'BofA', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'b', merchant_name: 'Venmo', name: 'Venmo', amount: -25, account: 'Chase' }),
+      txn({ transaction_id: 'c', merchant_name: 'Venmo', name: 'Venmo', amount: -75, account: 'Chase' }),
     ]
     const result = findSimilarTransactions(anchor, all)
-    expect(result.strategy).toBe('name_account')
-    expect(result.ruleType).toBe('compound')
-    expect(result.allCount).toBe(1)
-    expect(result.conditions).toEqual([
-      { field: 'name', op: 'eq', value: 'Venmo Payment' },
-      { field: 'account', op: 'eq', value: 'Chase' },
-    ])
+    expect(result.strategy).not.toBe('merchant_name')
   })
 
-  it('falls back to name-only when account is null (strategy 3)', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Venmo', account: null })
+  // --- Tier 2: exact_name ---
+
+  it('tier 2: matches by exact name when merchant differs', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'CHASE CREDIT CRD EPAY', account: 'Chase' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', name: 'Venmo', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'b', name: 'CHASE CREDIT CRD EPAY', account: 'Chase' }),
     ]
     const result = findSimilarTransactions(anchor, all)
-    expect(result.strategy).toBe('name')
-    expect(result.ruleType).toBe('merchant')
+    expect(result.strategy).toBe('exact_name')
     expect(result.ruleField).toBe('name')
-    expect(result.ruleValue).toBe('Venmo')
     expect(result.allCount).toBe(1)
   })
 
-  it('treats account "?" as no account — falls through to strategy 3', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Zelle', account: '?' })
+  // --- Tier 3: name_account ---
+
+  it('tier 3: matches by name + account when no merchant and exact name matches across accounts', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Wire Transfer', account: 'Chase' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', name: 'Zelle', account: '?', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'b', name: 'Wire Transfer', account: 'Chase', mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', name: 'Wire Transfer', account: 'BofA', mappedCategory: 'To Sort' }),
     ]
     const result = findSimilarTransactions(anchor, all)
-    expect(result.strategy).toBe('name')
-    expect(result.ruleType).toBe('merchant')
+    // exact_name fires first and finds both b and c
+    expect(result.strategy).toBe('exact_name')
+    expect(result.allCount).toBe(2)
   })
+
+  // --- Tier 4: name_prefix ---
+
+  it('tier 4: matches by name prefix for payroll-style transactions', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Gusto-OSV 00007055 CITIZENS PAID EARLY', account: 'Citizens Bank' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Gusto-OSV 00007008 CITIZENS PAID EARLY', account: 'Citizens Bank' }),
+      txn({ transaction_id: 'c', name: 'Gusto-OSV 00006956 CITIZENS PAID EARLY', account: 'Citizens Bank' }),
+      txn({ transaction_id: 'd', name: 'Something Else', account: 'Citizens Bank' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('name_prefix')
+    expect(result.allCount).toBe(2)
+    expect(result.conditions).toEqual([{ field: 'name', op: 'contains', value: 'Gusto-OSV' }])
+    expect(result.label).toBe('Gusto-OSV')
+  })
+
+  it('tier 4: matches by drop-last-token prefix (no digits)', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'DD *DOORDASH MASCAFE' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'DD *DOORDASH DAVESHOTC' }),
+      txn({ transaction_id: 'c', name: 'DD *DOORDASH SHAWARMAK' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('name_prefix')
+    expect(result.allCount).toBe(2)
+    expect(result.label).toBe('DD *DOORDASH')
+  })
+
+  it('tier 4: skips name prefix for P2P transactions', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Venmo', name: 'Venmo Payment 12345', amount: -99, account: 'Chase' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Venmo', name: 'Venmo Payment 67890', amount: -88, account: 'Chase' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).not.toBe('name_prefix')
+  })
+
+  // --- Tier 5: amount_account ---
+
+  it('tier 5: matches by amount + account as final fallback', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Unique Payment ABC', amount: -100, account: 'Chase' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Different Payment XYZ', amount: -100, account: 'Chase' }),
+      txn({ transaction_id: 'c', name: 'Another Payment DEF', amount: -50, account: 'Chase' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('amount_account')
+    expect(result.allCount).toBe(1)
+  })
+
+  it('tier 5: P2P only uses amount + account', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Venmo', name: 'Venmo', amount: -50, account: 'Chase' })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Venmo', name: 'Venmo', amount: -50, account: 'Chase' }),
+      txn({ transaction_id: 'c', merchant_name: 'Venmo', name: 'Venmo', amount: -25, account: 'Chase' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('amount_account')
+    expect(result.allCount).toBe(1) // only b matches $50 + Chase
+  })
+
+  it('tier 5: requires account for amount matching (non-P2P)', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Unique Thing', amount: -9.99, account: null })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Other Thing', amount: -9.99, account: null }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.allCount).toBe(0)
+  })
+
+  it('P2P matches by amount alone when account is missing', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'Venmo', name: 'Venmo', amount: -16, account: null })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', merchant_name: 'Venmo', name: 'Venmo', amount: -16, account: null }),
+      txn({ transaction_id: 'c', merchant_name: 'Venmo', name: 'Venmo', amount: -25, account: null }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('amount')
+    expect(result.allCount).toBe(1)
+    expect(result.conditions).toEqual([{ field: 'amount', op: 'eq', value: 16 }])
+  })
+
+  // --- General behavior ---
 
   it('excludes the anchor transaction by transaction_id', () => {
     const anchor = txn({ transaction_id: 'a', merchant_name: 'Starbucks' })
@@ -562,11 +653,11 @@ describe('findSimilarTransactions', () => {
     expect(result.matches.map(m => m.mappedCategory)).toEqual(['To Sort', 'Coffee', 'Food'])
   })
 
-  it('returns zeroes and null strategy when no matches', () => {
-    const anchor = txn({ transaction_id: 'a', merchant_name: 'UniqueShop' })
+  it('returns zero matches but valid strategy for "Remember for future"', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: 'UniqueShop', name: 'UniqueShop Purchase' })
     const all = [
       anchor,
-      txn({ transaction_id: 'b', merchant_name: 'Uber', mappedCategory: 'Transport' }),
+      txn({ transaction_id: 'b', merchant_name: 'Uber', name: 'Uber Trip', mappedCategory: 'Transport' }),
     ]
     const result = findSimilarTransactions(anchor, all)
     expect(result.allCount).toBe(0)
@@ -578,6 +669,91 @@ describe('findSimilarTransactions', () => {
     const result = findSimilarTransactions(anchor, [anchor])
     expect(result.strategy).toBeNull()
     expect(result.allCount).toBe(0)
+  })
+
+  it('P2P with account "?" matches by amount alone', () => {
+    const anchor = txn({ transaction_id: 'a', merchant_name: null, name: 'Zelle', account: '?', amount: -50 })
+    const all = [
+      anchor,
+      txn({ transaction_id: 'b', name: 'Zelle', account: '?', amount: -50, mappedCategory: 'To Sort' }),
+      txn({ transaction_id: 'c', name: 'Zelle', account: '?', amount: -30, mappedCategory: 'To Sort' }),
+    ]
+    const result = findSimilarTransactions(anchor, all)
+    expect(result.strategy).toBe('amount')
+    expect(result.allCount).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// extractStablePrefix
+// ---------------------------------------------------------------------------
+
+describe('extractStablePrefix', () => {
+  it('extracts prefix before digit run', () => {
+    expect(extractStablePrefix('Gusto-OSV 00007055 CITIZENS PAID EARLY')).toBe('Gusto-OSV')
+  })
+
+  it('strips trailing punctuation from prefix', () => {
+    expect(extractStablePrefix('CHECK # 1234')).toBe('CHECK')
+  })
+
+  it('handles single-digit runs', () => {
+    expect(extractStablePrefix('Gusto-OSV PAYROLL1 CITIZENS')).toBe('Gusto-OSV PAYROLL')
+  })
+
+  it('drops last token when no digits exist', () => {
+    expect(extractStablePrefix('DD *DOORDASH MASCAFE')).toBe('DD *DOORDASH')
+  })
+
+  it('returns null when prefix would be too short', () => {
+    expect(extractStablePrefix('AB 12345')).toBeNull()
+  })
+
+  it('returns null for single-token names without digits', () => {
+    expect(extractStablePrefix('Netflix')).toBeNull()
+  })
+
+  it('returns null for empty/null input', () => {
+    expect(extractStablePrefix('')).toBeNull()
+    expect(extractStablePrefix(null)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// isP2P
+// ---------------------------------------------------------------------------
+
+describe('isP2P', () => {
+  it('detects Venmo by merchant_name', () => {
+    expect(isP2P(txn({ merchant_name: 'Venmo' }))).toBe(true)
+  })
+
+  it('detects Venmo by name (case-insensitive)', () => {
+    expect(isP2P(txn({ name: 'VENMO PAYMENT' }))).toBe(true)
+  })
+
+  it('detects Zelle', () => {
+    expect(isP2P(txn({ name: 'Zelle payment from John' }))).toBe(true)
+  })
+
+  it('detects Cash App', () => {
+    expect(isP2P(txn({ merchant_name: 'Cash App' }))).toBe(true)
+  })
+
+  it('detects PayPal', () => {
+    expect(isP2P(txn({ merchant_name: 'PayPal' }))).toBe(true)
+  })
+
+  it('detects Apple Cash', () => {
+    expect(isP2P(txn({ name: 'Apple Cash Payment' }))).toBe(true)
+  })
+
+  it('returns false for regular merchants', () => {
+    expect(isP2P(txn({ merchant_name: 'Starbucks', name: 'Starbucks Coffee' }))).toBe(false)
+  })
+
+  it('returns false for null fields', () => {
+    expect(isP2P(txn({ merchant_name: null, name: null }))).toBe(false)
   })
 })
 

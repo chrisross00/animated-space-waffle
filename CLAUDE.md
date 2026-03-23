@@ -186,7 +186,9 @@ section instead of reading the whole file.
 | `sweepStore(store, conditions, categoryName, note, toSortOnly)` | `frontend/src/utils/ruleUtils.js` | Applies a rule to all matching transactions in Vuex store. Used by all rule creation/edit flows. |
 | `sweepCompoundRule(uid, conditions, action)` | `api.js` (module-level helper) | Backend equivalent — updates matching transactions in Postgres. |
 | `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates compound rules against a transaction during batch categorization. |
-| `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Auto-detects similar transactions via 3 strategies (merchant_name → name+account → name). |
+| `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Tiered similarity cascade — see "Similarity cascade" section below. |
+| `extractStablePrefix(name)` | `frontend/src/utils/ruleUtils.js` | Extracts stable prefix from transaction names (before digit runs or variable suffixes). Used by name_prefix tier. |
+| `isP2P(txn)` | `frontend/src/utils/ruleUtils.js` | Detects P2P transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash). P2P pattern list must stay in sync with `utils/categoryMapping.js`. |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
 | `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/api.js` | Set `true` while `ensureAppData` is in-flight. See DESIGN.md "Loading states" for the three-state pattern. |
 | `triggerSync()` | `frontend/src/api.js` | `POST /api/sync` — triggers Plaid sync. Only call on explicit user action or stale-data check. |
@@ -200,6 +202,48 @@ section instead of reading the whole file.
 - **Shared components over one-off markup.** `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement empty states inline.
 - **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations or add a new named mutation.
 - **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `contains`, `range`, `gt`, `lt`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
+
+### Similarity cascade (`findSimilarTransactions`)
+
+Powers the "Also categorize N similar" / "Remember for future" checkbox in the
+edit transaction dialog and triage flow. Uses a tiered cascade — tries strategies
+in specificity order, first tier with >0 matches wins.
+
+**Non-P2P cascade:**
+
+| Tier | Strategy | Match logic | Rule created |
+|------|----------|-------------|-------------|
+| 1 | `merchant_name` | Same Plaid-normalized merchant | merchant rule (`merchant_name eq`) |
+| 2 | `exact_name` | Identical transaction name | compound rule (`name eq`) |
+| 3 | `name_account` | Identical name + same institution | compound rule (`name eq` + `account eq`) |
+| 4 | `name_prefix` | Stable prefix before digits/variable suffix | compound rule (`name contains`) |
+| 5 | `amount_account` | Same dollar amount + same institution | compound rule (`amount eq` + `account eq`) |
+
+**P2P cascade** (Venmo, Zelle, Cash App, PayPal, Apple Cash):
+
+Only exact amount matching — merchant/name/prefix tiers are skipped because they
+are too broad (all Venmo transactions share the same merchant and often the same
+name). Account is included in the rule when available but not required.
+
+| Tier | Strategy | Match logic | Rule created |
+|------|----------|-------------|-------------|
+| 1 | `amount_account` | Same dollar amount (+ same institution if available) | compound rule (`amount eq` [+ `account eq`]) |
+
+**Prefix extraction (`extractStablePrefix`)** uses two heuristics:
+1. Everything before the first digit run, trimmed of trailing punctuation
+   (`"Gusto-OSV 00007055 CITIZENS"` → `"Gusto-OSV"`)
+2. Drop the last space-separated token if no digits exist
+   (`"DD *DOORDASH MASCAFE"` → `"DD *DOORDASH"`)
+3. Returns `null` if result is shorter than 4 characters
+
+**P2P detection (`isP2P`)** checks `merchant_name` and `name` against a pattern
+list. The same list exists server-side in `utils/categoryMapping.js` — keep both
+in sync when adding new P2P providers.
+
+**UI:** The checkbox label adapts — "Also categorize N similar" when there are
+actionable matches, "Remember for future 'X' (N similar)" when all matches are
+already in the right category. The hint below shows "Matched by merchant / name /
+name pattern / amount / amount + institution".
 
 ---
 

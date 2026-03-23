@@ -91,6 +91,49 @@ export function condKey(c) {
 }
 
 /**
+ * Extract the stable prefix of a transaction name for similarity grouping.
+ *
+ * Two heuristics:
+ * 1. Everything before the first run of 1+ digits, trimmed of trailing punctuation.
+ *    Catches: "Gusto-OSV 00007055 ..." → "Gusto-OSV", "CHECK # 1234" → "CHECK"
+ * 2. If no digits, drop the last space-separated token (assumed variable suffix).
+ *    Catches: "DD *DOORDASH MASCAFE" → "DD *DOORDASH"
+ *
+ * Returns null if the result is shorter than 4 characters.
+ */
+export function extractStablePrefix(name) {
+  if (!name) return null;
+
+  // Heuristic 1: everything before first digit run
+  const digitMatch = name.match(/\d+/);
+  if (digitMatch) {
+    const raw = name.slice(0, digitMatch.index).replace(/[\s#\-_.*]+$/, '');
+    if (raw.length >= 4) return raw;
+  }
+
+  // Heuristic 2: drop the last token if 2+ tokens exist
+  const tokens = name.trim().split(/\s+/);
+  if (tokens.length >= 2) {
+    const withoutLast = tokens.slice(0, -1).join(' ');
+    if (withoutLast.length >= 4) return withoutLast;
+  }
+
+  return null;
+}
+
+const P2P_PATTERNS = [/venmo/i, /zelle/i, /cash app/i, /cashapp/i, /paypal/i, /apple cash/i];
+
+/**
+ * Detect P2P payment transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash).
+ * P2P transactions get special handling in similarity matching — only amount+account
+ * matching is useful because merchant/name matching is too broad.
+ */
+export function isP2P(txn) {
+  const sources = [txn.merchant_name, txn.name].filter(Boolean);
+  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
+}
+
+/**
  * Find an existing compound rule in the store whose conditions match exactly.
  */
 export function findExistingRule(store, conditions) {
@@ -101,13 +144,19 @@ export function findExistingRule(store, conditions) {
 }
 
 /**
- * Find transactions similar to an anchor transaction and determine the best
- * rule strategy for grouping them.
+ * Find transactions similar to an anchor transaction using a tiered cascade.
+ * Tries strategies in specificity order; the first tier with >0 matches wins.
  *
- * Strategies (in priority order):
- * 1. merchant_name — when anchor has a non-null merchant_name
- * 2. name + account — when merchant_name is null and account is a real value
- * 3. name only     — fallback when merchant_name and account are both absent
+ * Non-P2P cascade:
+ *   1. merchant_name  — same Plaid-normalized merchant
+ *   2. exact_name     — identical transaction name
+ *   3. name_account   — identical name + same institution
+ *   4. name_prefix    — stable prefix (before digits / variable suffix) via contains
+ *   5. amount_account — same dollar amount + same institution
+ *
+ * P2P cascade (Venmo, Zelle, Cash App, PayPal, Apple Cash):
+ *   Only exact amount — everything else is too broad.
+ *   Scoped to account when available, amount-only otherwise.
  *
  * @param {object}   anchor       - The transaction to find matches for
  * @param {object[]} transactions - All transactions to search
@@ -117,65 +166,157 @@ export function findSimilarTransactions(anchor, transactions) {
   const empty = { matches: [], allCount: 0, strategy: null, ruleType: null, conditions: [], ruleField: null, ruleValue: null, label: '' };
   if (!anchor || !transactions?.length) return empty;
 
+  const anchorName = anchor.name || '';
   const hasMerchant = anchor.merchant_name != null && anchor.merchant_name !== '';
   const hasAccount = anchor.account != null && anchor.account !== '' && anchor.account !== '?';
-  const anchorName = anchor.name || '';
+  const p2p = isP2P(anchor);
 
-  let strategy, ruleType, conditions, ruleField, ruleValue, label, matchFn;
+  const tiers = [];
 
-  if (hasMerchant) {
-    // Strategy 1: merchant_name match
-    const val = anchor.merchant_name;
-    const valLower = val.toLowerCase();
-    strategy = 'merchant_name';
-    ruleType = 'merchant';
-    ruleField = 'merchant_name';
-    ruleValue = val;
-    label = val;
-    conditions = [{ field: 'merchant_name', op: 'eq', value: val }];
-    matchFn = t => t.merchant_name != null && t.merchant_name.toLowerCase() === valLower;
-  } else if (anchorName && hasAccount) {
-    // Strategy 2: name + account compound match
-    const nameLower = anchorName.toLowerCase();
-    strategy = 'name_account';
-    ruleType = 'compound';
-    ruleField = null;
-    ruleValue = null;
-    label = anchorName;
-    conditions = [
-      { field: 'name', op: 'eq', value: anchorName },
-      { field: 'account', op: 'eq', value: anchor.account },
-    ];
-    matchFn = t => (t.name || '').toLowerCase() === nameLower && t.account === anchor.account;
-  } else if (anchorName) {
-    // Strategy 3: name-only fallback
-    const nameLower = anchorName.toLowerCase();
-    strategy = 'name';
-    ruleType = 'merchant';
-    ruleField = 'name';
-    ruleValue = anchorName;
-    label = anchorName;
-    conditions = [{ field: 'name', op: 'eq', value: anchorName }];
-    matchFn = t => (t.name || '').toLowerCase() === nameLower;
+  if (p2p) {
+    // P2P: only exact amount matching (merchant/name matching is too broad)
+    if (anchor.amount != null) {
+      const absAmount = Math.abs(anchor.amount);
+      const conditions = [{ field: 'amount', op: 'eq', value: absAmount }];
+      let matchFn = t => Math.abs(t.amount) === absAmount;
+      const amountStr = `$${absAmount % 1 === 0 ? absAmount : absAmount.toFixed(2)}`;
+      const label = `${anchorName || anchor.merchant_name || ''} ${amountStr}`.trim();
+
+      // Scope to account when available for a tighter rule
+      if (hasAccount) {
+        conditions.push({ field: 'account', op: 'eq', value: anchor.account });
+        matchFn = t => Math.abs(t.amount) === absAmount && t.account === anchor.account;
+      }
+
+      tiers.push({
+        strategy: hasAccount ? 'amount_account' : 'amount',
+        ruleType: 'compound',
+        ruleField: null,
+        ruleValue: null,
+        label,
+        conditions,
+        matchFn,
+      });
+    }
   } else {
-    return empty;
+    // --- Non-P2P cascade ---
+
+    // Tier 1: merchant
+    if (hasMerchant) {
+      const val = anchor.merchant_name;
+      const valLower = val.toLowerCase();
+      tiers.push({
+        strategy: 'merchant_name',
+        ruleType: 'merchant',
+        ruleField: 'merchant_name',
+        ruleValue: val,
+        label: val,
+        conditions: [{ field: 'merchant_name', op: 'eq', value: val }],
+        matchFn: t => t.merchant_name != null && t.merchant_name.toLowerCase() === valLower,
+      });
+    }
+
+    // Tier 2: exact name
+    if (anchorName) {
+      const nameLower = anchorName.toLowerCase();
+      tiers.push({
+        strategy: 'exact_name',
+        ruleType: 'compound',
+        ruleField: 'name',
+        ruleValue: anchorName,
+        label: anchorName,
+        conditions: [{ field: 'name', op: 'eq', value: anchorName }],
+        matchFn: t => (t.name || '').toLowerCase() === nameLower,
+      });
+    }
+
+    // Tier 3: name + account
+    if (anchorName && hasAccount) {
+      const nameLower = anchorName.toLowerCase();
+      tiers.push({
+        strategy: 'name_account',
+        ruleType: 'compound',
+        ruleField: null,
+        ruleValue: null,
+        label: anchorName,
+        conditions: [
+          { field: 'name', op: 'eq', value: anchorName },
+          { field: 'account', op: 'eq', value: anchor.account },
+        ],
+        matchFn: t => (t.name || '').toLowerCase() === nameLower && t.account === anchor.account,
+      });
+    }
+
+    // Tier 4: name prefix
+    if (anchorName) {
+      const prefix = extractStablePrefix(anchorName);
+      if (prefix) {
+        const prefixLower = prefix.toLowerCase();
+        tiers.push({
+          strategy: 'name_prefix',
+          ruleType: 'compound',
+          ruleField: null,
+          ruleValue: null,
+          label: prefix,
+          conditions: [{ field: 'name', op: 'contains', value: prefix }],
+          matchFn: t => (t.name || '').toLowerCase().includes(prefixLower),
+        });
+      }
+    }
+
+    // Tier 5: amount + account
+    if (hasAccount && anchor.amount != null) {
+      const absAmount = Math.abs(anchor.amount);
+      tiers.push({
+        strategy: 'amount_account',
+        ruleType: 'compound',
+        ruleField: null,
+        ruleValue: null,
+        label: `$${absAmount % 1 === 0 ? absAmount : absAmount.toFixed(2)} from ${anchor.account}`,
+        conditions: [
+          { field: 'amount', op: 'eq', value: absAmount },
+          { field: 'account', op: 'eq', value: anchor.account },
+        ],
+        matchFn: t => Math.abs(t.amount) === absAmount && t.account === anchor.account,
+      });
+    }
   }
 
-  const matches = transactions.filter(t =>
-    t.transaction_id !== anchor.transaction_id &&
-    matchFn(t)
-  );
+  // Try each tier — first one with matches wins
+  for (const tier of tiers) {
+    const matches = transactions.filter(t =>
+      t.transaction_id !== anchor.transaction_id && tier.matchFn(t)
+    );
+    if (matches.length > 0) {
+      return {
+        matches,
+        allCount: matches.length,
+        strategy: tier.strategy,
+        ruleType: tier.ruleType,
+        conditions: tier.conditions,
+        ruleField: tier.ruleField,
+        ruleValue: tier.ruleValue,
+        label: tier.label,
+      };
+    }
+  }
 
-  return {
-    matches,
-    allCount: matches.length,
-    strategy,
-    ruleType,
-    conditions,
-    ruleField,
-    ruleValue,
-    label,
-  };
+  // No matches — return first tier's metadata for "Remember for future" label
+  if (tiers.length > 0) {
+    const first = tiers[0];
+    return {
+      matches: [],
+      allCount: 0,
+      strategy: first.strategy,
+      ruleType: first.ruleType,
+      conditions: first.conditions,
+      ruleField: first.ruleField,
+      ruleValue: first.ruleValue,
+      label: first.label,
+    };
+  }
+
+  return empty;
 }
 
 /**

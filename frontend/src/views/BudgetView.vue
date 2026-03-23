@@ -898,11 +898,11 @@
                   <span v-if="triageActionableCount > 0">
                     Also categorize {{ triageActionableCount }} similar
                   </span>
-                  <span v-else>Remember for future "{{ triageSimilar.label }}"</span>
+                  <span v-else>Remember for future "{{ triageSimilar.label }}" ({{ triageSimilar.allCount }} similar)</span>
                 </template>
               </q-checkbox>
               <div class="basil-triage__similar-hint">
-                Matched by {{ triageSimilar.strategy === 'merchant_name' ? 'merchant' : triageSimilar.strategy === 'name_account' ? 'name + institution' : 'name' }}
+                Matched by {{ { merchant_name: 'merchant', exact_name: 'name', name_account: 'name + institution', name_prefix: 'name pattern', amount_account: 'amount + institution', amount: 'amount' }[triageSimilar.strategy] || triageSimilar.strategy }}
               </div>
             </div>
           </template>

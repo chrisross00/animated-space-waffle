@@ -92,11 +92,11 @@
                 <span v-if="actionableCount > 0">
                   Also categorize {{ actionableCount }} similar
                 </span>
-                <span v-else>Remember for future "{{ similarityData.label }}"</span>
+                <span v-else>Remember for future "{{ similarityData.label }}" ({{ similarityData.allCount }} similar)</span>
               </template>
             </q-checkbox>
             <div class="basil-dialog-similar__hint">
-              Matched by {{ similarityData.strategy === 'merchant_name' ? 'merchant' : similarityData.strategy === 'name_account' ? 'name + institution' : 'name' }}
+              Matched by {{ { merchant_name: 'merchant', exact_name: 'name', name_account: 'name + institution', name_prefix: 'name pattern', amount_account: 'amount + institution', amount: 'amount' }[similarityData.strategy] || similarityData.strategy }}
             </div>
           </div>
         </div>

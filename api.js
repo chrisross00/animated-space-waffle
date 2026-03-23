@@ -963,6 +963,7 @@ router.post('/addVenmoTransactions', async (req, res) => {
     ].map((t, i) => ({
       ...t,
       transaction_id: `synthetic-venmo-${ts}-${i}`,
+      account: 'Test Bank',
       pending: false,
       userId: uid,
       personal_finance_category: { primary: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
