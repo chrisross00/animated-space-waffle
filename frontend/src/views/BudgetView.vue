@@ -1,7 +1,7 @@
 <style src="../styles/BudgetView.css"></style>
 
 <template>
-  <div :class="['table-wrapper', { 'table-wrapper--show-all': showAll }]">
+  <div :class="['basil-page-wrapper', { 'basil-page-wrapper--show-all': showAll }]">
 
   <EmptyState
     v-if="!isLoggedIn"
@@ -15,8 +15,8 @@
   <div v-show="isLoggedIn">
 
     <!-- Not onboarded — show only the setup CTA -->
-    <div v-if="!isOnboarded" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
-      <q-card class="my-card basil-setup-card">
+    <div v-if="!isOnboarded" class="q-pa-md basil-container">
+      <q-card class="basil-card-base basil-setup-card">
         <div class="basil-card-head">
           <span class="basil-card-label">Get started</span>
         </div>
@@ -33,7 +33,7 @@
 
     <!-- Onboarded — full dashboard -->
     <SkeletonBudget v-if="isOnboarded && isLoading" />
-      <div v-show="isOnboarded && !isLoading" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+      <div v-show="isOnboarded && !isLoading" class="q-pa-md basil-container">
 
         <!-- Hero card — always visible when data exists -->
         <q-card v-if="budgetSummary && !showAll" flat bordered class="basil-card q-mb-md">
@@ -45,57 +45,52 @@
 
             <!-- No income at all: spent so far -->
             <template v-if="budgetSummary.incomeState === 'none'">
-              <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-text)">
+              <div class="basil-display basil-hero-amount">
                 ${{ Math.round(displayedSummary.spent).toLocaleString() }}
               </div>
-              <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
-                spent this month
-              </div>
-              <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
-              <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; line-height: 1.5">
-                <router-link to="/plan" style="color: var(--basil-green); text-decoration: none;">Set your income</router-link> to see what's left to spend.
+              <div class="basil-hero-sub">spent this month</div>
+              <div class="basil-card-rule"></div>
+              <div class="basil-hero-hint">
+                <router-link to="/plan" class="basil-hero-link">Set your income</router-link> to see what's left to spend.
               </div>
             </template>
 
             <!-- Full mode: left to spend -->
             <template v-else>
-              <div class="basil-display" style="font-size: 2.5rem; margin-top: var(--basil-space-2); color: var(--basil-green)">
+              <div class="basil-display basil-hero-amount basil-hero-amount--positive">
                 ${{ Math.round(displayedSummary.remaining).toLocaleString() }}
               </div>
-              <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: 2px">
-                left to spend this month
-              </div>
+              <div class="basil-hero-sub">left to spend this month</div>
               <div v-if="budgetSummary.pace" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
                 <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
                 {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
               </div>
-              <div style="margin-top: var(--basil-space-3)">
+              <div class="basil-hero-progress">
                 <q-linear-progress
                   :value="Math.min(displayedSummary.ratio, 1)"
                   :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
-                  :track-color="$store.state.theme === 'dark' ? 'grey-8' : 'grey-3'"
+                  class="basil-hero-progress__bar"
                   rounded
-                  style="height: 8px"
                 />
               </div>
-              <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-top: var(--basil-space-2)">
+              <div class="basil-hero-progress-label">
                 ${{ Math.round(displayedSummary.spent).toLocaleString() }} of ${{ Math.round(displayedSummary.pool).toLocaleString() }} spent
               </div>
-              <div style="height: 1px; background: var(--basil-border); margin: var(--basil-space-4) 0"></div>
-              <div v-if="hasFixedCategories" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0">
+              <div class="basil-card-rule"></div>
+              <div v-if="hasFixedCategories" class="basil-hero-detail">
                 <span>Fixed costs</span>
-                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
+                <span class="basil-mono">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
               </div>
               <div class="basil-flex-detail-row" :class="{ 'basil-flex-detail-row--bordered': hasFixedCategories }">
                 <span>Savings</span>
-                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
+                <span class="basil-mono">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
               </div>
-              <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" style="display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--basil-text-secondary); padding: var(--basil-space-1) 0; border-top: 1px solid var(--basil-surface-alt, #f3efe8)">
+              <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" class="basil-hero-detail basil-flex-detail-row--bordered">
                 <span>Recurring expected</span>
-                <span style="font-family: var(--basil-font-mono); font-variant-numeric: tabular-nums">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+                <span class="basil-mono">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
               </div>
-              <div v-if="budgetSummary.incomeState === 'estimated'" style="color: var(--basil-text-muted); font-size: 0.8125rem; margin-top: var(--basil-space-3); line-height: 1.5">
-                Based on deposits this month. <router-link to="/plan" style="color: var(--basil-green); text-decoration: none;">Set your income</router-link> for a more accurate number.
+              <div v-if="budgetSummary.incomeState === 'estimated'" class="basil-hero-estimated">
+                Based on deposits this month. <router-link to="/plan" class="basil-hero-link">Set your income</router-link> for a more accurate number.
               </div>
             </template>
           </q-card-section>
@@ -103,7 +98,7 @@
 
         <div style="display: flex; gap: 16px; flex-wrap: wrap;">
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card basil-actuals-card">
+        <q-card class="basil-card-base basil-actuals-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Actuals</span>
             <span v-if="!budgetSummary" class="basil-card-period">{{ selectedDate.display }}</span>
@@ -177,7 +172,7 @@
         </q-card>
         </div>
         <div v-if="!budgetSummary" style="flex: 1; min-width: 220px;">
-        <q-card class="my-card basil-projections-card">
+        <q-card class="basil-card-base basil-projections-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Projections</span>
           </div>
@@ -213,10 +208,9 @@
       <!-- To Sort Nudge Card -->
       <div
         v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
-        class="q-pa-md"
-        style="max-width: 800px; margin: 0 auto;"
+        class="q-pa-md basil-container"
       >
-        <q-card class="basil-tosort-card" @click="openTriageFlow()" role="button" tabindex="0">
+        <q-card class="basil-tosort-card" @click="openTriageFlow()" @keydown.enter="openTriageFlow()" role="button" tabindex="0" aria-label="Sort transactions">
           <div class="basil-card-head">
             <span class="basil-card-label">To Sort</span>
             <q-icon name="chevron_right" size="20px" />
@@ -295,11 +289,11 @@
       <!-- If show all is false -->
       <div v-show="isOnboarded && !showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
         <q-list>
-          <div class="categories">
+          <div class="basil-categories">
             <div
               v-for="(groupedTransactions, category, categoryIndex) in visibleGroupedTransactions"
               :key="category"
-              class="budget-container"
+              class="basil-budget-row"
               :class="{ 'basil-category-reveal': barsReady, 'basil-category--expanded': clickedCategories.includes(category) }"
               :style="barsReady ? { animationDelay: `${categoryIndex * 35}ms` } : {}"
             >
@@ -317,7 +311,7 @@
               >
                 <q-item-section>
 
-                  <div class="budget-container header">
+                  <div class="basil-budget-row header">
                     <q-item-label>
                       {{this.groupedTransactions[category].categoryName}}
                       <q-icon
@@ -330,11 +324,11 @@
                         <q-tooltip>Contains recurring transactions</q-tooltip>
                       </q-icon>
                     </q-item-label>
-                    <q-item-label class="budget-container total basil-mono">
+                    <q-item-label class="basil-budget-row total basil-mono">
                       {{ categoryAmountLabel(category) }}
                     </q-item-label>
                   </div>
-                  <div v-show="this.groupedTransactions[category].monthly_limit" class="budget-container progress">
+                  <div v-show="this.groupedTransactions[category].monthly_limit" class="basil-budget-row progress">
                     <q-linear-progress
                       :value="barsReady ? getProgressRatio(category) : 0"
                       :class="['q-mt-sm', 'basil-progress', `basil-progress--${getCategoryProgressColor(category)}`]"
@@ -343,7 +337,7 @@
                     />
                   </div>
 
-                  <q-item-label caption class="budget-container basil-mono" v-show="this.groupedTransactions[category].monthly_limit">
+                  <q-item-label caption class="basil-budget-row basil-mono" v-show="this.groupedTransactions[category].monthly_limit">
                     {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }}
                     {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
                         this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
@@ -803,7 +797,7 @@
           <div class="basil-triage__header">
             <span class="basil-triage__title">Sort Transactions</span>
             <span class="basil-triage__progress">{{ triageTotal - triageItems.length + 1 }} of {{ triageTotal }}</span>
-            <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
+            <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
           </div>
 
           <!-- Transaction -->

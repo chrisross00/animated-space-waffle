@@ -7,7 +7,7 @@
         <div v-if="dialogSubtitle" class="basil-dialog-title__sub">{{ dialogSubtitle }}</div>
         <div class="basil-dialog-title__main basil-display">{{ dialogMainTitle }}</div>
       </div>
-      <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
+      <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
     </div>
 
     <!-- ── TRANSACTION form ───────────────────────────── -->

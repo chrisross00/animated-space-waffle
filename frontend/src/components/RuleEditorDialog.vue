@@ -9,7 +9,7 @@
           <div v-if="isEdit" class="basil-dialog-title__sub">Edit Rule</div>
           <div class="basil-dialog-title__main basil-display">{{ isEdit ? rule.label : 'New Rule' }}</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" />
+        <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
       </div>
 
       <!-- Scrollable middle: body + matched transactions -->
