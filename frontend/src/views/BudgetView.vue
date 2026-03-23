@@ -69,7 +69,7 @@
                 <q-linear-progress
                   :value="Math.min(displayedSummary.ratio, 1)"
                   :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
-                  class="basil-hero-progress__bar"
+                  :class="['basil-progress', `basil-progress--${displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'positive'}`]"
                   rounded
                 />
               </div>
@@ -356,7 +356,7 @@
 
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
-              <Transition name="basil-txn-expand" :duration="{ enter: 800, leave: 150 }">
+              <Transition name="basil-txn-expand" :duration="{ enter: 500, leave: 400 }">
               <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
 
                 <div

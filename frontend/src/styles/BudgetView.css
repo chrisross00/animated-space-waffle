@@ -500,6 +500,39 @@
 }
 
 /* ---- Transaction cascade expand/collapse ---- */
+
+/* Wrapper uses CSS grid for smooth height animation */
+.basil-txn-expand-enter-active,
+.basil-txn-expand-leave-active {
+  display: grid;
+  transition: grid-template-rows var(--basil-t-slow) var(--basil-ease);
+  overflow: hidden;
+}
+
+.basil-txn-expand-enter-active {
+  grid-template-rows: 1fr;
+}
+
+.basil-txn-expand-enter-from {
+  grid-template-rows: 0fr;
+}
+
+.basil-txn-expand-leave-active {
+  grid-template-rows: 0fr;
+  pointer-events: none;
+}
+
+.basil-txn-expand-leave-from {
+  grid-template-rows: 1fr;
+}
+
+/* Inner container must have min-height: 0 for grid collapse to work */
+.basil-txn-expand-enter-active > *,
+.basil-txn-expand-leave-active > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @keyframes basil-txn-cascade {
   from {
     opacity: 0;
@@ -517,22 +550,17 @@
   animation-delay: calc(var(--txn-i, 0) * 30ms);
 }
 
-/* Whole container fades + rises on close */
-.basil-txn-expand-leave-active {
-  transition: opacity 120ms var(--basil-ease), transform 120ms var(--basil-ease);
-  pointer-events: none;
-}
-
-.basil-txn-expand-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
 /* ---- Progress bar fill animation ---- */
 /* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
 .basil-progress .q-linear-progress__model {
-  transition: transform 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 500ms var(--basil-ease);
   transition-delay: 280ms;
+}
+
+/* Use basil track token for all progress bars */
+.basil-progress .q-linear-progress__track {
+  background-color: var(--basil-track) !important;
+  opacity: 1 !important;
 }
 
 /* ---- Progress bar gradient fills ---- */
