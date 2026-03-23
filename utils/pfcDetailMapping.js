@@ -175,6 +175,7 @@ const PFC_DETAIL_TO_CATEGORY = {
   TRAVEL_OTHER_TRAVEL: 'Travel',
 
   // ── Catch-all ──────────────────────────────────────────
+  OTHER: 'To Sort',        // Plaid sends this for truly unclassifiable transactions
   OTHER_OTHER: 'To Sort',
 };
 

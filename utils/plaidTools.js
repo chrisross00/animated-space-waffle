@@ -36,6 +36,7 @@ async function plaidTransactionsSync (access_token, cursor=null, uid, plaidEnv='
     const response = await client.transactionsSync({
       access_token,
       cursor,
+      options: { include_personal_finance_category: true, personal_finance_category_version: 'v2' },
     })
     const data = response.data;
     // console.log( '   plaidTransactionsSync internal: data = \n', data)
