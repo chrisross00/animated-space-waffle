@@ -356,7 +356,14 @@
 
             <!-- Make the nested rows grouped under each category List Item -->
             <q-list>
-              <Transition name="basil-txn-expand" :duration="{ enter: 500, leave: 400 }">
+              <Transition
+                @before-enter="txnBeforeEnter"
+                @enter="txnEnter"
+                @after-enter="txnAfterEnter"
+                @leave="txnLeave"
+                @after-leave="txnAfterLeave"
+                :css="false"
+              >
               <div v-if="groupedTransactionsVisible[category]" class="category-transactions">
 
                 <div
@@ -1765,6 +1772,47 @@ monthStats() {
         const hasTransactions = this.filteredTransactions(group).length > 0;
         return hasLimit || hasActivity || hasTransactions;
       },
+      // ---- Transaction expand/collapse animation (JS hooks) ----
+      txnBeforeEnter(el) {
+        el.style.overflow = 'hidden';
+        el.style.height = '0';
+      },
+      txnEnter(el, done) {
+        // Measure natural height, then animate from 0
+        const height = el.scrollHeight;
+        el.style.transition = 'height 400ms cubic-bezier(0.34, 1.4, 0.64, 1)';
+        requestAnimationFrame(() => {
+          el.style.height = height + 'px';
+        });
+        el.addEventListener('transitionend', done, { once: true });
+      },
+      txnAfterEnter(el) {
+        el.style.height = '';
+        el.style.overflow = '';
+        el.style.transition = '';
+      },
+      txnLeave(el, done) {
+        el.style.overflow = 'hidden';
+        el.style.height = el.scrollHeight + 'px';
+        // Force reflow so the browser registers the starting height
+        el.offsetHeight; // eslint-disable-line no-unused-expressions
+        el.style.transition = 'height 350ms cubic-bezier(0.5, 0, 0, 1)';
+        requestAnimationFrame(() => {
+          el.style.height = '0';
+        });
+        el.addEventListener('transitionend', done, { once: true });
+      },
+      txnAfterLeave(el) {
+        el.style.height = '';
+        el.style.overflow = '';
+        el.style.transition = '';
+        // Now remove expanded class (margin/shadow/border-radius collapse)
+        if (this._pendingCollapse) {
+          this.clickedCategories = this.clickedCategories.filter(c => c !== this._pendingCollapse);
+          this._pendingCollapse = null;
+        }
+      },
+
       formatDollar(value, Prefix = null) {
         let prefix = Prefix == null ? '' : Prefix;
         if (value < 0) {
@@ -2537,12 +2585,13 @@ monthStats() {
         }
       },
       toggleCategory(category) {
-        this.groupedTransactionsVisible[category] =
-          !this.groupedTransactionsVisible[category] || false;
-        if (this.clickedCategories.includes(category)) {
-          this.clickedCategories = this.clickedCategories.filter((c) => c !== category);
+        const isExpanded = this.clickedCategories.includes(category);
+        this.groupedTransactionsVisible[category] = !isExpanded;
+        if (isExpanded) {
+          // Collapsing — delay removing expanded class until height transition finishes
+          this._pendingCollapse = category;
         } else {
-          this.clickedCategories.push(category) 
+          this.clickedCategories.push(category);
         }
       },
     },

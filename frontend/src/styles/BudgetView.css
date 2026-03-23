@@ -500,55 +500,8 @@
 }
 
 /* ---- Transaction cascade expand/collapse ---- */
-
-/* Wrapper uses CSS grid for smooth height animation */
-.basil-txn-expand-enter-active,
-.basil-txn-expand-leave-active {
-  display: grid;
-  transition: grid-template-rows var(--basil-t-slow) var(--basil-ease);
-  overflow: hidden;
-}
-
-.basil-txn-expand-enter-active {
-  grid-template-rows: 1fr;
-}
-
-.basil-txn-expand-enter-from {
-  grid-template-rows: 0fr;
-}
-
-.basil-txn-expand-leave-active {
-  grid-template-rows: 0fr;
-  pointer-events: none;
-}
-
-.basil-txn-expand-leave-from {
-  grid-template-rows: 1fr;
-}
-
-/* Inner container must have min-height: 0 for grid collapse to work */
-.basil-txn-expand-enter-active > *,
-.basil-txn-expand-leave-active > * {
-  min-height: 0;
-  overflow: hidden;
-}
-
-@keyframes basil-txn-cascade {
-  from {
-    opacity: 0;
-    transform: translateY(-7px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Each row cascades in with a staggered delay on open */
-.basil-txn-expand-enter-active .category-txn-item {
-  animation: basil-txn-cascade 180ms var(--basil-ease) both;
-  animation-delay: calc(var(--txn-i, 0) * 30ms);
-}
+/* Height animation is handled by JS hooks (txnEnter/txnLeave) in BudgetView.vue
+   for accurate height measurement. No CSS transition classes needed. */
 
 /* ---- Progress bar fill animation ---- */
 /* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
