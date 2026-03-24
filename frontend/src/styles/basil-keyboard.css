@@ -166,7 +166,7 @@
   width: 1.5px;
   height: 1.25em;
   background: var(--basil-green);
-  vertical-align: middle;
+  vertical-align: text-top;
   margin-left: 0.5px;
   animation: basil-blink 1s step-end infinite;
 }
