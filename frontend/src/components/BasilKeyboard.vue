@@ -100,6 +100,7 @@ export default {
     onKey(char) {
       try { navigator.vibrate?.(10) } catch {}
       emitKey(this.shifted ? char.toUpperCase() : char.toLowerCase())
+      if (this.shifted) this.shifted = false
     },
     onBackspace() {
       try { navigator.vibrate?.(10) } catch {}
