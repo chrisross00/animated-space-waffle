@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import { requestKeyboard, setActiveBlur } from '@/utils/basilKeyboard'
+import { requestKeyboard, setActiveBlur, scrollActiveInputIntoView } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilInput',
@@ -131,6 +131,8 @@ export default {
         this.$emit('blur')
       })
       this.$emit('focus')
+      // After keyboard animates open, scroll this input into view
+      setTimeout(() => scrollActiveInputIntoView(), 300)
     },
 
     onKey(char) {
