@@ -164,7 +164,7 @@
 .basil-input__cursor {
   display: inline-block;
   width: 1.5px;
-  height: 1em;
+  height: 1.25em;
   background: var(--basil-green);
   vertical-align: middle;
   margin-left: 0.5px;
