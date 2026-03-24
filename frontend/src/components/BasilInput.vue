@@ -2,7 +2,7 @@
   <div>
     <!-- Mobile: no native input -->
     <div v-if="isMobile" class="basil-input" :class="inputClasses" @click="onTap">
-      <span v-if="prefix" class="basil-input__prefix">{{ prefix }}</span>
+      <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
       <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue }">
         {{ displayValue || placeholder }}
         <span v-if="isFocused" class="basil-input__cursor"></span>
@@ -12,7 +12,7 @@
 
     <!-- Desktop: native input -->
     <div v-else class="basil-input" :class="inputClasses">
-      <span v-if="prefix" class="basil-input__prefix">{{ prefix }}</span>
+      <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
       <input
         ref="nativeInput"
         :value="modelValue"
@@ -55,6 +55,7 @@ export default {
     return {
       isFocused: false,
       isMobile: false,
+      displayString: '',
     }
   },
 
@@ -66,8 +67,27 @@ export default {
         'basil-input--disabled': this.disabled,
       }
     },
+    effectivePrefix() {
+      if (this.prefix) return this.prefix
+      if (this.variant === 'amount') return '$'
+      return ''
+    },
     displayValue() {
+      if (this.variant === 'amount') {
+        return this.displayString || (this.modelValue ? String(this.modelValue) : '')
+      }
       return String(this.modelValue)
+    },
+  },
+
+  watch: {
+    modelValue: {
+      handler(val) {
+        if (this.variant === 'amount' && !this.isFocused) {
+          this.displayString = val ? String(val) : ''
+        }
+      },
+      immediate: true,
     },
   },
 
@@ -78,6 +98,9 @@ export default {
   methods: {
     onTap() {
       if (this.disabled) return
+      if (this.variant === 'amount' && !this.displayString && this.modelValue) {
+        this.displayString = String(this.modelValue)
+      }
       this.isFocused = true
       requestKeyboard({
         mode: this.variant === 'amount' ? 'numpad' : 'qwerty',
@@ -90,10 +113,33 @@ export default {
     },
 
     onKey(char) {
+      if (this.variant === 'amount') {
+        // Only accept digits and decimal point
+        if (char !== '.' && (char < '0' || char > '9')) return
+        // Reject second decimal point
+        if (char === '.' && this.displayString.includes('.')) return
+        // Reject if already 2 decimal places
+        const dotIndex = this.displayString.indexOf('.')
+        if (dotIndex !== -1 && this.displayString.length - dotIndex > 2) return
+        // Build new string
+        const newStr = this.displayString + char
+        const parsed = parseFloat(newStr)
+        // Reject if exceeds max
+        if (!isNaN(parsed) && parsed > 999999.99) return
+        this.displayString = newStr
+        this.$emit('update:modelValue', parsed || 0)
+        return
+      }
       this.$emit('update:modelValue', String(this.modelValue) + char)
     },
 
     onBackspace() {
+      if (this.variant === 'amount') {
+        this.displayString = this.displayString.slice(0, -1)
+        const parsed = parseFloat(this.displayString)
+        this.$emit('update:modelValue', isNaN(parsed) ? 0 : parsed)
+        return
+      }
       this.$emit('update:modelValue', String(this.modelValue).slice(0, -1))
     },
 

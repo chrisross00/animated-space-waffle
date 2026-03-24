@@ -102,3 +102,92 @@ describe('BasilInput (mobile mode)', () => {
     expect(keyboardState.isOpen).toBe(true)
   })
 })
+
+describe('BasilInput amount variant', () => {
+  beforeEach(() => {
+    window.ontouchstart = null
+    dismissKeyboard()
+  })
+  afterEach(() => { delete window.ontouchstart })
+
+  it('opens numpad mode for amount variant', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 0, variant: 'amount' } })
+    await wrapper.find('.basil-input').trigger('click')
+    expect(keyboardState.mode).toBe('numpad')
+  })
+
+  it('emits Number type for amount variant', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 0, variant: 'amount' } })
+    await wrapper.find('.basil-input').trigger('click')
+    const { emitKey } = await import('@/utils/basilKeyboard')
+    emitKey('4')
+    emitKey('7')
+    const emitted = wrapper.emitted('update:modelValue').pop()[0]
+    expect(typeof emitted).toBe('number')
+    expect(emitted).toBe(47)
+  })
+
+  it('allows max 2 decimal places', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 0, variant: 'amount' } })
+    await wrapper.find('.basil-input').trigger('click')
+    const { emitKey } = await import('@/utils/basilKeyboard')
+    emitKey('1')
+    emitKey('.')
+    emitKey('2')
+    emitKey('3')
+    emitKey('4') // should be ignored
+    const emitted = wrapper.emitted('update:modelValue').pop()[0]
+    expect(emitted).toBe(1.23)
+  })
+
+  it('rejects second decimal point', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 0, variant: 'amount' } })
+    await wrapper.find('.basil-input').trigger('click')
+    const { emitKey } = await import('@/utils/basilKeyboard')
+    emitKey('1')
+    emitKey('.')
+    emitKey('5')
+    emitKey('.') // should be ignored
+    emitKey('3')
+    const emitted = wrapper.emitted('update:modelValue').pop()[0]
+    expect(emitted).toBe(1.53)
+  })
+
+  it('rejects values exceeding 999999.99', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 99999, variant: 'amount' } })
+    await wrapper.find('.basil-input').trigger('click')
+    const { emitKey } = await import('@/utils/basilKeyboard')
+    emitKey('9')
+    emitKey('9') // would make 9999999, should be ignored
+    const last = wrapper.emitted('update:modelValue').pop()[0]
+    expect(last).toBeLessThanOrEqual(999999.99)
+  })
+
+  it('shows $ prefix by default for amount variant', () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 42, variant: 'amount' } })
+    expect(wrapper.text()).toContain('$')
+  })
+})
+
+describe('BasilInput search variant', () => {
+  it('renders a clear button when value is non-empty', () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 'test', variant: 'search' } })
+    expect(wrapper.find('.basil-input__clear').exists()).toBe(true)
+  })
+
+  it('hides clear button when value is empty', () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: '', variant: 'search' } })
+    expect(wrapper.find('.basil-input__clear').exists()).toBe(false)
+  })
+
+  it('emits empty string when clear is clicked', async () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: 'test', variant: 'search' } })
+    await wrapper.find('.basil-input__clear').trigger('click')
+    expect(wrapper.emitted('update:modelValue').pop()).toEqual([''])
+  })
+
+  it('renders a search icon', () => {
+    const wrapper = mount(BasilInput, { props: { modelValue: '', variant: 'search' } })
+    expect(wrapper.find('.basil-input__search-icon').exists()).toBe(true)
+  })
+})
