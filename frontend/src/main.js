@@ -86,13 +86,14 @@ let isFirstNavigation = true;
 router.beforeEach(async (to, _from, next) => {
   // Wait for auth hydration to finish before the first guard decision.
   // Prevents redirect-to-/profile race when a valid token exists.
+  const isLaunch = isFirstNavigation;
   if (isFirstNavigation) {
     await authReady;
   }
   isFirstNavigation = false;
 
   // PWA: always open to /budget on fresh app launch
-  if (isFirstNavigation && to.path !== '/budget' && !PUBLIC_ROUTES.includes(to.path) && store.state.session) {
+  if (isLaunch && to.path !== '/budget' && !PUBLIC_ROUTES.includes(to.path) && store.state.session) {
     next('/budget');
   } else if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
     next('/profile');
