@@ -32,7 +32,7 @@
 </template>
 
 <script>
-import { requestKeyboard, setActiveBlur, keyboardState } from '@/utils/basilKeyboard'
+import { requestKeyboard, setActiveBlur } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilInput',
@@ -131,8 +131,6 @@ export default {
         this.$emit('blur')
       })
       this.$emit('focus')
-      // Scroll into view after keyboard slides up
-      this.scrollIntoViewIfNeeded()
     },
 
     onKey(char) {
@@ -197,22 +195,6 @@ export default {
       } else {
         this.$refs.nativeInput?.focus()
       }
-    },
-
-    scrollIntoViewIfNeeded() {
-      if (!this.isMobile) return
-      // Wait for keyboard to slide up and report its height
-      setTimeout(() => {
-        const kbHeight = keyboardState.height
-        if (!kbHeight) return
-        const el = this.$el
-        const rect = el.getBoundingClientRect()
-        const visibleBottom = window.innerHeight - kbHeight
-        // If the input is behind (or close to) the keyboard, scroll it up
-        if (rect.bottom > visibleBottom - 16) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 300) // wait for keyboard slide animation (~250ms) + buffer
     },
   },
 }
