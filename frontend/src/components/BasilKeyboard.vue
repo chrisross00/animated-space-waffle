@@ -9,7 +9,9 @@
         <div v-for="key in qwertyRows[1]" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
       </div>
       <div class="basil-keyboard__row">
-        <div class="basil-keyboard__key basil-keyboard__key--modifier" @pointerdown.prevent @click="shifted = !shifted">{{ shifted ? 'abc' : 'ABC' }}</div>
+        <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--shift" :class="{ 'basil-keyboard__key--shift-active': shifted, 'basil-keyboard__key--shift-locked': capsLock }" @pointerdown.prevent @click="onShift">
+          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :fill="shifted ? 'currentColor' : 'none'"><path d="M12 3l-8 9h5v8h6v-8h5z"/></svg>
+        </div>
         <div v-for="key in qwertyRows[2]" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
         <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--wide" @pointerdown.prevent @click="onBackspace">
           <svg width="20" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
@@ -56,6 +58,8 @@ export default {
   data() {
     return {
       shifted: false,
+      capsLock: false,
+      lastShiftTap: 0,
       qwertyRows: [
         ['Q','W','E','R','T','Y','U','I','O','P'],
         ['A','S','D','F','G','H','J','K','L'],
@@ -97,10 +101,23 @@ export default {
     }
   },
   methods: {
+    onShift() {
+      try { navigator.vibrate?.(10) } catch {}
+      const now = Date.now()
+      if (this.shifted && now - this.lastShiftTap < 400) {
+        // Double-tap: toggle caps lock
+        this.capsLock = !this.capsLock
+        this.shifted = this.capsLock
+      } else {
+        this.capsLock = false
+        this.shifted = !this.shifted
+      }
+      this.lastShiftTap = now
+    },
     onKey(char) {
       try { navigator.vibrate?.(10) } catch {}
       emitKey(this.shifted ? char.toUpperCase() : char.toLowerCase())
-      if (this.shifted) this.shifted = false
+      if (this.shifted && !this.capsLock) this.shifted = false
     },
     onBackspace() {
       try { navigator.vibrate?.(10) } catch {}
