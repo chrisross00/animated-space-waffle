@@ -40,6 +40,7 @@ quasar-overrides.css → our rules; loads last so they win the cascade
 | `frontend/src/styles/quasar-overrides.css` | **Quasar component base layer.** Theme-neutral overrides that make standard Quasar elements (q-card, q-table, q-field, q-menu, etc.) inherit token values automatically. No dark mode rules here. |
 | `frontend/src/App.vue` `<style>` | App-level chrome: layout utilities, header, wordmark, page transition. Also contains all `[data-theme="dark"]` Quasar component overrides — this is the canonical location for dark mode Quasar fixes. |
 | `frontend/src/styles/dialogs.css` | **Shared dialog shell.** Structural/layout classes used by all dialogs (`basil-dialog-card`, `basil-dialog-header`, `basil-dialog-title`, etc.). Component-specific dialog styles stay scoped in their own file. |
+| `frontend/src/styles/basil-keyboard.css` | **Basil component library styles.** Keyboard (`.basil-keyboard`) and input (`.basil-input`) component classes. Uses tokens exclusively — dark mode automatic. |
 | `frontend/src/styles/[ViewName].css` | View-specific CSS externalized to keep large `.vue` files manageable (e.g. `BudgetView.css`, `BudgetPlannerView.css`). Import at the top of the `<style>` block. |
 
 ### Rule
@@ -47,7 +48,8 @@ quasar-overrides.css → our rules; loads last so they win the cascade
 Every color, font, spacing, radius, and shadow value in a component must
 reference a token. Never write a literal hex, px size, or font name inline.
 
-Any new Quasar component that needs theme-aware styling: add its overrides to
+Prefer Basil components (`BasilInput`, `BasilTray`, `BasilKeyboard`) over Quasar
+equivalents. For Quasar components still in use: add theme-aware overrides to
 `quasar-overrides.css`. Any new custom component: use `var(--basil-*)` tokens
 in `<style scoped>` — dark mode works automatically.
 
@@ -187,6 +189,29 @@ component CSS.
 - Number counters: `requestAnimationFrame` ease-out over 600ms (BudgetView.animateStats)
 - Progress bars: `transition: transform 500ms` with 280ms delay on `.basil-progress`
 - Charts: `animationDuration: 800, animationEasing: 'cubicOut'` via `ANIMATION` constant
+
+---
+
+## Basil Component Library
+
+The app is gradually migrating from Quasar components to custom Basil components
+for full control over behavior, especially on mobile. Basil components use the
+`var(--basil-*)` token system and follow BEM naming (`basil-[block]__[element]--[modifier]`).
+
+| Component | Replaces | Location |
+|-----------|----------|----------|
+| `BasilInput` | `q-input` | `frontend/src/components/BasilInput.vue` |
+| `BasilAmount` | `q-input type="number"` | `frontend/src/components/BasilAmount.js` |
+| `BasilSearch` | `q-input` (search fields) | `frontend/src/components/BasilSearch.js` |
+| `BasilText` | `q-input` (text fields) | `frontend/src/components/BasilText.js` |
+| `BasilNote` | `q-input` (note fields) | `frontend/src/components/BasilNote.js` |
+| `BasilKeyboard` | Native iOS/Android keyboard | `frontend/src/components/BasilKeyboard.vue` |
+| `BasilTray` | `q-dialog` (bottom sheet) | `frontend/src/components/BasilTray.vue` |
+
+**Direction:** New UI components should be built as Basil components, not Quasar
+wrappers. Don't introduce new Quasar component dependencies. Existing Quasar
+components (`q-select`, `q-btn`, `q-card`, etc.) remain in use and will be
+migrated over time as the need arises.
 
 ---
 
