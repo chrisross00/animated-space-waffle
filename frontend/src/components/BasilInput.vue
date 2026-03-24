@@ -4,10 +4,7 @@
     <div v-if="isMobile" class="basil-input" :class="inputClasses" @click="onTap">
       <svg v-if="variant === 'search'" class="basil-input__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
-      <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue }">
-        {{ displayValue || placeholder }}
-        <span v-if="isFocused" class="basil-input__cursor"></span>
-      </div>
+      <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue }">{{ displayValue || placeholder }}<span v-if="isFocused" class="basil-input__cursor"></span></div>
       <div v-if="variant === 'search' && modelValue" class="basil-input__clear" @click.stop="onClear">&times;</div>
       <span v-if="label" class="basil-input__label" :class="{ 'basil-input__label--float': isFocused || displayValue }">{{ label }}</span>
     </div>
