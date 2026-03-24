@@ -126,7 +126,7 @@
     </q-drawer>
 
     <!-- Mobile bottom nav — hidden on desktop and when keyboard is open -->
-    <q-footer v-if="$store.state.session && $store.state.user?.onboarded_at" v-show="!keyboardOpen" class="lt-sm basil-bottom-nav">
+    <q-footer v-if="$store.state.session && $store.state.user?.onboarded_at" v-show="!isKeyboardOpen" class="lt-sm basil-bottom-nav">
       <q-tabs align="justify" class="basil-bottom-tabs">
         <q-route-tab to="/budget" icon="account_balance_wallet" label="Budget" />
         <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
@@ -166,6 +166,8 @@
 
     <VenmoEnrichmentDialog v-model="venmoDialogOpen" />
   </q-layout>
+
+  <BasilKeyboard />
 </template>
 
 <style>
@@ -394,10 +396,12 @@ import { triggerSync, fetchTransactionsForMonth } from './api'
 import VenmoEnrichmentDialog from './components/VenmoEnrichmentDialog.vue'
 import EmptyState from './components/EmptyState.vue'
 import PullToRefresh from './components/PullToRefresh.vue'
+import BasilKeyboard from './components/BasilKeyboard.vue'
+import { keyboardState } from './utils/basilKeyboard'
 
 export default {
   name: 'LayoutDefault',
-  components: { EmptyState, PullToRefresh, VenmoEnrichmentDialog },
+  components: { EmptyState, PullToRefresh, VenmoEnrichmentDialog, BasilKeyboard },
 
   data() {
     return {
@@ -406,7 +410,6 @@ export default {
       syncing: false,
       hasError: false,
       venmoDialogOpen: false,
-      keyboardOpen: false,
     }
   },
 
@@ -445,6 +448,9 @@ export default {
         incomeAmountFmt: Math.round(incomeAmount).toLocaleString(),
       };
     },
+    isKeyboardOpen() {
+      return keyboardState.isOpen
+    },
     hasItemErrors() {
       return Object.keys(this.$store.state.itemErrors || {}).length > 0;
     },
@@ -457,15 +463,10 @@ export default {
 
   mounted() {
     window.addEventListener('scroll', this.onScroll, { passive: true });
-    // Hide bottom nav when keyboard opens on mobile (iOS PWA)
-    window.addEventListener('focusin', this.onFocusIn);
-    window.addEventListener('focusout', this.onFocusOut);
   },
 
   beforeUnmount() {
     window.removeEventListener('scroll', this.onScroll);
-    window.removeEventListener('focusin', this.onFocusIn);
-    window.removeEventListener('focusout', this.onFocusOut);
   },
 
   methods: {
@@ -477,14 +478,6 @@ export default {
     },
     onScroll() {
       this.headerScrolled = window.scrollY > 4;
-    },
-    onFocusIn(e) {
-      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') {
-        this.keyboardOpen = true;
-      }
-    },
-    onFocusOut() {
-      this.keyboardOpen = false;
     },
     async handleSync() {
       if (this.syncing) return;

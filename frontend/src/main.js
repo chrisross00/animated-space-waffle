@@ -12,6 +12,7 @@ import routes from './routes'
 import { Quasar } from 'quasar'
 import quasarUserOptions from './quasar-user-options'
 import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
+import { dismissKeyboard } from './utils/basilKeyboard'
 
 // Handle impersonation token from admin portal "Login As" flow.
 // Consumes ?impersonate=<token> from URL, stores in sessionStorage, clears
@@ -105,6 +106,8 @@ router.beforeEach(async (to, _from, next) => {
     next();
   }
 });
+
+router.afterEach(() => { dismissKeyboard() })
 
 
 const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
