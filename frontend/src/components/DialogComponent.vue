@@ -307,7 +307,6 @@
 /* ── Body ── */
 .basil-dialog-body {
   padding: var(--basil-space-5);
-  padding-bottom: calc(var(--basil-space-5) + var(--basil-keyboard-height, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--basil-space-4);

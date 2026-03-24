@@ -71,6 +71,7 @@
   border-radius: 0 !important;
   max-height: 100%;
   overflow-y: auto;
+  padding-bottom: var(--basil-keyboard-height, 0px);
 }
 
 /* Drag handle inside dialog/triage headers on mobile trays.
