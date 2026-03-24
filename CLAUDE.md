@@ -29,6 +29,7 @@ These apply to every task, every session, including after context compaction.
    `RuleEditorDialog`, `EmptyState`, `SkeletonBudget`, `dialogs.css`.
    Reuse over rebuild. One-off implementations that duplicate existing abstractions
    will be flagged for refactor.
+6. **Inputs: use `BasilInput` or variant wrappers.** Never use `q-input` for new inputs.
 
 ### Always
 6. **State changes go through store mutations.** Never mutate `store.state.*` directly.
@@ -195,6 +196,8 @@ section instead of reading the whole file.
 | `fetchTransactionsForMonth(month)` | `frontend/src/api.js` | `GET /api/transactions?month=YYYY-MM` — cheap DB read. Returns `{ transactions, total }`. |
 | `fetchMonthRange(store, start, end)` | `frontend/src/api.js` | Fetches missing months in parallel, skipping cached ones. |
 | `searchTransactions(search, page, limit)` | `frontend/src/api.js` | Server-side paginated search across all months. |
+| `BasilInput` / variant wrappers | `frontend/src/components/BasilInput.vue` + `Basil{Amount,Search,Text,Note}.js` | Custom input replacing `q-input`. Variants: `amount`, `search`, `text`, `note`. See DESIGN.md. |
+| `keyboardState`, `requestKeyboard`, `dismissKeyboard` | `frontend/src/utils/basilKeyboard.js` | Reactive singleton for keyboard ↔ input communication. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.

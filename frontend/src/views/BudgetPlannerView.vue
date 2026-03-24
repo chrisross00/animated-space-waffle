@@ -49,15 +49,10 @@
         <!-- Step 1: Income -->
         <div v-if="guidedStep === 1" style="max-width: 500px; margin: 0 auto; padding: var(--basil-space-5);">
           <h2 class="basil-display" style="font-size: 1.5rem; margin: 0 0 var(--basil-space-3);">What's your monthly income?</h2>
-          <q-input
-            :model-value="formatWithCommas(guidedIncome)"
-            @update:model-value="guidedIncome = parseAmount($event)"
-            outlined
-            inputmode="numeric"
-            prefix="$"
-            label="Monthly income"
-            :hint="incomeHint"
-            @keypress="$event.key.match(/[^0-9]/) && $event.preventDefault()"
+          <BasilAmount
+            :model-value="guidedIncome"
+            @update:model-value="guidedIncome = $event"
+            label="Monthly income" :hint="incomeHint"
           />
           <div style="display: flex; justify-content: flex-end; margin-top: var(--basil-space-4);">
             <q-btn unelevated color="primary" label="Next" :disable="!guidedIncome || guidedIncome <= 0" @click="guidedStep = 2" />
@@ -69,15 +64,10 @@
           <h2 class="basil-display" style="font-size: 1.5rem; margin: 0 0 var(--basil-space-3);">Set your spending limits</h2>
           <div style="display: flex; flex-direction: column; gap: var(--basil-space-3);">
             <div v-for="cat in guidedCategories" :key="cat.category">
-              <q-input
-                :model-value="formatWithCommas(guidedLimits[cat.category])"
-                @update:model-value="guidedLimits[cat.category] = parseAmount($event)"
-                outlined
-                inputmode="numeric"
-                prefix="$"
-                @keypress="$event.key.match(/[^0-9]/) && $event.preventDefault()"
-                :label="cat.category"
-                :hint="cat.spendingHint"
+              <BasilAmount
+                :model-value="guidedLimits[cat.category]"
+                @update:model-value="guidedLimits[cat.category] = $event"
+                :label="cat.category" :hint="cat.spendingHint"
               />
             </div>
           </div>
@@ -197,24 +187,8 @@
             <span>Add {{ sectionLabels[sectionType].toLowerCase() }} category</span>
           </div>
           <div v-else class="basil-planner-add-form">
-            <q-input
-              v-model="addName"
-              placeholder="Category name"
-              dense outlined
-              class="basil-planner-add-name"
-              @keyup.enter="confirmAdd(sectionType)"
-              @keyup.esc="cancelAdd"
-            />
-            <q-input
-              v-model.number="addLimit"
-              type="number"
-              placeholder="Monthly limit"
-              dense outlined
-              class="basil-planner-add-limit"
-              @keyup.enter="confirmAdd(sectionType)"
-              @keyup.esc="cancelAdd"
-              min="0"
-            />
+            <BasilText v-model="addName" placeholder="Category name" dense @submit="confirmAdd(sectionType)" />
+            <BasilAmount v-model="addLimit" placeholder="Monthly limit" dense @submit="confirmAdd(sectionType)" />
             <q-btn flat round dense icon="check" color="positive" :loading="addLoading" @click="confirmAdd(sectionType)" />
             <q-btn flat round dense icon="close" @click="cancelAdd" />
           </div>
@@ -258,6 +232,8 @@ import BasilConfirmTray from '../components/BasilConfirmTray.vue';
 import BasilTray from '../components/BasilTray.vue';
 import DialogComponent from '../components/DialogComponent.vue';
 import SwipeReveal from '../components/SwipeReveal.vue';
+import BasilAmount from '@/components/BasilAmount';
+import BasilText from '@/components/BasilText';
 import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory, fetchMerchants, updatePreferences, fetchCategories } from '@/api';
 import { formatWithCommas, parseAmount, getLastMonthKey, getCurrentMonthKey } from '@/utils/budgetSetup';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
@@ -268,7 +244,7 @@ const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
 
 export default {
   name: 'BudgetPlannerView',
-  components: { EmptyState, BasilConfirmTray, BasilTray, DialogComponent, SwipeReveal },
+  components: { EmptyState, BasilConfirmTray, BasilTray, DialogComponent, SwipeReveal, BasilAmount, BasilText },
 
   data() {
     return {

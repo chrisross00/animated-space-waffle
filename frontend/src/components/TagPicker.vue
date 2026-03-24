@@ -28,14 +28,7 @@
 
     <!-- Inline new tag input -->
     <div v-if="showNewInput" class="basil-tag-picker__new row items-center q-gutter-xs q-mt-xs" style="padding-bottom: var(--basil-space-8)">
-      <q-input
-        ref="newTagInput"
-        v-model="newTagName"
-        dense outlined
-        placeholder="Tag name"
-        style="flex: 1"
-        @keyup.enter="addNewTag"
-      />
+      <BasilText ref="newTagInput" v-model="newTagName" dense placeholder="Tag name" style="flex: 1" @submit="addNewTag" />
       <q-btn flat dense icon="check" color="primary" :disable="!newTagName?.trim()" @click="addNewTag" />
       <q-btn flat dense icon="close" @click="showNewInput = false; newTagName = ''" />
     </div>
@@ -45,9 +38,11 @@
 <script>
 import { createTag } from '@/api';
 import store from '../store';
+import BasilText from '@/components/BasilText';
 
 export default {
   name: 'TagPicker',
+  components: { BasilText },
   props: {
     modelValue: { type: Array, default: () => [] },
   },

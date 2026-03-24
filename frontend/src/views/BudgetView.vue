@@ -472,18 +472,12 @@
         <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
         <div class="row items-center q-gutter-sm q-mb-sm">
           <template v-if="selectedRows.length === 0 || $q.screen.lt.sm">
-            <q-input
+            <BasilSearch
               v-model="tableSearch"
               dense
-              outlined
               placeholder="Search name or merchant"
-              clearable
               style="flex: 1; min-width: 150px"
-            >
-              <template v-slot:prepend>
-                <q-icon name="search" />
-              </template>
-            </q-input>
+            />
             <q-select
               v-model="tableMonth"
               :options="[{ label: 'All months', value: null }, ...months.map(m => ({ label: m, value: m }))]"
@@ -496,24 +490,8 @@
               style="min-width: 140px"
               @touchmove.stop.prevent
             />
-            <q-input
-              v-model="amountMin"
-              dense
-              outlined
-              type="number"
-              placeholder="Min $"
-              style="width: 90px"
-              class="gt-xs"
-            />
-            <q-input
-              v-model="amountMax"
-              dense
-              outlined
-              type="number"
-              placeholder="Max $"
-              style="width: 90px"
-              class="gt-xs"
-            />
+            <BasilAmount v-model="amountMin" dense placeholder="Min $" style="width: 90px" class="gt-xs" />
+            <BasilAmount v-model="amountMax" dense placeholder="Max $" style="width: 90px" class="gt-xs" />
             <q-select
               v-if="$store.state.tags.length > 0"
               v-model="tagFilter"
@@ -833,8 +811,7 @@
             </div>
             <div class="basil-split__rows" style="padding: 0 var(--basil-space-4);">
               <div v-for="(row, i) in triageSplitRows" :key="i" class="basil-split__row">
-                <q-input outlined dense type="number" :model-value="row.amount"
-                  @update:model-value="triageUpdateSplitAmount(i, $event)" prefix="$" class="basil-split__amount" step="0.01" min="0.01" />
+                <BasilAmount :model-value="row.amount" @update:model-value="triageUpdateSplitAmount(i, $event)" dense class="basil-split__amount" />
                 <q-select outlined dense :model-value="row.categoryName"
                   @update:model-value="triageUpdateSplitCategory(i, $event)"
                   :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
@@ -874,11 +851,7 @@
                 outlined
                 @touchmove.stop.prevent
               />
-              <q-input
-                v-model="triageNote"
-                outlined
-                label="Note"
-              />
+              <BasilNote v-model="triageNote" label="Note" />
             </div>
             <div class="q-px-md q-mb-sm">
               <TagPicker v-model="triageTags" />
@@ -991,6 +964,9 @@
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
   import BasilTray from '@/components/BasilTray.vue';
+  import BasilSearch from '@/components/BasilSearch';
+  import BasilAmount from '@/components/BasilAmount';
+  import BasilNote from '@/components/BasilNote';
 
 // import e from 'express';
 
@@ -1014,6 +990,9 @@
       SkeletonBudget,
       EmptyState,
       BasilTray,
+      BasilSearch,
+      BasilAmount,
+      BasilNote,
       VenmoEnrichmentDialog,
       TagPicker,
     },

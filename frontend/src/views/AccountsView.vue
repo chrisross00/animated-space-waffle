@@ -310,20 +310,11 @@
         <!-- Step 2: Account details -->
         <template v-else-if="manualStep === 'details'">
           <q-card-section>
-            <q-input
-              v-if="manualIsNewInstitution"
-              v-model="manualInstitution" label="Institution name" outlined dense
-              placeholder="e.g. Fidelity, My Credit Union"
-              class="q-mb-sm"
-            />
+            <BasilText v-if="manualIsNewInstitution" v-model="manualInstitution" label="Institution name" dense placeholder="e.g. Fidelity, My Credit Union" class="q-mb-sm" />
             <div v-else style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-3);">
               Adding to <strong>{{ manualInstitution }}</strong>
             </div>
-            <q-input
-              v-model="manualAccountName" label="Account name" outlined dense
-              placeholder="e.g. Brokerage, Checking"
-              class="q-mb-sm"
-            />
+            <BasilText v-model="manualAccountName" label="Account name" dense placeholder="e.g. Brokerage, Checking" class="q-mb-sm" />
             <q-select
               v-model="manualAccountType" label="Account type" outlined dense
               :options="accountTypeOptions"
@@ -331,10 +322,7 @@
               placeholder="Select account type"
               class="q-mb-sm"
             />
-            <q-input
-              v-model.number="manualBalance" label="Current balance" outlined dense
-              type="number" step="0.01" prefix="$"
-            />
+            <BasilAmount v-model="manualBalance" label="Current balance" dense />
             <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2); padding-bottom: var(--basil-space-8)">
               Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
             </div>
@@ -363,14 +351,8 @@
           <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showEditManual = false" />
         </div>
         <q-card-section>
-          <q-input
-            v-model="editAccountName" label="Account name" outlined dense
-            class="q-mb-sm"
-          />
-          <q-input
-            v-model.number="editBalance" label="Current balance" outlined dense
-            type="number" step="0.01" prefix="$"
-          />
+          <BasilText v-model="editAccountName" label="Account name" dense class="q-mb-sm" />
+          <BasilAmount v-model="editBalance" label="Current balance" dense />
         </q-card-section>
         <q-card-actions class="q-px-md q-pb-md" style="justify-content: space-between;">
           <q-btn flat icon="delete" label="Delete" color="negative"
@@ -407,6 +389,8 @@
 <script>
 import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError, createManualAccount, updateManualAccount, deleteManualAccountApi } from '@/api';
 import BasilTray from '../components/BasilTray.vue';
+import BasilText from '@/components/BasilText';
+import BasilAmount from '@/components/BasilAmount';
 import SwipeReveal from '../components/SwipeReveal.vue';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
@@ -424,7 +408,7 @@ const ANIMATION = { animation: true, animationDuration: 800, animationEasing: 'c
 
 export default {
   name: 'AccountsView',
-  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray, SwipeReveal },
+  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray, SwipeReveal, BasilText, BasilAmount },
 
   data() {
     return {

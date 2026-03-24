@@ -30,11 +30,7 @@
       :pagination="{ rowsPerPage: 25 }"
     >
       <template v-slot:top-right>
-        <q-input dense debounce="300" v-model="filter" placeholder="Search merchants">
-          <template v-slot:append>
-            <q-icon name="search" />
-          </template>
-        </q-input>
+        <BasilSearch dense v-model="filter" placeholder="Search merchants" />
       </template>
 
       <template v-slot:body-cell-current="props">
@@ -91,10 +87,7 @@
         <div class="text-h6 col">Merchant Browser</div>
       </div>
 
-      <q-input dense outlined debounce="300" v-model="filter"
-        placeholder="Search merchants" class="q-mb-md">
-        <template v-slot:append><q-icon name="search" /></template>
-      </q-input>
+      <BasilSearch dense v-model="filter" placeholder="Search" class="q-mb-md" />
 
       <q-card flat bordered>
         <q-list separator>
@@ -176,6 +169,7 @@ import store from '../store';
 import { ensureAppData, fetchMerchantStats, saveRule } from '@/api';
 import EmptyState from '../components/EmptyState.vue';
 import BasilTray from '../components/BasilTray.vue';
+import BasilSearch from '@/components/BasilSearch';
 
 const columns = [
   { name: 'merchant_name', label: 'Merchant', field: 'merchant_name', sortable: true, align: 'left' },
@@ -186,7 +180,7 @@ const columns = [
 
 export default {
   name: 'MerchantBrowser',
-  components: { EmptyState, BasilTray },
+  components: { EmptyState, BasilTray, BasilSearch },
 
   data() {
     return {

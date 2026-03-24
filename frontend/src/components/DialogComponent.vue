@@ -66,13 +66,7 @@
             :options="dropDownOptions"
             @touchmove.stop.prevent
           />
-          <q-input
-            type="text"
-            outlined
-            v-model="dialogBody.note"
-            label="Note"
-            @change="isFormSubmittable()"
-          />
+          <BasilNote v-model="dialogBody.note" label="Note" @blur="isFormSubmittable()" />
         </div>
 
         <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
@@ -110,16 +104,7 @@
         </div>
         <div class="basil-split__rows">
           <div v-for="(row, i) in splitRows" :key="i" class="basil-split__row">
-            <q-input
-              outlined dense
-              type="number"
-              :model-value="row.amount"
-              @update:model-value="updateSplitAmount(i, $event)"
-              prefix="$"
-              class="basil-split__amount"
-              step="0.01"
-              min="0.01"
-            />
+            <BasilAmount :model-value="row.amount" @update:model-value="updateSplitAmount(i, $event)" dense class="basil-split__amount" />
             <q-select
               outlined dense
               :model-value="row.categoryName"
@@ -183,21 +168,8 @@
     <div v-if="dialogType === 'editCategory'" class="basil-dialog-body">
 
       <div class="basil-dialog-fields">
-        <q-input
-          outlined
-          v-model="dialogBody.categoryName"
-          label="Category Name"
-          :rules="[val => val && val.length > 0 || 'Please type something']"
-          @change="isFormSubmittable()"
-        />
-        <q-input
-          outlined
-          type="number"
-          v-model="dialogBody.monthly_limit"
-          label="Monthly Limit"
-          :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
-          @change="isFormSubmittable()"
-        />
+        <BasilText v-model="dialogBody.categoryName" label="Category Name" @blur="isFormSubmittable()" />
+        <BasilAmount v-model="dialogBody.monthly_limit" label="Monthly Limit" @blur="isFormSubmittable()" />
         <q-toggle
           v-if="item.type === 'expense'"
           v-model="dialogBody.fixed"
@@ -301,21 +273,8 @@
     <div v-if="dialogType === 'addCategory'" class="basil-dialog-body">
 
       <div class="basil-dialog-fields">
-        <q-input
-          outlined
-          v-model="dialogBody.categoryName"
-          label="Category Name"
-          :rules="[val => val && val.length > 0 || 'Please type something']"
-          @change="isFormSubmittable()"
-        />
-        <q-input
-          outlined
-          type="number"
-          v-model="dialogBody.monthly_limit"
-          label="Monthly Limit"
-          :rules="[val => val !== null && val !== '' || 'Please enter a monthly limit']"
-          @change="isFormSubmittable()"
-        />
+        <BasilText v-model="dialogBody.categoryName" label="Category Name" @blur="isFormSubmittable()" />
+        <BasilAmount v-model="dialogBody.monthly_limit" label="Monthly Limit" @blur="isFormSubmittable()" />
         <q-select
           outlined
           v-model="dialogBody.type"
@@ -348,6 +307,7 @@
 /* ── Body ── */
 .basil-dialog-body {
   padding: var(--basil-space-5);
+  padding-bottom: calc(var(--basil-space-5) + var(--basil-keyboard-height, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--basil-space-4);
@@ -540,10 +500,13 @@
   import RelationshipCard from './RelationshipCard.vue'
   import TagPicker from './TagPicker.vue'
   import { tagTransactionsApi, untagTransactionsApi } from '@/api'
+  import BasilAmount from '@/components/BasilAmount'
+  import BasilText from '@/components/BasilText'
+  import BasilNote from '@/components/BasilNote'
 
   export default {
       name: 'DialogComponent',
-      components: { RelationshipCard, TagPicker },
+      components: { RelationshipCard, TagPicker, BasilAmount, BasilText, BasilNote },
       props: {
         dialogType: {
           type: String,
