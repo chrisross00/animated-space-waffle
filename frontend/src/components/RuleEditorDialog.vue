@@ -25,13 +25,7 @@
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Rule Name</span>
             </div>
-            <q-input
-              v-model="form.label"
-              outlined dense
-              placeholder="e.g. Venmo food"
-              class="basil-re__condition-input"
-              @update:model-value="onLabelInput"
-            />
+            <BasilText v-model="form.label" dense placeholder="e.g. Venmo food" class="basil-re__condition-input" @update:model-value="onLabelInput" />
           </div>
 
           <div class="basil-re__panel-heading">If transaction matches…</div>
@@ -77,12 +71,7 @@
                 emit-value map-options outlined dense
                 class="basil-re__text-op"
               />
-              <q-input
-                v-model="form.name.value"
-                outlined dense
-                placeholder="e.g. Venmo"
-                class="basil-re__condition-input"
-              />
+              <BasilText v-model="form.name.value" dense placeholder="e.g. Venmo" class="basil-re__condition-input" />
             </div>
           </div>
 
@@ -102,30 +91,11 @@
                 outlined dense
                 class="basil-re__amount-op"
               />
-              <q-input
-                v-if="['eq', 'gt', 'lt'].includes(form.amount.op)"
-                v-model.number="form.amount.value"
-                outlined dense type="number" min="0"
-                prefix="$"
-                placeholder="0.00"
-                class="basil-re__amount-val"
-              />
+              <BasilAmount v-if="['eq', 'gt', 'lt'].includes(form.amount.op)" v-model="form.amount.value" dense placeholder="0.00" class="basil-re__amount-val" />
               <template v-else>
-                <q-input
-                  v-model.number="form.amount.min"
-                  outlined dense type="number" min="0"
-                  prefix="$"
-                  placeholder="min"
-                  class="basil-re__amount-val"
-                />
+                <BasilAmount v-model="form.amount.min" dense placeholder="min" class="basil-re__amount-val" />
                 <span class="basil-re__amount-sep">–</span>
-                <q-input
-                  v-model.number="form.amount.max"
-                  outlined dense type="number" min="0"
-                  prefix="$"
-                  placeholder="max"
-                  class="basil-re__amount-val"
-                />
+                <BasilAmount v-model="form.amount.max" dense placeholder="max" class="basil-re__amount-val" />
               </template>
             </div>
           </div>
@@ -168,12 +138,7 @@
               <span class="basil-re__condition-label">Add note</span>
               <span class="basil-re__condition-optional">optional</span>
             </div>
-            <q-input
-              v-model="form.note"
-              outlined dense
-              placeholder="e.g. auto-categorized by rule"
-              class="basil-re__condition-input"
-            />
+            <BasilNote v-model="form.note" dense placeholder="e.g. auto-categorized by rule" class="basil-re__condition-input" />
           </div>
 
           <div class="basil-re__condition">
@@ -521,6 +486,9 @@ import store from '../store';
 import { saveCompoundRule, updateCompoundRule } from '@/api';
 import { matchesCondition, sweepStore } from '@/utils/ruleUtils';
 import BasilTray from './BasilTray.vue';
+import BasilAmount from '@/components/BasilAmount';
+import BasilText from '@/components/BasilText';
+import BasilNote from '@/components/BasilNote';
 import dayjs from 'dayjs';
 
 const TEXT_OP_OPTIONS = [
@@ -548,7 +516,7 @@ const EMPTY_FORM = () => ({
 
 export default {
   name: 'RuleEditorDialog',
-  components: { BasilTray },
+  components: { BasilTray, BasilAmount, BasilText, BasilNote },
 
   props: {
     modelValue:  { type: Boolean, default: false },
