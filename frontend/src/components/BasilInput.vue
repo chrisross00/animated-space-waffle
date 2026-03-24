@@ -2,16 +2,19 @@
   <div>
     <!-- Mobile: no native input -->
     <div v-if="isMobile" class="basil-input" :class="inputClasses" @click="onTap">
+      <svg v-if="variant === 'search'" class="basil-input__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
       <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue }">
         {{ displayValue || placeholder }}
         <span v-if="isFocused" class="basil-input__cursor"></span>
       </div>
+      <div v-if="variant === 'search' && modelValue" class="basil-input__clear" @click.stop="onClear">&times;</div>
       <span v-if="label" class="basil-input__label" :class="{ 'basil-input__label--float': isFocused || displayValue }">{{ label }}</span>
     </div>
 
     <!-- Desktop: native input -->
     <div v-else class="basil-input" :class="inputClasses">
+      <svg v-if="variant === 'search'" class="basil-input__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
       <input
         ref="nativeInput"
@@ -23,6 +26,7 @@
         @blur="onDesktopBlur"
         @keyup.enter="$emit('submit')"
       />
+      <div v-if="variant === 'search' && modelValue" class="basil-input__clear" @click.stop="onClear">&times;</div>
       <span v-if="label" class="basil-input__label" :class="{ 'basil-input__label--float': isFocused || modelValue }">{{ label }}</span>
     </div>
 
@@ -56,6 +60,7 @@ export default {
       isFocused: false,
       isMobile: false,
       displayString: '',
+      debounceTimer: null,
     }
   },
 
@@ -71,6 +76,9 @@ export default {
       if (this.prefix) return this.prefix
       if (this.variant === 'amount') return '$'
       return ''
+    },
+    effectiveDebounce() {
+      return this.debounce || (this.variant === 'search' ? 300 : 0)
     },
     displayValue() {
       if (this.variant === 'amount') {
@@ -96,6 +104,17 @@ export default {
   },
 
   methods: {
+    emitDebounced(value) {
+      if (this.effectiveDebounce > 0) {
+        clearTimeout(this.debounceTimer)
+        this.debounceTimer = setTimeout(() => {
+          this.$emit('update:modelValue', value)
+        }, this.effectiveDebounce)
+      } else {
+        this.$emit('update:modelValue', value)
+      }
+    },
+
     onTap() {
       if (this.disabled) return
       if (this.variant === 'amount' && !this.displayString && this.modelValue) {
@@ -130,7 +149,7 @@ export default {
         this.$emit('update:modelValue', parsed || 0)
         return
       }
-      this.$emit('update:modelValue', String(this.modelValue) + char)
+      this.emitDebounced(String(this.modelValue) + char)
     },
 
     onBackspace() {
@@ -140,7 +159,7 @@ export default {
         this.$emit('update:modelValue', isNaN(parsed) ? 0 : parsed)
         return
       }
-      this.$emit('update:modelValue', String(this.modelValue).slice(0, -1))
+      this.emitDebounced(String(this.modelValue).slice(0, -1))
     },
 
     onDone() {
@@ -150,7 +169,7 @@ export default {
     },
 
     onDesktopInput(e) {
-      this.$emit('update:modelValue', e.target.value)
+      this.emitDebounced(e.target.value)
     },
 
     onDesktopFocus() {
@@ -161,6 +180,11 @@ export default {
     onDesktopBlur() {
       this.isFocused = false
       this.$emit('blur')
+    },
+
+    onClear() {
+      clearTimeout(this.debounceTimer)
+      this.$emit('update:modelValue', '')
     },
 
     focus() {
