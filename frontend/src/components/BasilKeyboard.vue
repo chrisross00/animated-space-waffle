@@ -73,10 +73,12 @@ export default {
       keyboardState.height = this.$el.offsetHeight
     })
     // Dismiss on tap outside keyboard/input
+    // Use requestAnimationFrame so the tap event lands on the target element
+    // (e.g. q-select) before we dismiss and re-render
     this._onPointerDown = (e) => {
       if (!keyboardState.isOpen) return
       if (e.target.closest('.basil-keyboard') || e.target.closest('.basil-input')) return
-      dismissKeyboard()
+      requestAnimationFrame(() => dismissKeyboard())
     }
     document.addEventListener('pointerdown', this._onPointerDown)
   },
