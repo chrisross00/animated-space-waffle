@@ -321,6 +321,8 @@ keyboard quirks (jitter, scroll-into-view fighting, unpredictable height).
 - **The `BasilKeyboard` singleton lives in `App.vue`.** Do not mount it elsewhere.
 - **Keyboard state** is managed by `frontend/src/utils/basilKeyboard.js` (reactive singleton).
 - **`@submit` event** replaces `@keyup.enter` — fires on Enter (desktop) or Done (mobile).
+- **Scroll-into-view** is automatic. When the keyboard opens, `scrollActiveInputIntoView()` scrolls the focused input above the keyboard within the nearest scrollable ancestor. Tray scroll containers (`.basil-dialog-body`, `.basil-re__scroll`) get dynamic `padding-bottom` via `--basil-keyboard-height` so content can scroll past the keyboard overlay.
+- **Visual separation:** the keyboard has a `border-top` and upward `box-shadow` to distinguish it from page/tray content.
 
 ### Loading states (three-state pattern)
 Non-Budget views use `store.state.bootstrapping` to gate content:

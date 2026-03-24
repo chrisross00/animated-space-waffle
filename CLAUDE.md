@@ -198,6 +198,7 @@ section instead of reading the whole file.
 | `searchTransactions(search, page, limit)` | `frontend/src/api.js` | Server-side paginated search across all months. |
 | `BasilInput` / variant wrappers | `frontend/src/components/BasilInput.vue` + `Basil{Amount,Search,Text,Note}.js` | Custom input replacing `q-input`. Variants: `amount`, `search`, `text`, `note`. See DESIGN.md. |
 | `keyboardState`, `requestKeyboard`, `dismissKeyboard` | `frontend/src/utils/basilKeyboard.js` | Reactive singleton for keyboard ↔ input communication. |
+| `scrollActiveInputIntoView()` | `frontend/src/utils/basilKeyboard.js` | Scrolls focused input into view when keyboard opens. Finds nearest scrollable ancestor (tray) or falls back to body padding for full-page views. |
 
 ### Key architecture rules
 - **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
@@ -294,8 +295,6 @@ name pattern / amount / amount + institution".
       specific transaction.
 
 ### Tech debt
-- [ ] **iOS keyboard audit for BasilTray dialogs** — short trays with text inputs
-      near the bottom are vulnerable. See DESIGN.md "iOS keyboard rule".
 - [ ] **Admin toolbox route consolidation** — shared helper for test data insert routes.
 - [ ] **Rename `plaid_items` → `plaid_links`** — cosmetic, do when convenient.
 - [ ] **BudgetView: eliminate local transaction array** — low priority cleanup.
