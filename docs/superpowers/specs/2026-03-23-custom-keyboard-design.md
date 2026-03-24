@@ -26,9 +26,9 @@ The crossword keyboard in `/projects/ktrlabs/src/components/crossword/crossword-
 
 **App-level singleton keyboard** — one `BasilKeyboard` instance mounts in `App.vue` below the router-view, fixed to the bottom of the viewport. This mirrors how iOS's native keyboard works: a system-level surface that the app's content sits above.
 
-**Mobile only** — the keyboard renders only on mobile devices (touch detection). Desktop users type with their physical keyboard; `BasilInput` listens for native `keydown` events when focused on desktop.
+**Mobile only** — the keyboard renders only on mobile devices (touch detection via `'ontouchstart' in window` or Quasar's `$q.platform.is.mobile`). Desktop users type with their physical keyboard into a real native `<input>` — no custom keyboard, no reimplemented key handling.
 
-**No content compression** — when the keyboard opens, the app's content does not resize or reflow. Instead, the focused input is scrolled into the visible area above the keyboard if it would otherwise be obscured. Layout stays stable.
+**No content compression** — when the keyboard opens, the app's content does not resize or reflow. Instead, the focused input is scrolled into the visible area above the keyboard if it would otherwise be obscured. The page's scroll container gets `padding-bottom` equal to the keyboard height so all content remains reachable by scrolling. Layout stays stable.
 
 ### Components
 
@@ -41,16 +41,27 @@ App-level singleton mounted in `App.vue`. Contains:
 - **Layout mode system** — extensible for future layouts (symbols, etc.) without architectural changes
 - **Slide-up animation** — CSS transform transition (~250ms) from below viewport
 - **CSS variable** — sets `--basil-keyboard-height` on `:root` when open (transitions to `0` when closed). Used by bottom nav and scroll-into-view logic.
-- **Haptic feedback** — `navigator.vibrate(10)` on each keypress (same as crossword keyboard)
-- **Press feedback** — `active:scale-95` transform on key tap for visual confirmation
+- **Haptic feedback** — `navigator.vibrate(10)` where supported (Android only — iOS Safari does not implement the Vibration API). Gracefully no-ops on unsupported platforms.
+- **Press feedback** — CSS `active` state with `scale(0.95)` transform + accent background color on key tap. This is the primary feedback mechanism on all platforms.
 - **Tap targets** — minimum 44px height per key (Apple HIG)
 - **Safe area** — respects `env(safe-area-inset-bottom)` for home indicator
 
-Keyboard is dismissed by: tapping "Done", tapping outside any `BasilInput`, or navigating to a different view.
+**Dismissal behavior:**
+- Tapping "Done" key
+- Any `pointerdown` on an element that is not inside a `.basil-input` or `.basil-keyboard` element (this includes tapping category rows, buttons, empty space, etc.)
+- Navigating to a different view (Vue Router `beforeEach` guard calls `dismissKeyboard()`)
+- Scrolling does **not** dismiss — users may need to scroll to see other content while an input is focused
+
+**Z-index ordering:** The keyboard must render above Quasar dialog overlays (z-index 6000). Keyboard uses `z-index: 7000` to ensure it sits above trays and dialogs.
 
 #### `BasilInput.vue`
 
-Single input component replacing all `q-input` usage. Renders a styled `div` with `role="textbox"` and `tabindex="0"` — no native `<input>` element exists, so there is nothing for iOS to attach a keyboard to.
+Single input component replacing all `q-input` usage. Renders differently on mobile vs desktop:
+
+- **Mobile:** styled `div` with `role="textbox"` and `tabindex="0"` — no native `<input>` element exists, so there is nothing for iOS to attach a keyboard to. All input comes through the custom keyboard.
+- **Desktop:** renders a real native `<input>` element. No custom keyboard, no reimplemented key handling. Users get full native behavior (selection, copy/paste, undo, IME, etc.).
+
+This split is internal to `BasilInput` — consuming components use the same API regardless of platform.
 
 **Props:**
 
@@ -68,21 +79,16 @@ Single input component replacing all `q-input` usage. Renders a styled `div` wit
 
 | Variant | Keyboard mode | Prefix | Formatting | Notes |
 |---------|--------------|--------|------------|-------|
-| `amount` | numpad | `$` | Decimal handling, cents formatting | Replaces all `type="number"` amount inputs |
+| `amount` | numpad | `$` | Dollar-first entry (typing `47.00` shows `$47.00`). Max 2 decimal places. Backspace removes last digit. Max value bounded by reasonable limit (e.g. 999999.99). | Replaces all `type="number"` amount inputs |
 | `search` | qwerty | none | None | Clear button, debounced emit |
 | `text` | qwerty | none | None | General short text (names, labels) |
 | `note` | qwerty | none | None | Longer text, may support multi-line later |
 
 **Visual behavior:**
 - Styled to match existing `q-input outlined` appearance using Basil design tokens
-- Blinking cursor when focused
+- Blinking cursor when focused (mobile only — desktop uses native cursor)
 - Label floats above value (same as Quasar outlined pattern)
 - All colors, spacing, and borders use `var(--basil-*)` tokens — dark mode works automatically
-
-**Desktop behavior:**
-- No on-screen keyboard rendered
-- Listens for native `keydown` events when focused
-- Behaves like a normal input from the user's perspective
 
 #### Thin wrappers (convenience components)
 
@@ -95,30 +101,48 @@ Preset-variant components for template readability. Each is a thin wrapper over 
 
 Using `<BasilInput variant="amount">` directly also works.
 
-#### `useBasilKeyboard.js` composable
+#### `basilKeyboard.js` reactive singleton module
 
-Bridge between inputs and the keyboard singleton.
+Bridge between inputs and the keyboard singleton. This is a plain ES module exporting Vue reactive refs — **not** a composable. This is intentional: the entire codebase uses Options API, so the module must be importable via `import { keyboardState } from './basilKeyboard'` and used in `computed`, `methods`, and `watch` blocks without requiring a `setup()` function.
 
-**API:**
+**Why a singleton module, not provide/inject or Vuex:** The keyboard state is transient UI state (which input is focused, what mode to show) that doesn't belong in the app store. A reactive singleton is the simplest pattern that works across the Options API component tree without requiring any component hierarchy coupling.
+
+**Exports:**
 
 ```js
-const { requestKeyboard, dismissKeyboard, isOpen, activeInput } = useBasilKeyboard()
+import { reactive, ref } from 'vue'
 
-// Called by BasilInput on tap
-requestKeyboard({
-  mode: 'qwerty' | 'numpad',
-  onKey: (char) => { /* append to value */ },
-  onBackspace: () => { /* delete last char */ },
-  onDone: () => { /* dismiss, blur */ },
-  inputEl: ref  // for scroll-into-view calculation
+// Reactive state — readable by any component
+export const keyboardState = reactive({
+  isOpen: false,
+  mode: 'qwerty', // 'qwerty' | 'numpad'
+  height: 0,       // current keyboard height in px
 })
+
+// Methods — called by BasilInput and BasilKeyboard
+export function requestKeyboard({ mode, onKey, onBackspace, onDone, inputEl }) { ... }
+export function dismissKeyboard() { ... }
+export function emitKey(char) { ... }    // called by BasilKeyboard when a key is tapped
+export function emitBackspace() { ... }  // called by BasilKeyboard
+export function emitDone() { ... }       // called by BasilKeyboard
 ```
+
+**Data flow:**
+1. User taps a `BasilInput` → input calls `requestKeyboard({ mode, onKey, ... })`
+2. Singleton sets `keyboardState.isOpen = true`, stores callbacks
+3. `BasilKeyboard.vue` (mounted in App.vue) watches `keyboardState` and slides in with the right layout
+4. User taps a key in `BasilKeyboard` → keyboard calls `emitKey('a')` → singleton calls the stored `onKey` callback → `BasilInput` updates its value
+5. User taps Done → `emitDone()` → singleton calls stored `onDone`, sets `isOpen = false`
 
 Only one input can hold keyboard focus at a time. Requesting the keyboard from a new input dismisses/transfers from the previous one.
 
 ### Scroll-into-view
 
-When the keyboard opens, the composable checks whether the focused `BasilInput` element is below the visible area (viewport height minus keyboard height). If obscured, the nearest scrollable ancestor is smooth-scrolled so the input sits approximately 20% from the top of the visible area. If the input is already visible, nothing moves.
+When the keyboard opens, the singleton module checks whether the focused `BasilInput` element is below the visible area (viewport height minus keyboard height). If obscured, the input's scroll container is smooth-scrolled so the input sits approximately 20% from the top of the visible area. If the input is already visible, nothing moves.
+
+**Inside BasilTray:** The tray itself does not move or resize. The tray's internal scroll container (`.basil-tray__scroll` or the element with `overflow-y: auto`) is the scroll target. If the tray's content is shorter than the visible area above the keyboard (i.e., all content fits without scrolling), no scroll is needed — the input is already visible.
+
+**On full-page views:** The page's main scroll container gets temporary `padding-bottom` equal to the keyboard height, ensuring all content at the bottom of the page is scrollable into the visible area above the keyboard.
 
 This replaces Safari's aggressive scroll-into-view behavior with a controlled, predictable version.
 
@@ -138,7 +162,7 @@ All styling uses existing Basil design tokens:
 |---------|-------|
 | Keyboard background | `--basil-surface-dialog` |
 | Key surface | `--basil-surface` |
-| Key shadow | `0 1px 2px rgba(0,0,0,0.08)` |
+| Key shadow | `var(--basil-shadow-sm)` (or new `--basil-shadow-xs` token if existing is too heavy) |
 | Modifier keys (shift, backspace) | `--basil-border` background |
 | Done key | `--basil-accent` background, white text |
 | Key text | `--basil-text` |
