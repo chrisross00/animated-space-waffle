@@ -180,6 +180,13 @@
   color: var(--basil-text-muted);
 }
 
+.basil-input__selected {
+  background: var(--basil-green);
+  color: var(--basil-text-inverse);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 .basil-input__cursor {
   display: inline-block;
   width: 1.5px;

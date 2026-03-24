@@ -4,7 +4,7 @@
     <div v-if="isMobile" class="basil-input" :class="inputClasses" @click="onTap">
       <svg v-if="variant === 'search'" class="basil-input__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
-      <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue && !isFocused }">{{ displayValue || (isFocused ? '' : placeholder) }}<span v-if="isFocused" class="basil-input__cursor"></span></div>
+      <div class="basil-input__display" :class="{ 'basil-input__display--placeholder': !displayValue && !isFocused }" @dblclick.stop="onSelectAll"><span v-if="selectAll && displayValue" class="basil-input__selected">{{ displayValue }}</span><template v-else>{{ displayValue || (isFocused ? '' : placeholder) }}<span v-if="isFocused" class="basil-input__cursor"></span></template></div>
       <div v-if="variant === 'search' && modelValue" class="basil-input__clear" @click.stop="onClear">&times;</div>
       <span v-if="label" class="basil-input__label" :class="{ 'basil-input__label--float': isFocused || displayValue || placeholder || effectivePrefix }">{{ label }}</span>
     </div>
@@ -56,6 +56,7 @@ export default {
     return {
       isFocused: false,
       isMobile: false,
+      selectAll: false,
       displayString: '',
       debounceTimer: null,
     }
@@ -135,7 +136,23 @@ export default {
       setTimeout(() => scrollActiveInputIntoView(), 300)
     },
 
+    onSelectAll() {
+      if (!this.isFocused || !this.displayValue) return
+      this.selectAll = true
+    },
+
     onKey(char) {
+      if (this.selectAll) {
+        this.selectAll = false
+        if (this.variant === 'amount') {
+          this.displayString = (char === '.' || (char >= '0' && char <= '9')) ? char : ''
+          const parsed = parseFloat(this.displayString)
+          this.$emit('update:modelValue', isNaN(parsed) ? 0 : parsed)
+        } else {
+          this.emitDebounced(char)
+        }
+        return
+      }
       if (this.variant === 'amount') {
         // Only accept digits and decimal point
         if (char !== '.' && (char < '0' || char > '9')) return
@@ -157,6 +174,16 @@ export default {
     },
 
     onBackspace() {
+      if (this.selectAll) {
+        this.selectAll = false
+        if (this.variant === 'amount') {
+          this.displayString = ''
+          this.$emit('update:modelValue', 0)
+        } else {
+          this.emitDebounced('')
+        }
+        return
+      }
       if (this.variant === 'amount') {
         this.displayString = this.displayString.slice(0, -1)
         const parsed = parseFloat(this.displayString)
