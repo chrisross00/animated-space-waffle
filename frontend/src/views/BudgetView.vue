@@ -964,9 +964,9 @@
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
   import BasilTray from '@/components/BasilTray.vue';
-  import BasilSearch from '@/components/BasilSearch.vue';
-  import BasilAmount from '@/components/BasilAmount.vue';
-  import BasilNote from '@/components/BasilNote.vue';
+  import BasilSearch from '@/components/BasilSearch';
+  import BasilAmount from '@/components/BasilAmount';
+  import BasilNote from '@/components/BasilNote';
 
 // import e from 'express';
 
