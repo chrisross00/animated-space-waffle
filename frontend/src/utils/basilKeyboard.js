@@ -9,12 +9,21 @@ export const keyboardState = reactive({
 let activeCallbacks = null
 
 export function requestKeyboard({ mode, onKey, onBackspace, onDone, inputEl }) {
-  activeCallbacks = { onKey, onBackspace, onDone, inputEl }
+  // Blur the previously focused input (if any) before switching
+  if (activeCallbacks && activeCallbacks.onDone !== onDone) {
+    activeCallbacks.onBlur?.()
+  }
+  activeCallbacks = { onKey, onBackspace, onDone, onBlur: null, inputEl }
   keyboardState.mode = mode
   keyboardState.isOpen = true
 }
 
+export function setActiveBlur(onBlur) {
+  if (activeCallbacks) activeCallbacks.onBlur = onBlur
+}
+
 export function dismissKeyboard() {
+  activeCallbacks?.onBlur?.()
   activeCallbacks = null
   keyboardState.isOpen = false
   keyboardState.height = 0

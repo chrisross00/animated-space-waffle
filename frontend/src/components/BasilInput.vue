@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { requestKeyboard } from '@/utils/basilKeyboard'
+import { requestKeyboard, setActiveBlur } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilInput',
@@ -128,6 +128,11 @@ export default {
         onDone: this.onDone,
         inputEl: this.$el,
       })
+      // Register blur callback so the singleton can unfocus us when another input takes over
+      setActiveBlur(() => {
+        this.isFocused = false
+        this.$emit('blur')
+      })
       this.$emit('focus')
     },
 
@@ -165,7 +170,7 @@ export default {
     onDone() {
       this.isFocused = false
       this.$emit('submit')
-      this.$emit('blur')
+      // blur is emitted via the onBlur callback in dismissKeyboard, not here
     },
 
     onDesktopInput(e) {
