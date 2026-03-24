@@ -48,7 +48,7 @@
 
 .basil-keyboard__key:active {
   transform: scale(0.95);
-  background: var(--basil-accent);
+  background: var(--basil-green);
   color: var(--basil-text-inverse);
 }
 
@@ -59,14 +59,14 @@
 }
 
 .basil-keyboard__key--action {
-  background: var(--basil-accent);
+  background: var(--basil-green);
   color: var(--basil-text-inverse);
   font-weight: 600;
   font-size: 14px;
 }
 
 .basil-keyboard__key--action:active {
-  background: var(--basil-accent);
+  background: var(--basil-green);
   opacity: 0.8;
 }
 
@@ -108,7 +108,7 @@
 }
 
 .basil-input--focused {
-  border-color: var(--basil-accent);
+  border-color: var(--basil-green);
 }
 
 .basil-input--dense {
@@ -165,7 +165,7 @@
   display: inline-block;
   width: 1px;
   height: 1.1em;
-  background: var(--basil-accent);
+  background: var(--basil-green);
   vertical-align: text-bottom;
   animation: basil-blink 1s step-end infinite;
 }
