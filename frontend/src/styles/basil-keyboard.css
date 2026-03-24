@@ -163,10 +163,11 @@
 
 .basil-input__cursor {
   display: inline-block;
-  width: 1px;
-  height: 1.1em;
+  width: 1.5px;
+  height: 1em;
   background: var(--basil-green);
-  vertical-align: text-bottom;
+  vertical-align: baseline;
+  margin-left: 0.5px;
   animation: basil-blink 1s step-end infinite;
 }
 
