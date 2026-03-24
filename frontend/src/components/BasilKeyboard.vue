@@ -99,7 +99,7 @@ export default {
   methods: {
     onKey(char) {
       try { navigator.vibrate?.(10) } catch {}
-      emitKey(this.shifted ? char.toUpperCase() : char)
+      emitKey(this.shifted ? char.toUpperCase() : char.toLowerCase())
     },
     onBackspace() {
       try { navigator.vibrate?.(10) } catch {}
