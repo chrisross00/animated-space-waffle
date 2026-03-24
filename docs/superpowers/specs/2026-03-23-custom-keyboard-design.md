@@ -49,7 +49,7 @@ App-level singleton mounted in `App.vue`. Contains:
 **Dismissal behavior:**
 - Tapping "Done" key
 - Any `pointerdown` on an element that is not inside a `.basil-input` or `.basil-keyboard` element (this includes tapping category rows, buttons, empty space, etc.)
-- Navigating to a different view (Vue Router `beforeEach` guard calls `dismissKeyboard()`)
+- Navigating to a different view (Vue Router `afterEach` guard calls `dismissKeyboard()`)
 - Scrolling does **not** dismiss — users may need to scroll to see other content while an input is focused
 
 **Z-index ordering:** The keyboard must render above Quasar dialog overlays (z-index 6000). Keyboard uses `z-index: 7000` to ensure it sits above trays and dialogs.
@@ -67,13 +67,20 @@ This split is internal to `BasilInput` — consuming components use the same API
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `modelValue` | `String \| Number` | `''` | v-model binding |
+| `modelValue` | `String \| Number` | `''` | v-model binding. Amount variant emits `Number`; others emit `String`. |
 | `variant` | `String` | `'text'` | One of: `text`, `amount`, `search`, `note` |
-| `label` | `String` | `''` | Input label |
-| `prefix` | `String` | `''` | Display prefix (e.g. `$`) |
+| `label` | `String` | `''` | Floating input label |
+| `hint` | `String` | `''` | Help text displayed below the input |
+| `placeholder` | `String` | `''` | Placeholder text when value is empty |
+| `prefix` | `String` | `''` | Display prefix (e.g. `$`). Amount variant defaults to `$`. |
 | `dense` | `Boolean` | `false` | Compact mode |
 | `disabled` | `Boolean` | `false` | Disables input |
 | `action` | `String` | `'done'` | Action key label (`done`, `next`, `search`, `go`) — ships as `done` everywhere, extensible for future use |
+| `debounce` | `Number` | `0` | Debounce delay in ms. Search variant defaults to `300` if not set. |
+
+**Events:** `update:modelValue`, `focus`, `blur`, `submit` (fires on Enter key / Done tap — replaces `@keyup.enter` in consuming components)
+
+**Public methods:** `focus()` — opens the custom keyboard on mobile, focuses the native input on desktop. Used by `this.$refs.x.focus()` callers.
 
 **Variant behaviors:**
 
