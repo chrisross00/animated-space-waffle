@@ -91,7 +91,10 @@ router.beforeEach(async (to, _from, next) => {
   }
   isFirstNavigation = false;
 
-  if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
+  // PWA: always open to /budget on fresh app launch
+  if (isFirstNavigation && to.path !== '/budget' && !PUBLIC_ROUTES.includes(to.path) && store.state.session) {
+    next('/budget');
+  } else if (!PUBLIC_ROUTES.includes(to.path) && !store.state.session) {
     next('/profile');
   } else if (
     store.state.session &&
