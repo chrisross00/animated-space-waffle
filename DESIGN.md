@@ -274,24 +274,28 @@ standard animation and no handle. The `maxWidth` prop controls the desktop card 
 - Always use `flat` on the inner `q-card` (the tray wrapper provides its own background)
 - Never hardcode `position="bottom"`, `border-radius`, or drag handles inline — `BasilTray` handles all of that
 - CSS classes: `basil-tray__wrap`, `basil-tray__handle-wrap`, `basil-tray__handle` (in `dialogs.css`)
-- **iOS keyboard rule:** On iOS Safari, `position: fixed; bottom: 0` (used by BasilTray)
-  conflicts with the virtual keyboard — when a text input is tapped, the tray can jitter
-  as Safari's scroll-into-view algorithm fights with the bottom anchor. To avoid this:
-  1. **Keep text inputs high in the tray.** Ensure enough content below inputs (padding,
-     disclaimers, extra spacing) so the input sits above the keyboard line (~260px from
-     bottom). Use `padding-bottom: var(--basil-space-8)` on the last content element if
-     the tray is short.
-  2. **Never put text inputs in selection-only steps.** If a tray has a pick-list step
-     followed by a form step, keep the text input on the form step (which has enough
-     fields to be tall) — not on the pick-list step.
-  3. **Tall trays are safe.** Trays with 4+ form fields naturally push inputs above the
-     keyboard. Short trays (1-2 fields) are the danger zone.
-
 ### Transaction row (All Transactions table)
 The table uses a custom `v-slot:body` with:
 - Initials avatar: `merchantColor()` + `merchantInitials()` methods (BudgetView)
 - Amount: `basil-txn-amount` + `--credit` / `--debit` modifier
 - Excluded rows: `basil-txn-row--excluded` (40% opacity)
+
+### Custom keyboard & BasilInput
+
+On mobile, the app uses a custom on-screen keyboard instead of the native iOS/Android
+keyboard. This gives the app full control over viewport layout and eliminates Safari
+keyboard quirks (jitter, scroll-into-view fighting, unpredictable height).
+
+**Rules:**
+- **Never use `q-input` for new inputs.** Use `BasilInput` or a variant wrapper.
+- **Variants:** `amount` (numpad, $ prefix, decimal handling), `search` (QWERTY, clear button),
+  `text` (QWERTY, short strings), `note` (QWERTY, longer text).
+- **Thin wrappers:** `<BasilAmount>`, `<BasilSearch>`, `<BasilText>`, `<BasilNote>`.
+- **Desktop:** `BasilInput` renders a native `<input>` — no custom keyboard, full native behavior.
+- **Mobile:** `BasilInput` renders a non-focusable div. Input comes through `BasilKeyboard`.
+- **The `BasilKeyboard` singleton lives in `App.vue`.** Do not mount it elsewhere.
+- **Keyboard state** is managed by `frontend/src/utils/basilKeyboard.js` (reactive singleton).
+- **`@submit` event** replaces `@keyup.enter` — fires on Enter (desktop) or Done (mobile).
 
 ### Loading states (three-state pattern)
 Non-Budget views use `store.state.bootstrapping` to gate content:

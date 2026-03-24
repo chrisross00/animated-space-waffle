@@ -123,6 +123,7 @@ html, body, #app {
 
 
 /* ---- Inputs & selects ---- */
+/* q-field overrides — primarily for q-select (q-input replaced by BasilInput) */
 
 .q-field__label {
   color: var(--basil-text-secondary);
