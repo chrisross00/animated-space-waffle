@@ -14,7 +14,7 @@
   background: var(--basil-surface-dialog);
   border-top: 1px solid var(--basil-border-strong);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
-  transition: transform var(--basil-t-base) var(--basil-ease);
+  transition: transform 400ms cubic-bezier(0.25, 0.1, 0.25, 1);
   padding: var(--basil-space-2) var(--basil-space-1) var(--basil-space-2);
   padding-bottom: env(safe-area-inset-bottom);
   touch-action: manipulation;

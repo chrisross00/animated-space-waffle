@@ -27,7 +27,7 @@
     </div>
 
     <!-- Inline new tag input -->
-    <div v-if="showNewInput" class="basil-tag-picker__new row items-center q-gutter-xs q-mt-xs" style="padding-bottom: var(--basil-space-8)">
+    <div v-if="showNewInput" class="basil-tag-picker__new row items-center q-gutter-xs q-mt-xs">
       <BasilText ref="newTagInput" v-model="newTagName" dense placeholder="Tag name" style="flex: 1" @submit="addNewTag" />
       <q-btn flat dense icon="check" color="primary" :disable="!newTagName?.trim()" @click="addNewTag" />
       <q-btn flat dense icon="close" @click="showNewInput = false; newTagName = ''" />

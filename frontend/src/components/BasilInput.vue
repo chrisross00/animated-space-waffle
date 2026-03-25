@@ -132,8 +132,8 @@ export default {
         this.$emit('blur')
       })
       this.$emit('focus')
-      // After keyboard animates open, scroll this input into view
-      setTimeout(() => scrollActiveInputIntoView(), 300)
+      // After keyboard animates open and padding expands, scroll input into view
+      setTimeout(() => scrollActiveInputIntoView(), 350)
     },
 
     onSelectAll() {

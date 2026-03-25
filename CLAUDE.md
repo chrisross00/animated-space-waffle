@@ -263,16 +263,18 @@ name pattern / amount / amount + institution".
       Design validated via UX analysis + competitor research (see `plans/`).
 - [ ] **Mobile: dropdown blur swallows submit tap** — on mobile, tapping a submit
       button while a Quasar `q-select` has focus requires two taps (first blurs the
-      dropdown, second fires the button). Affects all forms app-wide, not just splitting.
-      Possible fix: `@mousedown.prevent` on submit buttons, or `@touchend.prevent` to
-      fire before blur. Needs investigation for side effects across all form patterns.
+      dropdown, second fires the button). Caused by Quasar's popup overlay intercepting
+      the tap. Will resolve naturally when `q-select` is replaced with a Basil component.
 
 ### Medium priority
+- [ ] **Post-onboarding in-flow prompts** — soft-gate dialogs for actions like Add to
+      Home Screen (with GIF), Venmo import, trends discovery. Not nudges, not overlays —
+      feel like onboarding continuation. Trigger contextually, dismiss permanently.
+      See `plans/post-onboarding-nudges.md` "In-Flow Prompts" section.
 - [ ] **Show/hide empty budget categories** — user setting to toggle whether categories
       with zero activity and no budget limit are visible on the budget page. Currently
       hidden via `shouldShowCategory` (requires limit, activity, or transactions).
       Setting should persist per-user (DB or localStorage).
-- [ ] **Export to CSV** — low effort, useful for taxes/sharing.
 - [ ] **Rules & suggestion engine: user control** — "exclude from rules" checkbox in
       Edit Transaction dialog; confidence reason chips; merchant exclusion from auto-suggest.
 - [ ] **Fixed vs variable category dimension** — `fixed`/`variable` flag on categories
@@ -302,6 +304,7 @@ name pattern / amount / amount + institution".
       Vue Test Utils setup).
 
 ### Maybe / future
+- [ ] **Export to CSV** — low effort, useful for taxes/sharing. Low priority.
 - [ ] **Push notifications** — Service Worker + Push API. Needs design decision.
 - [ ] **Customizable nav** — user picks which views appear in bottom toolbar.
 - [ ] **Settings: Budget rollover** — per-category or global? Unspent budget carryover.

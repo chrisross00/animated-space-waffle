@@ -323,7 +323,7 @@
               class="q-mb-sm"
             />
             <BasilAmount v-model="manualBalance" label="Current balance" dense />
-            <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2); padding-bottom: var(--basil-space-8)">
+            <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2)">
               Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
             </div>
           </q-card-section>

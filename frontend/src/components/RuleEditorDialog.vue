@@ -240,6 +240,7 @@
   overflow-y: auto;
   min-height: 0;
   border-top: 1px solid var(--basil-border);
+  padding-bottom: var(--basil-keyboard-height, 0px);
 }
 
 /* Body: side-by-side on md+, stacked on mobile */

@@ -49,6 +49,26 @@ export function getActiveInputEl() {
 }
 
 /**
+ * Smooth-scroll a container by a given amount over ~250ms.
+ */
+function smoothScrollBy(container, distance) {
+  const start = container.scrollTop
+  const startTime = performance.now()
+  // Scale duration with distance: min 300ms, max 500ms
+  const duration = Math.min(500, Math.max(300, distance * 2))
+
+  function step(now) {
+    const elapsed = now - startTime
+    const t = Math.min(elapsed / duration, 1)
+    // ease-out cubic
+    const ease = 1 - Math.pow(1 - t, 3)
+    container.scrollTop = start + distance * ease
+    if (t < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+
+/**
  * Find the closest scrollable ancestor of an element.
  */
 function findScrollParent(el) {
@@ -67,23 +87,29 @@ function findScrollParent(el) {
  */
 export function scrollActiveInputIntoView() {
   const el = activeCallbacks?.inputEl
-  if (!el || !keyboardState.height) return
+  if (!el) return
+
+  // If height isn't set yet (watcher pending), retry shortly
+  if (!keyboardState.height) {
+    setTimeout(() => scrollActiveInputIntoView(), 50)
+    return
+  }
 
   const elRect = el.getBoundingClientRect()
   const visibleBottom = window.innerHeight - keyboardState.height
-  const margin = 16
-
-  if (elRect.bottom <= visibleBottom - margin) return // already visible
+  const padding = 40 // breathing room above the keyboard
 
   const scrollParent = findScrollParent(el)
   if (scrollParent) {
     // Inside a tray/dialog — scroll within the container
     const parentRect = scrollParent.getBoundingClientRect()
     const containerVisible = Math.min(parentRect.bottom, visibleBottom)
-    scrollParent.scrollBy({ top: elRect.bottom - containerVisible + margin, behavior: 'smooth' })
+    const overflow = elRect.bottom - containerVisible + padding
+    if (overflow > 0) smoothScrollBy(scrollParent, overflow)
   } else {
     // Full-page view — add padding to body so content is reachable, then scroll
     document.body.style.paddingBottom = keyboardState.height + 'px'
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const overflow = elRect.bottom - visibleBottom + padding
+    if (overflow > 0) smoothScrollBy(document.documentElement, overflow)
   }
 }

@@ -88,3 +88,58 @@ user preferences — avoids per-preference migrations. Keys so far:
 - YNAB category import
 - Multi-month budget history in setup flow
 - Category-level benchmarking from aggregate user data
+
+---
+
+## In-Flow Prompts (broader post-onboarding actions)
+
+> **Added:** 2026-03-24
+> **Status:** Idea / notes
+
+### Problem
+
+Beyond budget setup, there are actions we want users to take after onboarding
+(add to home screen, import Venmo, etc.) but no mechanism to surface them.
+Pendo-style tours feel like homework — users skip. Passive nudges are too easy
+to ignore.
+
+### Approach: Soft-gate dialogs
+
+Not nudges, not overlays — in-flow prompts that feel like a continuation of
+onboarding. A minor interruption that isn't disruptive because the user isn't
+in the middle of an action yet.
+
+### Design principles
+
+- **Timing > format.** Show at the moment of highest relevance, not earliest
+  opportunity.
+- **Don't block the payoff.** Let the user see their data first. The ask comes
+  after they've gotten value, not before.
+- **One shot, then gone.** Dismissed = dismissed forever. No nagging.
+- **GIFs for out-of-app flows.** Things like Add to Home Screen happen in Safari,
+  not our app. A 3-second looping GIF inside the dialog shows exactly what to tap.
+  Host as static assets in `frontend/public/`.
+- **Feel like onboarding, not interruption.** The app is still setting itself up.
+
+### Prompt sequence
+
+| Prompt | Trigger | Why this moment |
+|--------|---------|-----------------|
+| Add to Home Screen | Second visit to budget page, or after first interaction (scroll/tap) | First visit = let them see their data. After they've poked around, they're bought in. |
+| Import Venmo history | First Venmo transaction appears in their feed | Natural "oh I have Venmo transactions" moment. "You have 47 more like this." |
+| "Rules are working" | After 5+ auto-categorized transactions | Reinforcement, not an ask. Shows the system is learning. |
+| Check your trends | After first full month completes | Data is now meaningful — give them a reason to explore. |
+
+### Implementation notes
+
+- Gate Add to Home Screen: mobile Safari/Chrome only (detect platform)
+- Store dismissed state in user preferences (DB), keyed by prompt ID
+- Each prompt: short copy + optional media (GIF/image) + action + dismiss
+- Could reuse BasilTray as the dialog container
+- Check conditions on relevant view mount, show first unresolved prompt
+
+### Open questions
+
+- Second page visit vs. interaction-based trigger for first prompt?
+- Shared prompt component, or one-off dialogs per prompt?
+- Analytics on dismiss vs. complete rates?
