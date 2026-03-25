@@ -116,6 +116,12 @@ router.afterEach(() => { dismissKeyboard() })
 
 const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
 
+// Register Basil components globally (additive — Quasar still installed until Phase 5)
+import * as BasilComponents from './components/basil'
+Object.entries(BasilComponents).forEach(([name, component]) => {
+  app.component(name, component)
+})
+
 // Initialize Sentry (no-ops silently if DSN is not set)
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
