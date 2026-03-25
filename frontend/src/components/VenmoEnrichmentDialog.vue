@@ -56,7 +56,7 @@
             <thead>
               <tr>
                 <th class="text-left">
-                  <q-checkbox v-model="selectAll" size="sm" dense />
+                  <BasilToggle v-model="selectAll" variant="checkbox" dense />
                 </th>
                 <th class="text-left">Date</th>
                 <th class="text-left">Note</th>
@@ -67,7 +67,7 @@
             </thead>
             <tbody>
               <tr v-for="(m, idx) in matches" :key="m.venmoRow.id">
-                <td><q-checkbox v-model="selected[idx]" size="sm" dense /></td>
+                <td><BasilToggle v-model="selected[idx]" variant="checkbox" dense /></td>
                 <td>{{ formatDate(m.venmoRow.date) }}</td>
                 <td>{{ m.venmoRow.note }}</td>
                 <td>{{ m.venmoRow.counterparty }}</td>

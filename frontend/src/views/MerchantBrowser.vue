@@ -48,15 +48,12 @@
       <template v-slot:body-cell-assign="props">
         <q-td :props="props">
           <div class="row no-wrap items-center q-gutter-sm" style="height: 40px">
-            <q-select
+            <BasilSelect
               v-model="pendingAssignments[props.row.merchant_name]"
-              :options="filteredCategories"
+              :options="categoryNames"
               dense
-              outlined
+              filterable
               style="width: 200px"
-              use-input
-              input-debounce="0"
-              @filter="filterFn"
             />
             <BasilButton
               label="Apply"
@@ -134,12 +131,11 @@
         </div>
 
         <div class="basil-card__body q-pt-none">
-          <q-select
+          <BasilSelect
             v-model="editDialog.selectedCategory"
-            :options="filteredCategories"
+            :options="categoryNames"
             label="Assign to category"
-            outlined use-input input-debounce="0"
-            @filter="filterFn"
+            filterable
           />
         </div>
 

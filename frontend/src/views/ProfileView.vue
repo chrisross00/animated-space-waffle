@@ -225,7 +225,7 @@
             <div class="basil-settings-row__label">Dark mode</div>
             <div class="basil-settings-row__hint">Terminal theme with emerald accents</div>
           </div>
-          <q-toggle :model-value="isDark" color="primary" @update:model-value="toggleTheme" />
+          <BasilToggle :model-value="isDark" @update:model-value="toggleTheme" />
         </div>
       </BasilCard>
 

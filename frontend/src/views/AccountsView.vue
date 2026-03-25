@@ -303,10 +303,12 @@
               Adding to <strong>{{ manualInstitution }}</strong>
             </div>
             <BasilText v-model="manualAccountName" label="Account name" dense placeholder="e.g. Brokerage, Checking" class="q-mb-sm" />
-            <q-select
-              v-model="manualAccountType" label="Account type" outlined dense
+            <BasilSelect
+              v-model="manualAccountType" label="Account type" dense
               :options="accountTypeOptions"
-              emit-value map-options
+              option-label="label"
+              option-value="value"
+              emit-value
               placeholder="Select account type"
               class="q-mb-sm"
             />

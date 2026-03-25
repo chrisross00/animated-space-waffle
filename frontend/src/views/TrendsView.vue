@@ -96,8 +96,9 @@
     <div class="basil-trends-controls">
       <!-- Row 1: Report type -->
       <div class="basil-trends-controls__row">
-        <q-btn-toggle
+        <BasilToggle
           v-model="activeChart"
+          variant="button-group"
           :options="[
             { label: 'Spending', value: 'spending' },
             { label: 'Cash Flow', value: 'cashflow' },
@@ -105,29 +106,26 @@
             { label: 'Savings', value: 'savings' },
           ]"
           dense
-          unelevated
-          toggle-color="primary"
         />
       </div>
 
       <!-- Row 2: Month range -->
       <div class="basil-trends-controls__row">
         <span class="text-body2" style="color: var(--basil-text-muted)">Months:</span>
-        <q-btn-toggle
+        <BasilToggle
           v-model="monthCount"
+          variant="button-group"
           :options="[{ label: '3', value: 3 }, { label: '6', value: 6 }, { label: '12', value: 12 }]"
           dense
-          unelevated
-          toggle-color="primary"
         />
       </div>
 
       <!-- Row 3: Category type toggles (spending only) -->
       <div v-if="activeChart === 'spending'" class="basil-trends-controls__row basil-trends-controls__row--toggles">
-        <q-toggle v-model="showExpenses" label="Expenses" dense />
-        <q-toggle v-model="showIncome" label="Income" dense />
-        <q-toggle v-model="showPayments" label="Payments" dense />
-        <q-toggle v-model="showSavings" label="Savings" dense />
+        <BasilToggle v-model="showExpenses" label="Expenses" dense />
+        <BasilToggle v-model="showIncome" label="Income" dense />
+        <BasilToggle v-model="showPayments" label="Payments" dense />
+        <BasilToggle v-model="showSavings" label="Savings" dense />
       </div>
     </div>
 

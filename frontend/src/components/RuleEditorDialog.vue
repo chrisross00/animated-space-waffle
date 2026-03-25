@@ -34,23 +34,21 @@
           <div class="basil-re__condition">
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Merchant name</span>
-              <q-toggle v-model="form.merchantName.active" color="primary" dense size="sm" />
+              <BasilToggle v-model="form.merchantName.active" dense />
             </div>
             <div v-if="form.merchantName.active" class="basil-re__condition-row">
-              <q-select
+              <BasilSelect
                 v-model="form.merchantName.op"
                 :options="textOpOptions"
                 option-value="value" option-label="label"
-                emit-value map-options outlined dense
+                emit-value dense
                 class="basil-re__text-op"
               />
-              <q-select
+              <BasilSelect
                 v-model="form.merchantName.value"
-                :options="filteredMerchants"
-                use-input new-value-mode="add-unique"
-                input-debounce="0"
-                @filter="filterMerchants"
-                outlined dense
+                :options="merchantOptions"
+                filterable
+                dense
                 placeholder="e.g. Zelle"
                 class="basil-re__condition-input"
               />
@@ -61,14 +59,14 @@
           <div class="basil-re__condition">
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Transaction name</span>
-              <q-toggle v-model="form.name.active" color="primary" dense size="sm" />
+              <BasilToggle v-model="form.name.active" dense />
             </div>
             <div v-if="form.name.active" class="basil-re__condition-row">
-              <q-select
+              <BasilSelect
                 v-model="form.name.op"
                 :options="textOpOptions"
                 option-value="value" option-label="label"
-                emit-value map-options outlined dense
+                emit-value dense
                 class="basil-re__text-op"
               />
               <BasilText v-model="form.name.value" dense placeholder="e.g. Venmo" class="basil-re__condition-input" />
@@ -79,16 +77,15 @@
           <div class="basil-re__condition">
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Amount</span>
-              <q-toggle v-model="form.amount.active" color="primary" dense size="sm" />
+              <BasilToggle v-model="form.amount.active" dense />
             </div>
             <div v-if="form.amount.active" class="basil-re__condition-row">
-              <q-select
+              <BasilSelect
                 v-model="form.amount.op"
                 :options="amountOpOptions"
                 option-value="value"
                 option-label="label"
-                emit-value map-options
-                outlined dense
+                emit-value dense
                 class="basil-re__amount-op"
               />
               <BasilAmount v-if="['eq', 'gt', 'lt'].includes(form.amount.op)" v-model="form.amount.value" dense placeholder="0.00" class="basil-re__amount-val" />
@@ -104,13 +101,13 @@
           <div class="basil-re__condition">
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Institution</span>
-              <q-toggle v-model="form.institution.active" color="primary" dense size="sm" />
+              <BasilToggle v-model="form.institution.active" dense />
             </div>
-            <q-select
+            <BasilSelect
               v-if="form.institution.active"
               v-model="form.institution.value"
               :options="institutionOptions"
-              outlined dense
+              dense
               placeholder="Select institution…"
               class="basil-re__condition-input"
             />
@@ -124,10 +121,10 @@
             <div class="basil-re__condition-head">
               <span class="basil-re__condition-label">Update category</span>
             </div>
-            <q-select
+            <BasilSelect
               v-model="form.categoryName"
               :options="categoryOptions"
-              outlined dense
+              dense filterable
               placeholder="Choose category…"
               class="basil-re__condition-input"
             />
@@ -151,10 +148,11 @@
           <!-- Apply to existing (edit mode only) -->
           <template v-if="isEdit">
             <div class="basil-re__divider" />
-            <q-checkbox
+            <BasilToggle
               v-model="reapply"
+              variant="checkbox"
               label="Apply to existing transactions"
-              dense size="sm"
+              dense
               class="basil-re__reapply"
             />
           </template>

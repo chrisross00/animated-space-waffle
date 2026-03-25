@@ -52,19 +52,20 @@
 
       <template v-if="!splitMode">
         <div class="basil-dialog-fields">
-          <q-input
-            type="date"
-            outlined
-            v-model="dialogBody.date"
-            label="Date"
-            @change="isFormSubmittable()"
-          />
-          <q-select
-            outlined
+          <div class="basil-date-field">
+            <label class="basil-date-field__label">Date</label>
+            <input
+              type="date"
+              class="basil-date-field__input"
+              v-model="dialogBody.date"
+              @change="isFormSubmittable()"
+            />
+          </div>
+          <BasilSelect
             v-model="dialogBody.mappedCategory"
             label="Category"
             :options="dropDownOptions"
-            @touchmove.stop.prevent
+            filterable
           />
           <BasilNote v-model="dialogBody.note" label="Note" @blur="isFormSubmittable()" />
         </div>
@@ -74,21 +75,18 @@
         </div>
 
         <div class="basil-dialog-toggles">
-          <q-toggle
-            color="primary"
+          <BasilToggle
             label="Exclude from total"
             v-model="dialogBody.excludeFromTotal"
             @update:model-value="isFormSubmittable()"
           />
           <div v-if="dialogType === 'transaction' && similarityData?.allCount > 0" class="basil-dialog-similar">
-            <q-checkbox v-model="dialogBody.createRule" dense color="primary">
-              <template #default>
-                <span v-if="actionableCount > 0">
-                  Also categorize {{ actionableCount }} similar
-                </span>
-                <span v-else>Remember for future "{{ similarityData.label }}" ({{ similarityData.allCount }} similar)</span>
-              </template>
-            </q-checkbox>
+            <BasilToggle v-model="dialogBody.createRule" variant="checkbox" dense>
+              <span v-if="actionableCount > 0">
+                Also categorize {{ actionableCount }} similar
+              </span>
+              <span v-else>Remember for future "{{ similarityData.label }}" ({{ similarityData.allCount }} similar)</span>
+            </BasilToggle>
             <div class="basil-dialog-similar__hint">
               Matched by {{ { merchant_name: 'merchant', exact_name: 'name', name_account: 'name + institution', name_prefix: 'name pattern', amount_account: 'amount + institution', amount: 'amount' }[similarityData.strategy] || similarityData.strategy }}
             </div>
@@ -105,14 +103,13 @@
         <div class="basil-split__rows">
           <div v-for="(row, i) in splitRows" :key="i" class="basil-split__row">
             <BasilAmount :model-value="row.amount" @update:model-value="updateSplitAmount(i, $event)" dense class="basil-split__amount" />
-            <q-select
-              outlined dense
+            <BasilSelect
+              dense
               :model-value="row.categoryName"
               @update:model-value="updateSplitCategory(i, $event)"
               :options="dropDownOptions"
               label="Category"
               class="basil-split__category"
-              @touchmove.stop.prevent
             />
             <BasilButton
               v-if="splitRows.length > 2"
@@ -169,12 +166,11 @@
       <div class="basil-dialog-fields">
         <BasilText v-model="dialogBody.categoryName" label="Category Name" @blur="isFormSubmittable()" />
         <BasilAmount v-model="dialogBody.monthly_limit" label="Monthly Limit" @blur="isFormSubmittable()" />
-        <q-toggle
+        <BasilToggle
           v-if="item.type === 'expense'"
           v-model="dialogBody.fixed"
           label="Fixed expense (rent, subscriptions, bills)"
-          color="primary"
-          class="q-mt-sm"
+          style="margin-top: var(--basil-space-2)"
           @update:model-value="isFormSubmittable()"
         />
       </div>
@@ -209,35 +205,26 @@
       <div class="basil-dialog-section">
         <div class="basil-dialog-section__label">Add merchant rule</div>
         <div class="row items-center q-gutter-sm">
-          <q-select
+          <BasilSelect
             v-model="newRuleValue"
-            :options="filteredMerchants"
+            :options="allMerchantOptions"
             option-value="value"
             option-label="value"
             emit-value
-            map-options
             label="Search merchants…"
             dense
-            outlined
-            use-input
-            hide-selected
-            fill-input
-            input-debounce="0"
-            @filter="filterMerchants"
-            @touchmove.stop.prevent
+            filterable
             class="col"
           >
-            <template #option="scope">
-              <q-item v-bind="scope.itemProps">
-                <q-item-section>
-                  <q-item-label>{{ scope.opt.value }}</q-item-label>
-                  <q-item-label v-if="scope.opt.conflict" caption class="basil-conflict-label">
-                    currently: {{ scope.opt.conflict }}
-                  </q-item-label>
-                </q-item-section>
-              </q-item>
+            <template #option="{ option }">
+              <div>
+                <div>{{ option.value }}</div>
+                <div v-if="option.conflict" class="basil-conflict-label" style="font-size: 0.75rem;">
+                  currently: {{ option.conflict }}
+                </div>
+              </div>
             </template>
-          </q-select>
+          </BasilSelect>
           <BasilButton variant="icon" icon="add" color="primary" dense :disabled="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
         </div>
         <p v-if="conflictingCategory" class="basil-dialog-hint basil-dialog-hint--warn">
@@ -274,12 +261,10 @@
       <div class="basil-dialog-fields">
         <BasilText v-model="dialogBody.categoryName" label="Category Name" @blur="isFormSubmittable()" />
         <BasilAmount v-model="dialogBody.monthly_limit" label="Monthly Limit" @blur="isFormSubmittable()" />
-        <q-select
-          outlined
+        <BasilSelect
           v-model="dialogBody.type"
           label="Category Type"
           :options="type"
-          @touchmove.stop.prevent
         />
         <div v-if="dialogBody.type" class="basil-type-hint">
           <span v-if="dialogBody.type === 'Expense'">Counts toward your monthly spending totals.</span>
@@ -480,6 +465,36 @@
   padding: 0 var(--basil-space-1);
 }
 
+/* ── Date field ── */
+.basil-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-1);
+}
+
+.basil-date-field__label {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  font-family: var(--basil-font-ui);
+}
+
+.basil-date-field__input {
+  width: 100%;
+  padding: var(--basil-space-3) var(--basil-space-3);
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-md);
+  background: var(--basil-surface);
+  color: var(--basil-text);
+  font-family: var(--basil-font-ui);
+  font-size: 1rem;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.basil-date-field__input:focus {
+  border-color: var(--basil-primary);
+}
+
 /* ── Similarity toggle ── */
 .basil-dialog-similar {
   padding: var(--basil-space-2) 0;
@@ -608,6 +623,16 @@ computed: {
         const options = this.dropDown.map(item => item.category);
         options.sort()
         return options
+    },
+    allMerchantOptions() {
+        const merchants = this.item?.merchants || [];
+        const merchantRuleMap = this.item?.merchantRuleMap || {};
+        const currentName = this.dialogBody.originalCategoryName || this.dialogBody.categoryName;
+        return merchants.map(m => {
+            const assignedTo = merchantRuleMap[m];
+            const conflict = (assignedTo && assignedTo !== currentName) ? assignedTo : null;
+            return { value: m, conflict };
+        });
     },
     actionableCount() {
         if (!this.similarityData?.matches) return 0;

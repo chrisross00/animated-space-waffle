@@ -280,9 +280,9 @@
 
       <!-- Button Container -->
       <div v-if="isOnboarded" class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
-        <q-toggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
-        <q-toggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions"  />
-        <q-select v-if="!showAll" outlined v-model="selectedDate.display" :options="months" label="Budgets" @touchmove.stop.prevent />
+        <BasilToggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
+        <BasilToggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions" />
+        <BasilSelect v-if="!showAll" v-model="selectedDate.display" :options="months" label="Budgets" />
       </div>
 
       <!-- If show all is false -->
@@ -465,37 +465,35 @@
 
         <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
         <div class="row items-center q-gutter-sm q-mb-sm">
-          <template v-if="selectedRows.length === 0 || $q.screen.lt.sm">
+          <template v-if="selectedRows.length === 0 || isMobile">
             <BasilSearch
               v-model="tableSearch"
               dense
               placeholder="Search name or merchant"
               style="flex: 1; min-width: 150px"
             />
-            <q-select
+            <BasilSelect
               v-model="tableMonth"
               :options="[{ label: 'All months', value: null }, ...months.map(m => ({ label: m, value: m }))]"
               option-label="label"
               option-value="value"
               emit-value
-              map-options
               dense
-              outlined
               style="min-width: 140px"
-              @touchmove.stop.prevent
             />
             <BasilAmount v-model="amountMin" dense placeholder="Min $" style="width: 90px" class="gt-xs" />
             <BasilAmount v-model="amountMax" dense placeholder="Max $" style="width: 90px" class="gt-xs" />
-            <q-select
+            <BasilSelect
               v-if="$store.state.tags.length > 0"
               v-model="tagFilter"
               :options="$store.state.tags.map(t => ({ label: t.name, value: t.id }))"
-              emit-value map-options
+              emit-value
+              option-label="label"
+              option-value="value"
               label="Tag"
-              dense outlined clearable
+              dense
               style="min-width: 120px"
               class="gt-xs"
-              @touchmove.stop.prevent
             />
             <BasilButton
               variant="flat"
@@ -508,14 +506,13 @@
           <template v-else>
             <div class="gt-xs row items-center q-gutter-sm full-width">
               <span class="basil-bulk-label">{{ selectedRows.length }} selected</span>
-              <q-select
+              <BasilSelect
                 v-model="bulkCategory"
                 :options="categoryMonthlyLimits.map(c => c.category).sort()"
                 label="Move to category"
                 dense
-                outlined
+                filterable
                 style="min-width: 180px"
-                @touchmove.stop.prevent
               />
               <BasilButton label="Apply" :disabled="!bulkCategory" @click="applyBulkCategory" />
               <BasilButton variant="flat" dense icon="sell" label="Tag" @click="openBulkTag()" />
@@ -569,7 +566,7 @@
           >
             <!-- Checkbox (desktop only) -->
             <div class="basil-txn-row__checkbox gt-xs">
-              <q-checkbox dense :model-value="isRowSelected(item)" @update:model-value="toggleRowSelection(item)" @click.stop />
+              <BasilToggle variant="checkbox" dense :model-value="isRowSelected(item)" @update:model-value="toggleRowSelection(item)" @click.stop />
             </div>
 
             <!-- Name -->
@@ -577,11 +574,11 @@
               <div class="basil-txn-cell">
                 <div
                   class="basil-txn-avatar"
-                  :class="{ 'basil-txn-avatar--selected': $q.screen.lt.sm && isRowSelected(item) }"
-                  :style="isRowSelected(item) && $q.screen.lt.sm ? {} : { background: merchantColor(item) }"
-                  @click="$q.screen.lt.sm && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(item)) : null"
+                  :class="{ 'basil-txn-avatar--selected': isMobile && isRowSelected(item) }"
+                  :style="isRowSelected(item) && isMobile ? {} : { background: merchantColor(item) }"
+                  @click="isMobile && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(item)) : null"
                 >
-                  <q-icon v-if="$q.screen.lt.sm && isRowSelected(item)" name="check" size="18px" />
+                  <q-icon v-if="isMobile && isRowSelected(item)" name="check" size="18px" />
                   <template v-else>{{ merchantInitials(item) }}</template>
                 </div>
                 <div class="basil-txn-label">
@@ -700,14 +697,13 @@
         <BasilButton variant="icon" icon="close" dense @click="selectedRows = []" class="col-auto" />
       </div>
       <div class="row items-center q-gutter-sm">
-        <q-select
+        <BasilSelect
           v-model="bulkCategory"
           :options="categoryMonthlyLimits.map(c => c.category).sort()"
           label="Move to category"
           dense
-          outlined
+          filterable
           style="flex: 1"
-          @touchmove.stop.prevent
         />
         <BasilButton label="Apply" :disabled="!bulkCategory" @click="applyBulkCategory" />
         <BasilButton variant="flat" dense icon="sell" label="Tag" @click="openBulkTag()" />
@@ -804,10 +800,10 @@
             <div class="basil-split__rows" style="padding: 0 var(--basil-space-4);">
               <div v-for="(row, i) in triageSplitRows" :key="i" class="basil-split__row">
                 <BasilAmount :model-value="row.amount" @update:model-value="triageUpdateSplitAmount(i, $event)" dense class="basil-split__amount" />
-                <q-select outlined dense :model-value="row.categoryName"
+                <BasilSelect dense :model-value="row.categoryName"
                   @update:model-value="triageUpdateSplitCategory(i, $event)"
                   :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
-                  label="Category" class="basil-split__category" @touchmove.stop.prevent />
+                  label="Category" class="basil-split__category" />
                 <BasilButton v-if="triageSplitRows.length > 2" variant="icon" icon="close" dense color="negative"
                   @click="triageSplitRows.splice(i, 1)" />
                 <div v-else style="width: 36px" />
@@ -836,12 +832,11 @@
 
             <!-- Category / Note / Tags — matches DialogComponent field sizing -->
             <div class="basil-triage__fields">
-              <q-select
+              <BasilSelect
                 v-model="triageCategory"
                 :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
                 label="Category"
-                outlined
-                @touchmove.stop.prevent
+                filterable
               />
               <BasilNote v-model="triageNote" label="Note" />
             </div>
@@ -850,23 +845,20 @@
             </div>
 
             <div class="q-px-md">
-              <q-toggle
+              <BasilToggle
                 v-model="triageExclude"
-                color="primary"
                 label="Exclude from total"
               />
             </div>
 
             <!-- Similar transactions toggle -->
             <div v-if="triageSimilar && triageSimilar.allCount > 0" class="basil-triage__similar-area">
-              <q-checkbox v-model="triageCreateRule" dense color="primary">
-                <template #default>
-                  <span v-if="triageActionableCount > 0">
-                    Also categorize {{ triageActionableCount }} similar
-                  </span>
-                  <span v-else>Remember for future "{{ triageSimilar.label }}" ({{ triageSimilar.allCount }} similar)</span>
-                </template>
-              </q-checkbox>
+              <BasilToggle v-model="triageCreateRule" variant="checkbox" dense>
+                <span v-if="triageActionableCount > 0">
+                  Also categorize {{ triageActionableCount }} similar
+                </span>
+                <span v-else>Remember for future "{{ triageSimilar.label }}" ({{ triageSimilar.allCount }} similar)</span>
+              </BasilToggle>
               <div class="basil-triage__similar-hint">
                 Matched by {{ { merchant_name: 'merchant', exact_name: 'name', name_account: 'name + institution', name_prefix: 'name pattern', amount_account: 'amount + institution', amount: 'amount' }[triageSimilar.strategy] || triageSimilar.strategy }}
               </div>
@@ -957,6 +949,7 @@
   import BasilSearch from '@/components/BasilSearch';
   import BasilAmount from '@/components/BasilAmount';
   import BasilNote from '@/components/BasilNote';
+  import { screen } from '@/composables/useScreen';
 
 // import e from 'express';
 
@@ -1075,6 +1068,8 @@
       };
     },
     computed: {
+      isMobile() { return screen.isMobile },
+      isDesktop() { return screen.isDesktop },
       storeTransactions() {
         return store.state.transactions;
       },
@@ -2476,7 +2471,7 @@ monthStats() {
           this.longPressTriggered = false;
           return;
         }
-        if (this.$q.screen.lt.sm && this.selectedRows.length > 0) {
+        if (this.isMobile && this.selectedRows.length > 0) {
           this.toggleRowSelection(row);
           return;
         }

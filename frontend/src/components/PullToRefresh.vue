@@ -35,6 +35,7 @@
 <script>
 import store from '../store'
 import { getOrAddUser, fetchCategories, fetchRules, fetchTransactionsForMonth } from '../api'
+import { screen } from '@/composables/useScreen'
 
 export default {
   name: 'PullToRefresh',
@@ -49,6 +50,7 @@ export default {
   },
 
   computed: {
+    isMobile() { return screen.isMobile },
     indicatorHeight() {
       if (this.state === 'refreshing') return this.threshold;
       return Math.min(this.distance, this.threshold * 1.5);
@@ -67,7 +69,7 @@ export default {
   methods: {
     onStart(e) {
       if (this.state === 'refreshing') return;
-      if (!this.$q.screen.lt.sm) return;
+      if (!this.isMobile) return;
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       if (scrollTop > 0) return;
       this.startY = e.touches[0].clientY;

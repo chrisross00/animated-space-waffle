@@ -14,9 +14,6 @@
       class="basil-swipe__content"
       :class="{ 'basil-swipe__content--animating': animating }"
       :style="{ transform: `translateX(${offset}px)` }"
-      @touchstart.passive="onTouchStart"
-      @touchmove.passive="onTouchMove"
-      @touchend.passive="onTouchEnd"
       @click="onClick"
     >
       <slot />
@@ -25,6 +22,8 @@
 </template>
 
 <script>
+import { useGesture } from '@/composables/useGesture'
+
 export default {
   name: 'SwipeReveal',
   props: {
@@ -37,54 +36,41 @@ export default {
     return {
       offset: 0,
       animating: false,
-      startX: 0,
-      startY: 0,
       startOffset: 0,
-      swiping: null, // null = undecided, true = horizontal, false = vertical
     };
   },
 
+  mounted() {
+    this._stopGesture = useGesture(this.$refs.container, {
+      direction: 'horizontal',
+      onStart: () => {
+        if (this.disabled) return;
+        this.animating = false;
+        this.startOffset = this.offset;
+      },
+      onMove: (state) => {
+        if (this.disabled) return;
+        const raw = this.startOffset + state.deltaX;
+        // Clamp: no right swipe past 0, elastic overshoot past action width
+        const maxSwipe = -this.actionWidth * 1.2;
+        this.offset = Math.max(maxSwipe, Math.min(0, raw));
+      },
+      onEnd: (state) => {
+        if (this.disabled) return;
+        this.animating = true;
+        // Snap open if past 40% threshold or fast swipe left, otherwise snap closed
+        this.offset = (Math.abs(this.offset) > this.actionWidth * 0.4 || state.swipedLeft)
+          ? -this.actionWidth
+          : 0;
+      },
+    });
+  },
+
+  beforeUnmount() {
+    if (this._stopGesture) this._stopGesture();
+  },
+
   methods: {
-    onTouchStart(e) {
-      if (this.disabled) return;
-      this.animating = false;
-      this.startX = e.touches[0].clientX;
-      this.startY = e.touches[0].clientY;
-      this.startOffset = this.offset;
-      this.swiping = null;
-    },
-
-    onTouchMove(e) {
-      if (this.disabled || this.swiping === false) return;
-      const dx = e.touches[0].clientX - this.startX;
-      const dy = e.touches[0].clientY - this.startY;
-
-      // Decide direction on first significant movement
-      if (this.swiping === null) {
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-        this.swiping = Math.abs(dx) > Math.abs(dy);
-        if (!this.swiping) return;
-      }
-
-      const raw = this.startOffset + dx;
-      // Clamp: no right swipe past 0, elastic overshoot past action width
-      const maxSwipe = -this.actionWidth * 1.2;
-      this.offset = Math.max(maxSwipe, Math.min(0, raw));
-    },
-
-    onTouchEnd() {
-      if (this.disabled || this.swiping !== true) {
-        this.swiping = null;
-        return;
-      }
-      this.animating = true;
-      // Snap open if past 40% threshold, otherwise snap closed
-      this.offset = Math.abs(this.offset) > this.actionWidth * 0.4
-        ? -this.actionWidth
-        : 0;
-      this.swiping = null;
-    },
-
     onClick() {
       // If revealed, close it; otherwise emit click
       if (this.offset < 0) {
