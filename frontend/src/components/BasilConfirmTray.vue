@@ -8,9 +8,9 @@
         </div>
       </q-card-section>
       <q-card-actions align="right">
-        <q-btn flat :label="cancelLabel" @click="$emit('update:modelValue', false)" />
-        <q-btn
-          flat
+        <BasilButton variant="flat" :label="cancelLabel" @click="$emit('update:modelValue', false)" />
+        <BasilButton
+          variant="flat"
           :label="okLabel"
           :color="okColor"
           :loading="loading"

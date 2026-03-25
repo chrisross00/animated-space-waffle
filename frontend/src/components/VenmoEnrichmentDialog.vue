@@ -7,7 +7,7 @@
           <span class="basil-dialog-title__sub">IMPORT</span>
           <span class="basil-dialog-title__main">Venmo Details</span>
         </div>
-        <q-btn flat round dense icon="close" class="basil-dialog-close" @click="close" />
+        <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="close" />
       </div>
 
       <!-- Body -->
@@ -123,27 +123,23 @@
 
       <!-- Footer -->
       <q-card-actions align="right" class="basil-venmo-dialog__actions">
-        <q-btn v-if="step === 'upload'" flat label="Cancel" @click="close" />
-        <q-btn
+        <BasilButton v-if="step === 'upload'" variant="flat" label="Cancel" @click="close" />
+        <BasilButton
           v-if="step === 'upload'"
-          unelevated
           label="Upload & Preview"
-          color="primary"
-          :disable="!csvText"
+          :disabled="!csvText"
           :loading="loading"
           @click="preview"
         />
-        <q-btn v-if="step === 'review'" flat label="Skip" @click="close" />
-        <q-btn
+        <BasilButton v-if="step === 'review'" variant="flat" label="Skip" @click="close" />
+        <BasilButton
           v-if="step === 'review' && matches.length"
-          unelevated
           :label="`Update ${selectedCount} transaction${selectedCount !== 1 ? 's' : ''}`"
-          color="primary"
-          :disable="selectedCount === 0"
+          :disabled="selectedCount === 0"
           :loading="loading"
           @click="apply"
         />
-        <q-btn v-if="step === 'done'" unelevated label="Done" color="primary" @click="close" />
+        <BasilButton v-if="step === 'done'" label="Done" @click="close" />
       </q-card-actions>
     </q-card>
   </BasilTray>

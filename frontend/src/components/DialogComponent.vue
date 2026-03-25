@@ -7,7 +7,7 @@
         <div v-if="dialogSubtitle" class="basil-dialog-title__sub">{{ dialogSubtitle }}</div>
         <div class="basil-dialog-title__main basil-display">{{ dialogMainTitle }}</div>
       </div>
-      <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+      <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
     </div>
 
     <!-- ── TRANSACTION form ───────────────────────────── -->
@@ -114,18 +114,17 @@
               class="basil-split__category"
               @touchmove.stop.prevent
             />
-            <q-btn
+            <BasilButton
               v-if="splitRows.length > 2"
-              flat round dense
+              variant="icon" dense
               icon="close"
-              size="sm"
               color="negative"
               @click="removeSplitRow(i)"
             />
             <div v-else style="width: 36px" />
           </div>
           <div v-if="splitRemaining > 0.01" style="text-align: center; padding: var(--basil-space-1) 0;">
-            <q-btn flat dense label="+ Add row" color="primary" @click="addSplitRow()" />
+            <BasilButton variant="flat" dense label="+ Add row" color="primary" @click="addSplitRow()" />
           </div>
         </div>
       </template>
@@ -142,23 +141,23 @@
 
       <div class="basil-dialog-actions">
         <template v-if="splitMode">
-          <q-btn flat label="Cancel" @click="exitSplitMode()" />
-          <q-btn
-            unelevated label="Save split" color="primary"
-            :disable="!splitValid || splitSaving"
+          <BasilButton variant="flat" label="Cancel" @click="exitSplitMode()" />
+          <BasilButton
+            label="Save split"
+            :disabled="!splitValid || splitSaving"
             :loading="splitSaving"
             @click="saveSplit()"
           />
         </template>
         <template v-else>
           <div style="display: flex; gap: var(--basil-space-1);">
-            <q-btn flat label="Cancel" v-close-popup />
-            <q-btn v-if="canSplit" flat label="Split" @click="enterSplitMode()" />
-            <q-btn v-if="isSplitChild" flat label="Unsplit" @click="requestUnsplit()" />
+            <BasilButton variant="flat" label="Cancel" v-close-popup />
+            <BasilButton v-if="canSplit" variant="flat" label="Split" @click="enterSplitMode()" />
+            <BasilButton v-if="isSplitChild" variant="flat" label="Unsplit" @click="requestUnsplit()" />
           </div>
           <div class="basil-dialog-actions__right">
-            <q-btn flat label="Reset" @click="resetData()" />
-            <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateTransaction" />
+            <BasilButton variant="flat" label="Reset" @click="resetData()" />
+            <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateTransaction" />
           </div>
         </template>
       </div>
@@ -239,7 +238,7 @@
               </q-item>
             </template>
           </q-select>
-          <q-btn dense flat icon="add" color="primary" :disable="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
+          <BasilButton variant="icon" icon="add" color="primary" dense :disabled="!newRuleValue || isAlreadyRuled(newRuleValue)" @click="addPendingRule" />
         </div>
         <p v-if="conflictingCategory" class="basil-dialog-hint basil-dialog-hint--warn">
           "{{ newRuleValue }}" is currently assigned to <strong>{{ conflictingCategory }}</strong>.
@@ -261,10 +260,10 @@
       </div>
 
       <div class="basil-dialog-actions">
-        <q-btn flat label="Cancel" v-close-popup />
+        <BasilButton variant="flat" label="Cancel" v-close-popup />
         <div class="basil-dialog-actions__right">
-          <q-btn flat label="Reset" @click="resetData()" />
-          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="updateCategory" />
+          <BasilButton variant="flat" label="Reset" @click="resetData()" />
+          <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateCategory" />
         </div>
       </div>
     </div>
@@ -291,10 +290,10 @@
       </div>
 
       <div class="basil-dialog-actions">
-        <q-btn flat label="Cancel" v-close-popup />
+        <BasilButton variant="flat" label="Cancel" v-close-popup />
         <div class="basil-dialog-actions__right">
-          <q-btn flat label="Reset" @click="resetData()" />
-          <q-btn unelevated label="Submit" color="primary" :disable="!formSubmittable" @click="addCategory" />
+          <BasilButton variant="flat" label="Reset" @click="resetData()" />
+          <BasilButton label="Submit" :disabled="!formSubmittable" @click="addCategory" />
         </div>
       </div>
     </div>

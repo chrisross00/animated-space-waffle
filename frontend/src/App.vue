@@ -2,9 +2,9 @@
   <q-layout view="hHh Lpr lFf">
     <q-header :class="['basil-header', headerScrolled && 'basil-header--scrolled']">
       <q-toolbar>
-        <q-btn
+        <BasilButton
           v-if="$store.state.user?.onboarded_at"
-          dense flat round
+          variant="icon" dense
           icon="menu"
           class="basil-menu-btn"
           @click="toggleLeftDrawer"
@@ -22,9 +22,9 @@
         </div>
 
         <!-- Sync button -->
-        <q-btn
+        <BasilButton
           v-if="$store.state.session && $store.state.user?.onboarded_at"
-          flat round dense
+          variant="icon" dense
           icon="sync"
           class="basil-sync-btn q-ml-sm"
           :class="{ 'basil-sync-btn--spinning': syncing }"
@@ -32,7 +32,7 @@
           @click="handleSync"
         >
           <q-badge v-if="hasItemErrors" floating color="warning" rounded class="basil-sync-badge" />
-        </q-btn>
+        </BasilButton>
       </q-toolbar>
 
       <!-- Desktop tab bar — hidden on mobile -->
@@ -143,9 +143,7 @@
             heading="Something went wrong"
             body="An unexpected error occurred. Reloading usually fixes it."
           >
-            <q-btn
-              unelevated
-              color="primary"
+            <BasilButton
               label="Reload"
               class="q-mt-md"
               @click="reload"

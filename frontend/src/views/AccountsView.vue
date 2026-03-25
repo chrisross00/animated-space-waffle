@@ -23,13 +23,13 @@
       heading="No accounts linked"
       body="Connect a bank account to start tracking your balances."
     >
-      <q-btn
-        unelevated color="primary" icon="add" label="Add account"
+      <BasilButton
+        icon="add" label="Add account"
         class="q-mt-sm"
         @click="showPlaidLink = true"
       />
-      <q-btn
-        flat no-caps icon="edit_note" label="Add manually"
+      <BasilButton
+        variant="flat" icon="edit_note" label="Add manually"
         class="q-mt-xs"
         style="color: var(--basil-text-secondary)"
         @click="openManualForm()"
@@ -120,22 +120,22 @@
                 Needs reconnect
               </q-chip>
               <div class="basil-spacer"></div>
-              <q-btn
+              <BasilButton
                 v-if="institution.error && !institution.manual"
-                flat dense no-caps color="warning" icon="refresh" label="Reconnect"
+                variant="flat" dense color="warning" icon="refresh" label="Reconnect"
                 :loading="reconnecting === institution.name"
                 class="q-mr-xs"
                 @click="reconnect(institution.name)"
               />
               <template v-if="!preDelete[institution.name]">
-                <q-btn flat round dense icon="link_off" size="xs" color="negative"
+                <BasilButton variant="icon" icon="link_off" dense color="negative"
                   @click="preDelete[institution.name] = true" />
               </template>
               <template v-else>
                 <div class="row q-gutter-xs">
-                  <q-btn flat round dense icon="check" size="xs" color="positive"
+                  <BasilButton variant="icon" icon="check" dense color="positive"
                     @click="unlinkAccount(institution.name)" />
-                  <q-btn flat round dense icon="close" size="xs" color="negative"
+                  <BasilButton variant="icon" icon="close" dense color="negative"
                     @click="preDelete[institution.name] = false" />
                 </div>
               </template>
@@ -206,9 +206,9 @@
           </div>
 
           <div class="row q-gutter-sm q-mt-xs">
-            <q-btn flat dense color="primary" icon="add" label="Add account"
+            <BasilButton variant="flat" dense color="primary" icon="add" label="Add account"
               @click="showPlaidLink = true" />
-            <q-btn flat dense icon="edit_note" label="Add manually"
+            <BasilButton variant="flat" dense icon="edit_note" label="Add manually"
               style="color: var(--basil-text-secondary)"
               @click="openManualForm()" />
           </div>
@@ -266,7 +266,7 @@
             <span class="basil-dialog-title__sub">NEW ACCOUNT</span>
             <span class="basil-dialog-title__main">Add Manual Account</span>
           </div>
-          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showManualForm = false" />
+          <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="showManualForm = false" />
         </div>
 
         <!-- Step 1: Pick institution (no text input — avoids iOS keyboard jitter) -->
@@ -326,10 +326,10 @@
             </div>
           </q-card-section>
           <q-card-actions align="right" class="q-px-md q-pb-md">
-            <q-btn flat label="Back" @click="manualStep = 'institution'" />
-            <q-btn
-              unelevated color="primary" label="Add Account"
-              :disable="!manualInstitution?.trim() || !manualAccountName || !manualAccountType || manualBalance == null"
+            <BasilButton variant="flat" label="Back" @click="manualStep = 'institution'" />
+            <BasilButton
+              label="Add Account"
+              :disabled="!manualInstitution?.trim() || !manualAccountName || !manualAccountType || manualBalance == null"
               :loading="manualSaving"
               @click="saveManualAccount"
             />
@@ -346,22 +346,22 @@
             <span class="basil-dialog-title__sub">UPDATE BALANCE</span>
             <span class="basil-dialog-title__main">Edit Account</span>
           </div>
-          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="showEditManual = false" />
+          <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="showEditManual = false" />
         </div>
         <q-card-section>
           <BasilText v-model="editAccountName" label="Account name" dense class="q-mb-sm" />
           <BasilAmount v-model="editBalance" label="Current balance" dense />
         </q-card-section>
         <q-card-actions class="q-px-md q-pb-md" style="justify-content: space-between;">
-          <q-btn flat icon="delete" label="Delete" color="negative"
+          <BasilButton variant="flat" icon="delete" label="Delete" color="negative"
             :loading="editManualDeleting"
             @click="confirmDeleteManual = true"
           />
           <div>
-            <q-btn flat label="Cancel" @click="showEditManual = false" />
-            <q-btn
-              unelevated color="primary" label="Save"
-              :disable="editBalance == null"
+            <BasilButton variant="flat" label="Cancel" @click="showEditManual = false" />
+            <BasilButton
+              label="Save"
+              :disabled="editBalance == null"
               :loading="editManualSaving"
               @click="saveEditManual"
             />
@@ -372,8 +372,8 @@
             Remove this account? This cannot be undone.
           </div>
           <div class="row justify-center q-gutter-sm">
-            <q-btn flat dense label="Keep" @click="confirmDeleteManual = false" />
-            <q-btn flat dense label="Remove" color="negative"
+            <BasilButton variant="flat" dense label="Keep" @click="confirmDeleteManual = false" />
+            <BasilButton variant="flat" dense label="Remove" color="negative"
               :loading="editManualDeleting"
               @click="deleteManualAccount"
             />

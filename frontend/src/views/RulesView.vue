@@ -4,7 +4,7 @@
     <!-- Compound rules section -->
     <div class="basil-card-head q-mb-sm">
       <span class="basil-card-label">Compound Rules</span>
-      <q-btn flat dense icon="add" size="sm" @click="openCreateRule" />
+      <BasilButton variant="icon" icon="add" dense @click="openCreateRule" />
     </div>
 
     <template v-if="$store.state.bootstrapping">

@@ -1,3 +1,4 @@
+export { default as BasilButton } from './BasilButton.vue'
 export { default as BasilToast } from './BasilToast.vue'
 export { default as BasilIcon } from './BasilIcon.vue'
 export { default as BasilSkeleton } from './BasilSkeleton.vue'

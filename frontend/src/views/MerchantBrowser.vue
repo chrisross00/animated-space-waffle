@@ -58,13 +58,11 @@
               input-debounce="0"
               @filter="filterFn"
             />
-            <q-btn
+            <BasilButton
               label="Apply"
-              color="primary"
-              unelevated
               style="height: 40px"
               :loading="!!saving[props.row.merchant_name]"
-              :disable="!canApply(props.row.merchant_name)"
+              :disabled="!canApply(props.row.merchant_name)"
               @click="onApply(props.row.merchant_name)"
             />
           </div>
@@ -150,10 +148,10 @@
         </q-card-section>
 
         <q-card-actions class="q-px-md q-pb-md">
-          <q-btn flat label="Cancel" @click="editDialog.open = false" class="col" />
-          <q-btn label="Save" color="primary" unelevated class="col"
+          <BasilButton variant="flat" label="Cancel" @click="editDialog.open = false" class="col" />
+          <BasilButton label="Save" class="col"
             :loading="!!saving[editDialog.merchantName]"
-            :disable="!editDialog.selectedCategory ||
+            :disabled="!editDialog.selectedCategory ||
                       editDialog.selectedCategory === ruleMap[editDialog.merchantName]"
             @click="saveEdit" />
         </q-card-actions>

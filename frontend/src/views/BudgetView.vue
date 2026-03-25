@@ -9,7 +9,7 @@
     heading="Sign in to see your budget"
     body="Connect your bank accounts to start tracking spending and income."
   >
-    <q-btn unelevated color="primary" label="Go to Profile" to="/profile" class="q-mt-sm" />
+    <BasilButton label="Go to Profile" to="/profile" class="q-mt-sm" />
   </EmptyState>
 
   <div v-show="isLoggedIn">
@@ -27,7 +27,7 @@
             <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
           </div>
         </div>
-        <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
+        <BasilButton label="Set up Basil" to="/onboarding" class="q-mt-md" />
       </q-card>
     </div>
 
@@ -266,12 +266,11 @@
         <q-card class="basil-tosort-card">
           <div class="basil-card-head">
             <span class="basil-card-label">{{ nudgeCard.type === 'budget' ? 'Get started' : nudgeCard.type === 'category' ? 'Budget tip' : 'Next step' }}</span>
-            <q-btn flat round dense icon="close" size="sm" @click.stop="dismissNudge()" />
+            <BasilButton variant="icon" icon="close" dense @click.stop="dismissNudge()" />
           </div>
           <div style="padding: 0 var(--basil-space-4) var(--basil-space-4);">
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-bottom: var(--basil-space-3);">{{ nudgeCard.text }}</div>
-            <q-btn
-              unelevated color="primary"
+            <BasilButton
               :label="nudgeCard.cta"
               @click="handleNudgeCta()"
             />
@@ -503,10 +502,10 @@
               class="gt-xs"
               @touchmove.stop.prevent
             />
-            <q-btn
-              flat
+            <BasilButton
+              variant="flat"
               label="Clear"
-              :disable="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
+              :disabled="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
               @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null"
             />
           </template>
@@ -523,9 +522,9 @@
                 style="min-width: 180px"
                 @touchmove.stop.prevent
               />
-              <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-              <q-btn flat dense no-caps icon="sell" label="Tag" @click="openBulkTag()" />
-              <q-btn flat label="Clear selection" @click="selectedRows = []" />
+              <BasilButton label="Apply" :disabled="!bulkCategory" @click="applyBulkCategory" />
+              <BasilButton variant="flat" dense icon="sell" label="Tag" @click="openBulkTag()" />
+              <BasilButton variant="flat" label="Clear selection" @click="selectedRows = []" />
               <span v-if="bulkCategory" class="basil-bulk-disclosure">
                 Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
               </span>
@@ -703,7 +702,7 @@
     >
       <div class="row items-center q-gutter-sm q-mb-xs">
         <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
-        <q-btn flat dense round icon="close" @click="selectedRows = []" class="col-auto" />
+        <BasilButton variant="icon" icon="close" dense @click="selectedRows = []" class="col-auto" />
       </div>
       <div class="row items-center q-gutter-sm">
         <q-select
@@ -715,8 +714,8 @@
           style="flex: 1"
           @touchmove.stop.prevent
         />
-        <q-btn color="primary" label="Apply" :disable="!bulkCategory" @click="applyBulkCategory" />
-        <q-btn flat dense no-caps icon="sell" label="Tag" @click="openBulkTag()" />
+        <BasilButton label="Apply" :disabled="!bulkCategory" @click="applyBulkCategory" />
+        <BasilButton variant="flat" dense icon="sell" label="Tag" @click="openBulkTag()" />
       </div>
       <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
         Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
@@ -742,8 +741,8 @@
             <div class="basil-triage__venmo-nudge-text">
               You sorted {{ triageVenmoCount }} Venmo {{ triageVenmoCount === 1 ? 'payment' : 'payments' }} without details.
             </div>
-            <q-btn
-              outline dense no-caps
+            <BasilButton
+              variant="flat" dense
               color="primary"
               icon="upload_file"
               label="Import Venmo CSV"
@@ -751,7 +750,7 @@
             />
           </div>
           <div class="basil-triage__actions">
-            <q-btn unelevated color="primary" label="Done" class="full-width" v-close-popup />
+            <BasilButton label="Done" class="full-width" v-close-popup />
           </div>
         </template>
 
@@ -765,10 +764,8 @@
             </div>
           </div>
           <div class="basil-triage__actions">
-            <q-btn flat label="Skip" @click="triageShowEnrichmentPrompt = false; enrichmentOffered = true" />
-            <q-btn
-              unelevated
-              color="primary"
+            <BasilButton variant="flat" label="Skip" @click="triageShowEnrichmentPrompt = false; enrichmentOffered = true" />
+            <BasilButton
               icon="upload_file"
               label="Import CSV"
               @click="triageOpen = false; enrichmentOffered = true; venmoLaunchedFromTriage = true; $nextTick(() => openVenmoImport())"
@@ -782,7 +779,7 @@
           <div class="basil-triage__header">
             <span class="basil-triage__title">Sort Transactions</span>
             <span class="basil-triage__progress">{{ triageTotal - triageItems.length + 1 }} of {{ triageTotal }}</span>
-            <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+            <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
           </div>
 
           <!-- Transaction -->
@@ -816,13 +813,13 @@
                   @update:model-value="triageUpdateSplitCategory(i, $event)"
                   :options="categoryMonthlyLimits.map(c => c.category).filter(c => c !== 'To Sort').sort()"
                   label="Category" class="basil-split__category" @touchmove.stop.prevent />
-                <q-btn v-if="triageSplitRows.length > 2" flat round dense icon="close" size="sm" color="negative"
+                <BasilButton v-if="triageSplitRows.length > 2" variant="icon" icon="close" dense color="negative"
                   @click="triageSplitRows.splice(i, 1)" />
                 <div v-else style="width: 36px" />
               </div>
             </div>
             <div v-if="triageSplitRemaining > 0.01" style="text-align: center; padding: var(--basil-space-1) 0;">
-              <q-btn flat dense label="+ Add row" color="primary" @click="triageSplitRows.push({ amount: triageSplitRemaining, categoryName: '' })" />
+              <BasilButton variant="flat" dense label="+ Add row" color="primary" @click="triageSplitRows.push({ amount: triageSplitRemaining, categoryName: '' })" />
             </div>
           </template>
           <!-- Normal triage category picker + similar -->
@@ -884,20 +881,18 @@
           <!-- Actions -->
           <div class="basil-triage__actions">
             <template v-if="triageSplitMode">
-              <q-btn flat label="Cancel" @click="triageSplitMode = false; triageSplitRows = []" />
-              <q-btn unelevated color="primary" label="Save split"
-                :disable="Math.abs(triageSplitRemaining) > 0.01 || triageSplitRows.length < 2 || !triageSplitRows.every(r => r.amount > 0 && r.categoryName) || triageSaving"
+              <BasilButton variant="flat" label="Cancel" @click="triageSplitMode = false; triageSplitRows = []" />
+              <BasilButton label="Save split"
+                :disabled="Math.abs(triageSplitRemaining) > 0.01 || triageSplitRows.length < 2 || !triageSplitRows.every(r => r.amount > 0 && r.categoryName) || triageSaving"
                 :loading="triageSaving"
                 @click="handleSplit({ transaction_id: triageItems[0].transaction_id, splits: triageSplitRows })" />
             </template>
             <template v-else>
-              <q-btn flat label="Skip" @click="triageSkip()" :disable="triageSaving" />
-              <q-btn v-if="triageCanSplit" flat label="Split" @click="triageEnterSplitMode()" :disable="triageSaving" />
-              <q-btn
-                unelevated
-                color="primary"
+              <BasilButton variant="flat" label="Skip" @click="triageSkip()" :disabled="triageSaving" />
+              <BasilButton v-if="triageCanSplit" variant="flat" label="Split" @click="triageEnterSplitMode()" :disabled="triageSaving" />
+              <BasilButton
                 label="Save"
-                :disable="!triageCategory || triageSaving"
+                :disabled="!triageCategory || triageSaving"
                 :loading="triageSaving"
                 @click="triageAccept()"
               />
@@ -925,16 +920,16 @@
             <span class="basil-dialog-title__sub">BULK TAG</span>
             <span class="basil-dialog-title__main">Tag {{ selectedRows.length }} transaction{{ selectedRows.length !== 1 ? 's' : '' }}</span>
           </div>
-          <q-btn flat round dense icon="close" class="basil-dialog-close" @click="bulkTagOpen = false" />
+          <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="bulkTagOpen = false" />
         </div>
         <q-card-section>
           <TagPicker v-model="bulkTagSelection" />
         </q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md">
-          <q-btn flat label="Cancel" @click="bulkTagOpen = false" />
-          <q-btn
-            unelevated color="primary" label="Apply"
-            :disable="!bulkTagSelection.length"
+          <BasilButton variant="flat" label="Cancel" @click="bulkTagOpen = false" />
+          <BasilButton
+            label="Apply"
+            :disabled="!bulkTagSelection.length"
             @click="applyBulkTag"
           />
         </q-card-actions>

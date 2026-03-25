@@ -78,8 +78,8 @@
             </q-item>
           </q-list>
 
-          <q-btn
-            flat no-caps color="negative" icon="delete" label="Delete tag"
+          <BasilButton
+            variant="flat" color="negative" icon="delete" label="Delete tag"
             class="q-mt-md basil-tags__delete-btn"
             @click="confirmDelete(expandedTag)"
           />

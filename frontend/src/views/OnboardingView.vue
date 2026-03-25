@@ -25,9 +25,7 @@
           <p class="basil-onboarding-body">
             Link your accounts to see where your money goes. Basil sorts your transactions and learns how you budget.
           </p>
-          <q-btn
-            unelevated
-            color="primary"
+          <BasilButton
             label="Connect account"
             icon="account_balance"
             class="basil-onboarding-cta"
@@ -61,9 +59,7 @@
               <span>{{ inst }}</span>
             </div>
           </div>
-          <q-btn
-            unelevated
-            color="primary"
+          <BasilButton
             label="Add another account"
             icon="add"
             class="basil-onboarding-cta q-mt-md"
@@ -155,8 +151,7 @@
       </div>
 
       <!-- Primary CTA -->
-      <q-btn
-        unelevated color="primary"
+      <BasilButton
         :label="summaryStats.toSort > 0 ? 'Start sorting' : 'Set up budgets'"
         class="basil-onboarding-cta q-mt-md"
         @click="onboardingChoice(summaryStats.toSort > 0 ? 'sort_first' : 'setup_budgets')"

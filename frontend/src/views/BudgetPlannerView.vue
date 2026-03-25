@@ -10,7 +10,7 @@
       heading="Sign in to plan your budget"
       body="Set income targets, spending limits, and savings goals."
     >
-      <q-btn unelevated color="primary" label="Go to Profile" to="/profile" class="q-mt-sm" />
+      <BasilButton label="Go to Profile" to="/profile" class="q-mt-sm" />
     </EmptyState>
 
     <div v-else>
@@ -28,7 +28,7 @@
               <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
             </div>
           </div>
-          <q-btn unelevated color="primary" label="Set up Basil" to="/onboarding" class="q-mt-md" />
+          <BasilButton label="Set up Basil" to="/onboarding" class="q-mt-md" />
         </q-card>
       </div>
 
@@ -37,7 +37,7 @@
         <div style="text-align: center; padding: var(--basil-space-7) var(--basil-space-5);">
           <h2 class="basil-display" style="font-size: 1.75rem; margin: 0 0 var(--basil-space-3);">Set up your budget</h2>
           <p style="color: var(--basil-text-secondary); margin: 0 0 var(--basil-space-5);">Choose how you'd like to get started.</p>
-          <q-btn unelevated color="primary" label="Guided setup" class="q-mb-md" style="min-width: 200px;" @click="startGuidedSetup()" />
+          <BasilButton label="Guided setup" class="q-mb-md" style="min-width: 200px;" @click="startGuidedSetup()" />
           <div>
             <a href="#" style="color: var(--basil-text-muted); font-size: 0.875rem;" @click.prevent="dismissGuidedSetup()">I'll do it myself</a>
           </div>
@@ -55,7 +55,7 @@
             label="Monthly income" :hint="incomeHint"
           />
           <div style="display: flex; justify-content: flex-end; margin-top: var(--basil-space-4);">
-            <q-btn unelevated color="primary" label="Next" :disable="!guidedIncome || guidedIncome <= 0" @click="guidedStep = 2" />
+            <BasilButton label="Next" :disabled="!guidedIncome || guidedIncome <= 0" @click="guidedStep = 2" />
           </div>
         </div>
 
@@ -80,10 +80,10 @@
                 <span class="basil-mono">${{ guidedTotal.toLocaleString() }} / ${{ Number(guidedIncome || 0).toLocaleString() }}</span>
               </div>
               <div style="display: flex; gap: var(--basil-space-2); justify-content: space-between;">
-                <q-btn flat label="Back" @click="guidedStep = 1" />
+                <BasilButton variant="flat" label="Back" @click="guidedStep = 1" />
                 <div style="display: flex; gap: var(--basil-space-2);">
-                  <q-btn flat label="Skip" @click="dismissGuidedSetup()" />
-                  <q-btn unelevated color="primary" label="Start budgeting" :loading="guidedSaving" :disable="guidedSaving" @click="saveGuidedSetup()" />
+                  <BasilButton variant="flat" label="Skip" @click="dismissGuidedSetup()" />
+                  <BasilButton label="Start budgeting" :loading="guidedSaving" :disabled="guidedSaving" @click="saveGuidedSetup()" />
                 </div>
               </div>
             </div>
@@ -189,8 +189,8 @@
           <div v-else class="basil-planner-add-form">
             <BasilText v-model="addName" placeholder="Category name" dense @submit="confirmAdd(sectionType)" />
             <BasilAmount v-model="addLimit" placeholder="Monthly limit" dense @submit="confirmAdd(sectionType)" />
-            <q-btn flat round dense icon="check" color="positive" :loading="addLoading" @click="confirmAdd(sectionType)" />
-            <q-btn flat round dense icon="close" @click="cancelAdd" />
+            <BasilButton variant="icon" icon="check" color="positive" dense :loading="addLoading" @click="confirmAdd(sectionType)" />
+            <BasilButton variant="icon" icon="close" dense @click="cancelAdd" />
           </div>
         </div>
 

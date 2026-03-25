@@ -212,7 +212,7 @@
             <div class="basil-profile-email">{{ user.email }}</div>
           </div>
         </div>
-        <q-btn flat dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
+        <BasilButton variant="flat" dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
       </q-card>
 
       <!-- Display settings card -->
@@ -239,8 +239,8 @@
             <div class="basil-settings-row__label">Delete account</div>
             <div class="basil-settings-row__hint">Permanently remove all your data</div>
           </div>
-          <q-btn
-            flat dense
+          <BasilButton
+            variant="flat" dense
             color="negative"
             label="Delete"
             icon="delete_forever"
@@ -275,19 +275,15 @@
         <p class="basil-landing__sub">
           Basil connects to your bank, sorts your transactions, and learns how you think about spending — so you don't have to do the same work twice.
         </p>
-        <q-btn
-          unelevated
-          color="primary"
+        <BasilButton
           icon="login"
           label="Sign in with Google"
           :loading="isLoading"
           class="basil-landing__cta"
           @click="signInWithGoogle"
         />
-        <q-btn
+        <BasilButton
           v-if="isDevAuthBypassEnabled"
-          unelevated
-          color="secondary"
           label="Login as test user"
           :loading="isLoading"
           class="q-mt-sm"

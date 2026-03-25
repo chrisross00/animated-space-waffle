@@ -9,7 +9,7 @@
           <div v-if="isEdit" class="basil-dialog-title__sub">Edit Rule</div>
           <div class="basil-dialog-title__main basil-display">{{ isEdit ? rule.label : 'New Rule' }}</div>
         </div>
-        <q-btn flat round dense icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+        <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
       </div>
 
       <!-- Scrollable middle: body + matched transactions -->
@@ -206,16 +206,16 @@
 
       <!-- Footer -->
       <div class="basil-re__footer">
-        <q-btn v-if="isEdit" flat label="Delete" color="negative" @click="$emit('delete', rule)" />
+        <BasilButton v-if="isEdit" variant="flat" label="Delete" color="negative" @click="$emit('delete', rule)" />
         <span v-else-if="conditions.length === 0" class="basil-re__match-count basil-re__match-count--none">
           No conditions set
         </span>
         <span v-else />
         <div class="basil-re__footer-actions">
-          <q-btn flat label="Cancel" v-close-popup />
-          <q-btn unelevated label="Save" color="primary"
+          <BasilButton variant="flat" label="Cancel" v-close-popup />
+          <BasilButton label="Save"
             :loading="saving"
-            :disable="!isValid"
+            :disabled="!isValid"
             @click="save"
           />
         </div>
