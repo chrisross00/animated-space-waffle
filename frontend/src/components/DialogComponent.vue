@@ -1,5 +1,5 @@
 <template>
-  <q-card class="basil-dialog-card">
+  <BasilCard class="basil-dialog-card">
 
     <!-- ── Header ─────────────────────────────────────── -->
     <div class="basil-dialog-header">
@@ -298,7 +298,7 @@
       </div>
     </div>
 
-  </q-card>
+  </BasilCard>
 </template>
 
 <style scoped>

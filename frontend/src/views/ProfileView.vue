@@ -182,7 +182,7 @@
 
     <!-- Skeleton cards while data is bootstrapping or auth state is resolving -->
     <div v-if="$store.state.bootstrapping || (session && !user)" class="basil-profile-layout">
-      <q-card class="my-card profile-card basil-profile-card">
+      <BasilCard class="my-card profile-card basil-profile-card">
         <div class="basil-card-head"><span class="basil-card-label">Profile</span></div>
         <div class="basil-profile-identity">
           <q-skeleton type="QAvatar" size="56px" />
@@ -191,14 +191,14 @@
             <q-skeleton type="text" width="40%" />
           </div>
         </div>
-      </q-card>
+      </BasilCard>
     </div>
 
     <!-- Real content once loaded -->
     <div v-else-if="session !== null && user" class="basil-profile-layout">
 
       <!-- Profile card -->
-      <q-card class="my-card profile-card basil-profile-card">
+      <BasilCard class="my-card profile-card basil-profile-card">
         <div class="basil-card-head">
           <span class="basil-card-label">Profile</span>
         </div>
@@ -213,10 +213,10 @@
           </div>
         </div>
         <BasilButton variant="flat" dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
-      </q-card>
+      </BasilCard>
 
       <!-- Display settings card -->
-      <q-card class="my-card profile-card basil-profile-card">
+      <BasilCard class="my-card profile-card basil-profile-card">
         <div class="basil-card-head">
           <span class="basil-card-label">Display</span>
         </div>
@@ -227,10 +227,10 @@
           </div>
           <q-toggle :model-value="isDark" color="primary" @update:model-value="toggleTheme" />
         </div>
-      </q-card>
+      </BasilCard>
 
       <!-- Danger zone card -->
-      <q-card class="my-card profile-card basil-profile-card">
+      <BasilCard class="my-card profile-card basil-profile-card">
         <div class="basil-card-head">
           <span class="basil-card-label">Danger zone</span>
         </div>
@@ -248,7 +248,7 @@
             @click="confirmDeleteAccount"
           />
         </div>
-      </q-card>
+      </BasilCard>
 
     </div>
 

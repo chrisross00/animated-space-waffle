@@ -40,7 +40,7 @@
             size="xs"
             class="q-ml-xs text-primary"
           >
-            <q-tooltip>Rule: {{ ruleMap[props.row.merchant_name] }}</q-tooltip>
+            <BasilTooltip>Rule: {{ ruleMap[props.row.merchant_name] }}</BasilTooltip>
           </q-icon>
         </q-td>
       </template>
@@ -85,59 +85,55 @@
 
       <BasilSearch dense v-model="filter" placeholder="Search" class="q-mb-md" />
 
-      <q-card flat bordered>
-        <q-list separator>
+      <BasilCard>
+        <BasilList separator>
           <!-- skeleton while loading -->
           <template v-if="isLoading">
-            <q-item v-for="i in 6" :key="i">
-              <q-item-section>
-                <q-skeleton type="text" width="60%" />
-                <q-skeleton type="text" width="40%" />
-              </q-item-section>
-            </q-item>
+            <BasilListItem v-for="i in 6" :key="i">
+              <BasilSkeleton type="text" width="60%" />
+              <BasilSkeleton type="text" width="40%" />
+            </BasilListItem>
           </template>
 
           <!-- empty state -->
-          <q-item v-else-if="filteredMerchants.length === 0">
-            <q-item-section class="text-center q-py-lg">
+          <BasilListItem v-else-if="filteredMerchants.length === 0">
+            <div class="text-center q-py-lg" style="width: 100%;">
               <EmptyState icon="store" heading="No merchants yet"
                 body="Merchants will appear here once you have transactions imported." />
-            </q-item-section>
-          </q-item>
+            </div>
+          </BasilListItem>
 
           <!-- merchant rows -->
-          <q-item v-for="row in filteredMerchants" :key="row.merchant_name"
-            clickable v-ripple @click="openEdit(row)">
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ row.merchant_name }}</q-item-label>
-              <q-item-label caption>
-                {{ row.count }} transaction{{ row.count !== 1 ? 's' : '' }}
-                · {{ currentLabel(row) }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
+          <BasilListItem v-for="row in filteredMerchants" :key="row.merchant_name"
+            clickable @click="openEdit(row)">
+            <template #label><span class="text-weight-medium">{{ row.merchant_name }}</span></template>
+            <template #caption>
+              {{ row.count }} transaction{{ row.count !== 1 ? 's' : '' }}
+              · {{ currentLabel(row) }}
+            </template>
+            <template #side>
               <div class="row items-center q-gutter-xs">
-                <q-icon v-if="ruleMap[row.merchant_name]" name="gavel" size="xs" color="primary" />
-                <q-icon name="chevron_right" color="grey-5" />
+                <BasilIcon v-if="ruleMap[row.merchant_name]" name="gavel" size="sm" color="primary" />
+                <BasilIcon name="chevron_right" color="var(--basil-text-muted)" />
               </div>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </q-card>
+            </template>
+          </BasilListItem>
+        </BasilList>
+      </BasilCard>
     </div>
 
     <!-- Bottom sheet dialog (mobile edit) -->
     <BasilTray v-model="editDialog.open">
-      <q-card flat>
-        <q-card-section class="q-pb-sm">
+      <BasilCard flat>
+        <div class="basil-card__body q-pb-sm">
           <div class="text-subtitle1 text-weight-medium">{{ editDialog.merchantName }}</div>
           <div class="text-caption" style="color: var(--basil-text-muted)">
             Currently: {{ editDialog.currentLabel }}
             <q-icon v-if="editDialog.hasRule" name="gavel" size="xs" class="q-ml-xs text-primary" />
           </div>
-        </q-card-section>
+        </div>
 
-        <q-card-section class="q-pt-none">
+        <div class="basil-card__body q-pt-none">
           <q-select
             v-model="editDialog.selectedCategory"
             :options="filteredCategories"
@@ -145,17 +141,17 @@
             outlined use-input input-debounce="0"
             @filter="filterFn"
           />
-        </q-card-section>
+        </div>
 
-        <q-card-actions class="q-px-md q-pb-md">
+        <div class="basil-card__actions q-px-md q-pb-md">
           <BasilButton variant="flat" label="Cancel" @click="editDialog.open = false" class="col" />
           <BasilButton label="Save" class="col"
             :loading="!!saving[editDialog.merchantName]"
             :disabled="!editDialog.selectedCategory ||
                       editDialog.selectedCategory === ruleMap[editDialog.merchantName]"
             @click="saveEdit" />
-        </q-card-actions>
-      </q-card>
+        </div>
+      </BasilCard>
     </BasilTray>
   </div>
 </template>

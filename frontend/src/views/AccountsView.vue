@@ -8,12 +8,10 @@
 
     <!-- Loading skeleton -->
     <template v-if="$store.state.bootstrapping || syncing">
-      <q-item v-for="i in 3" :key="i">
-        <q-item-section>
-          <q-skeleton type="text" width="55%" />
-          <q-skeleton type="text" width="35%" />
-        </q-item-section>
-      </q-item>
+      <BasilListItem v-for="i in 3" :key="i">
+        <BasilSkeleton type="text" width="55%" />
+        <BasilSkeleton type="text" width="35%" />
+      </BasilListItem>
     </template>
 
     <!-- Empty state: no accounts linked -->
@@ -60,7 +58,7 @@
       />
 
       <!-- Net Worth hero card (only when balances loaded) -->
-      <q-card v-if="hasBalances" class="my-card basil-accounts__card q-mb-md">
+      <BasilCard v-if="hasBalances" class="my-card basil-accounts__card q-mb-md">
         <div class="basil-card-head">
           <span class="basil-card-label">Net Worth</span>
         </div>
@@ -85,14 +83,14 @@
             {{ netWorth.liabilities > 0 ? '-' : '' }}{{ formatCurrency(netWorth.liabilities) }}
           </span>
         </div>
-      </q-card>
+      </BasilCard>
 
       <!-- Accounts + Cash Runway side by side -->
       <div style="display: flex; gap: 16px; flex-wrap: wrap;">
 
         <!-- Accounts card -->
         <div style="flex: 1; min-width: 220px;">
-        <q-card class="my-card basil-accounts__card q-mb-md">
+        <BasilCard class="my-card basil-accounts__card q-mb-md">
           <div class="basil-card-head">
             <span class="basil-card-label">Accounts</span>
           </div>
@@ -141,7 +139,7 @@
               </template>
             </div>
 
-            <q-list v-if="institution.accounts.length" bordered rounded class="basil-accounts__list">
+            <BasilList v-if="institution.accounts.length" separator class="basil-accounts__list" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
               <template v-for="acct in institution.accounts" :key="acct.account_id">
                 <SwipeReveal
                   v-if="acct.manual"
@@ -151,27 +149,27 @@
                   @click="openEditManualAcct(institution, acct)"
                 >
                   <template #action>
-                    <q-icon name="edit" color="white" size="24px" />
+                    <BasilIcon name="edit" color="white" size="24px" />
                   </template>
-                  <q-item clickable v-ripple>
-                    <q-item-section>
-                      <q-item-label class="basil-accounts__acct-name">{{ acct.name }}</q-item-label>
-                      <q-item-label caption>{{ formatSubtype(acct.subtype) }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
+                  <BasilListItem clickable>
+                    <template #label><span class="basil-accounts__acct-name">{{ acct.name }}</span></template>
+                    <template #caption>{{ formatSubtype(acct.subtype) }}</template>
+                    <template #side>
                       <span class="basil-mono basil-accounts__balance" :style="{ color: balanceColor(acct) }">
                         {{ formatBalance(acct) }}
                       </span>
-                    </q-item-section>
-                  </q-item>
+                    </template>
+                  </BasilListItem>
                 </SwipeReveal>
-                <q-item v-else>
-                  <q-item-section>
-                    <q-item-label class="basil-accounts__acct-name">
+                <BasilListItem v-else>
+                  <template #label>
+                    <span class="basil-accounts__acct-name">
                       {{ acct.name }}
                       <span v-if="acct.mask" class="basil-accounts__mask">{{ acct.mask }}</span>
-                    </q-item-label>
-                    <q-item-label caption>{{ formatSubtype(acct.subtype) }}</q-item-label>
+                    </span>
+                  </template>
+                  <template #caption>
+                    {{ formatSubtype(acct.subtype) }}
                     <!-- Credit utilization -->
                     <template v-if="acct.type === 'credit' && acct.limit">
                       <div class="basil-accounts__utilization q-mt-xs">
@@ -188,18 +186,18 @@
                         </span>
                       </div>
                     </template>
-                  </q-item-section>
-                  <q-item-section side>
+                  </template>
+                  <template #side>
                     <span
                       class="basil-mono basil-accounts__balance"
                       :style="{ color: balanceColor(acct) }"
                     >
                       {{ formatBalance(acct) }}
                     </span>
-                  </q-item-section>
-                </q-item>
+                  </template>
+                </BasilListItem>
               </template>
-            </q-list>
+            </BasilList>
             <div v-else class="basil-accounts__no-balances">
               No balance data
             </div>
@@ -213,12 +211,12 @@
               @click="openManualForm()" />
           </div>
           <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
-        </q-card>
+        </BasilCard>
         </div>
 
         <!-- Cash Runway card (only when balances loaded) -->
         <div v-if="hasBalances" style="flex: 1; min-width: 220px;">
-        <q-card class="my-card basil-accounts__card q-mb-md">
+        <BasilCard class="my-card basil-accounts__card q-mb-md">
           <div class="basil-card-head">
             <span class="basil-card-label">Cash Runway</span>
           </div>
@@ -247,7 +245,7 @@
               </div>
             </template>
           </div>
-        </q-card>
+        </BasilCard>
         </div>
 
       </div>
@@ -260,7 +258,7 @@
 
     <!-- Add Manual Account tray -->
     <BasilTray v-model="showManualForm" max-width="440px">
-      <q-card flat>
+      <BasilCard flat>
         <div class="basil-dialog-header">
           <div class="basil-dialog-title">
             <span class="basil-dialog-title__sub">NEW ACCOUNT</span>
@@ -271,43 +269,35 @@
 
         <!-- Step 1: Pick institution (no text input — avoids iOS keyboard jitter) -->
         <template v-if="manualStep === 'institution'">
-          <q-card-section>
+          <div class="basil-card__body">
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-bottom: var(--basil-space-3);">
               Which institution is this account at?
             </div>
-            <q-list bordered rounded>
-              <q-item
+            <BasilList style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+              <BasilListItem
                 v-for="name in existingInstitutions" :key="name"
-                clickable v-ripple
+                clickable
                 @click="manualInstitution = name; manualIsNewInstitution = false; manualStep = 'details'"
               >
-                <q-item-section avatar>
-                  <q-icon name="account_balance" color="grey-6" />
-                </q-item-section>
-                <q-item-section>{{ name }}</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item
-                clickable v-ripple
+                <template #avatar><BasilIcon name="account_balance" color="var(--basil-text-muted)" /></template>
+                <template #label>{{ name }}</template>
+                <template #side><BasilIcon name="chevron_right" color="var(--basil-text-muted)" /></template>
+              </BasilListItem>
+              <BasilListItem
+                clickable
                 @click="manualInstitution = ''; manualIsNewInstitution = true; manualStep = 'details'"
               >
-                <q-item-section avatar>
-                  <q-icon name="add" color="primary" />
-                </q-item-section>
-                <q-item-section style="color: var(--basil-green)">New institution</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-card-section>
+                <template #avatar><BasilIcon name="add" color="primary" /></template>
+                <template #label><span style="color: var(--basil-green)">New institution</span></template>
+                <template #side><BasilIcon name="chevron_right" color="var(--basil-text-muted)" /></template>
+              </BasilListItem>
+            </BasilList>
+          </div>
         </template>
 
         <!-- Step 2: Account details -->
         <template v-else-if="manualStep === 'details'">
-          <q-card-section>
+          <div class="basil-card__body">
             <BasilText v-if="manualIsNewInstitution" v-model="manualInstitution" label="Institution name" dense placeholder="e.g. Fidelity, My Credit Union" class="q-mb-sm" />
             <div v-else style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-3);">
               Adding to <strong>{{ manualInstitution }}</strong>
@@ -324,8 +314,8 @@
             <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2)">
               Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
             </div>
-          </q-card-section>
-          <q-card-actions align="right" class="q-px-md q-pb-md">
+          </div>
+          <div class="basil-card__actions q-px-md q-pb-md">
             <BasilButton variant="flat" label="Back" @click="manualStep = 'institution'" />
             <BasilButton
               label="Add Account"
@@ -333,14 +323,14 @@
               :loading="manualSaving"
               @click="saveManualAccount"
             />
-          </q-card-actions>
+          </div>
         </template>
-      </q-card>
+      </BasilCard>
     </BasilTray>
 
     <!-- Edit Manual Account tray -->
     <BasilTray v-model="showEditManual" max-width="440px">
-      <q-card flat>
+      <BasilCard flat>
         <div class="basil-dialog-header">
           <div class="basil-dialog-title">
             <span class="basil-dialog-title__sub">UPDATE BALANCE</span>
@@ -348,11 +338,11 @@
           </div>
           <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="showEditManual = false" />
         </div>
-        <q-card-section>
+        <div class="basil-card__body">
           <BasilText v-model="editAccountName" label="Account name" dense class="q-mb-sm" />
           <BasilAmount v-model="editBalance" label="Current balance" dense />
-        </q-card-section>
-        <q-card-actions class="q-px-md q-pb-md" style="justify-content: space-between;">
+        </div>
+        <div class="basil-card__actions q-px-md q-pb-md" style="justify-content: space-between;">
           <BasilButton variant="flat" icon="delete" label="Delete" color="negative"
             :loading="editManualDeleting"
             @click="confirmDeleteManual = true"
@@ -366,7 +356,7 @@
               @click="saveEditManual"
             />
           </div>
-        </q-card-actions>
+        </div>
         <div v-if="confirmDeleteManual" class="q-px-md q-pb-md" style="text-align: center;">
           <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-2);">
             Remove this account? This cannot be undone.
@@ -379,7 +369,7 @@
             />
           </div>
         </div>
-      </q-card>
+      </BasilCard>
     </BasilTray>
   </div>
 </template>

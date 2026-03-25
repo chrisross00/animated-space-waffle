@@ -6,12 +6,10 @@
 
     <!-- Loading skeleton -->
     <template v-if="$store.state.bootstrapping">
-      <q-item v-for="i in 4" :key="i">
-        <q-item-section>
-          <q-skeleton type="text" width="55%" />
-          <q-skeleton type="text" width="35%" />
-        </q-item-section>
-      </q-item>
+      <BasilListItem v-for="i in 4" :key="i">
+        <BasilSkeleton type="text" width="55%" />
+        <BasilSkeleton type="text" width="35%" />
+      </BasilListItem>
     </template>
 
     <!-- Empty state -->
@@ -23,27 +21,27 @@
     />
 
     <!-- Tag list -->
-    <q-list v-else bordered rounded>
+    <BasilList v-else style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
       <template v-for="tag in tags" :key="tag.id">
-          <q-item clickable v-ripple @click="toggleExpand(tag)">
-            <q-item-section>
-              <q-item-label class="basil-tags__name">{{ tag.name }}</q-item-label>
-              <q-item-label caption v-if="summaries[tag.id]">
+          <BasilListItem clickable @click="toggleExpand(tag)">
+            <template #label><span class="basil-tags__name">{{ tag.name }}</span></template>
+            <template #caption>
+              <template v-if="summaries[tag.id]">
                 {{ summaries[tag.id].transactionCount }} transaction{{ summaries[tag.id].transactionCount !== 1 ? 's' : '' }}
                 <template v-if="summaries[tag.id].dateRange?.earliest">
                   &middot; {{ formatDate(summaries[tag.id].dateRange.earliest) }} – {{ formatDate(summaries[tag.id].dateRange.latest) }}
                 </template>
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
+              </template>
+            </template>
+            <template #side>
               <div class="row items-center no-wrap q-gutter-xs">
                 <span v-if="summaries[tag.id]" class="basil-tags__total basil-mono">
                   {{ formatCurrency(summaries[tag.id].totalSpend) }}
                 </span>
-                <q-icon :name="expanded === tag.id ? 'expand_less' : 'expand_more'" color="grey-6" size="xs" />
+                <BasilIcon :name="expanded === tag.id ? 'expand_less' : 'expand_more'" color="var(--basil-text-muted)" size="sm" />
               </div>
-            </q-item-section>
-          </q-item>
+            </template>
+          </BasilListItem>
 
         <!-- Expanded detail (inline after this tag) -->
         <div v-if="expanded === tag.id && expandedData" class="basil-tags__detail q-pa-md">
@@ -64,19 +62,17 @@
           <div class="basil-card-head q-mb-xs q-mt-md">
             <span class="basil-card-label">Tagged Transactions</span>
           </div>
-          <q-list v-if="expandedTransactions.length" dense separator>
-            <q-item v-for="txn in expandedTransactions" :key="txn.transaction_id" dense>
-              <q-item-section>
-                <q-item-label>{{ txn.merchant_name || txn.name }}</q-item-label>
-                <q-item-label caption>{{ formatDate(txn.date) }} &middot; {{ txn.mappedCategory }}</q-item-label>
-              </q-item-section>
-              <q-item-section side>
+          <BasilList v-if="expandedTransactions.length" separator>
+            <BasilListItem v-for="txn in expandedTransactions" :key="txn.transaction_id" dense>
+              <template #label>{{ txn.merchant_name || txn.name }}</template>
+              <template #caption>{{ formatDate(txn.date) }} &middot; {{ txn.mappedCategory }}</template>
+              <template #side>
                 <span class="basil-mono" :style="{ color: txn.amount > 0 ? 'var(--basil-negative)' : 'var(--basil-positive)' }">
                   {{ txn.amount > 0 ? '-' : '' }}{{ formatCurrency(Math.abs(txn.amount)) }}
                 </span>
-              </q-item-section>
-            </q-item>
-          </q-list>
+              </template>
+            </BasilListItem>
+          </BasilList>
 
           <BasilButton
             variant="flat" color="negative" icon="delete" label="Delete tag"
@@ -85,7 +81,7 @@
           />
         </div>
       </template>
-    </q-list>
+    </BasilList>
 
     <!-- Delete confirmation -->
     <BasilConfirmTray

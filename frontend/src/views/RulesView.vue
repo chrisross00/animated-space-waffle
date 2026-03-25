@@ -8,12 +8,10 @@
     </div>
 
     <template v-if="$store.state.bootstrapping">
-      <q-item v-for="i in 3" :key="i">
-        <q-item-section>
-          <q-skeleton type="text" width="55%" />
-          <q-skeleton type="text" width="35%" />
-        </q-item-section>
-      </q-item>
+      <BasilListItem v-for="i in 3" :key="i">
+        <BasilSkeleton type="text" width="55%" />
+        <BasilSkeleton type="text" width="35%" />
+      </BasilListItem>
     </template>
     <div v-else-if="compoundRules.length === 0" class="basil-rules__empty q-mb-lg">
       No compound rules yet.
@@ -21,7 +19,7 @@
       or use the Sort Transactions flow.
     </div>
 
-    <q-list v-else bordered rounded class="q-mb-lg">
+    <BasilList v-else class="q-mb-lg" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in compoundRules"
         :key="String(rule._id)"
@@ -29,21 +27,17 @@
         @action="confirmDeleteCompound(rule)"
         @click="openEditCompound(rule)"
       >
-        <q-item clickable v-ripple class="basil-rules__item">
-          <q-item-section>
-            <q-item-label class="basil-rules__label">{{ rule.label }}</q-item-label>
-            <q-item-label caption class="basil-rules__conditions">
-              {{ formatConditions(rule.conditions) }}
-            </q-item-label>
-          </q-item-section>
-          <q-item-section side>
+        <BasilListItem clickable class="basil-rules__item">
+          <template #label><span class="basil-rules__label">{{ rule.label }}</span></template>
+          <template #caption><span class="basil-rules__conditions">{{ formatConditions(rule.conditions) }}</span></template>
+          <template #side>
             <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.action.categoryName)}`">
               {{ rule.action.categoryName }}
             </span>
-          </q-item-section>
-        </q-item>
+          </template>
+        </BasilListItem>
       </SwipeReveal>
-    </q-list>
+    </BasilList>
 
     <!-- Simple rules section -->
     <div class="basil-card-head q-mb-sm">
@@ -51,37 +45,33 @@
     </div>
 
     <template v-if="$store.state.bootstrapping">
-      <q-item v-for="i in 4" :key="i">
-        <q-item-section>
-          <q-skeleton type="text" width="45%" />
-          <q-skeleton type="text" width="25%" />
-        </q-item-section>
-      </q-item>
+      <BasilListItem v-for="i in 4" :key="i">
+        <BasilSkeleton type="text" width="45%" />
+        <BasilSkeleton type="text" width="25%" />
+      </BasilListItem>
     </template>
     <div v-else-if="simpleRules.length === 0" class="basil-rules__empty q-mb-lg">
       No merchant or name rules yet.
     </div>
 
-    <q-list v-else bordered rounded class="q-mb-lg">
+    <BasilList v-else class="q-mb-lg" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in simpleRules"
         :key="rule.key"
         :ref="el => setSwipeRef('simple', rule.key, el)"
         @action="confirmDeleteSimple(rule)"
       >
-        <q-item class="basil-rules__item">
-          <q-item-section>
-            <q-item-label class="basil-rules__label">{{ rule.value }}</q-item-label>
-            <q-item-label caption>{{ rule.type === 'merchant_name' ? 'Merchant rule' : 'Name rule' }}</q-item-label>
-          </q-item-section>
-          <q-item-section side>
+        <BasilListItem class="basil-rules__item">
+          <template #label><span class="basil-rules__label">{{ rule.value }}</span></template>
+          <template #caption>{{ rule.type === 'merchant_name' ? 'Merchant rule' : 'Name rule' }}</template>
+          <template #side>
             <span class="basil-rules__cat-badge" :class="`basil-rules__cat-badge--${categoryType(rule.category)}`">
               {{ rule.category }}
             </span>
-          </q-item-section>
-        </q-item>
+          </template>
+        </BasilListItem>
       </SwipeReveal>
-    </q-list>
+    </BasilList>
 
     <!-- Plaid auto-categorization rules: hidden from user-facing view.
          PFC mappings are managed via category settings, not here. -->

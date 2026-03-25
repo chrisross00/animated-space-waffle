@@ -66,7 +66,7 @@
 }
 
 /* ---- Summary cards (Net Worth, Cash Runway) ----
-   Uses q-card + shared basil-card-head / basil-card-label / basil-card-rule
+   Uses BasilCard + shared basil-card-head / basil-card-label / basil-card-rule
    from BudgetView.css. Only view-specific layout below. */
 .basil-accounts__card {
   padding: var(--basil-space-5) !important;

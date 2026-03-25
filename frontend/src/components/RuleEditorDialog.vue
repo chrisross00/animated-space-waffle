@@ -1,7 +1,7 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="onModelValueUpdate"
     max-width="680px">
-    <q-card class="basil-dialog-card basil-re__card" flat>
+    <BasilCard class="basil-dialog-card basil-re__card" flat>
 
       <!-- Header -->
       <div class="basil-dialog-header">
@@ -221,7 +221,7 @@
         </div>
       </div>
 
-    </q-card>
+    </BasilCard>
   </BasilTray>
 </template>
 

@@ -63,66 +63,42 @@
       overlay
       elevated
     >
-      <q-list>
+      <BasilList>
         <template v-if="$store.state.session && $store.state.user?.onboarded_at">
-          <q-item-label header class="basil-drawer-section-label">Navigation</q-item-label>
-          <q-item clickable to="/plan" @click="leftDrawerOpen = false">
-            <q-item-section avatar>
-              <q-icon name="edit_note" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Plan</q-item-label>
-              <q-item-label caption>Budget planner</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item clickable to="/rules" @click="leftDrawerOpen = false">
-            <q-item-section avatar>
-              <q-icon name="rule" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Rules</q-item-label>
-              <q-item-label caption>Manage categorization rules</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item clickable to="/tags" @click="leftDrawerOpen = false">
-            <q-item-section avatar>
-              <q-icon name="sell" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Tags</q-item-label>
-              <q-item-label caption>Track spending by tag</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-separator class="q-my-sm" />
-          <q-item-label header class="basil-drawer-section-label">Tools</q-item-label>
-          <q-item clickable @click="openVenmoEnrichment">
-            <q-item-section avatar>
-              <q-icon name="sync_alt" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Venmo Import</q-item-label>
-              <q-item-label caption>Add names and notes to Venmo transactions</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-separator class="q-my-sm" />
-          <q-item clickable @click="toggleTheme">
-            <q-item-section avatar>
-              <q-icon :name="isDark ? 'light_mode' : 'dark_mode'" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ isDark ? 'Light mode' : 'Dark mode' }}</q-item-label>
-            </q-item-section>
-          </q-item>
-          <q-item clickable to="/privacy" @click="leftDrawerOpen = false">
-            <q-item-section avatar>
-              <q-icon name="policy" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>Privacy Policy</q-item-label>
-            </q-item-section>
-          </q-item>
+          <div class="basil-drawer-section-label">Navigation</div>
+          <BasilListItem clickable @click="$router.push('/plan'); leftDrawerOpen = false">
+            <template #avatar><BasilIcon name="edit_note" /></template>
+            <template #label>Plan</template>
+            <template #caption>Budget planner</template>
+          </BasilListItem>
+          <BasilListItem clickable @click="$router.push('/rules'); leftDrawerOpen = false">
+            <template #avatar><BasilIcon name="rule" /></template>
+            <template #label>Rules</template>
+            <template #caption>Manage categorization rules</template>
+          </BasilListItem>
+          <BasilListItem clickable @click="$router.push('/tags'); leftDrawerOpen = false">
+            <template #avatar><BasilIcon name="sell" /></template>
+            <template #label>Tags</template>
+            <template #caption>Track spending by tag</template>
+          </BasilListItem>
+          <BasilSeparator class="q-my-sm" />
+          <div class="basil-drawer-section-label">Tools</div>
+          <BasilListItem clickable @click="openVenmoEnrichment">
+            <template #avatar><BasilIcon name="sync_alt" /></template>
+            <template #label>Venmo Import</template>
+            <template #caption>Add names and notes to Venmo transactions</template>
+          </BasilListItem>
+          <BasilSeparator class="q-my-sm" />
+          <BasilListItem clickable @click="toggleTheme">
+            <template #avatar><BasilIcon :name="isDark ? 'light_mode' : 'dark_mode'" /></template>
+            <template #label>{{ isDark ? 'Light mode' : 'Dark mode' }}</template>
+          </BasilListItem>
+          <BasilListItem clickable @click="$router.push('/privacy'); leftDrawerOpen = false">
+            <template #avatar><BasilIcon name="policy" /></template>
+            <template #label>Privacy Policy</template>
+          </BasilListItem>
         </template>
-      </q-list>
+      </BasilList>
     </q-drawer>
 
     <!-- Mobile bottom nav — hidden on desktop and when keyboard is open -->

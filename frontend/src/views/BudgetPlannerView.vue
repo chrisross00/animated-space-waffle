@@ -17,7 +17,7 @@
 
       <!-- Not onboarded — push to onboarding -->
       <div v-if="!isOnboarded" class="q-mb-md">
-        <q-card class="my-card basil-setup-card">
+        <BasilCard class="my-card basil-setup-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Get started</span>
           </div>
@@ -29,7 +29,7 @@
             </div>
           </div>
           <BasilButton label="Set up Basil" to="/onboarding" class="q-mt-md" />
-        </q-card>
+        </BasilCard>
       </div>
 
       <!-- First-time setup choice -->

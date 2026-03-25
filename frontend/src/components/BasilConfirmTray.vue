@@ -1,13 +1,11 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" :persistent="persistent" max-width="400px">
-    <q-card class="basil-dialog-card" flat>
-      <q-card-section>
-        <div class="text-subtitle1">{{ title }}</div>
-        <div v-if="message" class="text-body2 q-mt-xs" style="color: var(--basil-text-secondary)">
-          {{ message }}
-        </div>
-      </q-card-section>
-      <q-card-actions align="right">
+    <BasilCard class="basil-dialog-card" flat>
+      <div class="text-subtitle1">{{ title }}</div>
+      <div v-if="message" class="text-body2 q-mt-xs" style="color: var(--basil-text-secondary)">
+        {{ message }}
+      </div>
+      <template #actions>
         <BasilButton variant="flat" :label="cancelLabel" @click="$emit('update:modelValue', false)" />
         <BasilButton
           variant="flat"
@@ -16,8 +14,8 @@
           :loading="loading"
           @click="$emit('confirm')"
         />
-      </q-card-actions>
-    </q-card>
+      </template>
+    </BasilCard>
   </BasilTray>
 </template>
 

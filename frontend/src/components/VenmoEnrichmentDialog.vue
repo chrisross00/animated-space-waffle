@@ -1,6 +1,6 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="onModelValueUpdate" max-width="640px">
-    <q-card class="basil-dialog-card basil-venmo-dialog" flat>
+    <BasilCard class="basil-dialog-card basil-venmo-dialog" flat>
       <!-- Header -->
       <div class="basil-dialog-header">
         <div class="basil-dialog-title">
@@ -11,7 +11,7 @@
       </div>
 
       <!-- Body -->
-      <q-card-section class="col overflow-auto basil-venmo-dialog__body">
+      <div class="col overflow-auto basil-venmo-dialog__body">
 
         <!-- Step 1: Upload -->
         <template v-if="step === 'upload'">
@@ -83,10 +83,11 @@
           </q-markup-table>
 
           <!-- Unmatched (collapsed) -->
-          <q-expansion-item
+          <BasilExpansion
             v-if="unmatchedRows.length"
+            v-model="unmatchedOpen"
             dense
-            header-class="basil-venmo-dialog__unmatched-header"
+            :header-class="'basil-venmo-dialog__unmatched-header'"
             :label="`${unmatchedRows.length} unmatched Venmo transaction${unmatchedRows.length !== 1 ? 's' : ''}`"
             caption="Couldn't find a matching bank transaction"
           >
@@ -108,7 +109,7 @@
                 </tr>
               </tbody>
             </q-markup-table>
-          </q-expansion-item>
+          </BasilExpansion>
         </template>
 
         <!-- Step 3: Done -->
@@ -119,10 +120,10 @@
           </div>
         </template>
 
-      </q-card-section>
+      </div>
 
       <!-- Footer -->
-      <q-card-actions align="right" class="basil-venmo-dialog__actions">
+      <div class="basil-venmo-dialog__actions basil-card__actions">
         <BasilButton v-if="step === 'upload'" variant="flat" label="Cancel" @click="close" />
         <BasilButton
           v-if="step === 'upload'"
@@ -140,8 +141,8 @@
           @click="apply"
         />
         <BasilButton v-if="step === 'done'" label="Done" @click="close" />
-      </q-card-actions>
-    </q-card>
+      </div>
+    </BasilCard>
   </BasilTray>
 </template>
 
@@ -171,6 +172,7 @@ export default {
       alreadyEnriched: [],
       selected: [],
       enrichedCount: 0,
+      unmatchedOpen: false,
     };
   },
 
