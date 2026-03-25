@@ -1,10 +1,10 @@
 import BudgetView from './views/BudgetView.vue'
-import AccountsView from './views/AccountsView.vue'
-import TrendsView from './views/TrendsView.vue'
-import RulesView from './views/RulesView.vue'
-import ProfileView from './views/ProfileView.vue'
 
-// Lazy-load views not in the main nav
+// Lazy-loaded but prefetched after initial render (see prefetchViews below)
+const AccountsView = () => import('./views/AccountsView.vue')
+const TrendsView = () => import('./views/TrendsView.vue')
+const RulesView = () => import('./views/RulesView.vue')
+const ProfileView = () => import('./views/ProfileView.vue')
 const BudgetPlannerView = () => import('./views/BudgetPlannerView.vue')
 const MerchantBrowser = () => import('./views/MerchantBrowser.vue')
 const OnboardingView = () => import('./views/OnboardingView.vue')

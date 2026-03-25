@@ -139,3 +139,12 @@ app.config.errorHandler = (err, instance, info) => {
 app.use(router)
 app.use(store)
   .mount('#app')
+
+// Prefetch nav views in the background after initial render
+const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000))
+idle(() => {
+  import('./views/AccountsView.vue')
+  import('./views/TrendsView.vue')
+  import('./views/RulesView.vue')
+  import('./views/ProfileView.vue')
+})
