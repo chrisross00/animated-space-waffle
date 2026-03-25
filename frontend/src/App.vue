@@ -1,7 +1,7 @@
 <template>
-  <q-layout view="hHh Lpr lFf">
-    <q-header :class="['basil-header', headerScrolled && 'basil-header--scrolled']">
-      <q-toolbar>
+  <div class="basil-shell">
+    <header :class="['basil-header', headerScrolled && 'basil-header--scrolled']">
+      <div class="basil-header__toolbar">
         <BasilButton
           v-if="$store.state.user?.onboarded_at"
           variant="icon" dense
@@ -10,59 +10,65 @@
           @click="toggleLeftDrawer"
         />
 
-        <q-toolbar-title class="basil-wordmark">
+        <span class="basil-header__title basil-wordmark">
           <a href="/" class="basil-wordmark__link">Basil</a>
-        </q-toolbar-title>
+        </span>
 
         <!-- Current-month summary — visible when data is loaded, desktop only -->
-        <div v-if="headerStats" class="basil-header-stat gt-xs">
+        <div v-if="headerStats" class="basil-header-stat basil-desktop-only">
           <span class="basil-header-stat__spend">${{ headerStats.expenseSpendFmt }} spent</span>
           <span class="basil-header-stat__dot">·</span>
           <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
         </div>
+
+        <!-- Spacer to push sync button to the right -->
+        <div style="flex: 1" />
 
         <!-- Sync button -->
         <BasilButton
           v-if="$store.state.session && $store.state.user?.onboarded_at"
           variant="icon" dense
           icon="sync"
-          class="basil-sync-btn q-ml-sm"
+          class="basil-sync-btn"
           :class="{ 'basil-sync-btn--spinning': syncing }"
           :title="hasItemErrors ? 'Account needs attention — tap to sync' : 'Sync with bank'"
           @click="handleSync"
         >
-          <q-badge v-if="hasItemErrors" floating color="warning" rounded class="basil-sync-badge" />
+          <BasilBadge v-if="hasItemErrors" floating color="warning" />
         </BasilButton>
-      </q-toolbar>
+      </div>
 
       <!-- Desktop tab bar — hidden on mobile -->
-      <q-tabs align="left" class="basil-tabs gt-xs">
+      <BasilTabs class="basil-desktop-tabs basil-desktop-only">
         <template v-if="$store.state.session && $store.state.user?.onboarded_at">
-          <q-route-tab to="/budget" icon="account_balance_wallet" label="Budget" />
-          <q-route-tab to="/accounts" icon="account_balance" label="Accounts" />
-          <q-route-tab to="/plan" icon="edit_note" label="Plan" />
-          <q-route-tab to="/trends" icon="bar_chart" label="Trends" />
-          <q-route-tab to="/rules" icon="rule" label="Rules" />
-          <q-route-tab to="/tags" icon="sell" label="Tags" />
+          <BasilTab name="budget" to="/budget" icon="account_balance_wallet" label="Budget" />
+          <BasilTab name="accounts" to="/accounts" icon="account_balance" label="Accounts" />
+          <BasilTab name="plan" to="/plan" icon="edit_note" label="Plan" />
+          <BasilTab name="trends" to="/trends" icon="bar_chart" label="Trends" />
+          <BasilTab name="rules" to="/rules" icon="rule" label="Rules" />
+          <BasilTab name="tags" to="/tags" icon="sell" label="Tags" />
         </template>
-        <q-route-tab to="/profile" icon="person" label="Profile" />
-      </q-tabs>
+        <BasilTab name="profile" to="/profile" icon="person" label="Profile" />
+      </BasilTabs>
 
       <!-- Global thin progress bar — visible while bootstrapping app data -->
-      <q-linear-progress
+      <BasilProgress
         v-if="$store.state.bootstrapping"
         indeterminate
         color="primary"
         class="basil-loading-bar"
       />
-    </q-header>
+    </header>
 
-    <q-drawer
-      v-model="leftDrawerOpen"
-      side="left"
-      overlay
-      elevated
-    >
+    <!-- Drawer backdrop -->
+    <div
+      class="basil-drawer-backdrop"
+      :class="{ 'basil-drawer-backdrop--visible': leftDrawerOpen }"
+      @click="leftDrawerOpen = false"
+    />
+
+    <!-- Left drawer -->
+    <aside class="basil-drawer" :class="{ 'basil-drawer--open': leftDrawerOpen }">
       <BasilList>
         <template v-if="$store.state.session && $store.state.user?.onboarded_at">
           <div class="basil-drawer-section-label">Navigation</div>
@@ -81,14 +87,14 @@
             <template #label>Tags</template>
             <template #caption>Track spending by tag</template>
           </BasilListItem>
-          <BasilSeparator class="q-my-sm" />
+          <BasilSeparator class="basil-drawer__separator" />
           <div class="basil-drawer-section-label">Tools</div>
           <BasilListItem clickable @click="openVenmoEnrichment">
             <template #avatar><BasilIcon name="sync_alt" /></template>
             <template #label>Venmo Import</template>
             <template #caption>Add names and notes to Venmo transactions</template>
           </BasilListItem>
-          <BasilSeparator class="q-my-sm" />
+          <BasilSeparator class="basil-drawer__separator" />
           <BasilListItem clickable @click="toggleTheme">
             <template #avatar><BasilIcon :name="isDark ? 'light_mode' : 'dark_mode'" /></template>
             <template #label>{{ isDark ? 'Light mode' : 'Dark mode' }}</template>
@@ -99,21 +105,25 @@
           </BasilListItem>
         </template>
       </BasilList>
-    </q-drawer>
+    </aside>
 
     <!-- Mobile bottom nav — hidden on desktop and when keyboard is open -->
-    <q-footer v-if="$store.state.session && $store.state.user?.onboarded_at" v-show="!isKeyboardOpen" class="lt-sm basil-bottom-nav">
-      <q-tabs align="justify" class="basil-bottom-tabs">
-        <q-route-tab to="/budget" icon="account_balance_wallet" label="Budget" />
-        <q-route-tab v-if="$store.state.user?.onboarded_at" to="/accounts" icon="account_balance" label="Accounts" />
-        <q-route-tab v-if="$store.state.user?.onboarded_at" to="/trends" icon="bar_chart" label="Trends" />
-        <q-route-tab to="/profile" icon="person" label="Profile" />
-      </q-tabs>
-    </q-footer>
+    <nav
+      v-if="$store.state.session && $store.state.user?.onboarded_at"
+      v-show="!isKeyboardOpen"
+      class="basil-footer basil-mobile-only"
+    >
+      <BasilTabs class="basil-bottom-tabs">
+        <BasilTab name="budget" to="/budget" icon="account_balance_wallet" label="Budget" />
+        <BasilTab v-if="$store.state.user?.onboarded_at" name="accounts" to="/accounts" icon="account_balance" label="Accounts" />
+        <BasilTab v-if="$store.state.user?.onboarded_at" name="trends" to="/trends" icon="bar_chart" label="Trends" />
+        <BasilTab name="profile" to="/profile" icon="person" label="Profile" />
+      </BasilTabs>
+    </nav>
 
-    <q-page-container>
+    <main class="basil-main" :class="{ 'basil-main--has-footer': $store.state.session && $store.state.user?.onboarded_at }">
       <template v-if="hasError">
-        <q-page class="flex flex-center">
+        <div class="basil-error-page">
           <EmptyState
             icon="error_outline"
             heading="Something went wrong"
@@ -121,11 +131,11 @@
           >
             <BasilButton
               label="Reload"
-              class="q-mt-md"
+              class="basil-error-page__btn"
               @click="reload"
             />
           </EmptyState>
-        </q-page>
+        </div>
       </template>
       <template v-else>
         <PullToRefresh>
@@ -136,10 +146,10 @@
           </router-view>
         </PullToRefresh>
       </template>
-    </q-page-container>
+    </main>
 
     <VenmoEnrichmentDialog v-model="venmoDialogOpen" />
-  </q-layout>
+  </div>
 
   <BasilKeyboard />
 </template>
@@ -170,21 +180,10 @@
 }
 
 /* ========================================
-   Header
+   Header — title area
    ======================================== */
-.basil-header {
-  background-color: var(--basil-surface) !important;
-  color: var(--basil-text) !important;
-  border-bottom: 1px solid var(--basil-border);
-  /* Override Quasar's elevated shadow — we apply our own on scroll */
-  box-shadow: none !important;
-  transition: box-shadow var(--basil-t-base) var(--basil-ease);
-  /* PWA safe area: pad above the toolbar for notch/dynamic island */
-  padding-top: env(safe-area-inset-top);
-}
-
-.basil-header--scrolled {
-  box-shadow: var(--basil-shadow-md) !important;
+.basil-header__title {
+  flex-shrink: 0;
 }
 
 /* ---- Wordmark ---- */
@@ -214,15 +213,8 @@
 .basil-sync-btn:hover {
   color: var(--basil-text) !important;
 }
-.basil-sync-btn--spinning .q-icon {
+.basil-sync-btn--spinning .basil-icon {
   animation: basil-spin 0.8s linear infinite;
-}
-.basil-sync-badge {
-  min-width: 10px;
-  min-height: 10px;
-  padding: 0;
-  top: 2px;
-  right: 2px;
 }
 @keyframes basil-spin {
   from { transform: rotate(0deg); }
@@ -283,83 +275,49 @@
 }
 
 /* ========================================
-   Mobile bottom nav
+   Desktop tabs — horizontal alignment
    ======================================== */
-:root {
-  --basil-bottom-nav-height: 72px;
+.basil-desktop-tabs {
+  padding: 0 var(--basil-space-3);
 }
 
-.basil-bottom-nav {
-  background-color: var(--basil-surface) !important;
-  border-top: 1px solid var(--basil-border);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
+/* ========================================
+   Mobile bottom nav — tab layout
+   ======================================== */
 .basil-bottom-tabs {
-  color: var(--basil-text-secondary) !important;
+  display: flex;
+  justify-content: space-around;
 }
 
-/* Active tab: green color + pill behind icon (M3 / Gmail pattern) */
-.basil-bottom-tabs .q-tab--active {
-  color: var(--basil-green) !important;
-}
-
-.basil-bottom-tabs .q-tab__indicator {
-  display: none !important;
-}
-
-/* Pill behind active icon — anchored to the icon element itself */
-.basil-bottom-tabs .q-tab__icon {
-  position: relative;
-}
-
-.basil-bottom-tabs .q-tab__icon::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 64px;
-  height: 32px;
-  border-radius: 16px;
-  background-color: transparent;
-  transition: background-color 200ms var(--basil-ease);
-  z-index: -1;
-}
-
-.basil-bottom-tabs .q-tab--active .q-tab__icon::before {
-  background-color: var(--basil-green-subtle);
-}
-
+/* ========================================
+   Drawer section label
+   ======================================== */
 .basil-drawer-section-label {
   color: var(--basil-text-secondary) !important;
   font-size: 0.75rem !important;
   font-weight: 600 !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  padding: var(--basil-space-3) var(--basil-space-4) var(--basil-space-1);
+}
+
+.basil-drawer__separator {
+  margin: var(--basil-space-2) 0;
 }
 
 /* ========================================
-   Dark mode — Quasar component overrides
+   Error page — centered layout
    ======================================== */
-[data-theme="dark"] .q-card {
-  background-color: var(--basil-surface) !important;
-  color: var(--basil-text) !important;
+.basil-error-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
 }
 
-[data-theme="dark"] .basil-tosort-card:hover,
-[data-theme="dark"] .basil-relationships-card:not(.basil-relationships-card--expanded):hover {
-  background-color: var(--basil-surface-raised) !important;
+.basil-error-page__btn {
+  margin-top: var(--basil-space-4);
 }
-
-[data-theme="dark"] .q-field--outlined .q-field__control {
-  color: var(--basil-text) !important;
-}
-
-[data-theme="dark"] .q-field--outlined .q-field__control:hover::before {
-  border-color: var(--basil-text-secondary) !important;
-}
-
 
 </style>
 

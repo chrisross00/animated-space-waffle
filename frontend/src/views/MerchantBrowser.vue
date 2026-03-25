@@ -17,7 +17,7 @@
     </div>
 
     <!-- Desktop table (hidden on mobile) -->
-    <q-table
+    <BasilTable
       class="gt-xs"
       title="Merchant Browser"
       :rows="merchants"
@@ -27,52 +27,47 @@
       :filter="filter"
       :pagination="{ rowsPerPage: 25 }"
     >
-      <template v-slot:top-right>
+      <template #top-right>
         <BasilSearch dense v-model="filter" placeholder="Search merchants" />
       </template>
 
-      <template v-slot:body-cell-current="props">
-        <q-td :props="props">
-          <span>{{ currentLabel(props.row) }}</span>
-          <q-icon
-            v-if="ruleMap[props.row.merchant_name]"
-            name="gavel"
-            size="xs"
-            class="q-ml-xs text-primary"
-          >
-            <BasilTooltip>Rule: {{ ruleMap[props.row.merchant_name] }}</BasilTooltip>
-          </q-icon>
-        </q-td>
+      <template #body-cell-current="{ row }">
+        <span>{{ currentLabel(row) }}</span>
+        <span
+          v-if="ruleMap[row.merchant_name]"
+          class="material-icons basil-merchant-rule-icon"
+          style="font-size: 14px; margin-left: var(--basil-space-1); color: var(--basil-green)"
+        >gavel
+          <BasilTooltip>Rule: {{ ruleMap[row.merchant_name] }}</BasilTooltip>
+        </span>
       </template>
 
-      <template v-slot:body-cell-assign="props">
-        <q-td :props="props">
-          <div class="row no-wrap items-center q-gutter-sm" style="height: 40px">
-            <BasilSelect
-              v-model="pendingAssignments[props.row.merchant_name]"
-              :options="categoryNames"
-              dense
-              filterable
-              style="width: 200px"
-            />
-            <BasilButton
-              label="Apply"
-              style="height: 40px"
-              :loading="!!saving[props.row.merchant_name]"
-              :disabled="!canApply(props.row.merchant_name)"
-              @click="onApply(props.row.merchant_name)"
-            />
-          </div>
-        </q-td>
+      <template #body-cell-assign="{ row }">
+        <div style="display: flex; flex-wrap: nowrap; align-items: center; gap: var(--basil-space-2); height: 40px">
+          <BasilSelect
+            v-model="pendingAssignments[row.merchant_name]"
+            :options="categoryNames"
+            dense
+            filterable
+            style="width: 200px"
+          />
+          <BasilButton
+            label="Apply"
+            style="height: 40px"
+            :loading="!!saving[row.merchant_name]"
+            :disabled="!canApply(row.merchant_name)"
+            @click="onApply(row.merchant_name)"
+          />
+        </div>
       </template>
-      <template v-slot:no-data>
+      <template #no-data>
         <EmptyState v-if="!isLoading"
           icon="store"
           heading="No merchants yet"
           body="Merchants will appear here once you have transactions imported."
         />
       </template>
-    </q-table>
+    </BasilTable>
 
     <!-- Mobile card list (hidden on desktop) -->
     <div class="lt-sm">

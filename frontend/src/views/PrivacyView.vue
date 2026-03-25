@@ -1,5 +1,5 @@
 <template>
-  <q-page class="basil-privacy">
+  <div class="basil-privacy">
     <div class="basil-privacy__container">
       <h1 class="basil-privacy__title basil-display">Privacy Policy</h1>
       <p class="basil-privacy__effective">Effective date: March 11, 2026</p>
@@ -150,7 +150,7 @@
         </p>
       </section>
     </div>
-  </q-page>
+  </div>
 </template>
 
 <script>

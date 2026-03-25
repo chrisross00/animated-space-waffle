@@ -1073,3 +1073,96 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   font-weight: 600;
   color: var(--basil-text);
 }
+
+/* ---- Tabs ---- */
+
+.basil-tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  font-family: var(--basil-font-ui);
+}
+
+.basil-tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--basil-space-1);
+  padding: var(--basil-space-2) var(--basil-space-3);
+  border: none;
+  background: transparent;
+  color: var(--basil-text-secondary);
+  font-family: var(--basil-font-ui);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color var(--basil-t-fast) var(--basil-ease);
+}
+
+.basil-tab:hover:not(.basil-tab--disabled) {
+  color: var(--basil-text);
+}
+
+.basil-tab--active {
+  color: var(--basil-green);
+  font-weight: 600;
+}
+
+.basil-tab--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Icon wrapper — used for the active pill indicator in bottom nav */
+.basil-tab__icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Active pill behind the icon — bottom nav pattern (M3 / Gmail) */
+.basil-tab__icon-wrap::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: transparent;
+  transition: background-color var(--basil-t-fast) var(--basil-ease);
+  z-index: -1;
+}
+
+.basil-tab--active .basil-tab__icon-wrap::before {
+  background-color: var(--basil-green-subtle);
+}
+
+.basil-tab__icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.basil-tab__label {
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+
+/* Remove default anchor styles when tab renders as router-link */
+a.basil-tab {
+  text-decoration: none;
+  color: var(--basil-text-secondary);
+}
+
+a.basil-tab.basil-tab--active {
+  color: var(--basil-green);
+}

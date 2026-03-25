@@ -52,7 +52,7 @@
           </div>
 
           <!-- Matches table -->
-          <q-markup-table v-if="matches.length" flat bordered separator="horizontal" class="basil-venmo-dialog__table">
+          <table v-if="matches.length" class="basil-markup-table basil-venmo-dialog__table">
             <thead>
               <tr>
                 <th class="text-left">
@@ -80,7 +80,7 @@
                 </td>
               </tr>
             </tbody>
-          </q-markup-table>
+          </table>
 
           <!-- Unmatched (collapsed) -->
           <BasilExpansion
@@ -91,7 +91,7 @@
             :label="`${unmatchedRows.length} unmatched Venmo transaction${unmatchedRows.length !== 1 ? 's' : ''}`"
             caption="Couldn't find a matching bank transaction"
           >
-            <q-markup-table flat bordered separator="horizontal" class="basil-venmo-dialog__table">
+            <table class="basil-markup-table basil-venmo-dialog__table">
               <thead>
                 <tr>
                   <th class="text-left">Date</th>
@@ -108,7 +108,7 @@
                   <td class="text-right basil-mono">{{ formatAmount(u.venmoRow.amount) }}</td>
                 </tr>
               </tbody>
-            </q-markup-table>
+            </table>
           </BasilExpansion>
         </template>
 

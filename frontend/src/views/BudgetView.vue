@@ -547,118 +547,120 @@
         </div>
 
         <!-- Virtual scroll rows -->
-        <q-virtual-scroll
-          :items="sortedTableTransactions"
-          :virtual-scroll-item-size="56"
-          @virtual-scroll="onTableVirtualScroll"
-          style="max-height: calc(100dvh - 200px); min-height: calc(100vh - 300px)"
+        <div
+          ref="virtualScrollRef"
           class="basil-txn-table"
-          v-slot="{ item, index }"
+          style="max-height: calc(100dvh - 200px); min-height: calc(100vh - 300px); overflow-y: auto; -webkit-overflow-scrolling: touch"
+          @scroll="onVirtualScroll"
         >
-          <div
-            :key="item.transaction_id"
-            :class="['basil-txn-row', { 'basil-txn-row--excluded': item.excludeFromTotal, 'basil-txn-row--selected': isRowSelected(item) }]"
-            @click="onRowClick($event, item)"
-            @touchstart="onRowTouchStart($event, item)"
-            @touchend="onRowTouchEnd"
-            @touchmove="onRowTouchCancel"
-            @contextmenu.prevent
-          >
-            <!-- Checkbox (desktop only) -->
-            <div class="basil-txn-row__checkbox gt-xs">
-              <BasilToggle variant="checkbox" dense :model-value="isRowSelected(item)" @update:model-value="toggleRowSelection(item)" @click.stop />
-            </div>
-
-            <!-- Name -->
-            <div class="basil-txn-row__name">
-              <div class="basil-txn-cell">
-                <div
-                  class="basil-txn-avatar"
-                  :class="{ 'basil-txn-avatar--selected': isMobile && isRowSelected(item) }"
-                  :style="isRowSelected(item) && isMobile ? {} : { background: merchantColor(item) }"
-                  @click="isMobile && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(item)) : null"
-                >
-                  <q-icon v-if="isMobile && isRowSelected(item)" name="check" size="18px" />
-                  <template v-else>{{ merchantInitials(item) }}</template>
+          <div :style="{ height: `${virtualizer.value?.getTotalSize() || 0}px`, width: '100%', position: 'relative' }">
+            <template v-for="vRow in (virtualizer.value?.getVirtualItems() || [])" :key="sortedTableTransactions[vRow.index]?.transaction_id || vRow.index">
+              <div
+                :style="{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }"
+                :class="['basil-txn-row', { 'basil-txn-row--excluded': sortedTableTransactions[vRow.index]?.excludeFromTotal, 'basil-txn-row--selected': isRowSelected(sortedTableTransactions[vRow.index]) }]"
+                @click="onRowClick($event, sortedTableTransactions[vRow.index])"
+                @touchstart="onRowTouchStart($event, sortedTableTransactions[vRow.index])"
+                @touchend="onRowTouchEnd"
+                @touchmove="onRowTouchCancel"
+                @contextmenu.prevent
+              >
+                <!-- Checkbox (desktop only) -->
+                <div class="basil-txn-row__checkbox gt-xs">
+                  <BasilToggle variant="checkbox" dense :model-value="isRowSelected(sortedTableTransactions[vRow.index])" @update:model-value="toggleRowSelection(sortedTableTransactions[vRow.index])" @click.stop />
                 </div>
-                <div class="basil-txn-label">
-                  <div class="basil-txn-label__primary">
-                    <span class="basil-txn-label__text">{{ item.venmo_note || item.merchant_name || item.name }}</span>
-                    <span v-if="item.tags?.length" class="basil-tag-badges">
-                      <span v-for="tag in item.tags.slice(0, 2)" :key="tag.id" class="basil-tag-badge">{{ tag.name }}</span>
-                      <span v-if="item.tags.length > 2" class="basil-tag-overflow">+{{ item.tags.length - 2 }}</span>
-                    </span>
-                    <span
-                      v-if="relationshipMap[item.transaction_id] && !item.linkedTransaction && !item.dismissedRelationship"
-                      class="basil-relationship-badge basil-relationship-badge--pending"
+
+                <!-- Name -->
+                <div class="basil-txn-row__name">
+                  <div class="basil-txn-cell">
+                    <div
+                      class="basil-txn-avatar"
+                      :class="{ 'basil-txn-avatar--selected': isMobile && isRowSelected(sortedTableTransactions[vRow.index]) }"
+                      :style="isRowSelected(sortedTableTransactions[vRow.index]) && isMobile ? {} : { background: merchantColor(sortedTableTransactions[vRow.index]) }"
+                      @click="isMobile && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(sortedTableTransactions[vRow.index])) : null"
                     >
-                      Possible Match
-                      <BasilTooltip>{{ relationshipTooltip(item) }}</BasilTooltip>
-                    </span>
-                    <span
-                      v-else-if="relationshipMap[item.transaction_id] && item.linkedTransaction"
-                      class="basil-relationship-badge basil-relationship-badge--confirmed"
-                    >
-                      {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
-                      <BasilTooltip>{{ relationshipTooltip(item) }}</BasilTooltip>
-                    </span>
-                    <span
-                      v-if="item.parentTransactionId"
-                      class="basil-relationship-badge"
-                    >
-                      Split
-                      <BasilTooltip>Part of a split transaction</BasilTooltip>
-                    </span>
+                      <q-icon v-if="isMobile && isRowSelected(sortedTableTransactions[vRow.index])" name="check" size="18px" />
+                      <template v-else>{{ merchantInitials(sortedTableTransactions[vRow.index]) }}</template>
+                    </div>
+                    <div class="basil-txn-label">
+                      <div class="basil-txn-label__primary">
+                        <span class="basil-txn-label__text">{{ sortedTableTransactions[vRow.index]?.venmo_note || sortedTableTransactions[vRow.index]?.merchant_name || sortedTableTransactions[vRow.index]?.name }}</span>
+                        <span v-if="sortedTableTransactions[vRow.index]?.tags?.length" class="basil-tag-badges">
+                          <span v-for="tag in sortedTableTransactions[vRow.index].tags.slice(0, 2)" :key="tag.id" class="basil-tag-badge">{{ tag.name }}</span>
+                          <span v-if="sortedTableTransactions[vRow.index].tags.length > 2" class="basil-tag-overflow">+{{ sortedTableTransactions[vRow.index].tags.length - 2 }}</span>
+                        </span>
+                        <span
+                          v-if="relationshipMap[sortedTableTransactions[vRow.index]?.transaction_id] && !sortedTableTransactions[vRow.index]?.linkedTransaction && !sortedTableTransactions[vRow.index]?.dismissedRelationship"
+                          class="basil-relationship-badge basil-relationship-badge--pending"
+                        >
+                          Possible Match
+                          <BasilTooltip>{{ relationshipTooltip(sortedTableTransactions[vRow.index]) }}</BasilTooltip>
+                        </span>
+                        <span
+                          v-else-if="relationshipMap[sortedTableTransactions[vRow.index]?.transaction_id] && sortedTableTransactions[vRow.index]?.linkedTransaction"
+                          class="basil-relationship-badge basil-relationship-badge--confirmed"
+                        >
+                          {{ relationshipMap[sortedTableTransactions[vRow.index]?.transaction_id]?.type === 'split' ? 'Payback' : 'Return' }}
+                          <BasilTooltip>{{ relationshipTooltip(sortedTableTransactions[vRow.index]) }}</BasilTooltip>
+                        </span>
+                        <span
+                          v-if="sortedTableTransactions[vRow.index]?.parentTransactionId"
+                          class="basil-relationship-badge"
+                        >
+                          Split
+                          <BasilTooltip>Part of a split transaction</BasilTooltip>
+                        </span>
+                      </div>
+                      <div class="basil-txn-label__secondary">
+                        {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
+                        <q-icon
+                          v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
+                          name="event_repeat"
+                          size="12px"
+                          class="basil-effective-date-icon"
+                        >
+                          <BasilTooltip>Moved from {{ formatDate(sortedTableTransactions[vRow.index]?.date) }} to {{ formatDate(sortedTableTransactions[vRow.index]?.effectiveDate) }}</BasilTooltip>
+                        </q-icon>
+                      </div>
+                    </div>
                   </div>
-                  <div class="basil-txn-label__secondary">
-                    {{ formatDate(item.date) }}
-                    <q-icon
-                      v-if="item.effectiveDate && item.effectiveDate !== item.date"
-                      name="event_repeat"
-                      size="12px"
-                      class="basil-effective-date-icon"
-                    >
-                      <BasilTooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</BasilTooltip>
-                    </q-icon>
-                  </div>
+                </div>
+
+                <!-- Amount -->
+                <div class="basil-txn-row__amount">
+                  <span
+                    class="basil-txn-amount"
+                    :class="sortedTableTransactions[vRow.index]?.amount < 0 ? 'basil-txn-amount--income' : `basil-txn-amount--${categoryTypeMap[sortedTableTransactions[vRow.index]?.mappedCategory] || 'expense'}`"
+                  >
+                    {{ sortedTableTransactions[vRow.index]?.amount < 0 ? '+' : '' }}${{ Math.abs(sortedTableTransactions[vRow.index]?.amount || 0).toFixed(2) }}
+                  </span>
+                </div>
+
+                <!-- Category (desktop only) -->
+                <div class="basil-txn-row__category gt-xs">
+                  {{ sortedTableTransactions[vRow.index]?.mappedCategory }}
+                </div>
+
+                <!-- Date (desktop only) -->
+                <div class="basil-txn-row__date gt-xs">
+                  {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
+                  <q-icon
+                    v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
+                    name="event_repeat"
+                    size="12px"
+                    class="basil-effective-date-icon"
+                  >
+                    <BasilTooltip>Moved from {{ formatDate(sortedTableTransactions[vRow.index]?.date) }} to {{ formatDate(sortedTableTransactions[vRow.index]?.effectiveDate) }}</BasilTooltip>
+                  </q-icon>
+                </div>
+
+                <!-- Status (desktop only) -->
+                <div class="basil-txn-row__status gt-xs">
+                  <span v-if="sortedTableTransactions[vRow.index]?.pending" class="basil-txn-pending">Pending</span>
                 </div>
               </div>
-            </div>
-
-            <!-- Amount -->
-            <div class="basil-txn-row__amount">
-              <span
-                class="basil-txn-amount"
-                :class="item.amount < 0 ? 'basil-txn-amount--income' : `basil-txn-amount--${categoryTypeMap[item.mappedCategory] || 'expense'}`"
-              >
-                {{ item.amount < 0 ? '+' : '' }}${{ Math.abs(item.amount).toFixed(2) }}
-              </span>
-            </div>
-
-            <!-- Category (desktop only) -->
-            <div class="basil-txn-row__category gt-xs">
-              {{ item.mappedCategory }}
-            </div>
-
-            <!-- Date (desktop only) -->
-            <div class="basil-txn-row__date gt-xs">
-              {{ formatDate(item.date) }}
-              <q-icon
-                v-if="item.effectiveDate && item.effectiveDate !== item.date"
-                name="event_repeat"
-                size="12px"
-                class="basil-effective-date-icon"
-              >
-                <BasilTooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</BasilTooltip>
-              </q-icon>
-            </div>
-
-            <!-- Status (desktop only) -->
-            <div class="basil-txn-row__status gt-xs">
-              <span v-if="item.pending" class="basil-txn-pending">Pending</span>
-            </div>
+            </template>
           </div>
-        </q-virtual-scroll>
+        </div>
 
         <div v-if="tableLoadingMore" class="basil-table-load-more">
           <q-spinner size="20px" color="primary" />
@@ -928,7 +930,8 @@
 
 
 <script>
-  import {ref} from 'vue'
+  import { ref, computed, watch, shallowRef } from 'vue'
+  import { useVirtualizer } from '@tanstack/vue-virtual'
   import dayjs from 'dayjs'
   import minMax from 'dayjs/plugin/minMax';
   import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -979,6 +982,20 @@
       VenmoEnrichmentDialog,
       TagPicker,
     },
+
+    setup() {
+      const virtualScrollRef = ref(null)
+      const virtualItemCount = ref(0)
+      const virtualizer = useVirtualizer(computed(() => ({
+        count: virtualItemCount.value,
+        getScrollElement: () => virtualScrollRef.value,
+        estimateSize: () => 56,
+        overscan: 10,
+      })))
+
+      return { virtualScrollRef, virtualItemCount, virtualizer }
+    },
+
     data() {
       const currentDate = dayjs();
       const selectedDate = {
@@ -2416,12 +2433,18 @@ monthStats() {
           this.sortDir = 'asc';
         }
       },
-      async onTableVirtualScroll({ to, direction }) {
+      onVirtualScroll() {
+        if (!this.virtualizer?.value) return;
+        const items = this.virtualizer.value.getVirtualItems();
+        if (items.length === 0) return;
+        const to = items[items.length - 1].index;
+        this.checkLoadMore(to);
+      },
+      async checkLoadMore(to) {
         // Only fetch more when viewing all transactions (not searching), not already loading,
-        // scrolling downward, and near the bottom of the list
+        // and near the bottom of the list
         if (this.tableServerResults !== null) return;
         if (this.tableLoadingMore || this.tableNoMoreMonths) return;
-        if (direction === 'decrease') return;
         const total = this.sortedTableTransactions.length;
         if (total === 0 || to < total - 20) return;
 
@@ -2560,6 +2583,12 @@ monthStats() {
       },
     },
     watch: {
+      sortedTableTransactions: {
+        handler(newVal) {
+          this.virtualItemCount = newVal.length;
+        },
+        immediate: true,
+      },
       monthlyStats: {
         handler(newStats, oldStats) {
           this.animateStats(oldStats || {}, newStats || {});
