@@ -467,8 +467,8 @@ All custom class names use the `basil-` prefix with BEM-like structure:
 
 Examples: `basil-actuals-card`, `basil-primary-stat__amount`, `basil-txn-row--excluded`
 
-Quasar utility classes (`q-mt-md`, `gt-xs`, etc.) are fine alongside basil classes.
-Never create new classes that start with `q-` — those are Quasar's namespace.
+Never create new classes that start with `q-` — that was Quasar's namespace.
+Use `basil-utilities.css` classes for responsive helpers and layout utilities.
 
 ---
 
@@ -491,7 +491,7 @@ Before shipping a new component or view:
 ## What NOT to Do
 
 - **Don't hardcode colors.** `color: #3d8b6c` → `color: var(--basil-green)`
-- **Don't use Quasar utility classes like `text-primary` / `text-grey-7`.** These bypass the token system and break in dark mode.
+- **Don't use legacy Quasar utility classes like `text-primary` / `text-grey-7`.** These are no longer available and bypass the token system. Use `var(--basil-*)` tokens directly.
 - **Don't add a new Google Font.** The three font roles cover all cases.
 - **Don't use `BasilSpinner` or loading overlays** for the main budget load — use `<SkeletonBudget>`.
 - **Don't animate for decoration.** Every motion should confirm an action or orient the user.
