@@ -11,12 +11,10 @@
 
 <template>
   <div class="q-pa-md">
-    <q-banner class="basil-info-banner q-mb-md" rounded>
-      <template v-slot:avatar>
-        <q-icon name="info" color="info" />
-      </template>
+    <div class="basil-banner basil-info-banner q-mb-md">
+      <q-icon name="info" color="info" />
       Assigning or changing a merchant rule will re-categorize <strong>all existing transactions</strong> from that merchant, not just future ones.
-    </q-banner>
+    </div>
 
     <!-- Desktop table (hidden on mobile) -->
     <q-table

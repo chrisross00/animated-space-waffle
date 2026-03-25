@@ -175,7 +175,7 @@
             :class="{ 'basil-re__matches-chevron--open': showMatches }"
           />
         </div>
-        <q-slide-transition>
+        <Transition name="basil-slide">
           <div v-show="showMatches">
             <div v-if="matchedTransactions.length === 0" class="basil-re__matches-empty">
               No transactions match these conditions
@@ -199,7 +199,7 @@
               </div>
             </div>
           </div>
-        </q-slide-transition>
+        </Transition>
       </div>
 
       </div><!-- /basil-re__scroll -->

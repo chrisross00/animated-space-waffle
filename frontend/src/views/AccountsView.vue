@@ -41,17 +41,15 @@
     <template v-else>
 
       <!-- Item error banner -->
-      <q-banner v-if="hasItemErrors" rounded class="basil-accounts__error-banner q-mb-md">
-        <template v-slot:avatar>
-          <q-icon name="warning" color="warning" />
-        </template>
+      <div v-if="hasItemErrors" class="basil-banner basil-accounts__error-banner q-mb-md">
+        <q-icon name="warning" color="warning" />
         <div>
           <strong>Account{{ Object.keys(itemErrors).length > 1 ? 's need' : ' needs' }} attention</strong>
           <div class="basil-accounts__error-detail">
             {{ Object.keys(itemErrors).join(', ') }} — tap Reconnect below to re-authorize.
           </div>
         </div>
-      </q-banner>
+      </div>
 
       <!-- Reconnect Plaid Link (update mode) -->
       <PlaidLinkHandler
@@ -121,7 +119,7 @@
               >
                 Needs reconnect
               </q-chip>
-              <q-space />
+              <div class="basil-spacer"></div>
               <q-btn
                 v-if="institution.error && !institution.manual"
                 flat dense no-caps color="warning" icon="refresh" label="Reconnect"
