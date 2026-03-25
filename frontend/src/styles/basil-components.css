@@ -1,0 +1,62 @@
+/* ==========================================================
+   Basil Component Library — Shared Styles
+   Uses --basil-* tokens exclusively. Dark mode automatic.
+   ========================================================== */
+
+/* ---- Toast ---- */
+
+.basil-toast-container {
+  position: fixed;
+  bottom: calc(var(--basil-bottom-nav-height, 56px) + var(--basil-space-3));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--basil-space-2);
+  align-items: center;
+  pointer-events: none;
+}
+
+.basil-toast {
+  background: var(--basil-surface-raised);
+  color: var(--basil-text);
+  padding: var(--basil-space-3) var(--basil-space-4);
+  border-radius: var(--basil-radius-md);
+  box-shadow: var(--basil-shadow-md);
+  border-left: 3px solid var(--basil-info);
+  font-family: var(--basil-font-ui);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  max-width: 90vw;
+  pointer-events: auto;
+}
+
+.basil-toast--positive {
+  border-left-color: var(--basil-positive);
+}
+
+.basil-toast--negative {
+  border-left-color: var(--basil-negative);
+}
+
+.basil-toast--info {
+  border-left-color: var(--basil-info);
+}
+
+/* ---- Toast transitions ---- */
+
+.basil-toast-enter-active,
+.basil-toast-leave-active {
+  transition: all var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-toast-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.basil-toast-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
