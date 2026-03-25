@@ -7,7 +7,7 @@
         <div v-if="dialogSubtitle" class="basil-dialog-title__sub">{{ dialogSubtitle }}</div>
         <div class="basil-dialog-title__main basil-display">{{ dialogMainTitle }}</div>
       </div>
-      <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+      <BasilButton variant="icon" icon="close" @click="closeTray" class="basil-dialog-close" aria-label="Close" />
     </div>
 
     <!-- ── TRANSACTION form ───────────────────────────── -->
@@ -40,12 +40,12 @@
           :class="{ 'basil-dialog-txn-attribution--link': attribution.linkable }"
           @click="attribution.linkable && $emit('view-rule', attribution)"
         >
-          <q-icon :name="attribution.icon" size="14px" />
+          <BasilIcon :name="attribution.icon" style="font-size: 14px;" />
           <span>{{ attribution.label }}</span>
-          <q-icon v-if="attribution.linkable" name="chevron_right" size="14px" />
+          <BasilIcon v-if="attribution.linkable" name="chevron_right" style="font-size: 14px;" />
         </div>
         <div v-if="isSplitChild" class="basil-dialog-txn-attribution">
-          <q-icon name="call_split" size="14px" />
+          <BasilIcon name="call_split" style="font-size: 14px;" />
           <span>Split from ${{ parentAmount != null ? Math.abs(parentAmount).toFixed(2) : '?' }} {{ item.merchant_name || item.name }}</span>
         </div>
       </div>
@@ -70,7 +70,7 @@
           <BasilNote v-model="dialogBody.note" label="Note" @blur="isFormSubmittable()" />
         </div>
 
-        <div v-if="dialogType === 'transaction'" class="q-px-md q-mb-sm">
+        <div v-if="dialogType === 'transaction'" style="padding: 0 var(--basil-space-4); margin-bottom: var(--basil-space-2)">
           <TagPicker v-model="selectedTags" @update:modelValue="isFormSubmittable()" />
         </div>
 
@@ -148,7 +148,7 @@
         </template>
         <template v-else>
           <div style="display: flex; gap: var(--basil-space-1);">
-            <BasilButton variant="flat" label="Cancel" v-close-popup />
+            <BasilButton variant="flat" label="Cancel" @click="closeTray" />
             <BasilButton v-if="canSplit" variant="flat" label="Split" @click="enterSplitMode()" />
             <BasilButton v-if="isSplitChild" variant="flat" label="Unsplit" @click="requestUnsplit()" />
           </div>
@@ -179,7 +179,7 @@
       <div v-if="hasRules" class="basil-dialog-section">
         <div class="basil-dialog-section__label">Auto-learn rules</div>
         <div v-for="ruleType in ['merchant_name', 'name']" :key="ruleType">
-          <div v-if="item.rules && item.rules[ruleType] && item.rules[ruleType].length" class="q-mb-xs">
+          <div v-if="item.rules && item.rules[ruleType] && item.rules[ruleType].length" style="margin-bottom: var(--basil-space-1)">
             <div class="basil-dialog-section__sublabel">
               {{ ruleType === 'merchant_name' ? 'Merchant' : 'Transaction name' }}
             </div>
@@ -204,7 +204,7 @@
       <!-- Add rule -->
       <div class="basil-dialog-section">
         <div class="basil-dialog-section__label">Add merchant rule</div>
-        <div class="row items-center q-gutter-sm">
+        <div style="display: flex; align-items: center; gap: var(--basil-space-2)">
           <BasilSelect
             v-model="newRuleValue"
             :options="allMerchantOptions"
@@ -214,7 +214,7 @@
             label="Search merchants…"
             dense
             filterable
-            class="col"
+            style="flex: 1;"
           >
             <template #option="{ option }">
               <div>
@@ -231,7 +231,7 @@
           "{{ newRuleValue }}" is currently assigned to <strong>{{ conflictingCategory }}</strong>.
           Adding it here will move it and re-categorize all matching transactions.
         </p>
-        <div v-if="pendingRuleAdditions.length" class="basil-chips q-mt-xs">
+        <div v-if="pendingRuleAdditions.length" class="basil-chips" style="margin-top: var(--basil-space-1)">
           <span
             v-for="r in pendingRuleAdditions"
             :key="r.ruleValue"
@@ -247,7 +247,7 @@
       </div>
 
       <div class="basil-dialog-actions">
-        <BasilButton variant="flat" label="Cancel" v-close-popup />
+        <BasilButton variant="flat" label="Cancel" @click="closeTray" />
         <div class="basil-dialog-actions__right">
           <BasilButton variant="flat" label="Reset" @click="resetData()" />
           <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateCategory" />
@@ -275,7 +275,7 @@
       </div>
 
       <div class="basil-dialog-actions">
-        <BasilButton variant="flat" label="Cancel" v-close-popup />
+        <BasilButton variant="flat" label="Cancel" @click="closeTray" />
         <div class="basil-dialog-actions__right">
           <BasilButton variant="flat" label="Reset" @click="resetData()" />
           <BasilButton label="Submit" :disabled="!formSubmittable" @click="addCategory" />
@@ -671,6 +671,11 @@ computed: {
     },
   },
   methods: {
+        closeTray() {
+          // Close the nearest native <dialog> ancestor (BasilTray).
+          // BasilTray's onNativeClose handler will emit update:modelValue = false.
+          this.$el.closest('dialog')?.close();
+        },
         onTransactionFormReset () {
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
         },

@@ -3,14 +3,20 @@ if (localStorage.getItem('basil-theme') === 'dark') {
   document.documentElement.dataset.theme = 'dark';
 }
 
+import './styles/tokens.css'
+import './styles/icons.css'
+import './styles/basil-components.css'
+import './styles/basil-shell.css'
+import './styles/basil-utilities.css'
+import './styles/basil-keyboard.css'
+import './styles/dialogs.css'
+
 import * as Vue from 'vue'
 import * as VueRouter from 'vue-router'
 import * as Sentry from '@sentry/vue'
 import App from './App.vue'
 import store from './store'
 import routes from './routes'
-import { Quasar } from 'quasar'
-import quasarUserOptions from './quasar-user-options'
 import { consumeAuthToken, getOrAddUser, ensureAppData } from './api'
 import { dismissKeyboard } from './utils/basilKeyboard'
 
@@ -114,9 +120,9 @@ router.beforeEach(async (to, _from, next) => {
 router.afterEach(() => { dismissKeyboard() })
 
 
-const app = Vue.createApp(App).use(Quasar, quasarUserOptions)
+const app = Vue.createApp(App)
 
-// Register Basil components globally (additive — Quasar still installed until Phase 5)
+// Register Basil components globally
 import * as BasilComponents from './components/basil'
 Object.entries(BasilComponents).forEach(([name, component]) => {
   app.component(name, component)

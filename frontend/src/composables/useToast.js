@@ -3,8 +3,8 @@ import { reactive } from 'vue'
 let id = 0
 export const toastState = reactive({ items: [] })
 
-function show({ message, type = 'info', timeout = 3000 }) {
-  const toast = { id: ++id, message, type, timeout }
+function show({ message, type = 'info', timeout = 3000, actions }) {
+  const toast = { id: ++id, message, type, timeout, actions }
   toastState.items.push(toast)
   if (timeout > 0) {
     setTimeout(() => dismiss(toast.id), timeout)

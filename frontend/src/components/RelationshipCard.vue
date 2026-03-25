@@ -1,7 +1,7 @@
 <template>
   <div class="basil-rel-pair">
     <div class="basil-rel-pair__header">
-      <q-icon :name="relationship.type === 'split' ? 'call_split' : 'reply'" size="16px" />
+      <BasilIcon :name="relationship.type === 'split' ? 'call_split' : 'reply'" style="font-size: 16px;" />
       <span>{{ relationship.type === 'split' ? 'Possible payback' : 'Possible return' }}</span>
     </div>
     <div class="basil-rel-pair__row">
@@ -18,7 +18,7 @@
       <span class="basil-rel-pair__date">{{ fmtDate(secondaryTxn.date) }}</span>
     </div>
     <div v-if="enrichmentContext" class="basil-rel-pair__enrichment">
-      <q-icon name="person" size="12px" />
+      <BasilIcon name="person" style="font-size: 12px;" />
       <span>{{ enrichmentContext }}</span>
     </div>
     <div class="basil-rel-pair__actions">

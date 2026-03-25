@@ -9,7 +9,7 @@
           <div v-if="isEdit" class="basil-dialog-title__sub">Edit Rule</div>
           <div class="basil-dialog-title__main basil-display">{{ isEdit ? rule.label : 'New Rule' }}</div>
         </div>
-        <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+        <BasilButton variant="icon" icon="close" @click="$emit('update:modelValue', false)" class="basil-dialog-close" aria-label="Close" />
       </div>
 
       <!-- Scrollable middle: body + matched transactions -->
@@ -166,11 +166,11 @@
           <span class="basil-re__match-count" :class="{ 'basil-re__match-count--none': matchCount === 0 }">
             Matched transactions &middot; {{ matchCount }}
           </span>
-          <q-icon
+          <BasilIcon
             name="chevron_right"
-            size="18px"
             class="basil-re__matches-chevron"
             :class="{ 'basil-re__matches-chevron--open': showMatches }"
+            style="font-size: 18px;"
           />
         </div>
         <Transition name="basil-slide">
@@ -210,7 +210,7 @@
         </span>
         <span v-else />
         <div class="basil-re__footer-actions">
-          <BasilButton variant="flat" label="Cancel" v-close-popup />
+          <BasilButton variant="flat" label="Cancel" @click="$emit('update:modelValue', false)" />
           <BasilButton label="Save"
             :loading="saving"
             :disabled="!isValid"

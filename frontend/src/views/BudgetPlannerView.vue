@@ -1,7 +1,7 @@
 <style src="../styles/BudgetPlannerView.css"></style>
 
 <template>
-  <div class="basil-planner-wrapper q-pa-md">
+  <div class="basil-planner-wrapper basil-pa-4">
 
     <!-- Not logged in -->
     <EmptyState
@@ -10,25 +10,25 @@
       heading="Sign in to plan your budget"
       body="Set income targets, spending limits, and savings goals."
     >
-      <BasilButton label="Go to Profile" to="/profile" class="q-mt-sm" />
+      <BasilButton label="Go to Profile" to="/profile" class="basil-mt-2" />
     </EmptyState>
 
     <div v-else>
 
       <!-- Not onboarded — push to onboarding -->
-      <div v-if="!isOnboarded" class="q-mb-md">
+      <div v-if="!isOnboarded" class="basil-mb-4">
         <BasilCard class="my-card basil-setup-card">
           <div class="basil-card-head">
             <span class="basil-card-label">Get started</span>
           </div>
           <div class="basil-setup-card__body">
-            <q-icon name="auto_awesome" color="primary" size="2rem" />
+            <BasilIcon name="auto_awesome" color="primary" size="2rem" />
             <div>
               <div class="basil-setup-card__heading">Set up Basil</div>
               <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
             </div>
           </div>
-          <BasilButton label="Set up Basil" to="/onboarding" class="q-mt-md" />
+          <BasilButton label="Set up Basil" to="/onboarding" class="basil-mt-4" />
         </BasilCard>
       </div>
 
@@ -37,7 +37,7 @@
         <div style="text-align: center; padding: var(--basil-space-7) var(--basil-space-5);">
           <h2 class="basil-display" style="font-size: 1.75rem; margin: 0 0 var(--basil-space-3);">Set up your budget</h2>
           <p style="color: var(--basil-text-secondary); margin: 0 0 var(--basil-space-5);">Choose how you'd like to get started.</p>
-          <BasilButton label="Guided setup" class="q-mb-md" style="min-width: 200px;" @click="startGuidedSetup()" />
+          <BasilButton label="Guided setup" class="basil-mb-4" style="min-width: 200px;" @click="startGuidedSetup()" />
           <div>
             <a href="#" style="color: var(--basil-text-muted); font-size: 0.875rem;" @click.prevent="dismissGuidedSetup()">I'll do it myself</a>
           </div>
@@ -165,11 +165,11 @@
                 <span class="basil-planner-row__amount basil-mono">
                   ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
                 </span>
-                <q-icon
+                <BasilIcon
                   v-if="isUserCreated(cat)"
                   name="delete_outline"
                   size="16px"
-                  class="basil-planner-delete-icon gt-xs"
+                  class="basil-planner-delete-icon basil-desktop-only"
                   :class="{ 'basil-planner-delete-icon--loading': deletingId === cat._id }"
                   @click.stop="removeCategory(cat)"
                 />
@@ -183,7 +183,7 @@
             class="basil-planner-add-row"
             @click="startAdd(sectionType)"
           >
-            <q-icon name="add" size="16px" />
+            <BasilIcon name="add" size="16px" />
             <span>Add {{ sectionLabels[sectionType].toLowerCase() }} category</span>
           </div>
           <div v-else class="basil-planner-add-form">

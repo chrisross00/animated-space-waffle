@@ -67,7 +67,6 @@
   flex-direction: column;
 }
 
-.basil-tray__wrap--mobile > .q-card,
 .basil-tray__wrap--mobile > .basil-card {
   border-radius: 0 !important;
   max-height: 100%;
@@ -99,13 +98,11 @@
 
 /* Cards without basil-dialog-header or basil-triage__header:
    add handle via padding + pseudo-element on the card itself */
-.basil-tray__wrap--mobile > .q-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header)),
 .basil-tray__wrap--mobile > .basil-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header)) {
   padding-top: 20px;
   position: relative;
 }
 
-.basil-tray__wrap--mobile > .q-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header))::before,
 .basil-tray__wrap--mobile > .basil-card:not(:has(.basil-dialog-header)):not(:has(.basil-triage__header))::before {
   content: '';
   position: absolute;

@@ -11,12 +11,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@quasar/extras": "^1.0.0",
     "@sentry/vue": "^10.43.0",
     "@tanstack/vue-virtual": "^3.13.23",
     "dayjs": "^1.11.7",
     "echarts": "^6.0.0",
-    "quasar": "^2.0.0",
     "vue": "^3.2.13",
     "vue-echarts": "^8.0.1",
     "vue-router": "^4.1.6",
@@ -24,7 +22,6 @@
     "vuex-persistedstate": "^4.1.0"
   },
   "devDependencies": {
-    "@quasar/vite-plugin": "^1.10.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/test-utils": "^2.4.6",
     "eslint": "^7.32.0",

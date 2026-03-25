@@ -178,17 +178,17 @@
 </style>
 
 <template>
-  <div class="q-pa-md-page-padder p-3">
+  <div>
 
     <!-- Skeleton cards while data is bootstrapping or auth state is resolving -->
     <div v-if="$store.state.bootstrapping || (session && !user)" class="basil-profile-layout">
       <BasilCard class="my-card profile-card basil-profile-card">
         <div class="basil-card-head"><span class="basil-card-label">Profile</span></div>
         <div class="basil-profile-identity">
-          <q-skeleton type="QAvatar" size="56px" />
+          <BasilSkeleton type="circle" size="56px" />
           <div style="flex: 1">
-            <q-skeleton type="text" width="55%" />
-            <q-skeleton type="text" width="40%" />
+            <BasilSkeleton type="text" width="55%" />
+            <BasilSkeleton type="text" width="40%" />
           </div>
         </div>
       </BasilCard>
@@ -205,14 +205,14 @@
         <div class="basil-profile-identity">
           <img v-if="user.picture" :src="user.picture" alt="User photo" class="basil-profile-avatar" />
           <div v-else class="basil-profile-avatar basil-profile-avatar--placeholder">
-            <q-icon name="person" size="2rem" />
+            <BasilIcon name="person" style="font-size: 2rem;" />
           </div>
           <div class="basil-profile-info">
             <div class="basil-profile-name basil-display">{{ user.name }}</div>
             <div class="basil-profile-email">{{ user.email }}</div>
           </div>
         </div>
-        <BasilButton variant="flat" dense color="negative" label="Sign out" icon="logout" @click="signOut" class="q-mt-md" />
+        <BasilButton variant="flat" dense color="negative" label="Sign out" icon="logout" @click="signOut" style="margin-top: var(--basil-space-4)" />
       </BasilCard>
 
       <!-- Display settings card -->
@@ -256,7 +256,7 @@
     <div v-else-if="$store.state.waitlisted" class="basil-landing">
       <div class="basil-landing__hero">
         <div class="basil-landing__icon">
-          <q-icon name="eco" size="32px" color="primary" />
+          <BasilIcon name="eco" style="font-size: 32px; color: var(--basil-green)" />
         </div>
         <h1 class="basil-landing__headline basil-display">You're on the list.</h1>
         <p class="basil-landing__sub">
@@ -269,7 +269,7 @@
     <div v-else class="basil-landing">
       <div class="basil-landing__hero">
         <div class="basil-landing__icon">
-          <q-icon name="eco" size="32px" color="primary" />
+          <BasilIcon name="eco" style="font-size: 32px; color: var(--basil-green)" />
         </div>
         <h1 class="basil-landing__headline basil-display">Know where your money goes.</h1>
         <p class="basil-landing__sub">
@@ -286,7 +286,7 @@
           v-if="isDevAuthBypassEnabled"
           label="Login as test user"
           :loading="isLoading"
-          class="q-mt-sm"
+          style="margin-top: var(--basil-space-2)"
           @click="devTestLogin"
         />
       </div>
@@ -294,7 +294,7 @@
       <div class="basil-landing__props">
         <div class="basil-landing__prop">
           <div class="basil-landing__prop-icon">
-            <q-icon name="auto_fix_high" size="20px" color="primary" />
+            <BasilIcon name="auto_fix_high" style="font-size: 20px; color: var(--basil-green)" />
           </div>
           <div>
             <div class="basil-landing__prop-title">Categorize once, done forever.</div>
@@ -303,7 +303,7 @@
         </div>
         <div class="basil-landing__prop">
           <div class="basil-landing__prop-icon">
-            <q-icon name="calendar_today" size="20px" color="primary" />
+            <BasilIcon name="calendar_today" style="font-size: 20px; color: var(--basil-green)" />
           </div>
           <div>
             <div class="basil-landing__prop-title">See the month as it unfolds.</div>
@@ -312,7 +312,7 @@
         </div>
         <div class="basil-landing__prop">
           <div class="basil-landing__prop-icon">
-            <q-icon name="show_chart" size="20px" color="primary" />
+            <BasilIcon name="show_chart" style="font-size: 20px; color: var(--basil-green)" />
           </div>
           <div>
             <div class="basil-landing__prop-title">Months of context, not just a snapshot.</div>
@@ -321,7 +321,7 @@
         </div>
         <div class="basil-landing__prop">
           <div class="basil-landing__prop-icon">
-            <q-icon name="lock" size="20px" color="primary" />
+            <BasilIcon name="lock" style="font-size: 20px; color: var(--basil-green)" />
           </div>
           <div>
             <div class="basil-landing__prop-title">Your data stays yours.</div>

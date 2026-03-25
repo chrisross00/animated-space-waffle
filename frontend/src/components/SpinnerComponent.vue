@@ -1,11 +1,7 @@
 <template>
     <div class="overlay" :class="{ 'is-visible': isLoading }">
         <div class="spinner-container">
-            <q-spinner
-            color="primary"
-            size="3em"
-            :thickness="10"
-            />
+            <BasilSpinner color="primary" size="3em" />
         </div>
       </div>
 </template>

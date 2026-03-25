@@ -1,8 +1,8 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" :persistent="persistent" max-width="400px">
     <BasilCard class="basil-dialog-card" flat>
-      <div class="text-subtitle1">{{ title }}</div>
-      <div v-if="message" class="text-body2 q-mt-xs" style="color: var(--basil-text-secondary)">
+      <div style="font-size: 1rem; font-weight: 500;">{{ title }}</div>
+      <div v-if="message" style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: var(--basil-space-1);">
         {{ message }}
       </div>
       <template #actions>

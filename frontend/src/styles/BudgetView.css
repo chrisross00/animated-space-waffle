@@ -50,11 +50,6 @@
     font-style: italic;
     color: var(--basil-text-muted);
   }
-  .basil-budget-row .progress .q-mt-sm {
-      margin-top: 0.3rem;
-      margin-bottom: 0.23rem;
-  }
-  
   .basil-budget-row .header {
     display: flex;
     justify-content: space-between;
@@ -94,14 +89,6 @@
     text-align: center;
   }
   
-  /* .q-dialog__backdrop {
-    background: none;
-  } */
-  
-  .q-dialog__content {
-    background-color: var(--basil-surface-dialog) !important;
-  }
-
   .dialog .titlebar {
     box-shadow: var(--basil-shadow-md);
   }
@@ -138,7 +125,7 @@
     }
 
     /* Separator between category header and transactions when expanded */
-    .basil-categories > .basil-budget-row.basil-category--expanded > .q-item {
+    .basil-categories > .basil-budget-row.basil-category--expanded > .basil-list-item {
       border-bottom: 1px solid var(--basil-border);
     }
 
@@ -179,7 +166,7 @@
       border-radius: var(--basil-radius-md);
     }
 
-    .basil-budget-row > .q-item {
+    .basil-budget-row > .basil-list-item {
       background-color: transparent;
     }
 
@@ -261,12 +248,6 @@
   padding: var(--basil-space-5) !important;
 }
 
-/* suppress default q-card-section padding inside our cards */
-.basil-actuals-card .q-card__section,
-.basil-projections-card .q-card__section {
-  padding: 0 !important;
-}
-
 /* ---- Page container ---- */
 .basil-container {
   max-width: 800px;
@@ -317,13 +298,8 @@
   margin-top: var(--basil-space-3);
 }
 
-.basil-hero-progress .q-linear-progress {
+.basil-hero-progress .basil-progress {
   height: 8px;
-  background-color: var(--basil-track);
-}
-
-.basil-hero-progress .q-linear-progress__track {
-  opacity: 1;
 }
 
 .basil-hero-progress-label {
@@ -504,29 +480,23 @@
    for accurate height measurement. No CSS transition classes needed. */
 
 /* ---- Progress bar fill animation ---- */
-/* Quasar drives progress via transform: scale3d(ratio, 1, 1) — not width */
-.basil-progress .q-linear-progress__model {
-  transition: transform 500ms var(--basil-ease);
+/* BasilProgress drives progress via width — override the default 200ms transition */
+.basil-progress .basil-progress__bar {
+  transition: width 500ms var(--basil-ease);
   transition-delay: 280ms;
 }
 
-/* Use basil track token for all progress bars */
-.basil-progress .q-linear-progress__track {
-  background-color: var(--basil-track) !important;
-  opacity: 1 !important;
-}
-
 /* ---- Progress bar gradient fills ---- */
-.basil-progress--secondary .q-linear-progress__model,
-.basil-progress--positive .q-linear-progress__model {
+.basil-progress--secondary .basil-progress__bar,
+.basil-progress--positive .basil-progress__bar {
   background: linear-gradient(90deg, var(--basil-green) 0%, var(--basil-green-mid) 100%) !important;
 }
 
-.basil-progress--warning .q-linear-progress__model {
+.basil-progress--warning .basil-progress__bar {
   background: linear-gradient(90deg, var(--basil-warning) 0%, var(--basil-warning-mid) 100%) !important;
 }
 
-.basil-progress--negative .q-linear-progress__model {
+.basil-progress--negative .basil-progress__bar {
   background: linear-gradient(90deg, var(--basil-expense) 0%, var(--basil-expense-mid) 100%) !important;
 }
 

@@ -44,6 +44,30 @@
   border-left-color: var(--basil-info);
 }
 
+.basil-toast__message {
+  display: block;
+}
+
+.basil-toast__actions {
+  display: flex;
+  gap: var(--basil-space-2);
+  margin-top: var(--basil-space-2);
+  justify-content: flex-end;
+}
+
+.basil-toast__action {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--basil-font-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--basil-primary);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 /* ---- Icon ---- */
 
 .basil-icon {

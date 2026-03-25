@@ -9,34 +9,34 @@
     heading="Sign in to see your budget"
     body="Connect your bank accounts to start tracking spending and income."
   >
-    <BasilButton label="Go to Profile" to="/profile" class="q-mt-sm" />
+    <BasilButton label="Go to Profile" to="/profile" class="basil-mt-2" />
   </EmptyState>
 
   <div v-show="isLoggedIn">
 
     <!-- Not onboarded — show only the setup CTA -->
-    <div v-if="!isOnboarded" class="q-pa-md basil-container">
+    <div v-if="!isOnboarded" class="basil-pa-4 basil-container">
       <BasilCard class="basil-card-base basil-setup-card">
         <div class="basil-card-head">
           <span class="basil-card-label">Get started</span>
         </div>
         <div class="basil-setup-card__body">
-          <q-icon name="auto_awesome" color="primary" size="2rem" />
+          <BasilIcon name="auto_awesome" color="primary" size="2rem" />
           <div>
             <div class="basil-setup-card__heading">Set up Basil</div>
             <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
           </div>
         </div>
-        <BasilButton label="Set up Basil" to="/onboarding" class="q-mt-md" />
+        <BasilButton label="Set up Basil" to="/onboarding" class="basil-mt-4" />
       </BasilCard>
     </div>
 
     <!-- Onboarded — full dashboard -->
     <SkeletonBudget v-if="isOnboarded && isLoading" />
-      <div v-show="isOnboarded && !isLoading" class="q-pa-md basil-container">
+      <div v-show="isOnboarded && !isLoading" class="basil-pa-4 basil-container">
 
         <!-- Hero card — always visible when data exists -->
-        <BasilCard v-if="budgetSummary && !showAll" flat bordered class="basil-card q-mb-md">
+        <BasilCard v-if="budgetSummary && !showAll" flat bordered class="basil-card basil-mb-4">
           <div class="basil-card__body">
             <div class="basil-card-head">
               <span class="basil-card-label">{{ budgetSummary.incomeState === 'none' ? 'Spending' : 'Flexible spending' }}</span>
@@ -62,15 +62,14 @@
               </div>
               <div class="basil-hero-sub">left to spend this month</div>
               <div v-if="budgetSummary.pace" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
-                <q-icon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
+                <BasilIcon :name="budgetSummary.pace === 'on-track' ? 'trending_flat' : 'trending_up'" size="14px" />
                 {{ budgetSummary.pace === 'on-track' ? 'On track' : 'Spending faster than usual' }}
               </div>
               <div class="basil-hero-progress">
-                <q-linear-progress
+                <BasilProgress
                   :value="Math.min(displayedSummary.ratio, 1)"
                   :color="displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'primary'"
-                  :class="['basil-progress', `basil-progress--${displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'positive'}`]"
-                  rounded
+                  :class="`basil-progress--${displayedSummary.ratio > 1 ? 'negative' : displayedSummary.ratio > 0.85 ? 'warning' : 'positive'}`"
                 />
               </div>
               <div class="basil-hero-progress-label">
@@ -162,11 +161,11 @@
 
           <!-- Secondary stats -->
           <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
-            <q-icon name="savings" size="xs" color="info" />
+            <BasilIcon name="savings" size="xs" color="info" />
             ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
           </div>
           <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
-            <q-icon name="warning_amber" size="xs" />
+            <BasilIcon name="warning_amber" size="xs" />
             ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
           </div>
         </BasilCard>
@@ -208,12 +207,12 @@
       <!-- To Sort Nudge Card -->
       <div
         v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
-        class="q-pa-md basil-container"
+        class="basil-pa-4 basil-container"
       >
         <BasilCard class="basil-tosort-card" @click="openTriageFlow()" @keydown.enter="openTriageFlow()" role="button" tabindex="0" aria-label="Sort transactions">
           <div class="basil-card-head">
             <span class="basil-card-label">To Sort</span>
-            <q-icon name="chevron_right" size="20px" />
+            <BasilIcon name="chevron_right" size="20px" />
           </div>
           <div class="basil-tosort-card__body">
             <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
@@ -230,13 +229,13 @@
       <!-- Detected Relationships Card -->
       <div
         v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
-        class="q-pa-md"
+        class="basil-pa-4"
         style="max-width: 800px; margin: 0 auto; padding-top: 0;"
       >
         <BasilCard :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]" @click="!relationshipsExpanded && (relationshipsExpanded = true)">
           <div class="basil-card-head" @click.stop="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
             <span class="basil-card-label">Detected Relationships</span>
-            <q-icon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
+            <BasilIcon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
           </div>
           <div v-if="!relationshipsExpanded" class="basil-relationships-card__body">
             <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
@@ -260,7 +259,7 @@
       <!-- Post-onboarding nudge card -->
       <div
         v-if="nudgeCard && !showAll && !isLoading && !isRefreshing"
-        class="q-pa-md"
+        class="basil-pa-4"
         style="max-width: 800px; margin: 0 auto; padding-top: 0;"
       >
         <BasilCard class="basil-tosort-card">
@@ -279,14 +278,14 @@
       </div>
 
       <!-- Button Container -->
-      <div v-if="isOnboarded" class="q-pa-md button-container" style="max-width: 800px; margin: 0 auto;">
+      <div v-if="isOnboarded" class="basil-pa-4 button-container" style="max-width: 800px; margin: 0 auto;">
         <BasilToggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
         <BasilToggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions" />
         <BasilSelect v-if="!showAll" v-model="selectedDate.display" :options="months" label="Budgets" />
       </div>
 
       <!-- If show all is false -->
-      <div v-show="isOnboarded && !showAll" class="q-pa-md" style="max-width: 800px; margin: 0 auto;">
+      <div v-show="isOnboarded && !showAll" class="basil-pa-4" style="max-width: 800px; margin: 0 auto;">
         <BasilList>
           <div class="basil-categories">
             <div
@@ -324,11 +323,11 @@
                   </div>
                 </div>
                 <div v-show="this.groupedTransactions[category].monthly_limit" class="basil-budget-row progress">
-                  <q-linear-progress
+                  <BasilProgress
                     :value="barsReady ? getProgressRatio(category) : 0"
-                    :class="['q-mt-sm', 'basil-progress', `basil-progress--${getCategoryProgressColor(category)}`]"
+                    :class="['basil-mt-2', `basil-progress--${getCategoryProgressColor(category)}`]"
                     :color="getCategoryProgressColor(category)"
-                    size="md"
+                    size="6px"
                   />
                 </div>
 
@@ -397,25 +396,25 @@
                               {{ relationshipMap[item.transaction_id].type === 'split' ? 'Payback' : 'Return' }}
                               <BasilTooltip>{{ relationshipTooltip(item) }}</BasilTooltip>
                             </span>
-                            <q-icon
+                            <BasilIcon
                               v-if="item.parentTransactionId"
                               name="call_split"
                               size="14px"
                               class="basil-split-icon"
                             >
                               <BasilTooltip>Part of a split transaction</BasilTooltip>
-                            </q-icon>
+                            </BasilIcon>
                           </div>
                           <div class="basil-txn-label__secondary">
                             {{ formatDate(item.date) }}
-                            <q-icon
+                            <BasilIcon
                               v-if="item.effectiveDate && item.effectiveDate !== item.date"
                               name="event_repeat"
                               size="12px"
                               class="basil-effective-date-icon"
                             >
                               <BasilTooltip>Moved from {{ formatDate(item.date) }} to {{ formatDate(item.effectiveDate) }}</BasilTooltip>
-                            </q-icon>
+                            </BasilIcon>
                           </div>
                         </div>
                       </div>
@@ -448,12 +447,12 @@
               </div>
             </div>
           </div>
-          <div v-if="!hasVisibleCategories && !$store.state.bootstrapping" class="basil-budget-empty-month q-pa-lg text-center">
-            <q-icon name="event_busy" size="2rem" color="grey-5" />
-            <div class="q-mt-sm" style="color: var(--basil-text-secondary)">
+          <div v-if="!hasVisibleCategories && !$store.state.bootstrapping" class="basil-budget-empty-month basil-pa-5" style="text-align: center;">
+            <BasilIcon name="event_busy" size="2rem" color="grey-5" />
+            <div class="basil-mt-2" style="color: var(--basil-text-secondary)">
               No transactions this month yet.
             </div>
-            <div class="q-mt-xs" style="color: var(--basil-text-secondary); font-size: 0.85rem">
+            <div class="basil-mt-1" style="color: var(--basil-text-secondary); font-size: 0.85rem">
               Try selecting a previous month, or sync to pull in new transactions.
             </div>
           </div>
@@ -461,10 +460,10 @@
       </div>
 
       <!-- If show all is true -->
-      <div v-show="isOnboarded && showAll" class="q-pa-md all-transactions-table">
+      <div v-show="isOnboarded && showAll" class="basil-pa-4 all-transactions-table">
 
         <!-- Toolbar: filters when nothing selected, bulk actions when rows are selected -->
-        <div class="row items-center q-gutter-sm q-mb-sm">
+        <div class="basil-mb-2" style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--basil-space-2);">
           <template v-if="selectedRows.length === 0 || isMobile">
             <BasilSearch
               v-model="tableSearch"
@@ -481,8 +480,8 @@
               dense
               style="min-width: 140px"
             />
-            <BasilAmount v-model="amountMin" dense placeholder="Min $" style="width: 90px" class="gt-xs" />
-            <BasilAmount v-model="amountMax" dense placeholder="Max $" style="width: 90px" class="gt-xs" />
+            <BasilAmount v-model="amountMin" dense placeholder="Min $" style="width: 90px" class="basil-desktop-only" />
+            <BasilAmount v-model="amountMax" dense placeholder="Max $" style="width: 90px" class="basil-desktop-only" />
             <BasilSelect
               v-if="$store.state.tags.length > 0"
               v-model="tagFilter"
@@ -493,7 +492,7 @@
               label="Tag"
               dense
               style="min-width: 120px"
-              class="gt-xs"
+              class="basil-desktop-only"
             />
             <BasilButton
               variant="flat"
@@ -504,7 +503,7 @@
           </template>
 
           <template v-else>
-            <div class="gt-xs row items-center q-gutter-sm full-width">
+            <div class="basil-desktop-only basil-full-width" style="display: flex; align-items: center; gap: var(--basil-space-2);">
               <span class="basil-bulk-label">{{ selectedRows.length }} selected</span>
               <BasilSelect
                 v-model="bulkCategory"
@@ -525,23 +524,23 @@
         </div>
 
         <!-- Sticky header (desktop only — mobile rows are self-explanatory) -->
-        <div class="basil-txn-list__header gt-xs">
+        <div class="basil-txn-list__header basil-desktop-only">
           <div class="basil-txn-row__checkbox"></div>
           <div class="basil-txn-row__name basil-txn-list__sort" @click="toggleSort('name')">
             Name
-            <q-icon v-if="sortField === 'name'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
+            <BasilIcon v-if="sortField === 'name'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
           </div>
           <div class="basil-txn-row__amount basil-txn-list__sort" @click="toggleSort('amount')">
             Amount
-            <q-icon v-if="sortField === 'amount'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
+            <BasilIcon v-if="sortField === 'amount'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
           </div>
           <div class="basil-txn-row__category basil-txn-list__sort" @click="toggleSort('mappedCategory')">
             Category
-            <q-icon v-if="sortField === 'mappedCategory'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
+            <BasilIcon v-if="sortField === 'mappedCategory'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
           </div>
           <div class="basil-txn-row__date basil-txn-list__sort" @click="toggleSort('date')">
             Date
-            <q-icon v-if="sortField === 'date'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
+            <BasilIcon v-if="sortField === 'date'" :name="sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward'" size="14px" />
           </div>
           <div class="basil-txn-row__status">Status</div>
         </div>
@@ -565,7 +564,7 @@
                 @contextmenu.prevent
               >
                 <!-- Checkbox (desktop only) -->
-                <div class="basil-txn-row__checkbox gt-xs">
+                <div class="basil-txn-row__checkbox basil-desktop-only">
                   <BasilToggle variant="checkbox" dense :model-value="isRowSelected(sortedTableTransactions[vRow.index])" @update:model-value="toggleRowSelection(sortedTableTransactions[vRow.index])" @click.stop />
                 </div>
 
@@ -578,7 +577,7 @@
                       :style="isRowSelected(sortedTableTransactions[vRow.index]) && isMobile ? {} : { background: merchantColor(sortedTableTransactions[vRow.index]) }"
                       @click="isMobile && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(sortedTableTransactions[vRow.index])) : null"
                     >
-                      <q-icon v-if="isMobile && isRowSelected(sortedTableTransactions[vRow.index])" name="check" size="18px" />
+                      <BasilIcon v-if="isMobile && isRowSelected(sortedTableTransactions[vRow.index])" name="check" size="18px" />
                       <template v-else>{{ merchantInitials(sortedTableTransactions[vRow.index]) }}</template>
                     </div>
                     <div class="basil-txn-label">
@@ -612,14 +611,14 @@
                       </div>
                       <div class="basil-txn-label__secondary">
                         {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
-                        <q-icon
+                        <BasilIcon
                           v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
                           name="event_repeat"
                           size="12px"
                           class="basil-effective-date-icon"
                         >
                           <BasilTooltip>Moved from {{ formatDate(sortedTableTransactions[vRow.index]?.date) }} to {{ formatDate(sortedTableTransactions[vRow.index]?.effectiveDate) }}</BasilTooltip>
-                        </q-icon>
+                        </BasilIcon>
                       </div>
                     </div>
                   </div>
@@ -636,25 +635,25 @@
                 </div>
 
                 <!-- Category (desktop only) -->
-                <div class="basil-txn-row__category gt-xs">
+                <div class="basil-txn-row__category basil-desktop-only">
                   {{ sortedTableTransactions[vRow.index]?.mappedCategory }}
                 </div>
 
                 <!-- Date (desktop only) -->
-                <div class="basil-txn-row__date gt-xs">
+                <div class="basil-txn-row__date basil-desktop-only">
                   {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
-                  <q-icon
+                  <BasilIcon
                     v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
                     name="event_repeat"
                     size="12px"
                     class="basil-effective-date-icon"
                   >
                     <BasilTooltip>Moved from {{ formatDate(sortedTableTransactions[vRow.index]?.date) }} to {{ formatDate(sortedTableTransactions[vRow.index]?.effectiveDate) }}</BasilTooltip>
-                  </q-icon>
+                  </BasilIcon>
                 </div>
 
                 <!-- Status (desktop only) -->
-                <div class="basil-txn-row__status gt-xs">
+                <div class="basil-txn-row__status basil-desktop-only">
                   <span v-if="sortedTableTransactions[vRow.index]?.pending" class="basil-txn-pending">Pending</span>
                 </div>
               </div>
@@ -663,7 +662,7 @@
         </div>
 
         <div v-if="tableLoadingMore" class="basil-table-load-more">
-          <q-spinner size="20px" color="primary" />
+          <BasilSpinner size="20px" color="primary" />
           <span>Loading older transactions...</span>
         </div>
 
@@ -691,14 +690,14 @@
     <!-- Mobile bulk action bar — sits above bottom nav -->
     <div
       v-if="showAll && selectedRows.length > 0"
-      class="lt-sm basil-mobile-bulk q-pa-sm"
+      class="basil-mobile-only basil-mobile-bulk basil-pa-3"
       style="position: fixed; left: 0; right: 0; bottom: var(--basil-bottom-nav-height); z-index: 2000"
     >
-      <div class="row items-center q-gutter-sm q-mb-xs">
-        <span class="basil-bulk-label col-auto">{{ selectedRows.length }} selected</span>
-        <BasilButton variant="icon" icon="close" dense @click="selectedRows = []" class="col-auto" />
+      <div class="basil-mb-1" style="display: flex; align-items: center; gap: var(--basil-space-2);">
+        <span class="basil-bulk-label">{{ selectedRows.length }} selected</span>
+        <BasilButton variant="icon" icon="close" dense @click="selectedRows = []" />
       </div>
-      <div class="row items-center q-gutter-sm">
+      <div style="display: flex; align-items: center; gap: var(--basil-space-2);">
         <BasilSelect
           v-model="bulkCategory"
           :options="categoryMonthlyLimits.map(c => c.category).sort()"
@@ -710,7 +709,7 @@
         <BasilButton label="Apply" :disabled="!bulkCategory" @click="applyBulkCategory" />
         <BasilButton variant="flat" dense icon="sell" label="Tag" @click="openBulkTag()" />
       </div>
-      <div v-if="bulkCategory" class="basil-bulk-disclosure q-mt-xs">
+      <div v-if="bulkCategory" class="basil-bulk-disclosure basil-mt-1">
         Moves {{ selectedRows.length }} transaction{{ selectedRows.length === 1 ? '' : 's' }} to {{ bulkCategory }}. No rule is created.
       </div>
     </div>
@@ -727,7 +726,7 @@
         <!-- Done state -->
         <template v-if="triageDone">
           <div class="basil-triage__done">
-            <q-icon name="check_circle" size="48px" color="positive" />
+            <BasilIcon name="check_circle" size="48px" color="positive" />
             <div class="basil-triage__done-heading">All caught up!</div>
           </div>
           <div v-if="triageVenmoCount > 0 && !enrichmentOffered" class="basil-triage__venmo-nudge">
@@ -743,14 +742,14 @@
             />
           </div>
           <div class="basil-triage__actions">
-            <BasilButton label="Done" class="full-width" v-close-popup />
+            <BasilButton label="Done" class="basil-full-width" @click="showBulkTagDialog = false" />
           </div>
         </template>
 
         <!-- Enrichment prompt -->
         <template v-else-if="triageShowEnrichmentPrompt">
           <div class="basil-triage__done">
-            <q-icon name="upload_file" size="48px" style="color: var(--basil-green)" />
+            <BasilIcon name="upload_file" size="48px" style="color: var(--basil-green)" />
             <div class="basil-triage__done-heading">Add Venmo details before sorting?</div>
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; text-align: center; padding: 0 var(--basil-space-4);">
               You have <b>{{ triageUnenrichedP2PCount }}</b> Venmo {{ triageUnenrichedP2PCount === 1 ? 'transaction' : 'transactions' }} without names or notes. Importing a CSV will make them easier to categorize.
@@ -772,7 +771,7 @@
           <div class="basil-triage__header">
             <span class="basil-triage__title">Sort Transactions</span>
             <span class="basil-triage__progress">{{ triageTotal - triageItems.length + 1 }} of {{ triageTotal }}</span>
-            <BasilButton variant="icon" icon="close" v-close-popup class="basil-dialog-close" aria-label="Close" />
+            <BasilButton variant="icon" icon="close" @click="showTriageFlow = false" class="basil-dialog-close" aria-label="Close" />
           </div>
 
           <!-- Transaction -->
@@ -787,7 +786,7 @@
               v-if="triageAttribution && triageAttribution.type !== 'unsorted'"
               class="basil-triage__attribution"
             >
-              <q-icon :name="triageAttribution.icon" size="14px" />
+              <BasilIcon :name="triageAttribution.icon" size="14px" />
               {{ triageAttribution.label }}
             </div>
           </div>
@@ -819,16 +818,13 @@
           <template v-else>
             <!-- Suggestion chip -->
             <div v-if="triageItems[0].suggestion" class="basil-triage__suggestion-area">
-              <q-chip
+              <BasilChip
                 clickable
-                :outline="triageCategory !== triageItems[0].suggestion"
                 :color="triageCategory === triageItems[0].suggestion ? 'primary' : undefined"
-                :text-color="triageCategory === triageItems[0].suggestion ? 'white' : undefined"
-                icon="auto_awesome"
                 @click="triageCategory = triageItems[0].suggestion"
               >
-                {{ triageItems[0].suggestion }}
-              </q-chip>
+                <BasilIcon name="auto_awesome" size="sm" /> {{ triageItems[0].suggestion }}
+              </BasilChip>
               <div class="basil-triage__reason">{{ triageItems[0].reason }}</div>
             </div>
 
@@ -842,11 +838,11 @@
               />
               <BasilNote v-model="triageNote" label="Note" />
             </div>
-            <div class="q-px-md q-mb-sm">
+            <div class="basil-px-4 basil-mb-2">
               <TagPicker v-model="triageTags" />
             </div>
 
-            <div class="q-px-md">
+            <div class="basil-px-4">
               <BasilToggle
                 v-model="triageExclude"
                 label="Exclude from total"
@@ -890,7 +886,7 @@
 
           <!-- Auto-learn feedback toast -->
           <div v-if="triageLearnToast" class="basil-triage-learn-toast">
-            <q-icon name="auto_awesome" size="16px" />
+            <BasilIcon name="auto_awesome" size="16px" />
             Got it — future {{ triageLearnToast.merchant }} transactions go to {{ triageLearnToast.category }}
           </div>
         </template>
@@ -914,7 +910,7 @@
         <div class="basil-card__body">
           <TagPicker v-model="bulkTagSelection" />
         </div>
-        <div class="basil-card__actions q-px-md q-pb-md">
+        <div class="basil-card__actions basil-px-4 basil-pb-4">
           <BasilButton variant="flat" label="Cancel" @click="bulkTagOpen = false" />
           <BasilButton
             label="Apply"
@@ -953,6 +949,7 @@
   import BasilAmount from '@/components/BasilAmount';
   import BasilNote from '@/components/BasilNote';
   import { screen } from '@/composables/useScreen';
+  import { toast } from '@/composables/useToast';
 
 // import e from 'express';
 
@@ -2082,7 +2079,7 @@ monthStats() {
             const wantsRule = e.createRule && sim?.allCount > 0;
             if (wantsRule && sim.ruleType === 'merchant') {
               sweepStore(store, sim.conditions, e.mappedCategory);
-              applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, e.mappedCategory, this.$q.notify.bind(this.$q));
+              applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, e.mappedCategory);
             }
             if (wantsRule && sim.ruleType === 'compound') {
               const payload = {
@@ -2091,7 +2088,7 @@ monthStats() {
                 action: { type: 'categorize', categoryName: e.mappedCategory },
                 createdFrom: 'dialog',
               };
-              await applyCompoundRuleToStore(store, payload, e.mappedCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
+              await applyCompoundRuleToStore(store, payload, e.mappedCategory, { saveCompoundRule, updateCompoundRule });
             }
             this.tableDialogOpen = false
           }
@@ -2158,7 +2155,7 @@ monthStats() {
 
           if (wantsRule && sim.ruleType === 'merchant') {
             sweepStore(store, sim.conditions, targetCategory);
-            applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, targetCategory, this.$q.notify.bind(this.$q));
+            applyMerchantRuleToStore(store, sim.ruleField, sim.ruleValue, targetCategory);
           }
 
           if (wantsRule && sim.ruleType === 'compound') {
@@ -2168,7 +2165,7 @@ monthStats() {
               action: { type: 'categorize', categoryName: targetCategory },
               createdFrom: 'triage',
             };
-            await applyCompoundRuleToStore(store, payload, targetCategory, this.$q.notify.bind(this.$q), { saveCompoundRule, updateCompoundRule });
+            await applyCompoundRuleToStore(store, payload, targetCategory, { saveCompoundRule, updateCompoundRule });
           }
           if (wantsRule && !this._triageToastShown) {
             const merchantName = txn?.merchant_name || txn?.name || 'similar';
@@ -2227,15 +2224,10 @@ monthStats() {
         }
         // Undo toast
         this.splitUndoData = { transaction_id, result };
-        this.$q.notify({
+        toast.show({
           message: `Split into ${splits.length} categories`,
-          color: 'dark',
-          actions: [{
-            label: 'Undo',
-            color: 'white',
-            handler: () => this.undoSplit(),
-          }],
           timeout: 5000,
+          actions: [{ label: 'Undo', handler: () => this.undoSplit() }],
         });
       },
       async handleUnsplit({ transaction_id }) {
@@ -2251,12 +2243,11 @@ monthStats() {
         // Undo toast (re-split with previous data)
         const previousSplits = result.previousSplits;
         if (previousSplits?.length) {
-          this.$q.notify({
+          toast.show({
             message: 'Restored original transaction',
-            color: 'dark',
+            timeout: 5000,
             actions: [{
               label: 'Undo',
-              color: 'white',
               handler: async () => {
                 const reSplit = await splitTransaction(
                   result.parent.transaction_id,
@@ -2272,7 +2263,6 @@ monthStats() {
                 }
               },
             }],
-            timeout: 5000,
           });
         }
       },
@@ -2346,12 +2336,11 @@ monthStats() {
         if (recategorize) details.push(`filed under ${recategorize}`);
         const suffix = details.length ? ` · ${details.join(' · ')}` : '';
         const label = (rel.type === 'split' ? 'Payback confirmed' : 'Return confirmed') + suffix;
-        this.$q.notify({
+        toast.show({
           message: label,
           timeout: 5000,
           actions: [{
             label: 'Undo',
-            color: 'white',
             handler: () => {
               store.commit('unlinkTransaction', {
                 transactionId: txnA.transaction_id,
@@ -2375,12 +2364,11 @@ monthStats() {
         this.groupTransactions();
         dismissRelationship(txnA.transaction_id, txnB.transaction_id);
 
-        this.$q.notify({
+        toast.show({
           message: 'Relationship dismissed',
           timeout: 5000,
           actions: [{
             label: 'Undo',
-            color: 'white',
             handler: () => {
               store.commit('undoDismissRelationship', { transactionId: txnA.transaction_id, partnerId: txnB.transaction_id });
               this.transactions = store.state.transactions || [];

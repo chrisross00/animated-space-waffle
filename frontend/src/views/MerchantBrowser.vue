@@ -3,22 +3,18 @@
   background-color: var(--basil-info-bg) !important;
   color: var(--basil-info) !important;
 }
-
-:deep(.q-dialog__inner--bottom) {
-  padding: 0 !important;
-}
 </style>
 
 <template>
-  <div class="q-pa-md">
-    <div class="basil-banner basil-info-banner q-mb-md">
-      <q-icon name="info" color="info" />
+  <div style="padding: var(--basil-space-4)">
+    <div class="basil-banner basil-info-banner" style="margin-bottom: var(--basil-space-4)">
+      <BasilIcon name="info" style="color: var(--basil-info)" />
       Assigning or changing a merchant rule will re-categorize <strong>all existing transactions</strong> from that merchant, not just future ones.
     </div>
 
     <!-- Desktop table (hidden on mobile) -->
     <BasilTable
-      class="gt-xs"
+      class="basil-desktop-only"
       title="Merchant Browser"
       :rows="merchants"
       :columns="columns"
@@ -70,12 +66,12 @@
     </BasilTable>
 
     <!-- Mobile card list (hidden on desktop) -->
-    <div class="lt-sm">
-      <div class="row items-center q-mb-sm">
-        <div class="text-h6 col">Merchant Browser</div>
+    <div class="basil-mobile-only">
+      <div style="display: flex; align-items: center; margin-bottom: var(--basil-space-2)">
+        <div style="font-size: 1.25rem; font-weight: 500; flex: 1;">Merchant Browser</div>
       </div>
 
-      <BasilSearch dense v-model="filter" placeholder="Search" class="q-mb-md" />
+      <BasilSearch dense v-model="filter" placeholder="Search" style="margin-bottom: var(--basil-space-4)" />
 
       <BasilCard>
         <BasilList separator>
@@ -89,7 +85,7 @@
 
           <!-- empty state -->
           <BasilListItem v-else-if="filteredMerchants.length === 0">
-            <div class="text-center q-py-lg" style="width: 100%;">
+            <div style="text-align: center; padding: var(--basil-space-6) 0; width: 100%;">
               <EmptyState icon="store" heading="No merchants yet"
                 body="Merchants will appear here once you have transactions imported." />
             </div>
@@ -98,13 +94,13 @@
           <!-- merchant rows -->
           <BasilListItem v-for="row in filteredMerchants" :key="row.merchant_name"
             clickable @click="openEdit(row)">
-            <template #label><span class="text-weight-medium">{{ row.merchant_name }}</span></template>
+            <template #label><span style="font-weight: 500;">{{ row.merchant_name }}</span></template>
             <template #caption>
               {{ row.count }} transaction{{ row.count !== 1 ? 's' : '' }}
               · {{ currentLabel(row) }}
             </template>
             <template #side>
-              <div class="row items-center q-gutter-xs">
+              <div style="display: flex; align-items: center; gap: var(--basil-space-1)">
                 <BasilIcon v-if="ruleMap[row.merchant_name]" name="gavel" size="sm" color="primary" />
                 <BasilIcon name="chevron_right" color="var(--basil-text-muted)" />
               </div>
@@ -117,15 +113,15 @@
     <!-- Bottom sheet dialog (mobile edit) -->
     <BasilTray v-model="editDialog.open">
       <BasilCard flat>
-        <div class="basil-card__body q-pb-sm">
-          <div class="text-subtitle1 text-weight-medium">{{ editDialog.merchantName }}</div>
-          <div class="text-caption" style="color: var(--basil-text-muted)">
+        <div class="basil-card__body" style="padding-bottom: var(--basil-space-2)">
+          <div style="font-size: 1rem; font-weight: 500;">{{ editDialog.merchantName }}</div>
+          <div style="font-size: 0.75rem; color: var(--basil-text-muted);">
             Currently: {{ editDialog.currentLabel }}
-            <q-icon v-if="editDialog.hasRule" name="gavel" size="xs" class="q-ml-xs text-primary" />
+            <BasilIcon v-if="editDialog.hasRule" name="gavel" style="font-size: 14px; margin-left: var(--basil-space-1); color: var(--basil-green)" />
           </div>
         </div>
 
-        <div class="basil-card__body q-pt-none">
+        <div class="basil-card__body" style="padding-top: 0">
           <BasilSelect
             v-model="editDialog.selectedCategory"
             :options="categoryNames"
@@ -134,9 +130,9 @@
           />
         </div>
 
-        <div class="basil-card__actions q-px-md q-pb-md">
-          <BasilButton variant="flat" label="Cancel" @click="editDialog.open = false" class="col" />
-          <BasilButton label="Save" class="col"
+        <div class="basil-card__actions" style="padding: 0 var(--basil-space-4) var(--basil-space-4)">
+          <BasilButton variant="flat" label="Cancel" @click="editDialog.open = false" style="flex: 1;" />
+          <BasilButton label="Save" style="flex: 1;"
             :loading="!!saving[editDialog.merchantName]"
             :disabled="!editDialog.selectedCategory ||
                       editDialog.selectedCategory === ruleMap[editDialog.merchantName]"

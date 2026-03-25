@@ -1,8 +1,8 @@
 <template>
-  <div class="q-pa-md">
+  <div class="basil-pa-4">
 
     <!-- Compound rules section -->
-    <div class="basil-card-head q-mb-sm">
+    <div class="basil-card-head basil-mb-2">
       <span class="basil-card-label">Compound Rules</span>
       <BasilButton variant="icon" icon="add" dense @click="openCreateRule" />
     </div>
@@ -13,13 +13,13 @@
         <BasilSkeleton type="text" width="35%" />
       </BasilListItem>
     </template>
-    <div v-else-if="compoundRules.length === 0" class="basil-rules__empty q-mb-lg">
+    <div v-else-if="compoundRules.length === 0" class="basil-rules__empty basil-mb-5">
       No compound rules yet.
       <span class="basil-rules__empty-link" @click="openCreateRule">Create one</span>
       or use the Sort Transactions flow.
     </div>
 
-    <BasilList v-else class="q-mb-lg" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in compoundRules"
         :key="String(rule._id)"
@@ -40,7 +40,7 @@
     </BasilList>
 
     <!-- Simple rules section -->
-    <div class="basil-card-head q-mb-sm">
+    <div class="basil-card-head basil-mb-2">
       <span class="basil-card-label">Merchant & Name Rules</span>
     </div>
 
@@ -50,11 +50,11 @@
         <BasilSkeleton type="text" width="25%" />
       </BasilListItem>
     </template>
-    <div v-else-if="simpleRules.length === 0" class="basil-rules__empty q-mb-lg">
+    <div v-else-if="simpleRules.length === 0" class="basil-rules__empty basil-mb-5">
       No merchant or name rules yet.
     </div>
 
-    <BasilList v-else class="q-mb-lg" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in simpleRules"
         :key="rule.key"

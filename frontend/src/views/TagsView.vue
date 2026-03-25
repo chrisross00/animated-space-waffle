@@ -1,6 +1,6 @@
 <template>
-  <div class="q-pa-md">
-    <div class="basil-card-head q-mb-sm">
+  <div class="basil-pa-4">
+    <div class="basil-card-head basil-mb-2">
       <span class="basil-card-label">Tags</span>
     </div>
 
@@ -34,7 +34,7 @@
               </template>
             </template>
             <template #side>
-              <div class="row items-center no-wrap q-gutter-xs">
+              <div style="display: flex; align-items: center; flex-wrap: nowrap; gap: var(--basil-space-1);">
                 <span v-if="summaries[tag.id]" class="basil-tags__total basil-mono">
                   {{ formatCurrency(summaries[tag.id].totalSpend) }}
                 </span>
@@ -44,8 +44,8 @@
           </BasilListItem>
 
         <!-- Expanded detail (inline after this tag) -->
-        <div v-if="expanded === tag.id && expandedData" class="basil-tags__detail q-pa-md">
-          <div class="basil-card-head q-mb-xs">
+        <div v-if="expanded === tag.id && expandedData" class="basil-tags__detail basil-pa-4">
+          <div class="basil-card-head basil-mb-1">
             <span class="basil-card-label">By Category</span>
           </div>
           <div v-if="expandedData.categoryBreakdown?.length">
@@ -59,7 +59,7 @@
           </div>
           <div v-else style="color: var(--basil-text-muted); font-size: 0.8125rem;">No transactions yet</div>
 
-          <div class="basil-card-head q-mb-xs q-mt-md">
+          <div class="basil-card-head basil-mb-1 basil-mt-4">
             <span class="basil-card-label">Tagged Transactions</span>
           </div>
           <BasilList v-if="expandedTransactions.length" separator>
@@ -76,7 +76,7 @@
 
           <BasilButton
             variant="flat" color="negative" icon="delete" label="Delete tag"
-            class="q-mt-md basil-tags__delete-btn"
+            class="basil-mt-4 basil-tags__delete-btn"
             @click="confirmDelete(expandedTag)"
           />
         </div>
@@ -227,7 +227,7 @@ export default {
   background: var(--basil-surface-alt);
 }
 
-.basil-tags__detail :deep(.q-item__label) {
+.basil-tags__detail :deep(.basil-list-item__label) {
   font-weight: 400;
   font-family: var(--basil-font-ui);
 }

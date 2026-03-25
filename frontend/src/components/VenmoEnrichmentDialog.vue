@@ -11,7 +11,7 @@
       </div>
 
       <!-- Body -->
-      <div class="col overflow-auto basil-venmo-dialog__body">
+      <div class="basil-venmo-dialog__body" style="flex: 1 1 auto; overflow: auto;">
 
         <!-- Step 1: Upload -->
         <template v-if="step === 'upload'">
@@ -21,7 +21,7 @@
             <span class="basil-venmo-dialog__link">Venmo app &rarr; Statements</span> section.
           </p>
           <div class="basil-venmo-dialog__drop-zone" @click="$refs.fileInput.click()">
-            <q-icon name="upload_file" size="2rem" color="grey-6" />
+            <BasilIcon name="upload_file" style="font-size: 2rem; color: var(--basil-text-muted)" />
             <span>Click to select a CSV file</span>
             <span v-if="fileName" class="basil-venmo-dialog__file-name">{{ fileName }}</span>
           </div>
@@ -62,7 +62,7 @@
                 <th class="text-left">Note</th>
                 <th class="text-left">With</th>
                 <th class="text-right">Amount</th>
-                <th class="text-center">Match</th>
+                <th style="text-align: center;">Match</th>
               </tr>
             </thead>
             <tbody>
@@ -72,10 +72,10 @@
                 <td>{{ m.venmoRow.note }}</td>
                 <td>{{ m.venmoRow.counterparty }}</td>
                 <td class="text-right basil-mono">{{ formatAmount(m.venmoRow.amount) }}</td>
-                <td class="text-center">
-                  <q-badge
+                <td style="text-align: center;">
+                  <BasilBadge
                     :color="m.confidence === 'high' ? 'positive' : 'warning'"
-                    :label="m.confidence"
+                    :value="m.confidence"
                   />
                 </td>
               </tr>
@@ -115,7 +115,7 @@
         <!-- Step 3: Done -->
         <template v-if="step === 'done'">
           <div class="basil-venmo-dialog__done">
-            <q-icon name="check_circle" size="3rem" color="positive" />
+            <BasilIcon name="check_circle" style="font-size: 3rem; color: var(--basil-positive)" />
             <p>Updated {{ enrichedCount }} transaction{{ enrichedCount !== 1 ? 's' : '' }} with Venmo details.</p>
           </div>
         </template>

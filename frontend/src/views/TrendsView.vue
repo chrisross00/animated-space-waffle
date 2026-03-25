@@ -111,7 +111,7 @@
 
       <!-- Row 2: Month range -->
       <div class="basil-trends-controls__row">
-        <span class="text-body2" style="color: var(--basil-text-muted)">Months:</span>
+        <span style="font-size: 0.875rem; color: var(--basil-text-muted);">Months:</span>
         <BasilToggle
           v-model="monthCount"
           variant="button-group"
@@ -130,7 +130,7 @@
     </div>
 
     <div v-if="$store.state.bootstrapping" class="basil-trends__loading">
-      <q-spinner-dots size="2rem" color="primary" />
+      <BasilSpinner size="2rem" color="primary" />
     </div>
 
     <template v-else-if="activeChartHasData">

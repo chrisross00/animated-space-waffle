@@ -1,11 +1,11 @@
-import { Notify } from 'quasar'
+import { toast } from '@/composables/useToast'
 
-const _notify = (opts) => {
-  const isMobile = window.innerWidth < 600;
-  const navHeight = isMobile
-    ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--basil-bottom-nav-height')) || 72
-    : 0;
-  Notify.create({ position: 'bottom', ...(navHeight ? { offset: [0, navHeight] } : {}), ...opts });
+export function _notify(opts) {
+  toast.show({
+    message: opts.message,
+    type: opts.type || 'info',
+    timeout: opts.timeout || 3000,
+  })
 }
 
 // --- Auth helpers ---

@@ -21,12 +21,16 @@ Calm, trustworthy, human. Key principles:
 
 ## Token Architecture
 
-### CSS load order (defined in `frontend/src/quasar-user-options.js`)
+### CSS load order (defined in `frontend/src/main.js`)
 
 ```
-tokens.css           → CSS custom properties (:root + [data-theme="dark"])
-quasar.sass          → Quasar framework CSS (compiled with our SASS vars)
-quasar-overrides.css → our rules; loads last so they win the cascade
+tokens.css            → CSS custom properties (:root + [data-theme="dark"])
+icons.css             → icon font declarations
+basil-components.css  → Basil component base styles
+basil-shell.css       → app shell layout (header, nav, page chrome)
+basil-utilities.css   → utility/helper classes
+basil-keyboard.css    → custom keyboard and input component styles
+dialogs.css           → shared dialog shell classes
 ```
 
 **This order is load-order-sensitive. Do not change it.**
@@ -36,11 +40,13 @@ quasar-overrides.css → our rules; loads last so they win the cascade
 | File | Purpose |
 |------|---------|
 | `frontend/src/styles/tokens.css` | All CSS custom properties — the single source of truth for every color, spacing, radius, shadow, and motion value. Includes `[data-theme="dark"]` token overrides. |
-| `frontend/src/styles/quasar.variables.sass` | Quasar SASS brand vars (`$primary`, `$negative`, etc.) mirrored from tokens so Quasar components inherit the palette |
-| `frontend/src/styles/quasar-overrides.css` | **Quasar component base layer.** Theme-neutral overrides that make standard Quasar elements (q-card, q-table, q-field, q-menu, etc.) inherit token values automatically. No dark mode rules here. |
-| `frontend/src/App.vue` `<style>` | App-level chrome: layout utilities, header, wordmark, page transition. Also contains all `[data-theme="dark"]` Quasar component overrides — this is the canonical location for dark mode Quasar fixes. |
+| `frontend/src/styles/icons.css` | Self-hosted Material Icons font declarations. |
+| `frontend/src/styles/basil-components.css` | **Basil component base styles.** Theme-neutral styles for all Basil components. Uses tokens exclusively — dark mode automatic. |
+| `frontend/src/styles/basil-shell.css` | App shell layout — header, bottom nav, page chrome, transitions. |
+| `frontend/src/styles/basil-utilities.css` | Utility/helper classes (`basil-display`, `basil-mono`, layout helpers, etc.). |
+| `frontend/src/styles/basil-keyboard.css` | Custom keyboard (`.basil-keyboard`) and input (`.basil-input`) component classes. Uses tokens exclusively — dark mode automatic. |
 | `frontend/src/styles/dialogs.css` | **Shared dialog shell.** Structural/layout classes used by all dialogs (`basil-dialog-card`, `basil-dialog-header`, `basil-dialog-title`, etc.). Component-specific dialog styles stay scoped in their own file. |
-| `frontend/src/styles/basil-keyboard.css` | **Basil component library styles.** Keyboard (`.basil-keyboard`) and input (`.basil-input`) component classes. Uses tokens exclusively — dark mode automatic. |
+| `frontend/src/App.vue` `<style>` | App-level chrome: layout utilities, header, wordmark, page transition. |
 | `frontend/src/styles/[ViewName].css` | View-specific CSS externalized to keep large `.vue` files manageable (e.g. `BudgetView.css`, `BudgetPlannerView.css`). Import at the top of the `<style>` block. |
 
 ### Rule
@@ -48,9 +54,8 @@ quasar-overrides.css → our rules; loads last so they win the cascade
 Every color, font, spacing, radius, and shadow value in a component must
 reference a token. Never write a literal hex, px size, or font name inline.
 
-Prefer Basil components (`BasilInput`, `BasilTray`, `BasilKeyboard`) over Quasar
-equivalents. For Quasar components still in use: add theme-aware overrides to
-`quasar-overrides.css`. Any new custom component: use `var(--basil-*)` tokens
+All new UI must use Basil components. Do not introduce new Quasar component
+dependencies. Any new custom component must use `var(--basil-*)` tokens
 in `<style scoped>` — dark mode works automatically.
 
 ---
@@ -194,24 +199,56 @@ component CSS.
 
 ## Basil Component Library
 
-The app is gradually migrating from Quasar components to custom Basil components
-for full control over behavior, especially on mobile. Basil components use the
-`var(--basil-*)` token system and follow BEM naming (`basil-[block]__[element]--[modifier]`).
+The app uses custom Basil components for full control over behavior, especially on
+mobile. Basil components use the `var(--basil-*)` token system and follow BEM naming
+(`basil-[block]__[element]--[modifier]`). All components are globally registered via
+`frontend/src/components/basil/index.js`.
 
-| Component | Replaces | Location |
-|-----------|----------|----------|
-| `BasilInput` | `q-input` | `frontend/src/components/BasilInput.vue` |
-| `BasilAmount` | `q-input type="number"` | `frontend/src/components/BasilAmount.js` |
-| `BasilSearch` | `q-input` (search fields) | `frontend/src/components/BasilSearch.js` |
-| `BasilText` | `q-input` (text fields) | `frontend/src/components/BasilText.js` |
-| `BasilNote` | `q-input` (note fields) | `frontend/src/components/BasilNote.js` |
-| `BasilKeyboard` | Native iOS/Android keyboard | `frontend/src/components/BasilKeyboard.vue` |
-| `BasilTray` | `q-dialog` (bottom sheet) | `frontend/src/components/BasilTray.vue` |
+### Input components (`frontend/src/components/`)
 
-**Direction:** New UI components should be built as Basil components, not Quasar
-wrappers. Don't introduce new Quasar component dependencies. Existing Quasar
-components (`q-select`, `q-btn`, `q-card`, etc.) remain in use and will be
-migrated over time as the need arises.
+| Component | Replaces | Notes |
+|-----------|----------|-------|
+| `BasilInput` | `q-input` | `frontend/src/components/BasilInput.vue` — base input |
+| `BasilAmount` | `q-input type="number"` | `frontend/src/components/BasilAmount.js` — numpad, $ prefix |
+| `BasilSearch` | `q-input` (search fields) | `frontend/src/components/BasilSearch.js` — QWERTY, clear button |
+| `BasilText` | `q-input` (text fields) | `frontend/src/components/BasilText.js` — QWERTY, short strings |
+| `BasilNote` | `q-input` (note fields) | `frontend/src/components/BasilNote.js` — QWERTY, longer text |
+| `BasilKeyboard` | Native iOS/Android keyboard | `frontend/src/components/BasilKeyboard.vue` — singleton in App.vue |
+| `BasilTray` | `q-dialog` (bottom sheet) | `frontend/src/components/BasilTray.vue` — mobile bottom sheet / desktop dialog |
+
+### General UI components (`frontend/src/components/basil/`)
+
+| Component | Replaces | Notes |
+|-----------|----------|-------|
+| `BasilButton` | `q-btn` | Primary interactive element |
+| `BasilCard` | `q-card` | Surface container with token-aware elevation |
+| `BasilSelect` | `q-select` | Dropdown / option picker — no blur-swallows-tap issue |
+| `BasilToggle` | `q-toggle` | Boolean on/off control |
+| `BasilList` | `q-list` | Structured list container |
+| `BasilListItem` | `q-item` | Row within a list |
+| `BasilTabs` | `q-tabs` | Tab bar container |
+| `BasilTab` | `q-tab` | Individual tab |
+| `BasilTable` | `q-table` | Data table with virtual scroll |
+| `BasilIcon` | `q-icon` | Material icon wrapper |
+| `BasilSpinner` | `q-spinner` | Loading indicator |
+| `BasilSkeleton` | `q-skeleton` | Loading placeholder |
+| `BasilProgress` | `q-linear-progress` | Progress bar |
+| `BasilBadge` | `q-badge` | Count/status badge |
+| `BasilChip` | `q-chip` | Removable tag/chip |
+| `BasilTooltip` | `q-tooltip` | Hover tooltip |
+| `BasilExpansion` | `q-expansion-item` | Collapsible section |
+| `BasilSeparator` | `q-separator` | Horizontal rule |
+| `BasilToast` | `$q.notify` | Toast notification (used via `useToast`) |
+
+### Composables (`frontend/src/composables/`)
+
+| Composable | Replaces | Notes |
+|------------|----------|-------|
+| `useScreen` | `$q.screen` | Reactive breakpoints — `isMobile`, `isDesktop`, `width` |
+| `useGesture` | `v-touch-swipe` / `TouchSwipe` | Swipe and drag gesture detection |
+| `useToast` | `$q.notify` | Programmatic toast notifications via `BasilToast` |
+
+**Direction:** All new UI components must be built as Basil components. Do not introduce Quasar component dependencies.
 
 ---
 
@@ -233,7 +270,7 @@ Use the `<EmptyState>` component for any zero-data state:
 ```html
 <EmptyState icon="material_icon_name" heading="Short heading" body="One sentence." >
   <!-- optional CTA slot -->
-  <q-btn ... />
+  <BasilButton ... />
 </EmptyState>
 ```
 
@@ -249,19 +286,19 @@ For any prominent dollar figure, follow the hero number pattern:
 ### Dialog shell
 All dialogs import `dialogs.css` for structural layout. Use these classes for the outer shell:
 ```html
-<q-card class="basil-dialog-card">
+<BasilCard class="basil-dialog-card">
   <div class="basil-dialog-header">
     <div class="basil-dialog-title">
       <span class="basil-dialog-title__sub">CONTEXT LABEL</span>
       <span class="basil-dialog-title__main">Dialog Title</span>
     </div>
-    <q-btn flat round dense icon="close" class="basil-dialog-close" @click="$emit('hide')" />
+    <BasilButton flat round dense icon="close" class="basil-dialog-close" @click="$emit('hide')" />
   </div>
   <!-- scrollable body -->
-  <q-card-section class="col overflow-auto"> ... </q-card-section>
+  <div class="basil-dialog-body col overflow-auto"> ... </div>
   <!-- sticky footer -->
-  <q-card-actions align="right"> ... </q-card-actions>
-</q-card>
+  <div class="basil-dialog-footer"> ... </div>
+</BasilCard>
 ```
 Component-specific styles stay in the component's `<style scoped>`. Never duplicate the shell structure.
 
@@ -275,9 +312,9 @@ standard animation and no handle. The `maxWidth` prop controls the desktop card 
 ```html
 <!-- Standard content dialog -->
 <BasilTray v-model="dialogOpen" max-width="480px">
-  <q-card flat>
+  <BasilCard flat>
     <!-- dialog content: header, body, footer -->
-  </q-card>
+  </BasilCard>
 </BasilTray>
 
 <!-- Confirm dialog (shortcut for OK/Cancel prompts) -->
@@ -296,7 +333,7 @@ standard animation and no handle. The `maxWidth` prop controls the desktop card 
 - `BasilConfirmTray` — simple title + message + OK/Cancel prompts (prop-based)
 
 **Rules:**
-- Always use `flat` on the inner `q-card` (the tray wrapper provides its own background)
+- Always use `flat` on the inner `BasilCard` (the tray wrapper provides its own background)
 - Never hardcode `position="bottom"`, `border-radius`, or drag handles inline — `BasilTray` handles all of that
 - CSS classes: `basil-tray__wrap`, `basil-tray__handle-wrap`, `basil-tray__handle` (in `dialogs.css`)
 ### Transaction row (All Transactions table)
@@ -327,7 +364,7 @@ keyboard quirks (jitter, scroll-into-view fighting, unpredictable height).
 ### Loading states (three-state pattern)
 Non-Budget views use `store.state.bootstrapping` to gate content:
 
-1. `bootstrapping=true` → skeleton rows (`q-skeleton`) or centered spinner
+1. `bootstrapping=true` → skeleton rows (`BasilSkeleton`) or centered spinner
 2. `bootstrapping=false`, data empty → `<EmptyState>` component
 3. `bootstrapping=false`, has data → real content
 
@@ -337,23 +374,21 @@ immediately be replaced with real content.
 ```html
 <!-- Skeleton while loading -->
 <template v-if="$store.state.bootstrapping">
-  <q-item v-for="i in 4" :key="i">
-    <q-item-section>
-      <q-skeleton type="text" width="55%" />
-      <q-skeleton type="text" width="35%" />
-    </q-item-section>
-  </q-item>
+  <BasilListItem v-for="i in 4" :key="i">
+    <BasilSkeleton type="text" width="55%" />
+    <BasilSkeleton type="text" width="35%" />
+  </BasilListItem>
 </template>
 <!-- Empty state only after load -->
 <EmptyState v-else-if="items.length === 0" ... />
 <!-- Real content -->
-<q-list v-else>...</q-list>
+<BasilList v-else>...</BasilList>
 ```
 
 For chart views, use a centered spinner instead of skeleton rows:
 ```html
 <div v-if="$store.state.bootstrapping" class="basil-[view]__loading">
-  <q-spinner-dots size="2rem" color="primary" />
+  <BasilSpinner size="2rem" />
 </div>
 <template v-else>...</template>
 ```
@@ -363,7 +398,7 @@ CSS: `display: flex; align-items: center; justify-content: center; min-height: 2
 use `bootstrapping`. The flag is only set by `ensureAppData` in `firebase.js`, which
 BudgetView does not call (it handles its own sync).
 
-A global 2px `q-linear-progress` bar is rendered in `App.vue` while bootstrapping,
+A global `BasilProgress` bar is rendered in `App.vue` while bootstrapping,
 giving a subtle top-of-header indicator on any view.
 
 ---
@@ -376,28 +411,22 @@ The dark theme is defined as token overrides under `[data-theme="dark"]` in
 Managed via Vuex: `store.commit('setTheme', 'dark' | '')` — updates the DOM attribute,
 writes to `localStorage`, and triggers the transition class.
 
-### Two layers of dark mode CSS
+### Dark mode CSS
 
-**Layer 1 — token overrides** (`tokens.css`):
+**Token overrides** (`tokens.css`):
 All semantic color, surface, and text tokens get new values under `[data-theme="dark"]`.
 Any component that uses only `var(--basil-*)` tokens automatically adapts — no extra work needed.
 
-**Layer 2 — Quasar component overrides** (`App.vue` global `<style>`):
-Quasar components bake in their own light backgrounds (`#fff`, `#f5f5f5`) and
-ignore CSS custom properties. These must be explicitly overridden with `!important`:
-
-```css
-[data-theme="dark"] .q-table tbody td { background-color: var(--basil-surface) !important; }
-[data-theme="dark"] .q-field--outlined .q-field__control { background-color: var(--basil-surface-alt) !important; }
-/* etc. — see App.vue dark mode section */
-```
+Basil components are built exclusively on `var(--basil-*)` tokens, so they inherit
+dark mode automatically without any additional overrides.
 
 ### Rule for new components
 1. Use only `var(--basil-*)` tokens for all colors — no hardcoded hex values.
-2. If you introduce a Quasar component that still shows a light background in dark mode,
-   add a `[data-theme="dark"] .q-whatever { ... !important; }` override to the dark mode
-   section of **`App.vue`** — that is the canonical location for all Quasar dark fixes.
-3. Never add Quasar dark mode overrides in `quasar-overrides.css` or component scoped styles.
+2. New components built on Basil tokens get dark mode for free — no extra rules needed.
+3. If a legacy third-party component ignores CSS custom properties in dark mode,
+   add a `[data-theme="dark"] .whatever { ... !important; }` override to the dark mode
+   section of **`App.vue`** — that is the canonical location for any such fixes.
+4. Never add dark mode overrides in a component's `<style scoped>`.
 
 ---
 
@@ -450,8 +479,9 @@ Before shipping a new component or view:
 - [ ] All colors use `var(--basil-*)` tokens
 - [ ] All spacing uses `var(--basil-space-*)` tokens
 - [ ] No hardcoded fonts — uses `var(--basil-font-display/ui/mono)` or inherits body
+- [ ] Uses Basil components (`BasilButton`, `BasilCard`, `BasilList`, etc.) — no new Quasar dependencies introduced
 - [ ] Zero data state uses `<EmptyState>` component
-- [ ] Tested in dark mode — Quasar component backgrounds overridden if needed
+- [ ] Tested in dark mode — uses only `var(--basil-*)` tokens so dark mode is automatic
 - [ ] Any entrance animation uses `--basil-ease` or `--basil-ease-spring`
 - [ ] Card sections use `basil-card-head` / `basil-card-label` header pattern
 - [ ] New CSS class names use `basil-` prefix
@@ -461,9 +491,10 @@ Before shipping a new component or view:
 ## What NOT to Do
 
 - **Don't hardcode colors.** `color: #3d8b6c` → `color: var(--basil-green)`
-- **Don't use Quasar's `text-primary` / `text-grey-7` etc.** These bypass the token system and break in dark mode.
+- **Don't use Quasar utility classes like `text-primary` / `text-grey-7`.** These bypass the token system and break in dark mode.
 - **Don't add a new Google Font.** The three font roles cover all cases.
-- **Don't use `q-spinner` or Quasar loading overlays** for the main budget load — use `<SkeletonBudget>`.
+- **Don't use `BasilSpinner` or loading overlays** for the main budget load — use `<SkeletonBudget>`.
 - **Don't animate for decoration.** Every motion should confirm an action or orient the user.
 - **Don't set `background-color: white` or `background-color: #fff`.** Use `var(--basil-surface)`.
-- **Don't write a dark mode override in a component's `<style scoped>`.** All Quasar dark overrides go in `App.vue`'s dark mode section; view-specific overrides go at the bottom of the view's CSS file.
+- **Don't write a dark mode override in a component's `<style scoped>`.** Components built on `var(--basil-*)` tokens get dark mode automatically. Any legacy overrides go in `App.vue`'s dark mode section; view-specific overrides go at the bottom of the view's CSS file.
+- **Don't introduce new Quasar component dependencies.** Use Basil components instead.

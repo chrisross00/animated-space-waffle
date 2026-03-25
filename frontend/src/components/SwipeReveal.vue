@@ -7,7 +7,7 @@
       @click="$emit('action')"
     >
       <slot name="action">
-        <q-icon name="delete" color="white" size="24px" />
+        <BasilIcon name="delete" style="font-size: 24px; color: white;" />
       </slot>
     </div>
     <div

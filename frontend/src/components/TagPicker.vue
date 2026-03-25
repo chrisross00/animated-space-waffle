@@ -4,30 +4,30 @@
 
     <!-- Selected + available tags as toggleable chips -->
     <div class="basil-tag-picker__chips">
-      <q-chip
+      <BasilChip
         v-for="tag in allTags" :key="tag.id"
         :class="isSelected(tag) ? 'basil-tag-picker__chip--selected' : 'basil-tag-picker__chip--unselected'"
         clickable
-        size="sm"
+        dense
         @click="toggle(tag)"
       >
         {{ tag.name }}
-        <q-icon v-if="isSelected(tag)" name="close" size="14px" class="q-ml-xs" />
-      </q-chip>
+        <BasilIcon v-if="isSelected(tag)" name="close" style="font-size: 14px; margin-left: 2px;" />
+      </BasilChip>
 
       <!-- New tag inline input -->
-      <q-chip
+      <BasilChip
         v-if="!showNewInput"
-        outline clickable size="sm"
-        icon="add"
+        clickable
+        dense
         @click="openNewTagInput"
       >
-        New tag
-      </q-chip>
+        <BasilIcon name="add" style="font-size: 14px; margin-right: 2px;" />New tag
+      </BasilChip>
     </div>
 
     <!-- Inline new tag input -->
-    <div v-if="showNewInput" class="basil-tag-picker__new row items-center q-gutter-xs q-mt-xs">
+    <div v-if="showNewInput" class="basil-tag-picker__new" style="display: flex; align-items: center; gap: var(--basil-space-1); margin-top: var(--basil-space-1);">
       <BasilText ref="newTagInput" v-model="newTagName" dense placeholder="Tag name" style="flex: 1" @submit="addNewTag" />
       <BasilButton variant="icon" icon="check" color="primary" dense :disabled="!newTagName?.trim()" @click="addNewTag" />
       <BasilButton variant="icon" icon="close" dense @click="showNewInput = false; newTagName = ''" />
@@ -124,4 +124,3 @@ export default {
 }
 </style>
 
-<!-- Chip color overrides live in quasar-overrides.css (dark mode aware) -->

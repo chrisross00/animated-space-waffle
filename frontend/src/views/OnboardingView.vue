@@ -42,7 +42,7 @@
         <!-- Linking in progress -->
         <template v-else-if="linking">
           <div class="basil-onboarding-linking">
-            <q-spinner color="primary" size="2.5rem" />
+            <BasilSpinner color="primary" size="2.5rem" />
             <h2 class="basil-onboarding-heading">Connecting your account</h2>
             <p class="basil-onboarding-body">
               Syncing your account details — this may take a moment.
@@ -55,14 +55,14 @@
           <h2 class="basil-onboarding-heading">Account connected</h2>
           <div class="basil-onboarding-linked-list">
             <div v-for="inst in linkedInstitutions" :key="inst" class="basil-onboarding-linked-row">
-              <q-icon name="check_circle" color="positive" size="1.25rem" />
+              <BasilIcon name="check_circle" style="font-size: 1.25rem; color: var(--basil-positive)" />
               <span>{{ inst }}</span>
             </div>
           </div>
           <BasilButton
             label="Add another account"
             icon="add"
-            class="basil-onboarding-cta q-mt-md"
+            class="basil-onboarding-cta" style="margin-top: var(--basil-space-4)"
             @click="startPlaidLink"
           />
           <div class="basil-onboarding-skip">
@@ -79,7 +79,7 @@
         <!-- 2a: Sync in progress -->
         <template v-if="!syncDone">
           <div class="basil-onboarding-sync">
-            <q-spinner color="primary" size="2.5rem" class="q-mb-md" />
+            <BasilSpinner color="primary" size="2.5rem" style="margin-bottom: var(--basil-space-4)" />
             <h2 class="basil-onboarding-heading" style="text-align: center">Importing your transactions</h2>
             <p class="basil-onboarding-body" style="text-align: center">
               This takes a moment the first time
@@ -91,9 +91,9 @@
                 :class="['basil-onboarding-sync-step', `basil-onboarding-sync-step--${step.status}`]"
               >
                 <div class="basil-onboarding-sync-step__icon">
-                  <q-icon
+                  <BasilIcon
                     :name="step.status === 'done' ? 'check' : step.status === 'active' ? 'more_horiz' : 'radio_button_unchecked'"
-                    :size="step.status === 'pending' ? '10px' : '14px'"
+                    :style="{ fontSize: step.status === 'pending' ? '10px' : '14px' }"
                   />
                 </div>
                 <span>{{ step.label }}</span>
@@ -109,7 +109,7 @@
     <div v-if="currentStep === 2 && syncDone" class="basil-onboarding-summary-screen">
       <div style="text-align: center; margin-bottom: var(--basil-space-5)">
         <div class="basil-onboarding-summary-icon">
-          <q-icon name="check_circle" size="28px" color="primary" />
+          <BasilIcon name="check_circle" style="font-size: 28px; color: var(--basil-green)" />
         </div>
         <div class="basil-display" style="font-size: 2.25rem; color: var(--basil-text); margin-bottom: var(--basil-space-2)">
           ${{ summaryStats.totalSpend.toLocaleString() }}
@@ -138,7 +138,7 @@
       <!-- To sort nudge -->
       <div v-if="summaryStats.toSort > 0" class="basil-onboarding-sort-nudge">
         <div class="basil-onboarding-sort-nudge__icon">
-          <q-icon name="help_outline" size="20px" />
+          <BasilIcon name="help_outline" style="font-size: 20px;" />
         </div>
         <div>
           <div style="font-size: 0.875rem; font-weight: 500">
@@ -153,7 +153,7 @@
       <!-- Primary CTA -->
       <BasilButton
         :label="summaryStats.toSort > 0 ? 'Start sorting' : 'Set up budgets'"
-        class="basil-onboarding-cta q-mt-md"
+        class="basil-onboarding-cta" style="margin-top: var(--basil-space-4)"
         @click="onboardingChoice(summaryStats.toSort > 0 ? 'sort_first' : 'setup_budgets')"
       />
 

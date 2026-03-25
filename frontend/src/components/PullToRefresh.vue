@@ -9,12 +9,11 @@
       class="basil-pull__indicator"
       :style="{ height: indicatorHeight + 'px', opacity: indicatorOpacity }"
     >
-      <q-icon
+      <BasilIcon
         name="arrow_downward"
         class="basil-pull__arrow"
         :class="{ 'basil-pull__arrow--flipped': distance > threshold }"
-        :style="{ opacity: state === 'refreshing' ? 0 : 1 }"
-        size="1.25rem"
+        :style="{ opacity: state === 'refreshing' ? 0 : 1, fontSize: '1.25rem' }"
       />
       <span class="basil-pull__text">
         <template v-if="state === 'refreshing'">Refreshing…</template>

@@ -5,6 +5,8 @@
  * utils/categoryMapping.js. When adding a new condition type, update both files.
  */
 
+import { toast } from '@/composables/useToast'
+
 const FIELD_LABELS = {
   name: 'name',
   merchant_name: 'merchant',
@@ -402,17 +404,16 @@ export function getAttribution(txn, categories, rules) {
  * @param {string}   ruleType     - 'merchant_name' | 'name'
  * @param {string}   ruleValue    - The merchant/name value
  * @param {string}   categoryName - Target category name
- * @param {Function} notify       - $q.notify (or compatible)
  */
-export function applyMerchantRuleToStore(store, ruleType, ruleValue, categoryName, notify) {
+export function applyMerchantRuleToStore(store, ruleType, ruleValue, categoryName) {
   const prevCat = store.state.categories.find(c => (c.rules?.[ruleType] || []).includes(ruleValue));
   const newCat = store.state.categories.find(c => c.category === categoryName);
   if (prevCat && prevCat.category === categoryName) {
-    notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+    toast.show({ type: 'info', message: 'Rule already exists — categorization applied.' });
   } else {
     if (prevCat) store.commit('updateCategoryRules', { categoryId: prevCat._id, ruleType, ruleValue });
     if (newCat) store.commit('addCategoryRule', { categoryId: newCat._id, ruleType, ruleValue });
-    if (prevCat) notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+    if (prevCat) toast.show({ type: 'info', message: 'Rule updated — categorization applied.' });
   }
 }
 
@@ -422,19 +423,18 @@ export function applyMerchantRuleToStore(store, ruleType, ruleValue, categoryNam
  * @param {object}   store           - Vuex store instance
  * @param {object}   payload         - Rule payload (label, conditions, action, createdFrom)
  * @param {string}   categoryName    - Target category name
- * @param {Function} notify          - $q.notify (or compatible)
- * @param {object}   api             - { saveCompoundRule, updateCompoundRule } from firebase
+ * @param {object}   api             - { saveCompoundRule, updateCompoundRule }
  */
-export async function applyCompoundRuleToStore(store, payload, categoryName, notify, { saveCompoundRule, updateCompoundRule }) {
+export async function applyCompoundRuleToStore(store, payload, categoryName, { saveCompoundRule, updateCompoundRule }) {
   const existing = findExistingRule(store, payload.conditions);
   if (existing) {
     if (existing.action?.categoryName !== categoryName) {
       const updated = { ...existing.action, categoryName };
       await updateCompoundRule(String(existing._id), existing.label, existing.conditions, updated);
       store.commit('updateRule', { ruleId: existing._id, label: existing.label, conditions: existing.conditions, action: updated });
-      notify({ type: 'info', message: 'Rule updated — categorization applied.' });
+      toast.show({ type: 'info', message: 'Rule updated — categorization applied.' });
     } else {
-      notify({ type: 'info', message: 'Rule already exists — categorization applied.' });
+      toast.show({ type: 'info', message: 'Rule already exists — categorization applied.' });
     }
   } else {
     const rule = await saveCompoundRule(payload);

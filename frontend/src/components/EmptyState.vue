@@ -1,7 +1,7 @@
 <template>
   <div class="basil-empty">
     <div class="basil-empty__icon">
-      <q-icon :name="icon" />
+      <BasilIcon :name="icon" />
     </div>
     <div class="basil-empty__heading basil-display">{{ heading }}</div>
     <p v-if="body" class="basil-empty__body">{{ body }}</p>
@@ -38,7 +38,7 @@ export default {
   line-height: 1;
 }
 
-.basil-empty__icon .q-icon {
+.basil-empty__icon .basil-icon {
   font-size: inherit;
 }
 

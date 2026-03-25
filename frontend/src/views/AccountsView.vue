@@ -1,8 +1,8 @@
 <template>
-  <div class="q-pa-md">
+  <div style="padding: var(--basil-space-4)">
 
     <!-- Header -->
-    <div class="basil-card-head q-mb-sm">
+    <div class="basil-card-head" style="margin-bottom: var(--basil-space-2)">
       <span class="basil-card-label">Accounts</span>
     </div>
 
@@ -23,13 +23,12 @@
     >
       <BasilButton
         icon="add" label="Add account"
-        class="q-mt-sm"
+        style="margin-top: var(--basil-space-2)"
         @click="showPlaidLink = true"
       />
       <BasilButton
         variant="flat" icon="edit_note" label="Add manually"
-        class="q-mt-xs"
-        style="color: var(--basil-text-secondary)"
+        style="margin-top: var(--basil-space-1); color: var(--basil-text-secondary)"
         @click="openManualForm()"
       />
       <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
@@ -39,8 +38,8 @@
     <template v-else>
 
       <!-- Item error banner -->
-      <div v-if="hasItemErrors" class="basil-banner basil-accounts__error-banner q-mb-md">
-        <q-icon name="warning" color="warning" />
+      <div v-if="hasItemErrors" class="basil-banner basil-accounts__error-banner" style="margin-bottom: var(--basil-space-4)">
+        <BasilIcon name="warning" style="color: var(--basil-warning)" />
         <div>
           <strong>Account{{ Object.keys(itemErrors).length > 1 ? 's need' : ' needs' }} attention</strong>
           <div class="basil-accounts__error-detail">
@@ -58,7 +57,7 @@
       />
 
       <!-- Net Worth hero card (only when balances loaded) -->
-      <BasilCard v-if="hasBalances" class="my-card basil-accounts__card q-mb-md">
+      <BasilCard v-if="hasBalances" class="my-card basil-accounts__card" style="margin-bottom: var(--basil-space-4)">
         <div class="basil-card-head">
           <span class="basil-card-label">Net Worth</span>
         </div>
@@ -90,7 +89,7 @@
 
         <!-- Accounts card -->
         <div style="flex: 1; min-width: 220px;">
-        <BasilCard class="my-card basil-accounts__card q-mb-md">
+        <BasilCard class="my-card basil-accounts__card" style="margin-bottom: var(--basil-space-4)">
           <div class="basil-card-head">
             <span class="basil-card-label">Accounts</span>
           </div>
@@ -98,31 +97,30 @@
           <div
             v-for="institution in institutions"
             :key="institution.name"
-            class="basil-accounts__institution q-mb-sm"
+            class="basil-accounts__institution" style="margin-bottom: var(--basil-space-2)"
           >
             <div class="basil-accounts__institution-header">
               <span class="basil-accounts__institution-name">{{ institution.name }}</span>
-              <q-chip
+              <BasilChip
                 v-if="institution.manual"
-                dense size="sm" icon="edit_note"
-                class="q-ml-xs"
-                style="background: var(--basil-surface-alt); color: var(--basil-text-secondary)"
+                dense
+                style="margin-left: var(--basil-space-1); background: var(--basil-surface-alt); color: var(--basil-text-secondary)"
               >
-                Manual
-              </q-chip>
-              <q-chip
+                <BasilIcon name="edit_note" style="font-size: 12px; margin-right: 2px;" />Manual
+              </BasilChip>
+              <BasilChip
                 v-if="institution.error"
-                dense size="sm" icon="warning" color="warning" text-color="dark"
-                class="q-ml-xs"
+                dense color="warning"
+                style="margin-left: var(--basil-space-1)"
               >
-                Needs reconnect
-              </q-chip>
+                <BasilIcon name="warning" style="font-size: 12px; margin-right: 2px;" />Needs reconnect
+              </BasilChip>
               <div class="basil-spacer"></div>
               <BasilButton
                 v-if="institution.error && !institution.manual"
                 variant="flat" dense color="warning" icon="refresh" label="Reconnect"
                 :loading="reconnecting === institution.name"
-                class="q-mr-xs"
+                style="margin-right: var(--basil-space-1)"
                 @click="reconnect(institution.name)"
               />
               <template v-if="!preDelete[institution.name]">
@@ -130,7 +128,7 @@
                   @click="preDelete[institution.name] = true" />
               </template>
               <template v-else>
-                <div class="row q-gutter-xs">
+                <div style="display: flex; gap: var(--basil-space-1)">
                   <BasilButton variant="icon" icon="check" dense color="positive"
                     @click="unlinkAccount(institution.name)" />
                   <BasilButton variant="icon" icon="close" dense color="negative"
@@ -172,13 +170,11 @@
                     {{ formatSubtype(acct.subtype) }}
                     <!-- Credit utilization -->
                     <template v-if="acct.type === 'credit' && acct.limit">
-                      <div class="basil-accounts__utilization q-mt-xs">
-                        <q-linear-progress
+                      <div class="basil-accounts__utilization" style="margin-top: var(--basil-space-1)">
+                        <BasilProgress
                           :value="Math.abs(acct.current) / acct.limit"
-                          rounded
                           size="6px"
                           :color="utilizationColor(Math.abs(acct.current) / acct.limit)"
-                          track-color="grey-3"
                           class="basil-accounts__utilization-bar"
                         />
                         <span class="basil-accounts__utilization-label">
@@ -203,7 +199,7 @@
             </div>
           </div>
 
-          <div class="row q-gutter-sm q-mt-xs">
+          <div style="display: flex; gap: var(--basil-space-2); margin-top: var(--basil-space-1)">
             <BasilButton variant="flat" dense color="primary" icon="add" label="Add account"
               @click="showPlaidLink = true" />
             <BasilButton variant="flat" dense icon="edit_note" label="Add manually"
@@ -216,7 +212,7 @@
 
         <!-- Cash Runway card (only when balances loaded) -->
         <div v-if="hasBalances" style="flex: 1; min-width: 220px;">
-        <BasilCard class="my-card basil-accounts__card q-mb-md">
+        <BasilCard class="my-card basil-accounts__card" style="margin-bottom: var(--basil-space-4)">
           <div class="basil-card-head">
             <span class="basil-card-label">Cash Runway</span>
           </div>
@@ -298,11 +294,11 @@
         <!-- Step 2: Account details -->
         <template v-else-if="manualStep === 'details'">
           <div class="basil-card__body">
-            <BasilText v-if="manualIsNewInstitution" v-model="manualInstitution" label="Institution name" dense placeholder="e.g. Fidelity, My Credit Union" class="q-mb-sm" />
+            <BasilText v-if="manualIsNewInstitution" v-model="manualInstitution" label="Institution name" dense placeholder="e.g. Fidelity, My Credit Union" style="margin-bottom: var(--basil-space-2)" />
             <div v-else style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-3);">
               Adding to <strong>{{ manualInstitution }}</strong>
             </div>
-            <BasilText v-model="manualAccountName" label="Account name" dense placeholder="e.g. Brokerage, Checking" class="q-mb-sm" />
+            <BasilText v-model="manualAccountName" label="Account name" dense placeholder="e.g. Brokerage, Checking" class="basil-mb-2" />
             <BasilSelect
               v-model="manualAccountType" label="Account type" dense
               :options="accountTypeOptions"
@@ -310,14 +306,14 @@
               option-value="value"
               emit-value
               placeholder="Select account type"
-              class="q-mb-sm"
+              class="basil-mb-2"
             />
             <BasilAmount v-model="manualBalance" label="Current balance" dense />
             <div style="color: var(--basil-text-muted); font-size: 0.75rem; margin-top: var(--basil-space-2)">
               Manual accounts track balances only. You'll need to update the balance yourself &mdash; no transactions will be imported.
             </div>
           </div>
-          <div class="basil-card__actions q-px-md q-pb-md">
+          <div class="basil-card__actions basil-px-4 basil-pb-4">
             <BasilButton variant="flat" label="Back" @click="manualStep = 'institution'" />
             <BasilButton
               label="Add Account"
@@ -341,10 +337,10 @@
           <BasilButton variant="icon" icon="close" class="basil-dialog-close" @click="showEditManual = false" />
         </div>
         <div class="basil-card__body">
-          <BasilText v-model="editAccountName" label="Account name" dense class="q-mb-sm" />
+          <BasilText v-model="editAccountName" label="Account name" dense class="basil-mb-2" />
           <BasilAmount v-model="editBalance" label="Current balance" dense />
         </div>
-        <div class="basil-card__actions q-px-md q-pb-md" style="justify-content: space-between;">
+        <div class="basil-card__actions basil-px-4 basil-pb-4" style="justify-content: space-between;">
           <BasilButton variant="flat" icon="delete" label="Delete" color="negative"
             :loading="editManualDeleting"
             @click="confirmDeleteManual = true"
@@ -359,11 +355,11 @@
             />
           </div>
         </div>
-        <div v-if="confirmDeleteManual" class="q-px-md q-pb-md" style="text-align: center;">
+        <div v-if="confirmDeleteManual" class="basil-px-4 basil-pb-4" style="text-align: center;">
           <div style="color: var(--basil-text-secondary); font-size: 0.8125rem; margin-bottom: var(--basil-space-2);">
             Remove this account? This cannot be undone.
           </div>
-          <div class="row justify-center q-gutter-sm">
+          <div style="display: flex; justify-content: center; gap: var(--basil-space-2);">
             <BasilButton variant="flat" dense label="Keep" @click="confirmDeleteManual = false" />
             <BasilButton variant="flat" dense label="Remove" color="negative"
               :loading="editManualDeleting"

@@ -1,5 +1,5 @@
 <template>
-  <div class="basil-sk-wrap q-pa-md">
+  <div class="basil-sk-wrap" style="padding: var(--basil-space-4)">
 
     <!-- Stat cards row -->
     <div class="basil-sk-cards">

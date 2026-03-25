@@ -26,10 +26,13 @@ These apply to every task, every session, including after context compaction.
 
 ### Before building any new component or UI pattern
 5. **Check existing shared components first:**
-   `RuleEditorDialog`, `EmptyState`, `SkeletonBudget`, `dialogs.css`.
+   `RuleEditorDialog`, `EmptyState`, `SkeletonBudget`, `dialogs.css`,
+   and all Basil components in `frontend/src/components/basil/`.
    Reuse over rebuild. One-off implementations that duplicate existing abstractions
    will be flagged for refactor.
 6. **Inputs: use `BasilInput` or variant wrappers.** Never use `q-input` for new inputs.
+7. **UI components: use Basil components.** Do not introduce new Quasar component
+   dependencies. See DESIGN.md "Basil Component Library" for the full component list.
 
 ### Always
 6. **State changes go through store mutations.** Never mutate `store.state.*` directly.
@@ -37,7 +40,8 @@ These apply to every task, every session, including after context compaction.
    `var(--basil-surface)` not `#ffffff`. `var(--basil-space-4)` not `16px`.
 8. **CSS class names use `basil-` prefix + BEM structure.**
    `basil-[block]__[element]--[modifier]`. Never prefix with `q-`.
-9. **Dark mode Quasar overrides go in `App.vue`** global style section — nowhere else.
+9. **Dark mode: Basil components handle it automatically** via `var(--basil-*)` tokens.
+   If overriding any legacy component, the fix goes in `App.vue` global style section.
 
 ---
 
@@ -47,7 +51,7 @@ auto-categorizes them using a rules engine. The core feature is **auto-learn**: 
 the user recategorizes a transaction, a rule is saved and applied to all similar
 transactions going forward.
 
-**Stack:** Vue 3 + Quasar 2 + Vuex 4 (frontend) · Express.js + Postgres (backend) ·
+**Stack:** Vue 3 + Basil component library + Vuex 4 (frontend) · Express.js + Postgres (backend) ·
 Google OAuth + self-issued JWTs · Plaid API
 
 **Hosting:** Self-hosted on Hetzner VPS (Postgres 16 in Docker, Node via PM2, Nginx
@@ -83,6 +87,8 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/components/PlaidLinkHandler.vue` | Plaid Link iframe component |
 | `frontend/src/store.js` | Vuex store (user, session, transactionsByMonth, categories, rules) |
 | `frontend/src/api.js` | All fetch calls to backend API + auth helpers |
+| `frontend/src/components/basil/` | Basil component library — globally registered UI components (BasilButton, BasilCard, BasilSelect, BasilToggle, BasilList, BasilTabs, BasilTable, etc.) |
+| `frontend/src/composables/` | Vue composables — `useScreen` (breakpoints), `useGesture` (swipe/drag), `useToast` (notifications) |
 | `utils/venmoEnrichment.js` | Venmo CSV parser + transaction enrichment matching |
 | `utils/categoryMapping.js` | Transaction categorization rule engine |
 
@@ -197,6 +203,16 @@ section instead of reading the whole file.
 | `fetchMonthRange(store, start, end)` | `frontend/src/api.js` | Fetches missing months in parallel, skipping cached ones. |
 | `searchTransactions(search, page, limit)` | `frontend/src/api.js` | Server-side paginated search across all months. |
 | `BasilInput` / variant wrappers | `frontend/src/components/BasilInput.vue` + `Basil{Amount,Search,Text,Note}.js` | Custom input replacing `q-input`. Variants: `amount`, `search`, `text`, `note`. See DESIGN.md. |
+| `BasilButton` | `frontend/src/components/basil/BasilButton.vue` | Primary interactive element — replaces `q-btn`. |
+| `BasilCard` | `frontend/src/components/basil/BasilCard.vue` | Surface container — replaces `q-card`. |
+| `BasilSelect` | `frontend/src/components/basil/BasilSelect.vue` | Dropdown picker — replaces `q-select`. No blur-swallows-tap issue. |
+| `BasilToggle` | `frontend/src/components/basil/BasilToggle.vue` | Boolean on/off control — replaces `q-toggle`. |
+| `BasilList` / `BasilListItem` | `frontend/src/components/basil/` | List container + row — replace `q-list` / `q-item`. |
+| `BasilTabs` / `BasilTab` | `frontend/src/components/basil/` | Tab bar — replaces `q-tabs` / `q-tab`. |
+| `BasilTable` | `frontend/src/components/basil/BasilTable.vue` | Data table with virtual scroll — replaces `q-table`. |
+| `useScreen` | `frontend/src/composables/useScreen.js` | Reactive breakpoints (`isMobile`, `isDesktop`, `width`) — replaces `$q.screen`. |
+| `useGesture` | `frontend/src/composables/useGesture.js` | Swipe and drag gesture detection — replaces `v-touch-swipe`. |
+| `useToast` | `frontend/src/composables/useToast.js` | Programmatic toast notifications — replaces `$q.notify`. |
 | `keyboardState`, `requestKeyboard`, `dismissKeyboard` | `frontend/src/utils/basilKeyboard.js` | Reactive singleton for keyboard ↔ input communication. |
 | `scrollActiveInputIntoView()` | `frontend/src/utils/basilKeyboard.js` | Scrolls focused input into view when keyboard opens. Finds nearest scrollable ancestor (tray) or falls back to body padding for full-page views. |
 
@@ -261,10 +277,6 @@ name pattern / amount / amount + institution".
       (opens triage filtered to large incoming transfers). Solves the problem where
       PFC misclassifies payroll as transfers and the user has no way to know.
       Design validated via UX analysis + competitor research (see `plans/`).
-- [ ] **Mobile: dropdown blur swallows submit tap** — on mobile, tapping a submit
-      button while a Quasar `q-select` has focus requires two taps (first blurs the
-      dropdown, second fires the button). Caused by Quasar's popup overlay intercepting
-      the tap. Will resolve naturally when `q-select` is replaced with a Basil component.
 
 ### Medium priority
 - [ ] **Post-onboarding in-flow prompts** — soft-gate dialogs for actions like Add to

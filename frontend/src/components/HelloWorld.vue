@@ -1,7 +1,7 @@
 <template>
-  <q-page class="flex flex-center">
-    <img alt="Quasar logo" src="../assets/logo.svg" style="width: 200px; height: 200px">
-  </q-page>
+  <div style="display: flex; justify-content: center; align-items: center;">
+    <img alt="Basil logo" src="../assets/logo.svg" style="width: 200px; height: 200px">
+  </div>
 </template>
 
 <style>
