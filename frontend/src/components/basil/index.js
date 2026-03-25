@@ -1,1 +1,8 @@
 export { default as BasilToast } from './BasilToast.vue'
+export { default as BasilIcon } from './BasilIcon.vue'
+export { default as BasilSkeleton } from './BasilSkeleton.vue'
+export { default as BasilProgress } from './BasilProgress.vue'
+export { default as BasilSpinner } from './BasilSpinner.vue'
+export { default as BasilSeparator } from './BasilSeparator.vue'
+export { default as BasilChip } from './BasilChip.vue'
+export { default as BasilBadge } from './BasilBadge.vue'

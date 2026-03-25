@@ -44,6 +44,21 @@
   border-left-color: var(--basil-info);
 }
 
+/* ---- Icon ---- */
+
+.basil-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  user-select: none;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 /* ---- Toast transitions ---- */
 
 .basil-toast-enter-active,
@@ -60,3 +75,239 @@
   opacity: 0;
   transform: translateY(-8px);
 }
+
+/* ---- Skeleton ---- */
+
+@keyframes basil-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.basil-skeleton {
+  display: block;
+  background-color: var(--basil-border);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--basil-surface-alt) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: basil-shimmer 1.6s var(--basil-ease) infinite;
+}
+
+.basil-skeleton--text {
+  height: 14px;
+  width: 100%;
+  border-radius: 4px;
+}
+
+.basil-skeleton--rect {
+  width: 100%;
+  height: 80px;
+  border-radius: var(--basil-radius-sm);
+}
+
+.basil-skeleton--circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---- Progress ---- */
+
+.basil-progress {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: var(--basil-track);
+  border-radius: var(--basil-radius-pill);
+  overflow: hidden;
+}
+
+.basil-progress__bar {
+  height: 100%;
+  border-radius: var(--basil-radius-pill);
+  transition: width 200ms var(--basil-ease);
+}
+
+/* Indeterminate: override bar width and animate */
+.basil-progress--indeterminate .basil-progress__bar {
+  position: absolute;
+  width: 30%;
+  animation: basil-progress-slide 1.4s var(--basil-ease) infinite;
+}
+
+@keyframes basil-progress-slide {
+  0%   { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* ---- Spinner ---- */
+
+.basil-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 3px;
+  flex-shrink: 0;
+  animation: basil-spin 0.8s linear infinite;
+}
+
+@keyframes basil-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ---- Banner ---- */
+
+.basil-banner {
+  padding: var(--basil-space-3) var(--basil-space-4);
+  background: var(--basil-surface-alt);
+  border-radius: var(--basil-radius-md);
+  font-size: 0.875rem;
+  color: var(--basil-text-secondary);
+}
+
+/* ---- Slide transition ---- */
+
+.basil-slide-enter-active,
+.basil-slide-leave-active {
+  transition: max-height var(--basil-t-base) var(--basil-ease), opacity var(--basil-t-base) var(--basil-ease);
+  overflow: hidden;
+}
+.basil-slide-enter-from,
+.basil-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+.basil-slide-enter-to,
+.basil-slide-leave-from {
+  max-height: 500px;
+  opacity: 1;
+}
+
+/* ---- Separator ---- */
+
+.basil-separator {
+  border: none;
+  border-top: 1px solid var(--basil-border);
+  margin: 0;
+}
+
+.basil-separator--vertical {
+  border-top: none;
+  border-left: 1px solid var(--basil-border);
+  align-self: stretch;
+  width: 0;
+  height: auto;
+}
+
+/* ---- Chip ---- */
+
+.basil-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--basil-space-1);
+  padding: var(--basil-space-1) var(--basil-space-2);
+  border-radius: var(--basil-radius-pill);
+  background: var(--basil-surface-alt);
+  color: var(--basil-text);
+  font-family: var(--basil-font-ui);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.basil-chip--dense {
+  padding: 2px var(--basil-space-1);
+  font-size: 0.75rem;
+}
+
+.basil-chip--clickable {
+  cursor: pointer;
+}
+
+.basil-chip--clickable:hover {
+  background: var(--basil-border);
+}
+
+/* Color variants — tint bg using the semantic -bg token */
+.basil-chip--primary   { background: var(--basil-green-subtle);   color: var(--basil-green); }
+.basil-chip--positive  { background: var(--basil-positive-bg);     color: var(--basil-positive); }
+.basil-chip--negative  { background: var(--basil-negative-bg);     color: var(--basil-negative); }
+.basil-chip--warning   { background: var(--basil-warning-bg);      color: var(--basil-warning); }
+.basil-chip--info      { background: var(--basil-info-bg);         color: var(--basil-info); }
+.basil-chip--income    { background: var(--basil-income-bg);       color: var(--basil-income); }
+.basil-chip--expense   { background: var(--basil-expense-bg);      color: var(--basil-expense); }
+.basil-chip--savings   { background: var(--basil-savings-bg);      color: var(--basil-savings); }
+.basil-chip--payment   { background: var(--basil-payment-bg);      color: var(--basil-payment); }
+
+.basil-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 2px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 50%;
+  opacity: 0.7;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.basil-chip__remove:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.basil-chip__remove-icon {
+  pointer-events: none;
+}
+
+/* ---- Badge ---- */
+
+.basil-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--basil-radius-pill);
+  font-family: var(--basil-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--basil-negative);
+  color: var(--basil-text-inverse);
+}
+
+.basil-badge--dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+}
+
+.basil-badge--floating {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+}
+
+/* Badge color variants */
+.basil-badge--negative { background: var(--basil-negative); color: var(--basil-text-inverse); }
+.basil-badge--positive { background: var(--basil-positive); color: var(--basil-text-inverse); }
+.basil-badge--warning  { background: var(--basil-warning);  color: var(--basil-text-inverse); }
+.basil-badge--info     { background: var(--basil-info);     color: var(--basil-text-inverse); }
+.basil-badge--primary  { background: var(--basil-green);    color: var(--basil-text-inverse); }
