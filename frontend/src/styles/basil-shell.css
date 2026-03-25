@@ -1,0 +1,201 @@
+/* ==========================================================
+   Basil Shell — App layout CSS (will replace Quasar q-layout)
+
+   This stylesheet defines the structure for:
+   - Header (sticky at top)
+   - Main content (scrollable flex-1)
+   - Footer/bottom nav (fixed at bottom on mobile)
+   - Left drawer (slide-in overlay)
+
+   Phase 4 goal: Remove Quasar's q-layout, q-header, q-footer,
+   q-drawer, q-page-container and use these classes instead.
+   ========================================================== */
+
+/* ---- CSS Variables ---- */
+
+:root {
+  --basil-bottom-nav-height: 56px;
+  --basil-header-height: 56px;
+}
+
+/* ---- Main shell container ---- */
+
+.basil-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background-color: var(--basil-bg);
+  color: var(--basil-text);
+}
+
+/* ---- Header / Toolbar ---- */
+
+.basil-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--basil-surface);
+  color: var(--basil-text);
+  border-bottom: 1px solid var(--basil-border);
+  padding-top: env(safe-area-inset-top);
+  box-shadow: none;
+  transition: box-shadow var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-header--scrolled {
+  box-shadow: var(--basil-shadow-md);
+}
+
+.basil-header__toolbar {
+  display: flex;
+  align-items: center;
+  height: var(--basil-header-height);
+  padding: 0 var(--basil-space-3);
+  gap: var(--basil-space-2);
+}
+
+/* ---- Main content area ---- */
+
+.basil-main {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--basil-bg);
+}
+
+/* Mobile: add bottom padding when footer nav is present */
+@media (max-width: 599px) {
+  .basil-main--has-footer {
+    padding-bottom: calc(var(--basil-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---- Footer / Bottom Navigation ---- */
+
+.basil-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: var(--basil-surface);
+  border-top: 1px solid var(--basil-border);
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: calc(var(--basil-bottom-nav-height) + env(safe-area-inset-bottom));
+}
+
+/* ---- Left Drawer / Sidebar ---- */
+
+.basil-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 200;
+  background-color: var(--basil-surface);
+  color: var(--basil-text);
+  transform: translateX(-100%);
+  transition: transform var(--basil-t-base) var(--basil-ease);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: env(safe-area-inset-top);
+  box-shadow: none;
+}
+
+.basil-drawer--open {
+  transform: translateX(0);
+  box-shadow: var(--basil-shadow-lg);
+}
+
+/* ---- Drawer Backdrop / Scrim ---- */
+
+.basil-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 199;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-drawer-backdrop--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ---- Page Container ---- */
+
+.basil-page-container {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--basil-bg);
+}
+
+/* ---- Drawer Item Styling (list items within drawer) ---- */
+
+.basil-drawer-item {
+  display: flex;
+  align-items: center;
+  padding: var(--basil-space-3);
+  gap: var(--basil-space-2);
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--basil-t-base) var(--basil-ease);
+}
+
+.basil-drawer-item:hover {
+  background-color: var(--basil-surface-alt);
+}
+
+.basil-drawer-item:active {
+  background-color: var(--basil-surface-alt);
+}
+
+.basil-drawer-item--active {
+  background-color: var(--basil-green-subtle);
+  color: var(--basil-green);
+  font-weight: 500;
+}
+
+/* ---- Dark mode overrides ---- */
+
+[data-theme="dark"] .basil-header {
+  background-color: var(--basil-surface);
+  border-bottom-color: var(--basil-border);
+}
+
+[data-theme="dark"] .basil-header--scrolled {
+  box-shadow: var(--basil-shadow-md);
+}
+
+[data-theme="dark"] .basil-footer {
+  background-color: var(--basil-surface);
+  border-top-color: var(--basil-border);
+}
+
+[data-theme="dark"] .basil-drawer {
+  background-color: var(--basil-surface);
+  color: var(--basil-text);
+}
+
+[data-theme="dark"] .basil-drawer--open {
+  box-shadow: var(--basil-shadow-lg);
+}
+
+[data-theme="dark"] .basil-drawer-item:hover {
+  background-color: var(--basil-surface-alt);
+}
+
+[data-theme="dark"] .basil-drawer-item--active {
+  background-color: var(--basil-green-subtle);
+  color: var(--basil-green);
+}
