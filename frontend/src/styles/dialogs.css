@@ -61,11 +61,18 @@
 
 .basil-tray__wrap--mobile {
   border-radius: var(--basil-radius-lg) var(--basil-radius-lg) 0 0;
+  transition: border-radius 200ms ease;
   padding-bottom: env(safe-area-inset-bottom);
   overflow: hidden;
   max-height: 94dvh;
   display: flex;
   flex-direction: column;
+}
+
+/* When a child dialog is open on top, remove parent tray's rounded corners
+   so the white edge doesn't peek through the backdrop */
+dialog.basil-tray:has(dialog[open]) .basil-tray__wrap--mobile {
+  border-radius: 0;
 }
 
 .basil-tray__wrap--mobile > .basil-card {
