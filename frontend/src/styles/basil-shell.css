@@ -90,6 +90,7 @@ html, body {
   left: 0;
   right: 0;
   z-index: 100;
+  box-sizing: border-box;
   background-color: var(--basil-surface);
   border-top: 1px solid var(--basil-border);
   padding-bottom: env(safe-area-inset-bottom);
