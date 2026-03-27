@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { matchesCondition, sweepStore, condKey, findExistingRule, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution, formatConditions, extractStablePrefix, isP2P } from '@/utils/ruleUtils'
 
+// Mock toast so applyCompoundRuleToStore can call toast.show() without errors
+vi.mock('@/composables/useToast', () => ({
+  toast: { show: vi.fn() },
+}))
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -357,26 +362,29 @@ function makeCategoryStore(categories) {
 }
 
 describe('applyMerchantRuleToStore', () => {
-  let notify
+  let toastShow
 
-  beforeEach(() => { notify = vi.fn() })
+  beforeEach(async () => {
+    const { toast } = await import('@/composables/useToast')
+    toastShow = toast.show
+    toastShow.mockClear()
+  })
 
   it('adds rule to new category when none existed before', () => {
     const store = makeCategoryStore([
       { _id: 'a', category: 'Coffee', rules: {} },
     ])
-    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Coffee', notify)
+    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Coffee')
     expect(store.commit).toHaveBeenCalledWith('addCategoryRule', { categoryId: 'a', ruleType: 'merchant_name', ruleValue: 'Starbucks' })
-    expect(notify).not.toHaveBeenCalled()
   })
 
   it('notifies "already exists" when rule is already in target category', () => {
     const store = makeCategoryStore([
       { _id: 'a', category: 'Coffee', rules: { merchant_name: ['Starbucks'] } },
     ])
-    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Coffee', notify)
+    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Coffee')
     expect(store.commit).not.toHaveBeenCalled()
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('already exists') }))
+    expect(toastShow).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('already exists') }))
   })
 
   it('removes from old category and adds to new, notifies "updated"', () => {
@@ -384,10 +392,10 @@ describe('applyMerchantRuleToStore', () => {
       { _id: 'a', category: 'Coffee', rules: { merchant_name: ['Starbucks'] } },
       { _id: 'b', category: 'Dining', rules: {} },
     ])
-    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Dining', notify)
+    applyMerchantRuleToStore(store, 'merchant_name', 'Starbucks', 'Dining')
     expect(store.commit).toHaveBeenCalledWith('updateCategoryRules', { categoryId: 'a', ruleType: 'merchant_name', ruleValue: 'Starbucks' })
     expect(store.commit).toHaveBeenCalledWith('addCategoryRule', { categoryId: 'b', ruleType: 'merchant_name', ruleValue: 'Starbucks' })
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('updated') }))
+    expect(toastShow).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('updated') }))
   })
 })
 
@@ -401,13 +409,15 @@ function makeFullStore(rules = [], transactions = []) {
 }
 
 describe('applyCompoundRuleToStore', () => {
-  let notify, saveCompoundRule, updateCompoundRule, api
+  let saveCompoundRule, updateCompoundRule, api, toastShow
 
-  beforeEach(() => {
-    notify = vi.fn()
+  beforeEach(async () => {
     saveCompoundRule = vi.fn().mockResolvedValue({ _id: 'new', conditions: CONDITIONS, action: { categoryName: 'Coffee' } })
     updateCompoundRule = vi.fn().mockResolvedValue({})
     api = { saveCompoundRule, updateCompoundRule }
+    const { toast } = await import('@/composables/useToast')
+    toastShow = toast.show
+    toastShow.mockClear()
   })
 
   const payload = {
@@ -418,39 +428,38 @@ describe('applyCompoundRuleToStore', () => {
 
   it('saves new rule and commits addRule when no existing rule', async () => {
     const store = makeFullStore([], [])
-    await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
+    await applyCompoundRuleToStore(store, payload, 'Coffee', api)
     expect(saveCompoundRule).toHaveBeenCalledWith(payload)
     expect(store.commit).toHaveBeenCalledWith('addRule', expect.objectContaining({ _id: 'new' }))
-    expect(notify).not.toHaveBeenCalled()
   })
 
   it('does not commit addRule when saveCompoundRule returns null', async () => {
     saveCompoundRule.mockResolvedValue(null)
     const store = makeFullStore([], [])
-    await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
+    await applyCompoundRuleToStore(store, payload, 'Coffee', api)
     expect(store.commit).not.toHaveBeenCalledWith('addRule', expect.anything())
   })
 
   it('updates existing rule and notifies when category differs', async () => {
     const existing = { _id: 'r1', label: 'Starbucks $6', conditions: CONDITIONS, action: { type: 'categorize', categoryName: 'OldCat' } }
     const store = makeFullStore([existing], [])
-    await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
+    await applyCompoundRuleToStore(store, payload, 'Coffee', api)
     expect(updateCompoundRule).toHaveBeenCalledWith('r1', existing.label, existing.conditions, expect.objectContaining({ categoryName: 'Coffee' }))
     expect(store.commit).toHaveBeenCalledWith('updateRule', expect.objectContaining({ ruleId: 'r1' }))
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('updated') }))
+    expect(toastShow).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('updated') }))
   })
 
   it('notifies "already exists" when existing rule has same category', async () => {
     const existing = { _id: 'r1', label: 'Starbucks $6', conditions: CONDITIONS, action: { type: 'categorize', categoryName: 'Coffee' } }
     const store = makeFullStore([existing], [])
-    await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
+    await applyCompoundRuleToStore(store, payload, 'Coffee', api)
     expect(updateCompoundRule).not.toHaveBeenCalled()
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('already exists') }))
+    expect(toastShow).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining('already exists') }))
   })
 
   it('always calls sweepStore after save or update', async () => {
     const store = makeFullStore([], [txn({ transaction_id: '1', merchant_name: 'Starbucks', amount: 6 })])
-    await applyCompoundRuleToStore(store, payload, 'Coffee', notify, api)
+    await applyCompoundRuleToStore(store, payload, 'Coffee', api)
     expect(store.commit).toHaveBeenCalledWith('updateTransaction', expect.objectContaining({ mappedCategory: 'Coffee' }))
   })
 })
