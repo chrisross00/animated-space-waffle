@@ -132,28 +132,14 @@ export default {
     },
 
     lockBodyScroll() {
-      // iOS Safari/PWA ignores overflow:hidden on body. The standard fix is
-      // position:fixed which fully prevents scroll, then restore scroll position on unlock.
-      this._scrollY = window.scrollY
-      this._prevStyles = {
-        position: document.body.style.position,
-        top: document.body.style.top,
-        left: document.body.style.left,
-        right: document.body.style.right,
-        overflow: document.body.style.overflow,
-      }
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${this._scrollY}px`
-      document.body.style.left = '0'
-      document.body.style.right = '0'
+      this._prevOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
     },
 
     unlockBodyScroll() {
-      if (this._prevStyles) {
-        Object.assign(document.body.style, this._prevStyles)
-        this._prevStyles = undefined
-        window.scrollTo(0, this._scrollY || 0)
+      if (this._prevOverflow !== undefined) {
+        document.body.style.overflow = this._prevOverflow
+        this._prevOverflow = undefined
       }
     },
 
