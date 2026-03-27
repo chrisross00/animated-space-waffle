@@ -1,30 +1,32 @@
 <template>
-  <dialog
-    ref="dialogRef"
-    class="basil-tray"
-    :class="{ 'basil-tray--visible': backdropVisible }"
-    :aria-modal="isVisible ? 'true' : undefined"
-    @close="onNativeClose"
-    @keydown="onKeydown"
-    @click="onDialogClick"
-  >
-    <div
-      ref="wrapRef"
-      tabindex="-1"
-      :class="[
-        'basil-tray__wrap',
-        screen.isMobile && 'basil-tray__wrap--mobile',
-        entered && 'basil-tray__wrap--entered',
-        dragging && 'basil-tray__wrap--dragging',
-      ]"
-      :style="[
-        !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
-        dragStyle,
-      ]"
+  <Teleport to="body">
+    <dialog
+      ref="dialogRef"
+      class="basil-tray"
+      :class="{ 'basil-tray--visible': backdropVisible }"
+      :aria-modal="isVisible ? 'true' : undefined"
+      @close="onNativeClose"
+      @keydown="onKeydown"
+      @click="onDialogClick"
     >
-      <slot />
-    </div>
-  </dialog>
+      <div
+        ref="wrapRef"
+        tabindex="-1"
+        :class="[
+          'basil-tray__wrap',
+          screen.isMobile && 'basil-tray__wrap--mobile',
+          entered && 'basil-tray__wrap--entered',
+          dragging && 'basil-tray__wrap--dragging',
+        ]"
+        :style="[
+          !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
+          dragStyle,
+        ]"
+      >
+        <slot />
+      </div>
+    </dialog>
+  </Teleport>
 </template>
 
 <script>
@@ -32,6 +34,10 @@ import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
 import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
+
+// Global scroll lock counter — prevents child tray unlock from reverting parent lock
+let scrollLockCount = 0
+let savedOverflow = ''
 
 // Parse the sheet duration token at module level so we can use it in JS timeouts.
 // Falls back to 500ms if the CSS variable isn't available yet.
@@ -253,22 +259,28 @@ export default {
     },
 
     lockBodyScroll() {
-      this._prevOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
+      if (scrollLockCount === 0) {
+        savedOverflow = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+      }
+      scrollLockCount++
     },
 
     unlockBodyScroll() {
-      if (this._prevOverflow !== undefined) {
-        document.body.style.overflow = this._prevOverflow
-        this._prevOverflow = undefined
+      scrollLockCount = Math.max(0, scrollLockCount - 1)
+      if (scrollLockCount === 0) {
+        document.body.style.overflow = savedOverflow
       }
     },
 
     hasChildDialogOpen() {
-      // Check if another dialog is open on top of this one (e.g. date picker tray inside edit tray)
+      // With Teleport, dialogs are siblings at body level. Check if any OTHER
+      // open dialog exists that was rendered after this one (higher in DOM order = on top).
       const dialog = this.$refs.dialogRef
       if (!dialog) return false
-      return dialog.querySelector('dialog[open]') !== null
+      const allOpen = document.querySelectorAll('dialog.basil-tray[open]')
+      const myIndex = [...allOpen].indexOf(dialog)
+      return myIndex >= 0 && myIndex < allOpen.length - 1
     },
 
     setupGesture() {
