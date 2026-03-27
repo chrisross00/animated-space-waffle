@@ -2,12 +2,14 @@
   <dialog
     ref="dialogRef"
     class="basil-tray"
+    :aria-modal="isVisible ? 'true' : undefined"
     @close="onNativeClose"
-    @cancel="onCancel"
-    @click="onBackdropClick"
+    @keydown="onKeydown"
   >
+    <div v-if="isVisible" class="basil-tray__backdrop" @click="onBackdropClick" />
     <div
       ref="wrapRef"
+      tabindex="-1"
       :class="['basil-tray__wrap', screen.isMobile && 'basil-tray__wrap--mobile']"
       :style="[
         !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
@@ -23,7 +25,7 @@
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
-import { keyboardState, dismissKeyboard, getActiveInputEl } from '@/utils/basilKeyboard'
+import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilTray',
@@ -39,6 +41,7 @@ export default {
       dragOffset: 0,
       dragging: false,
       screen,
+      isVisible: false,
     }
   },
 
@@ -86,11 +89,14 @@ export default {
       if (!dialog || dialog.open) return
 
       this.$emit('before-show')
+      this._previousFocus = document.activeElement
       this.lockBodyScroll()
+      this.isVisible = true
 
-      dialog.showModal()
+      dialog.show()
 
       nextTick(() => {
+        this.focusFirstElement()
         this.$emit('show')
         // Re-setup gesture in case refs changed
         this.setupGesture()
@@ -101,42 +107,82 @@ export default {
       const dialog = this.$refs.dialogRef
       if (!dialog || !dialog.open) return
 
-      // Dismiss the keyboard if the active input is inside this closing tray.
-      // Prevents isOpen from staying true with keyboard orphaned in a closed dialog.
+      // Dismiss the keyboard if it's open
       if (keyboardState.isOpen) {
-        const activeInput = getActiveInputEl()
-        if (activeInput && dialog.contains(activeInput)) {
-          dismissKeyboard()
-        }
+        dismissKeyboard()
       }
 
       this.$emit('before-hide')
       dialog.close()
+      this.isVisible = false
       this.unlockBodyScroll()
       this.$emit('hide')
+
+      // Restore focus to element that was focused before tray opened
+      if (this._previousFocus && this._previousFocus.focus) {
+        this._previousFocus.focus()
+        this._previousFocus = null
+      }
     },
 
     onNativeClose() {
       // The dialog was closed (either by us or by the browser)
+      this.isVisible = false
       this.unlockBodyScroll()
       if (this.modelValue) {
         this.$emit('update:modelValue', false)
       }
     },
 
-    onCancel(e) {
-      // Native cancel event fires on Escape key press
-      if (this.persistent) {
+    onKeydown(e) {
+      // Escape handling — dialog.show() does NOT fire cancel on Escape
+      if (e.key === 'Escape') {
+        if (this.persistent) {
+          e.preventDefault()
+          return
+        }
         e.preventDefault()
+        this.$emit('update:modelValue', false)
         return
       }
-      // Allow close — onNativeClose will fire next and emit update:modelValue
+
+      // Focus trapping on Tab
+      if (e.key === 'Tab') {
+        const focusable = this.getFocusableElements()
+        if (!focusable.length) return
+
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     },
 
-    onBackdropClick(e) {
-      // Native <dialog> backdrop is the dialog element itself.
-      // Clicks on child elements (the wrap) won't have target === dialog.
-      if (e.target !== this.$refs.dialogRef) return
+    getFocusableElements() {
+      const dialog = this.$refs.dialogRef
+      if (!dialog) return []
+      return [...dialog.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )]
+    },
+
+    focusFirstElement() {
+      const focusable = this.getFocusableElements()
+      if (focusable.length) {
+        focusable[0].focus()
+      } else {
+        // Focus the wrap div as fallback
+        this.$refs.wrapRef?.focus()
+      }
+    },
+
+    onBackdropClick() {
       if (this.persistent) return
       this.$emit('update:modelValue', false)
     },

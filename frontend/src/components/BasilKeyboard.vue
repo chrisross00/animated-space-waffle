@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { keyboardState, emitKey, emitBackspace, emitDone, dismissKeyboard, getActiveInputEl } from '@/utils/basilKeyboard'
+import { keyboardState, emitKey, emitBackspace, emitDone, dismissKeyboard } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilKeyboard',
@@ -65,7 +65,6 @@ export default {
         ['A','S','D','F','G','H','J','K','L'],
         ['Z','X','C','V','B','N','M'],
       ],
-      originalParent: null,
     }
   },
   computed: {
@@ -73,8 +72,6 @@ export default {
     mode() { return keyboardState.mode },
   },
   mounted() {
-    this.originalParent = this.$refs.keyboard.parentElement
-
     // Dismiss on tap outside keyboard/input
     this._onPointerDown = (e) => {
       if (!keyboardState.isOpen) return
@@ -90,40 +87,13 @@ export default {
     isOpen: {
       handler(val) {
         if (val) {
-          const el = this.$refs.keyboard
-          if (!el) return
-
-          // Move keyboard into the open <dialog> if input is inside one,
-          // because <dialog> creates a top layer that sits above all z-index.
-          // Must happen while --hidden is still applied, before Vue removes the class,
-          // otherwise appendChild cancels the running transition and it snaps open.
-          const inputEl = getActiveInputEl()
-          const dialog = inputEl?.closest('dialog[open]')
-          if (dialog && !dialog.contains(el)) {
-            // Keep hidden state during move
-            el.classList.add('basil-keyboard--hidden')
-            dialog.appendChild(el)
-            // Force reflow so browser registers the hidden position in new parent
-            el.offsetHeight // eslint-disable-line no-unused-expressions
-            // Now remove hidden — transition will animate from the registered position
-            el.classList.remove('basil-keyboard--hidden')
-          } else if (!dialog && this.originalParent && !this.originalParent.contains(el)) {
-            el.classList.add('basil-keyboard--hidden')
-            this.originalParent.appendChild(el)
-            el.offsetHeight // eslint-disable-line no-unused-expressions
-            el.classList.remove('basil-keyboard--hidden')
-          }
-
           this.$nextTick(() => {
+            const el = this.$refs.keyboard
+            if (!el) return
             keyboardState.height = el.offsetHeight
             document.documentElement.style.setProperty('--basil-keyboard-height', keyboardState.height + 'px')
           })
         } else {
-          // Move back to original parent when closing
-          const el = this.$refs.keyboard
-          if (el && this.originalParent && !this.originalParent.contains(el)) {
-            this.originalParent.appendChild(el)
-          }
           document.documentElement.style.setProperty('--basil-keyboard-height', '0px')
         }
       },

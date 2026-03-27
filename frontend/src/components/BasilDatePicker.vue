@@ -9,8 +9,8 @@
       <span v-if="label" class="basil-date-picker__label" :class="{ 'basil-date-picker__label--float': hasValue || isOpen }">{{ label }}</span>
     </div>
 
-    <!-- Desktop dropdown — teleport to nearest dialog (if inside one) or body -->
-    <Teleport :to="teleportTarget">
+    <!-- Desktop dropdown -->
+    <Teleport to="body">
       <div v-if="isOpen && !isMobile" ref="dropdownRef" class="basil-date-picker__dropdown" :style="dropdownStyle" @mousedown.prevent>
         <div class="basil-date-picker__calendar" role="grid">
           <!-- Month header -->
@@ -123,7 +123,6 @@ export default {
       viewMonth: new Date().getMonth(),
       hoveredDay: null,
       dropdownStyle: {},
-      teleportTarget: 'body',
     }
   },
 
@@ -210,10 +209,6 @@ export default {
   },
 
   mounted() {
-    // If inside a modal <dialog>, teleport dropdown there instead of body
-    const parentDialog = this.$el.closest('dialog')
-    if (parentDialog) this.teleportTarget = parentDialog
-
     this._onClickOutside = (e) => {
       if (!this.isOpen || this.isMobile) return
       if (this.$refs.rootRef?.contains(e.target)) return
