@@ -132,11 +132,9 @@ export function useGesture(elOrRef, opts = {}) {
     history = []
     pushHistory(e.clientX, e.clientY)
 
-    const el = resolveEl()
-    if (el) {
-      // Capture so we get moves/up even if pointer leaves the element
-      el.setPointerCapture(e.pointerId)
-    }
+    // Don't capture pointer here — capturing on pointerdown prevents click
+    // events from firing on child elements (desktop mouse + narrow viewport).
+    // Capture is deferred to activation (threshold crossed) in onPointerMove.
   }
 
   function onPointerMove(e) {
@@ -180,9 +178,12 @@ export function useGesture(elOrRef, opts = {}) {
       // Activate
       active = true
 
-      // Suppress native touch actions (scrolling) while gesture is active
+      // Now that gesture is confirmed, capture pointer and suppress scrolling
       const el = resolveEl()
       if (el) {
+        if (pointerId !== null) {
+          try { el.setPointerCapture(pointerId) } catch (_) {}
+        }
         prevTouchAction = el.style.touchAction || ''
         el.style.touchAction = 'none'
       }

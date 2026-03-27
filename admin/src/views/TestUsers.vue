@@ -225,7 +225,13 @@ export default {
         const baseUrl = import.meta.env.DEV
           ? `${window.location.protocol}//${window.location.hostname}:8080`
           : 'https://basilbudgeting.com';
-        window.location.href = `${baseUrl}/?impersonate=${token}`;
+        const url = `${baseUrl}/?impersonate=${token}`;
+        const isMobile = window.innerWidth < 600;
+        if (isMobile) {
+          window.location.href = url;
+        } else {
+          window.open(url, '_blank');
+        }
       } catch (err) {
         Notify.create({ type: 'negative', message: `Login-as failed: ${err.message}` });
       }

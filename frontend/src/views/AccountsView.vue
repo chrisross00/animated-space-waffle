@@ -1,5 +1,5 @@
 <template>
-  <div style="padding: var(--basil-space-4)">
+  <div class="basil-container" style="padding: var(--basil-space-4)">
 
     <!-- Header -->
     <div class="basil-card-head" style="margin-bottom: var(--basil-space-2)">
@@ -88,8 +88,7 @@
       <div style="display: flex; gap: 16px; flex-wrap: wrap;">
 
         <!-- Accounts card -->
-        <div style="flex: 1; min-width: 220px;">
-        <BasilCard class="my-card basil-accounts__card" style="margin-bottom: var(--basil-space-4)">
+        <BasilCard class="my-card basil-accounts__card" style="flex: 1; min-width: 220px; margin-bottom: var(--basil-space-4)">
           <div class="basil-card-head">
             <span class="basil-card-label">Accounts</span>
           </div>
@@ -199,7 +198,7 @@
             </div>
           </div>
 
-          <div style="display: flex; gap: var(--basil-space-2); margin-top: var(--basil-space-1)">
+          <div style="display: flex; flex-wrap: wrap; gap: var(--basil-space-2); margin-top: var(--basil-space-1)">
             <BasilButton variant="flat" dense color="primary" icon="add" label="Add account"
               @click="showPlaidLink = true" />
             <BasilButton variant="flat" dense icon="edit_note" label="Add manually"
@@ -208,11 +207,9 @@
           </div>
           <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
         </BasilCard>
-        </div>
 
         <!-- Cash Runway card (only when balances loaded) -->
-        <div v-if="hasBalances" style="flex: 1; min-width: 220px;">
-        <BasilCard class="my-card basil-accounts__card" style="margin-bottom: var(--basil-space-4)">
+        <BasilCard v-if="hasBalances" class="my-card basil-accounts__card" style="flex: 1; min-width: 220px; margin-bottom: var(--basil-space-4)">
           <div class="basil-card-head">
             <span class="basil-card-label">Cash Runway</span>
           </div>
@@ -242,7 +239,6 @@
             </template>
           </div>
         </BasilCard>
-        </div>
 
       </div>
 

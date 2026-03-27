@@ -1,5 +1,5 @@
 <template>
-  <div class="basil-list-item" :class="itemClasses" @click="onClick" role="listitem">
+  <div ref="el" class="basil-list-item" :class="itemClasses" @click="onClick" role="listitem">
     <div v-if="$slots.avatar" class="basil-list-item__avatar"><slot name="avatar" /></div>
     <div class="basil-list-item__content">
       <slot>
@@ -50,8 +50,26 @@ export default {
   methods: {
     onClick(e) {
       if (!this.disabled && this.clickable) {
+        this.ripple(e)
         this.$emit('click', e)
       }
+    },
+
+    ripple(e) {
+      const el = this.$refs.el
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const size = Math.max(rect.width, rect.height) * 2
+
+      const circle = document.createElement('span')
+      circle.className = 'basil-ripple basil-ripple--neutral'
+      circle.style.width = circle.style.height = size + 'px'
+      circle.style.left = x - size / 2 + 'px'
+      circle.style.top = y - size / 2 + 'px'
+      el.appendChild(circle)
+      circle.addEventListener('animationend', () => circle.remove())
     },
   },
 }

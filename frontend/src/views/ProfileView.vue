@@ -1,14 +1,8 @@
 <style>
 .basil-profile-layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.profile-card {
-  width: 100%;
-  max-width: 400px;
+  flex-direction: column;
+  gap: var(--basil-space-4);
 }
 
 .basil-profile-card {
@@ -178,7 +172,7 @@
 </style>
 
 <template>
-  <div>
+  <div class="basil-container">
 
     <!-- Skeleton cards while data is bootstrapping or auth state is resolving -->
     <div v-if="$store.state.bootstrapping || (session && !user)" class="basil-profile-layout">
@@ -212,7 +206,7 @@
             <div class="basil-profile-email">{{ user.email }}</div>
           </div>
         </div>
-        <BasilButton variant="flat" dense color="negative" label="Sign out" icon="logout" @click="signOut" style="margin-top: var(--basil-space-4)" />
+        <BasilButton variant="flat" dense label="Sign out" icon="logout" @click="signOut" style="margin-top: var(--basil-space-4); align-self: flex-start;" />
       </BasilCard>
 
       <!-- Display settings card -->

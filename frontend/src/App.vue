@@ -14,15 +14,15 @@
           <a href="/" class="basil-wordmark__link">Basil</a>
         </span>
 
+        <!-- Spacer to push right-side items to the right -->
+        <div style="flex: 1" />
+
         <!-- Current-month summary — visible when data is loaded, desktop only -->
         <div v-if="headerStats" class="basil-header-stat basil-desktop-only">
           <span class="basil-header-stat__spend">${{ headerStats.expenseSpendFmt }} spent</span>
           <span class="basil-header-stat__dot">·</span>
           <span class="basil-header-stat__earned">${{ headerStats.incomeAmountFmt }} earned</span>
         </div>
-
-        <!-- Spacer to push sync button to the right -->
-        <div style="flex: 1" />
 
         <!-- Sync button -->
         <BasilButton
@@ -152,6 +152,7 @@
   </div>
 
   <BasilKeyboard />
+  <BasilToast />
 </template>
 
 <style>
@@ -287,6 +288,10 @@
 .basil-bottom-tabs {
   display: flex;
   justify-content: space-around;
+}
+
+.basil-bottom-tabs .basil-tab {
+  padding: 12px var(--basil-space-3);
 }
 
 /* ========================================

@@ -3,6 +3,7 @@
     :is="to ? 'router-link' : 'button'"
     :to="to || undefined"
     :type="to ? undefined : 'button'"
+    ref="tabEl"
     class="basil-tab"
     :class="{
       'basil-tab--active': isActive,
@@ -79,10 +80,28 @@ export default {
         e.preventDefault()
         return
       }
+      this.ripple(e)
       if (this.setActiveTab) {
         this.setActiveTab(this.name)
       }
       this.$emit('click', e)
+    },
+
+    ripple (e) {
+      const el = this.$refs.tabEl?.$el || this.$refs.tabEl
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const size = Math.max(rect.width, rect.height) * 2
+
+      const circle = document.createElement('span')
+      circle.className = 'basil-ripple'
+      circle.style.width = circle.style.height = size + 'px'
+      circle.style.left = x - size / 2 + 'px'
+      circle.style.top = y - size / 2 + 'px'
+      el.appendChild(circle)
+      circle.addEventListener('animationend', () => circle.remove())
     },
   },
 }

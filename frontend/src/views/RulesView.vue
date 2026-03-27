@@ -1,5 +1,5 @@
 <template>
-  <div class="basil-pa-4">
+  <div class="basil-container basil-pa-4">
 
     <!-- Compound rules section -->
     <div class="basil-card-head basil-mb-2">
@@ -19,7 +19,7 @@
       or use the Sort Transactions flow.
     </div>
 
-    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md); overflow: hidden;">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in compoundRules"
         :key="String(rule._id)"
@@ -54,7 +54,7 @@
       No merchant or name rules yet.
     </div>
 
-    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+    <BasilList v-else class="basil-mb-5" style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md); overflow: hidden;">
       <SwipeReveal class="basil-rules__swipe"
         v-for="rule in simpleRules"
         :key="rule.key"

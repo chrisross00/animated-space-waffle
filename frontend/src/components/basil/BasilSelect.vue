@@ -6,11 +6,11 @@
         {{ displayText }}
       </span>
       <svg class="basil-select__arrow" :class="{ 'basil-select__arrow--open': isOpen }" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      <span v-if="label" class="basil-select__label" :class="{ 'basil-select__label--float': hasValue || isOpen }">{{ label }}</span>
+      <span v-if="label" class="basil-select__label" :class="{ 'basil-select__label--float': hasValue || isOpen || placeholder }">{{ label }}</span>
     </div>
 
-    <!-- Desktop dropdown -->
-    <Teleport to="body">
+    <!-- Desktop dropdown — teleport to nearest dialog (if inside one) or body -->
+    <Teleport :to="teleportTarget">
       <div v-if="isOpen && !isMobile" ref="dropdownRef" class="basil-select__dropdown" :style="dropdownStyle" @mousedown.prevent>
         <div v-if="filterable" class="basil-select__filter">
           <input
@@ -50,15 +50,15 @@
       <div class="basil-select__tray">
         <div v-if="label" class="basil-select__tray-header">{{ label }}</div>
         <div v-if="filterable" class="basil-select__filter basil-select__filter--tray">
-          <input
+          <BasilSearch
             ref="mobileFilterInput"
-            v-model="filterText"
-            class="basil-select__filter-input"
+            :model-value="filterText"
+            @update:model-value="filterText = $event"
             placeholder="Search..."
-            @keydown.stop
+            dense
           />
         </div>
-        <div class="basil-select__options basil-select__options--tray" role="listbox">
+        <div class="basil-select__options basil-select__options--tray" role="listbox" ref="mobileOptionsRef">
           <div
             v-for="(opt, i) in filteredOptions"
             :key="resolveValue(opt)"
@@ -86,10 +86,11 @@
 import { nextTick } from 'vue'
 import { screen } from '@/composables/useScreen'
 import BasilTray from '@/components/BasilTray.vue'
+import BasilSearch from '@/components/BasilSearch'
 
 export default {
   name: 'BasilSelect',
-  components: { BasilTray },
+  components: { BasilTray, BasilSearch },
 
   props: {
     modelValue:   { type: [String, Number, Object, null], default: null },
@@ -114,6 +115,7 @@ export default {
       filterText: '',
       focusedIndex: -1,
       dropdownStyle: {},
+      teleportTarget: 'body',
     }
   },
 
@@ -160,26 +162,33 @@ export default {
       if (!val) {
         this.filterText = ''
         this.isOpen = false
-      } else {
-        nextTick(() => {
-          this.$refs.mobileFilterInput?.focus()
-        })
       }
     },
   },
 
   mounted() {
+    // If inside a modal <dialog>, teleport dropdown there instead of body
+    // (showModal() blocks interaction with elements outside the dialog's DOM tree)
+    const parentDialog = this.$el.closest('dialog')
+    if (parentDialog) this.teleportTarget = parentDialog
+
     this._onClickOutside = (e) => {
       if (!this.isOpen || this.isMobile) return
       if (this.$refs.rootRef?.contains(e.target)) return
       if (this.$refs.dropdownRef?.contains(e.target)) return
       this.close()
     }
+    this._onScroll = () => {
+      if (!this.isOpen || this.isMobile) return
+      this.repositionDropdown()
+    }
     document.addEventListener('mousedown', this._onClickOutside)
+    window.addEventListener('scroll', this._onScroll, { passive: true, capture: true })
   },
 
   beforeUnmount() {
     document.removeEventListener('mousedown', this._onClickOutside)
+    window.removeEventListener('scroll', this._onScroll, { capture: true })
   },
 
   methods: {
@@ -227,10 +236,13 @@ export default {
         this.isOpen = true
       } else {
         this.isOpen = true
-        this.positionDropdown()
+        // nextTick: Vue flushes the v-if, dropdown DOM exists.
+        // rAF: layout complete, safe to measure trigger position.
         nextTick(() => {
-          this.$refs.filterInput?.focus()
-          this.scrollToSelected()
+          requestAnimationFrame(() => {
+            this.repositionDropdown()
+            this.$refs.filterInput?.focus({ preventScroll: true })
+          })
         })
       }
     },
@@ -248,43 +260,33 @@ export default {
       this.close()
     },
 
-    positionDropdown() {
-      nextTick(() => {
-        const trigger = this.$refs.rootRef
-        if (!trigger) return
-        const rect = trigger.getBoundingClientRect()
-        const viewportHeight = window.innerHeight
-        const spaceBelow = viewportHeight - rect.bottom
-        const maxH = 280
+    repositionDropdown() {
+      const trigger = this.$refs.rootRef
+      const dropdown = this.$refs.dropdownRef
+      if (!trigger) return
+      const rect = trigger.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const spaceBelow = viewportHeight - rect.bottom
+      const maxH = 280
+      // Use actual dropdown height if rendered, otherwise estimate with maxH
+      const dropH = dropdown ? Math.min(dropdown.offsetHeight, maxH) : maxH
 
-        let top = rect.bottom + 4
-        if (spaceBelow < maxH && rect.top > spaceBelow) {
-          // Position above
-          top = rect.top - maxH - 4
-          if (top < 8) top = 8
-        }
+      let top = rect.bottom + 4
+      if (spaceBelow < dropH && rect.top > spaceBelow) {
+        top = rect.top - dropH - 4
+        if (top < 8) top = 8
+      }
 
-        this.dropdownStyle = {
-          position: 'fixed',
-          top: `${top}px`,
-          left: `${rect.left}px`,
-          width: `${rect.width}px`,
-          maxHeight: `${maxH}px`,
-          zIndex: 8000,
-        }
-      })
+      this.dropdownStyle = {
+        position: 'fixed',
+        top: `${top}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        maxHeight: `${maxH}px`,
+        zIndex: 8000,
+      }
     },
 
-    scrollToSelected() {
-      nextTick(() => {
-        const container = this.$refs.optionsRef
-        if (!container) return
-        const selected = container.querySelector('.basil-select__option--selected')
-        if (selected) {
-          selected.scrollIntoView({ block: 'nearest' })
-        }
-      })
-    },
 
     onTriggerKeydown(e) {
       if (e.key === 'Enter' || e.key === ' ') {

@@ -1,5 +1,5 @@
 <template>
-  <div class="basil-pa-4">
+  <div class="basil-container basil-pa-4">
     <div class="basil-card-head basil-mb-2">
       <span class="basil-card-label">Tags</span>
     </div>
@@ -21,7 +21,7 @@
     />
 
     <!-- Tag list -->
-    <BasilList v-else style="border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md);">
+    <BasilList v-else style="background: var(--basil-surface); border: 1px solid var(--basil-border); border-radius: var(--basil-radius-md); overflow: hidden;">
       <template v-for="tag in tags" :key="tag.id">
           <BasilListItem clickable @click="toggleExpand(tag)">
             <template #label><span class="basil-tags__name">{{ tag.name }}</span></template>
@@ -224,7 +224,7 @@ export default {
 }
 
 .basil-tags__detail {
-  background: var(--basil-surface-alt);
+  background: var(--basil-surface);
 }
 
 .basil-tags__detail :deep(.basil-list-item__label) {

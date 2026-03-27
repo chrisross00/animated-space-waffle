@@ -6,7 +6,7 @@
     <div class="basil-tag-picker__chips">
       <BasilChip
         v-for="tag in allTags" :key="tag.id"
-        :class="isSelected(tag) ? 'basil-tag-picker__chip--selected' : 'basil-tag-picker__chip--unselected'"
+        :color="isSelected(tag) ? 'primary' : undefined"
         clickable
         dense
         @click="toggle(tag)"

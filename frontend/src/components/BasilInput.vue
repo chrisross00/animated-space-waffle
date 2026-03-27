@@ -10,12 +10,13 @@
     </div>
 
     <!-- Desktop: native input -->
-    <div v-else class="basil-input" :class="inputClasses">
+    <div v-else class="basil-input" :class="inputClasses" @click="$refs.nativeInput?.focus()">
       <svg v-if="variant === 'search'" class="basil-input__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <span v-if="effectivePrefix" class="basil-input__prefix">{{ effectivePrefix }}</span>
       <input
         ref="nativeInput"
         :value="modelValue"
+        :inputmode="variant === 'amount' ? 'decimal' : undefined"
         :placeholder="placeholder"
         :disabled="disabled"
         @input="onDesktopInput"
@@ -32,7 +33,7 @@
 </template>
 
 <script>
-import { requestKeyboard, setActiveBlur, scrollActiveInputIntoView } from '@/utils/basilKeyboard'
+import { requestKeyboard, setActiveBlur, scrollActiveInputIntoView, dismissKeyboard, getActiveInputEl } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilInput',
@@ -99,6 +100,15 @@ export default {
 
   created() {
     this.isMobile = typeof window !== 'undefined' && 'ontouchstart' in window
+  },
+
+  beforeUnmount() {
+    // If this input owns the keyboard (it's focused), dismiss on destroy
+    // so the keyboard doesn't stay open after the input's parent is removed.
+    if (this.isFocused && getActiveInputEl() === this.$el) {
+      dismissKeyboard()
+    }
+    clearTimeout(this.debounceTimer)
   },
 
   methods: {
@@ -200,7 +210,19 @@ export default {
     },
 
     onDesktopInput(e) {
-      this.emitDebounced(e.target.value)
+      let val = e.target.value
+      if (this.variant === 'amount') {
+        // Strip non-numeric except decimal point, allow only one decimal
+        val = val.replace(/[^0-9.]/g, '')
+        const parts = val.split('.')
+        if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('')
+        // Strip leading zeros (but keep "0." for decimals)
+        if (val.length > 1 && val[0] === '0' && val[1] !== '.') {
+          val = val.replace(/^0+/, '') || '0'
+        }
+        e.target.value = val
+      }
+      this.emitDebounced(val)
     },
 
     onDesktopFocus() {

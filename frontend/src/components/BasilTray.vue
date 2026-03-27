@@ -86,6 +86,7 @@ export default {
 
       this.$emit('before-show')
       this.lockBodyScroll()
+
       dialog.showModal()
 
       nextTick(() => {
@@ -142,6 +143,13 @@ export default {
       }
     },
 
+    hasChildDialogOpen() {
+      // Check if another dialog is open on top of this one (e.g. date picker tray inside edit tray)
+      const dialog = this.$refs.dialogRef
+      if (!dialog) return false
+      return dialog.querySelector('dialog[open]') !== null
+    },
+
     setupGesture() {
       // Clean up any existing gesture
       if (this.stopGesture) {
@@ -157,6 +165,8 @@ export default {
       this.stopGesture = useGesture(wrapEl, {
         direction: 'vertical',
         onMove: (state) => {
+          // Ignore gestures if another dialog is stacked on top of this one
+          if (this.hasChildDialogOpen()) return
           // Only allow dragging downward
           if (state.deltaY > 0) {
             this.dragOffset = state.deltaY
@@ -164,6 +174,7 @@ export default {
           }
         },
         onEnd: (state) => {
+          if (this.hasChildDialogOpen()) return
           if (state.swipedDown && !this.persistent) {
             this.$emit('update:modelValue', false)
           }

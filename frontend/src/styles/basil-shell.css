@@ -11,6 +11,18 @@
    q-drawer, q-page-container and use these classes instead.
    ========================================================== */
 
+/* ---- Global reset ---- */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--basil-bg);
+  font-family: var(--basil-font-ui);
+  color: var(--basil-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* ---- CSS Variables ---- */
 
 :root {

@@ -30,7 +30,7 @@
         </thead>
       </table>
       <div ref="virtualListEl" class="basil-table__virtual-scroll" @scroll="onVirtualContainerScroll">
-        <div :style="{ height: `${virtualizer?.value?.getTotalSize() || 0}px`, position: 'relative' }">
+        <div :style="{ height: `${virtualizer?.getTotalSize() || 0}px`, position: 'relative' }">
           <table class="basil-table__el" :style="{ position: 'absolute', top: 0, left: 0, width: '100%' }">
             <tbody>
               <tr
@@ -293,8 +293,8 @@ export default {
     },
 
     virtualRows() {
-      if (!this.virtualScroll || !this.virtualizer?.value) return []
-      return this.virtualizer.value.getVirtualItems()
+      if (!this.virtualScroll || !this.virtualizer) return []
+      return this.virtualizer.getVirtualItems()
     },
 
     virtualContainerStyle() {
@@ -355,8 +355,8 @@ export default {
     },
 
     onVirtualContainerScroll() {
-      if (!this.virtualizer?.value) return
-      const items = this.virtualizer.value.getVirtualItems()
+      if (!this.virtualizer) return
+      const items = this.virtualizer.getVirtualItems()
       if (items.length === 0) return
       const lastItem = items[items.length - 1]
       this.$emit('virtual-scroll', {

@@ -9,7 +9,8 @@
   --basil-bg:             #faf7f2;  /* warm ivory — page */
   --basil-surface:        #ffffff;  /* card / panel */
   --basil-surface-alt:    #f3efe8;  /* section dividers, zebra rows */
-  --basil-surface-raised: #fffefb;  /* hover / elevated state */
+  --basil-surface-raised: #fffefb;  /* elevated state */
+  --basil-hover:          #e8e8e8;  /* subtle hover state layer (nav, buttons) */
   --basil-surface-dialog: #faf7f2;  /* modal / dialog */
 
   /* ---- Text ---- */
@@ -107,6 +108,7 @@
   --basil-surface:        #181c24;
   --basil-surface-alt:    #1f2330;
   --basil-surface-raised: #242938;
+  --basil-hover:          #1f2330;
   --basil-surface-dialog: #181c24;
 
   --basil-text:           #e8eaf0;

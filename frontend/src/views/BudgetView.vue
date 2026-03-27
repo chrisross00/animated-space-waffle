@@ -15,28 +15,30 @@
   <div v-show="isLoggedIn">
 
     <!-- Not onboarded — show only the setup CTA -->
-    <div v-if="!isOnboarded" class="basil-pa-4 basil-container">
-      <BasilCard class="basil-card-base basil-setup-card">
-        <div class="basil-card-head">
-          <span class="basil-card-label">Get started</span>
-        </div>
-        <div class="basil-setup-card__body">
-          <BasilIcon name="auto_awesome" color="primary" size="2rem" />
-          <div>
-            <div class="basil-setup-card__heading">Set up Basil</div>
-            <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
+    <div v-if="!isOnboarded" class="basil-container">
+      <BasilCard flat bordered class="basil-setup-card">
+        <div class="basil-card__body">
+          <div class="basil-card-head">
+            <span class="basil-card-label">Get started</span>
           </div>
+          <div class="basil-setup-card__body">
+            <BasilIcon name="auto_awesome" color="primary" size="2rem" />
+            <div>
+              <div class="basil-setup-card__heading">Set up Basil</div>
+              <div class="basil-setup-card__hint">Connect your bank and configure your budget in a few quick steps.</div>
+            </div>
+          </div>
+          <BasilButton label="Set up Basil" to="/onboarding" class="basil-mt-4" />
         </div>
-        <BasilButton label="Set up Basil" to="/onboarding" class="basil-mt-4" />
       </BasilCard>
     </div>
 
     <!-- Onboarded — full dashboard -->
     <SkeletonBudget v-if="isOnboarded && isLoading" />
-      <div v-show="isOnboarded && !isLoading" class="basil-pa-4 basil-container">
+      <div v-show="isOnboarded && !isLoading" class="basil-container">
 
         <!-- Hero card — always visible when data exists -->
-        <BasilCard v-if="budgetSummary && !showAll" flat bordered class="basil-card basil-mb-4">
+        <BasilCard v-if="budgetSummary" flat bordered class="basil-mb-4">
           <div class="basil-card__body">
             <div class="basil-card-head">
               <span class="basil-card-label">{{ budgetSummary.incomeState === 'none' ? 'Spending' : 'Flexible spending' }}</span>
@@ -95,46 +97,12 @@
           </div>
         </BasilCard>
 
-        <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 220px;">
-        <BasilCard class="basil-card-base basil-actuals-card">
-          <div class="basil-card-head">
-            <span class="basil-card-label">Actuals</span>
-            <span v-if="!budgetSummary" class="basil-card-period">{{ selectedDate.display }}</span>
-          </div>
-
-          <!-- Traditional layout (no flex budget) -->
-          <template v-if="!budgetSummary">
-            <!-- Spent vs Earned -->
-            <div class="basil-primary-stats">
-              <div class="basil-primary-stat">
-                <div class="basil-primary-stat__amount basil-display">
-                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
-                </div>
-                <div class="basil-primary-stat__label">spent</div>
-              </div>
-              <div class="basil-primary-stats__divider"></div>
-              <div class="basil-primary-stat basil-primary-stat--earned">
-                <div class="basil-primary-stat__amount basil-display">
-                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
-                </div>
-                <div class="basil-primary-stat__label">earned</div>
-              </div>
+        <!-- Actuals — compact (budget summary mode) -->
+        <BasilCard v-if="budgetSummary" flat bordered class="basil-mb-4">
+          <div class="basil-card__body">
+            <div class="basil-card-head">
+              <span class="basil-card-label">Actuals</span>
             </div>
-
-            <div class="basil-card-rule"></div>
-
-            <!-- Net position — hero stat -->
-            <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
-              <div class="basil-net__amount basil-display">
-                {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
-              </div>
-              <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
-            </div>
-          </template>
-
-          <!-- Compact actuals (flex mode) -->
-          <template v-else>
             <div class="basil-actuals-3col">
               <div class="basil-actuals-col">
                 <div class="basil-primary-stat__amount basil-display" style="color: var(--basil-positive)">
@@ -157,117 +125,152 @@
                 <div class="basil-primary-stat__label">free cash flow</div>
               </div>
             </div>
-          </template>
-
-          <!-- Secondary stats -->
-          <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
-            <BasilIcon name="savings" size="xs" color="info" />
-            ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
-          </div>
-          <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
-            <BasilIcon name="warning_amber" size="xs" />
-            ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
-          </div>
-        </BasilCard>
-        </div>
-        <div v-if="!budgetSummary" style="flex: 1; min-width: 220px;">
-        <BasilCard class="basil-card-base basil-projections-card">
-          <div class="basil-card-head">
-            <span class="basil-card-label">Projections</span>
-          </div>
-
-          <div v-if="monthlyStats.budgetRemaining > 0" class="basil-primary-stat">
-            <div class="basil-primary-stat__amount basil-display">
-              ${{ Math.round(monthlyStats.budgetRemaining).toLocaleString() }}
+            <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
+              <BasilIcon name="savings" size="xs" color="info" />
+              ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
             </div>
-            <div class="basil-primary-stat__label">left in budgets</div>
-          </div>
-
-          <div
-            v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0"
-            :class="['basil-forecast', monthlyStats.budgetRemaining > 0 ? 'basil-forecast--mt' : '']"
-          >
-            <div class="basil-forecast__amount basil-display">
-              ~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}
-            </div>
-            <div class="basil-forecast__label">
-              <span v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
-                {{ forecastedEndOfMonth.remainingMerchantNames[0] }} hasn't posted yet
-              </span>
-              <span v-else>
-                {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants still expected
-              </span>
+            <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
+              <BasilIcon name="warning_amber" size="xs" />
+              ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
             </div>
           </div>
         </BasilCard>
-        </div>
-        </div>
-      </div>
 
-      <!-- To Sort Nudge Card -->
-      <div
-        v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
-        class="basil-pa-4 basil-container"
-      >
-        <BasilCard class="basil-tosort-card" @click="openTriageFlow()" @keydown.enter="openTriageFlow()" role="button" tabindex="0" aria-label="Sort transactions">
-          <div class="basil-card-head">
-            <span class="basil-card-label">To Sort</span>
-            <BasilIcon name="chevron_right" size="20px" />
-          </div>
-          <div class="basil-tosort-card__body">
-            <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
-            <div>
-              <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to sort</div>
-              <div v-if="toSortSuggestionStats.withSuggestion > 0" class="basil-tosort-card__hint">
-                {{ toSortSuggestionStats.withSuggestion }} suggested
+        <!-- Actuals + Projections — side by side (no budget summary) -->
+        <div v-if="!budgetSummary" style="display: flex; gap: var(--basil-space-4); flex-wrap: wrap;" class="basil-mb-4">
+            <BasilCard flat bordered style="flex: 1; min-width: 220px;">
+              <div class="basil-card__body">
+                <div class="basil-card-head">
+                  <span class="basil-card-label">Actuals</span>
+                  <span class="basil-card-period">{{ selectedDate.display }}</span>
+                </div>
+                <div class="basil-primary-stats">
+                  <div class="basil-primary-stat">
+                    <div class="basil-primary-stat__amount basil-display">
+                      ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                    </div>
+                    <div class="basil-primary-stat__label">spent</div>
+                  </div>
+                  <div class="basil-primary-stats__divider"></div>
+                  <div class="basil-primary-stat basil-primary-stat--earned">
+                    <div class="basil-primary-stat__amount basil-display">
+                      ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                    </div>
+                    <div class="basil-primary-stat__label">earned</div>
+                  </div>
+                </div>
+                <div class="basil-card-rule"></div>
+                <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
+                  <div class="basil-net__amount basil-display">
+                    {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+                  </div>
+                  <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
+                </div>
+                <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
+                  <BasilIcon name="savings" size="xs" color="info" />
+                  ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
+                </div>
+                <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
+                  <BasilIcon name="warning_amber" size="xs" />
+                  ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
+                </div>
+              </div>
+            </BasilCard>
+            <BasilCard flat bordered style="flex: 1; min-width: 220px;">
+              <div class="basil-card__body">
+                <div class="basil-card-head">
+                  <span class="basil-card-label">Projections</span>
+                </div>
+                <div v-if="monthlyStats.budgetRemaining > 0" class="basil-primary-stat">
+                  <div class="basil-primary-stat__amount basil-display">
+                    ${{ Math.round(monthlyStats.budgetRemaining).toLocaleString() }}
+                  </div>
+                  <div class="basil-primary-stat__label">left in budgets</div>
+                </div>
+                <div
+                  v-if="isCurrentMonth && forecastedEndOfMonth.remainingRecurringCount > 0"
+                  :class="['basil-forecast', monthlyStats.budgetRemaining > 0 ? 'basil-forecast--mt' : '']"
+                >
+                  <div class="basil-forecast__amount basil-display">
+                    ~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}
+                  </div>
+                  <div class="basil-forecast__label">
+                    <span v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
+                      {{ forecastedEndOfMonth.remainingMerchantNames[0] }} hasn't posted yet
+                    </span>
+                    <span v-else>
+                      {{ forecastedEndOfMonth.remainingRecurringCount }} recurring merchants still expected
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </BasilCard>
+        </div>
+
+        <!-- To Sort Nudge Card -->
+        <BasilCard
+          v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
+          flat bordered class="basil-tosort-card basil-mb-4"
+          @click="openTriageFlow()" @keydown.enter="openTriageFlow()" role="button" tabindex="0" aria-label="Sort transactions"
+        >
+          <div class="basil-card__body">
+            <div class="basil-card-head">
+              <span class="basil-card-label">To Sort</span>
+              <BasilIcon name="chevron_right" size="20px" />
+            </div>
+            <div class="basil-tosort-card__body">
+              <span class="basil-tosort-card__count">{{ toSortSuggestionStats.total }}</span>
+              <div>
+                <div class="basil-tosort-card__headline">transaction{{ toSortSuggestionStats.total !== 1 ? 's' : '' }} to sort</div>
+                <div v-if="toSortSuggestionStats.withSuggestion > 0" class="basil-tosort-card__hint">
+                  {{ toSortSuggestionStats.withSuggestion }} suggested
+                </div>
               </div>
             </div>
           </div>
         </BasilCard>
-      </div>
 
-      <!-- Detected Relationships Card -->
-      <div
-        v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
-        class="basil-pa-4"
-        style="max-width: 800px; margin: 0 auto; padding-top: 0;"
-      >
-        <BasilCard :class="['basil-relationships-card', { 'basil-relationships-card--expanded': relationshipsExpanded }]" @click="!relationshipsExpanded && (relationshipsExpanded = true)">
-          <div class="basil-card-head" @click.stop="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
-            <span class="basil-card-label">Detected Relationships</span>
-            <BasilIcon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
-          </div>
-          <div v-if="!relationshipsExpanded" class="basil-relationships-card__body">
-            <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
-            <div>
-              <div class="basil-tosort-card__headline">possible {{ pendingRelationships.length === 1 ? 'match' : 'matches' }} to review</div>
+        <!-- Detected Relationships Card -->
+        <BasilCard
+          v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
+          flat bordered
+          :class="['basil-relationships-card basil-mb-4', { 'basil-relationships-card--expanded': relationshipsExpanded }]"
+          @click="!relationshipsExpanded && (relationshipsExpanded = true)"
+        >
+          <div class="basil-card__body">
+            <div class="basil-card-head" @click.stop="relationshipsExpanded = !relationshipsExpanded" role="button" tabindex="0" style="cursor: pointer;">
+              <span class="basil-card-label">Detected Relationships</span>
+              <BasilIcon :name="relationshipsExpanded ? 'expand_less' : 'expand_more'" size="20px" />
+            </div>
+            <div v-if="!relationshipsExpanded" class="basil-relationships-card__body">
+              <span class="basil-tosort-card__count">{{ pendingRelationships.length }}</span>
+              <div>
+                <div class="basil-tosort-card__headline">possible {{ pendingRelationships.length === 1 ? 'match' : 'matches' }} to review</div>
+              </div>
+            </div>
+            <div v-if="relationshipsExpanded" class="basil-relationships-card__list">
+              <RelationshipCard
+                v-for="rel in pendingRelationships"
+                :key="relKey(rel)"
+                :relationship="rel"
+                :disable="relationshipSaving"
+                @confirm="relationshipConfirm"
+                @dismiss="relationshipDismiss"
+              />
             </div>
           </div>
-          <div v-if="relationshipsExpanded" class="basil-relationships-card__list">
-            <RelationshipCard
-              v-for="rel in pendingRelationships"
-              :key="relKey(rel)"
-              :relationship="rel"
-              :disable="relationshipSaving"
-              @confirm="relationshipConfirm"
-              @dismiss="relationshipDismiss"
-            />
-          </div>
         </BasilCard>
-      </div>
 
-      <!-- Post-onboarding nudge card -->
-      <div
-        v-if="nudgeCard && !showAll && !isLoading && !isRefreshing"
-        class="basil-pa-4"
-        style="max-width: 800px; margin: 0 auto; padding-top: 0;"
-      >
-        <BasilCard class="basil-tosort-card">
-          <div class="basil-card-head">
-            <span class="basil-card-label">{{ nudgeCard.type === 'budget' ? 'Get started' : nudgeCard.type === 'category' ? 'Budget tip' : 'Next step' }}</span>
-            <BasilButton variant="icon" icon="close" dense @click.stop="dismissNudge()" />
-          </div>
-          <div style="padding: 0 var(--basil-space-4) var(--basil-space-4);">
+        <!-- Post-onboarding nudge card -->
+        <BasilCard
+          v-if="nudgeCard && !showAll && !isLoading && !isRefreshing"
+          flat bordered class="basil-mb-4"
+        >
+          <div class="basil-card__body">
+            <div class="basil-card-head">
+              <span class="basil-card-label">{{ nudgeCard.type === 'budget' ? 'Get started' : nudgeCard.type === 'category' ? 'Budget tip' : 'Next step' }}</span>
+              <BasilButton variant="icon" icon="close" dense @click.stop="dismissNudge()" />
+            </div>
             <div style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-bottom: var(--basil-space-3);">{{ nudgeCard.text }}</div>
             <BasilButton
               :label="nudgeCard.cta"
@@ -275,17 +278,16 @@
             />
           </div>
         </BasilCard>
-      </div>
 
-      <!-- Button Container -->
-      <div v-if="isOnboarded" class="basil-pa-4 button-container" style="max-width: 800px; margin: 0 auto;">
-        <BasilToggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
-        <BasilToggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions" />
-        <BasilSelect v-if="!showAll" v-model="selectedDate.display" :options="months" label="Budgets" />
-      </div>
+        <!-- Controls row -->
+        <div v-if="isOnboarded" class="button-container basil-mb-4">
+          <BasilToggle v-model="showAll" v-if="!showAll" @click="showAll = true" label="Show all transactions" />
+          <BasilToggle v-model="showAll" v-if="showAll" @click="showAll = false" label="Show all transactions" />
+          <BasilSelect v-if="!showAll" v-model="selectedDate.display" :options="months" label="Budgets" dense />
+        </div>
 
-      <!-- If show all is false -->
-      <div v-show="isOnboarded && !showAll" class="basil-pa-4" style="max-width: 800px; margin: 0 auto;">
+        <!-- Category cards -->
+        <div v-show="isOnboarded && !showAll">
         <BasilList>
           <div class="basil-categories">
             <div
@@ -427,19 +429,6 @@
                         {{ item.amount < 0 ? '+' : '' }}${{ Math.abs(item.amount).toFixed(2) }}
                       </span>
                     </div>
-                    <BasilTray v-model="transactionClickers[item.transaction_id]">
-                      <DialogComponent :dialogType="'transaction'" :item="item"
-                      :dropDown="this.categoryMonthlyLimits"
-                      :similarity-data="dialogSimilarityData"
-                      :attribution="getTransactionAttribution(item)"
-                      :relationship="!item.linkedTransaction && !item.dismissedRelationship ? relationshipMap[item.transaction_id]?.rel : null"
-                      @update-transaction="onSubmit"
-                      @view-rule="handleViewRule"
-                      @relationship-confirm="relationshipConfirm"
-                      @relationship-dismiss="relationshipDismiss"
-                      @save-split="handleSplit"
-                      @unsplit="handleUnsplit"/>
-                    </BasilTray>
                   </div>
                 </div>
               </div>
@@ -458,6 +447,7 @@
           </div>
         </BasilList>
       </div>
+      </div><!-- close basil-container -->
 
       <!-- If show all is true -->
       <div v-show="isOnboarded && showAll" class="basil-pa-4 all-transactions-table">
@@ -552,10 +542,10 @@
           style="max-height: calc(100dvh - 200px); min-height: calc(100vh - 300px); overflow-y: auto; -webkit-overflow-scrolling: touch"
           @scroll="onVirtualScroll"
         >
-          <div :style="{ height: `${virtualizer.value?.getTotalSize() || 0}px`, width: '100%', position: 'relative' }">
-            <template v-for="vRow in (virtualizer.value?.getVirtualItems() || [])" :key="sortedTableTransactions[vRow.index]?.transaction_id || vRow.index">
+          <div :style="{ height: `${virtualizer?.getTotalSize() || 0}px`, width: '100%', position: 'relative' }">
+            <template v-for="vRow in (virtualizer?.getVirtualItems() || [])" :key="sortedTableTransactions[vRow.index]?.transaction_id || vRow.index">
               <div
-                :style="{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }"
+                :style="{ position: 'absolute', top: 0, left: 0, width: '100%', height: `${vRow.size}px`, transform: `translateY(${vRow.start}px)` }"
                 :class="['basil-txn-row', { 'basil-txn-row--excluded': sortedTableTransactions[vRow.index]?.excludeFromTotal, 'basil-txn-row--selected': isRowSelected(sortedTableTransactions[vRow.index]) }]"
                 @click="onRowClick($event, sortedTableTransactions[vRow.index])"
                 @touchstart="onRowTouchStart($event, sortedTableTransactions[vRow.index])"
@@ -666,23 +656,6 @@
           <span>Loading older transactions...</span>
         </div>
 
-        <BasilTray v-model="tableDialogOpen">
-          <DialogComponent
-            v-if="tableDialogTransaction"
-            :dialogType="'transaction'"
-            :item="tableDialogTransaction"
-            :dropDown="categoryMonthlyLimits"
-            :similarity-data="tableDialogSimilarityData"
-            :attribution="getTransactionAttribution(tableDialogTransaction)"
-            :relationship="!tableDialogTransaction.linkedTransaction && !tableDialogTransaction.dismissedRelationship ? relationshipMap[tableDialogTransaction.transaction_id]?.rel : null"
-            @update-transaction="onSubmit"
-            @view-rule="handleViewRule"
-            @relationship-confirm="relationshipConfirm"
-            @relationship-dismiss="relationshipDismiss"
-            @save-split="handleSplit"
-            @unsplit="handleUnsplit"
-          />
-        </BasilTray>
       </div>
 
     </div>
@@ -714,6 +687,26 @@
       </div>
     </div>
     
+
+    <!-- Shared transaction edit dialog — used by both category rows and show-all table -->
+    <BasilTray v-model="tableDialogOpen">
+      <DialogComponent
+        v-if="tableDialogTransaction"
+        :key="tableDialogTransaction.transaction_id + '-' + tableDialogKey"
+        :dialogType="'transaction'"
+        :item="tableDialogTransaction"
+        :dropDown="categoryMonthlyLimits"
+        :similarity-data="tableDialogSimilarityData"
+        :attribution="getTransactionAttribution(tableDialogTransaction)"
+        :relationship="!tableDialogTransaction.linkedTransaction && !tableDialogTransaction.dismissedRelationship ? relationshipMap[tableDialogTransaction.transaction_id]?.rel : null"
+        @update-transaction="onSubmit"
+        @view-rule="handleViewRule"
+        @relationship-confirm="relationshipConfirm"
+        @relationship-dismiss="relationshipDismiss"
+        @save-split="handleSplit"
+        @unsplit="handleUnsplit"
+      />
+    </BasilTray>
 
     <BasilTray v-model="newCategory">
       <DialogComponent :dialogType="'addCategory'" @add-category="onSubmit"/>
@@ -1049,6 +1042,7 @@
         bulkCategory: null,
         tableDialogOpen: false,
         tableDialogTransaction: null,
+        tableDialogKey: 0,
         dialogSimilarityData: null,
         tableDialogSimilarityData: null,
         tableSearch: '',
@@ -1604,6 +1598,12 @@ monthStats() {
           });
         }
       },
+      tableDialogOpen(val) {
+        if (!val) {
+          // Clear so DialogComponent unmounts and remounts fresh with new data
+          this.tableDialogTransaction = null;
+        }
+      },
       showAll(val) {
         if (!val) {
           this.tableNoMoreMonths = false;
@@ -1860,23 +1860,8 @@ monthStats() {
         const query = attribution.ruleId ? { rule: attribution.ruleId } : {};
         this.$router.push({ path: '/rules', query });
       },
-      buildEditTransactionDialog(e){ // Should this live on DialogComponent?
-          let isOriginalCategoryNameSet = false;
-          this.dialogBody.currentTransactionDetails = {
-            originalCategoryName: isOriginalCategoryNameSet ? this.dialogBody.currentTransactionDetails.originalCategoryName : this.groupedTransactions[e.mappedCategory].originalName
-          }
-          isOriginalCategoryNameSet = true;
-          if (!this.dialogBody.currentTransactionDetails.originalCategoryName){
-            this.dialogBody.currentTransactionDetails.originalCategoryName = this.groupedTransactions[e.mappedCategory].categoryName
-          }
-          if(!this.transactionClickers[e.transaction_id]){
-            this.transactionClickers[e.transaction_id] = true
-          } else{
-            this.transactionClickers[e.transaction_id] = !this.transactionClickers[e.transaction_id]
-          }
-          this.transactionDetails = e
-          this.dialogSimilarityData = findSimilarTransactions(e, store.state.transactions);
-          return this.transactionClickers[e.transaction_id];
+      buildEditTransactionDialog(e) {
+          this.openTableDialog(null, e);
       },
       buildDateList(transactions) {
         try {
@@ -2051,7 +2036,10 @@ monthStats() {
             }
         }
 
-        this.isLoading = true;
+        // Only show full-page skeleton for category add/edit (which rebuilds the page).
+        // Transaction updates apply in-place without hiding the page.
+        const needsFullReload = d.updateType !== 'transaction';
+        if (needsFullReload) this.isLoading = true;
         handleDialogSubmit(JSON.stringify(d))
         .then(async data => {
           if(d.updateType == 'editCategory'){
@@ -2101,7 +2089,7 @@ monthStats() {
           console.error('Error:', error)
         })
         .finally(() => {
-          this.isLoading = false;
+          if (needsFullReload) this.isLoading = false;
         })
       }, 
       openTriageFlow() {
@@ -2423,7 +2411,7 @@ monthStats() {
       },
       onVirtualScroll() {
         if (!this.virtualizer?.value) return;
-        const items = this.virtualizer.value.getVirtualItems();
+        const items = this.virtualizer?.getVirtualItems() || [];
         if (items.length === 0) return;
         const to = items[items.length - 1].index;
         this.checkLoadMore(to);
@@ -2517,6 +2505,7 @@ monthStats() {
         };
         this.tableDialogTransaction = row;
         this.tableDialogSimilarityData = findSimilarTransactions(row, store.state.transactions);
+        this.tableDialogKey++;
         this.tableDialogOpen = true;
       },
       async applyBulkCategory() {

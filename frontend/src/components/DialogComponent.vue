@@ -52,15 +52,7 @@
 
       <template v-if="!splitMode">
         <div class="basil-dialog-fields">
-          <div class="basil-date-field">
-            <label class="basil-date-field__label">Date</label>
-            <input
-              type="date"
-              class="basil-date-field__input"
-              v-model="dialogBody.date"
-              @change="isFormSubmittable()"
-            />
-          </div>
+          <BasilDatePicker v-model="dialogBody.date" label="Date" @update:model-value="isFormSubmittable()" />
           <BasilSelect
             v-model="dialogBody.mappedCategory"
             label="Category"
@@ -290,10 +282,10 @@
 
 /* ── Body ── */
 .basil-dialog-body {
-  padding: var(--basil-space-5);
+  padding: var(--basil-space-5) var(--basil-space-5) var(--basil-space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--basil-space-4);
+  gap: var(--basil-space-5);
   flex: 1;
   overflow-y: auto;
 }
@@ -348,7 +340,7 @@
 .basil-dialog-fields {
   display: flex;
   flex-direction: column;
-  gap: var(--basil-space-3);
+  gap: var(--basil-space-4);
 }
 
 /* ── Toggles ── */
@@ -463,36 +455,6 @@
   color: var(--basil-text-muted);
   margin-top: calc(var(--basil-space-1) * -1);
   padding: 0 var(--basil-space-1);
-}
-
-/* ── Date field ── */
-.basil-date-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--basil-space-1);
-}
-
-.basil-date-field__label {
-  font-size: 0.75rem;
-  color: var(--basil-text-muted);
-  font-family: var(--basil-font-ui);
-}
-
-.basil-date-field__input {
-  width: 100%;
-  padding: var(--basil-space-3) var(--basil-space-3);
-  border: 1px solid var(--basil-border);
-  border-radius: var(--basil-radius-md);
-  background: var(--basil-surface);
-  color: var(--basil-text);
-  font-family: var(--basil-font-ui);
-  font-size: 1rem;
-  box-sizing: border-box;
-  outline: none;
-}
-
-.basil-date-field__input:focus {
-  border-color: var(--basil-primary);
 }
 
 /* ── Similarity toggle ── */

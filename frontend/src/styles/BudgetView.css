@@ -170,6 +170,10 @@
       background-color: transparent;
     }
 
+    .basil-budget-row > .basil-list-item.basil-list-item--clickable:hover {
+      background-color: var(--basil-hover);
+    }
+
     .active {
       background-color: var(--basil-surface-raised);
     }
@@ -178,6 +182,7 @@
       flex-direction: column;
       flex-wrap: wrap;
       justify-content: space-between;
+      width: 100%;
       max-width: 800px;
       margin: 0 auto;
       border-radius: 10px;
@@ -243,15 +248,13 @@
    Actuals & Projections cards — Epic 3
    ===================================================== */
 
-.basil-actuals-card,
-.basil-projections-card {
-  padding: var(--basil-space-5) !important;
-}
+/* Actuals and Projections cards use basil-card__body for padding */
 
 /* ---- Page container ---- */
 .basil-container {
   max-width: 800px;
   margin: 0 auto;
+  padding: var(--basil-space-4);
 }
 
 /* ---- Hero card ---- */
@@ -313,7 +316,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--basil-space-5);
+  margin-bottom: var(--basil-space-3);
 }
 
 .basil-card-label {
@@ -383,6 +386,8 @@
 }
 .basil-actuals-col {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
   text-align: center;
 }
 .basil-actuals-col:first-child { text-align: left; }
@@ -541,12 +546,14 @@
   border-radius: var(--basil-radius-lg);
   overflow-y: auto;
   box-shadow: var(--basil-shadow-sm);
+  background-color: var(--basil-surface);
 }
 
 /* Row — flex container */
 .basil-txn-row {
   display: flex;
   align-items: center;
+  box-sizing: border-box;
   padding: var(--basil-space-2) var(--basil-space-3);
   border-bottom: 1px solid var(--basil-border);
   cursor: pointer;
@@ -770,7 +777,6 @@
 
 .basil-tosort-card {
   cursor: pointer;
-  padding: var(--basil-space-5) !important;
   transition: box-shadow var(--basil-motion-fast), background-color var(--basil-motion-fast);
 }
 
@@ -934,7 +940,7 @@
 
 /* ---- Detailed PFC sub-breakdown (attached to category row) ---- */
 .basil-pfc-breakdown {
-  background-color: var(--basil-surface);
+  background-color: transparent;
   border-radius: 0 0 var(--basil-radius-sm) var(--basil-radius-sm);
   padding: var(--basil-space-2) var(--basil-space-4) 0 22px;
   box-shadow: none;
@@ -959,7 +965,6 @@
 
 /* ---- Setup card (onboarding prompt in BudgetView) ---- */
 .basil-setup-card {
-  padding: var(--basil-space-5) !important;
   margin-bottom: var(--basil-space-4);
 }
 
@@ -1022,7 +1027,6 @@
 /* ---- Detected Relationships card ---- */
 .basil-relationships-card {
   cursor: pointer;
-  padding: var(--basil-space-5) !important;
   transition: box-shadow var(--basil-motion-fast), background-color var(--basil-motion-fast);
 }
 

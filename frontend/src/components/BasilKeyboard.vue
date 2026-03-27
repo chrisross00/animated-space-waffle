@@ -1,5 +1,5 @@
 <template>
-  <div class="basil-keyboard" :class="{ 'basil-keyboard--hidden': !isOpen, 'basil-keyboard--numpad': mode === 'numpad' }">
+  <div ref="keyboard" class="basil-keyboard" :class="{ 'basil-keyboard--hidden': !isOpen, 'basil-keyboard--numpad': mode === 'numpad' }">
     <!-- QWERTY layout -->
     <template v-if="mode === 'qwerty'">
       <div class="basil-keyboard__row">
@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { keyboardState, emitKey, emitBackspace, emitDone, dismissKeyboard } from '@/utils/basilKeyboard'
+import { keyboardState, emitKey, emitBackspace, emitDone, dismissKeyboard, getActiveInputEl } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilKeyboard',
@@ -65,6 +65,7 @@ export default {
         ['A','S','D','F','G','H','J','K','L'],
         ['Z','X','C','V','B','N','M'],
       ],
+      originalParent: null,
     }
   },
   computed: {
@@ -72,10 +73,8 @@ export default {
     mode() { return keyboardState.mode },
   },
   mounted() {
-    // Set keyboard height after first render
-    this.$nextTick(() => {
-      keyboardState.height = this.$el.offsetHeight
-    })
+    this.originalParent = this.$refs.keyboard.parentElement
+
     // Dismiss on tap outside keyboard/input
     this._onPointerDown = (e) => {
       if (!keyboardState.isOpen) return
@@ -88,44 +87,61 @@ export default {
     document.removeEventListener('pointerdown', this._onPointerDown)
   },
   watch: {
-    isOpen(val) {
-      // Update CSS variable on :root
-      if (val) {
-        this.$nextTick(() => {
-          keyboardState.height = this.$el.offsetHeight
-          document.documentElement.style.setProperty('--basil-keyboard-height', keyboardState.height + 'px')
-        })
-      } else {
-        document.documentElement.style.setProperty('--basil-keyboard-height', '0px')
-      }
-    }
+    isOpen: {
+      handler(val) {
+        if (val) {
+          // Move keyboard into the open <dialog> if input is inside one,
+          // because <dialog> creates a top layer that sits above all z-index.
+          this.$nextTick(() => {
+            const el = this.$refs.keyboard
+            const inputEl = getActiveInputEl()
+            const dialog = inputEl?.closest('dialog[open]')
+            if (dialog && !dialog.contains(el)) {
+              dialog.appendChild(el)
+            } else if (!dialog && this.originalParent && !this.originalParent.contains(el)) {
+              this.originalParent.appendChild(el)
+            }
+
+            keyboardState.height = el.offsetHeight
+            document.documentElement.style.setProperty('--basil-keyboard-height', keyboardState.height + 'px')
+          })
+        } else {
+          // Move back to original parent when closing
+          const el = this.$refs.keyboard
+          if (el && this.originalParent && !this.originalParent.contains(el)) {
+            this.originalParent.appendChild(el)
+          }
+          document.documentElement.style.setProperty('--basil-keyboard-height', '0px')
+        }
+      },
+      immediate: true,
+    },
   },
   methods: {
-    onShift() {
-      try { navigator.vibrate?.(10) } catch {}
-      const now = Date.now()
-      if (this.shifted && now - this.lastShiftTap < 400) {
-        // Double-tap: toggle caps lock
-        this.capsLock = !this.capsLock
-        this.shifted = this.capsLock
-      } else {
-        this.capsLock = false
-        this.shifted = !this.shifted
-      }
-      this.lastShiftTap = now
-    },
     onKey(char) {
-      try { navigator.vibrate?.(10) } catch {}
-      emitKey(this.shifted ? char.toUpperCase() : char.toLowerCase())
       if (this.shifted && !this.capsLock) this.shifted = false
+      emitKey(this.shifted ? char : char.toLowerCase())
     },
     onBackspace() {
-      try { navigator.vibrate?.(10) } catch {}
       emitBackspace()
     },
     onDone() {
-      try { navigator.vibrate?.(10) } catch {}
       emitDone()
+    },
+    onShift() {
+      const now = Date.now()
+      if (now - this.lastShiftTap < 300) {
+        this.capsLock = !this.capsLock
+        this.shifted = this.capsLock
+      } else {
+        if (this.capsLock) {
+          this.capsLock = false
+          this.shifted = false
+        } else {
+          this.shifted = !this.shifted
+        }
+      }
+      this.lastShiftTap = now
     },
   },
 }

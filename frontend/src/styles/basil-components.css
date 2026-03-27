@@ -235,9 +235,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--basil-space-1);
-  padding: var(--basil-space-1) var(--basil-space-2);
+  padding: 6px var(--basil-space-3);
   border-radius: var(--basil-radius-pill);
-  background: var(--basil-surface-alt);
+  border: 1px solid var(--basil-border);
+  background: var(--basil-surface);
   color: var(--basil-text);
   font-family: var(--basil-font-ui);
   font-size: 0.8125rem;
@@ -247,8 +248,8 @@
 }
 
 .basil-chip--dense {
-  padding: 2px var(--basil-space-1);
-  font-size: 0.75rem;
+  padding: 4px var(--basil-space-2);
+  font-size: 0.8125rem;
 }
 
 .basil-chip--clickable {
@@ -256,11 +257,16 @@
 }
 
 .basil-chip--clickable:hover {
-  background: var(--basil-border);
+  background: var(--basil-surface-alt);
+}
+
+.basil-chip--primary.basil-chip--clickable:hover {
+  background: var(--basil-green-mid);
+  border-color: var(--basil-green-mid);
 }
 
 /* Color variants — tint bg using the semantic -bg token */
-.basil-chip--primary   { background: var(--basil-green-subtle);   color: var(--basil-green); }
+.basil-chip--primary   { background: var(--basil-green); color: var(--basil-text-inverse); border-color: var(--basil-green); }
 .basil-chip--positive  { background: var(--basil-positive-bg);     color: var(--basil-positive); }
 .basil-chip--negative  { background: var(--basil-negative-bg);     color: var(--basil-negative); }
 .basil-chip--warning   { background: var(--basil-warning-bg);      color: var(--basil-warning); }
@@ -357,6 +363,8 @@
 }
 
 .basil-list-item--clickable {
+  position: relative;
+  overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -405,7 +413,7 @@
 }
 
 .basil-list-item__caption {
-  color: var(--basil-text-secondary);
+  color: var(--basil-text-muted);
   font-size: 0.8125rem;
   line-height: 1.4;
 }
@@ -446,9 +454,21 @@
   transform: scale(0.96);
 }
 
+.basil-btn:focus {
+  outline: none;
+}
+
 .basil-btn:focus-visible {
   outline: 2px solid var(--basil-green);
   outline-offset: 2px;
+}
+
+/* dialog showModal() autofocus triggers :focus-visible on iOS Safari.
+   Suppress the outline on icon buttons inside dialogs — they have
+   hover/active feedback and the ring is visually disruptive on the
+   round shape.  Keyboard focus still works for labeled buttons.      */
+dialog .basil-btn.basil-btn--icon:focus-visible {
+  outline: none;
 }
 
 /* Variant: primary (filled) */
@@ -460,46 +480,52 @@
 .basil-btn--primary.basil-btn--negative { background: var(--basil-negative); }
 .basil-btn--primary.basil-btn--positive { background: var(--basil-positive); }
 
-/* Variant: flat (text-only) */
-.basil-btn--flat {
+/* Variant: flat (text-only) — doubled class to beat color background specificity */
+.basil-btn.basil-btn--flat {
   background: transparent;
   padding: var(--basil-space-2) var(--basil-space-3);
 }
 
-.basil-btn--flat.basil-btn--primary  { color: var(--basil-green); }
-.basil-btn--flat.basil-btn--negative { color: var(--basil-negative); }
-.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); }
+.basil-btn.basil-btn--flat.basil-btn--primary  { color: var(--basil-green); }
+.basil-btn.basil-btn--flat.basil-btn--negative { color: var(--basil-negative); }
+.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); }
 
-.basil-btn--flat:hover:not(.basil-btn--disabled) {
+.basil-btn.basil-btn--flat:hover:not(.basil-btn--disabled) {
   background: var(--basil-surface-alt);
 }
 
-/* Variant: icon (round, icon-only) */
-.basil-btn--icon {
+/* Variant: icon (round, icon-only) — doubled class to beat color specificity */
+.basil-btn.basil-btn--icon {
   background: transparent;
-  padding: var(--basil-space-1);
+  padding: 0;
   border-radius: 50%;
-  min-width: 0;
+  min-width: 36px;
+  max-width: 36px;
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
 }
 
-.basil-btn--icon.basil-btn--primary  { color: var(--basil-text-secondary); }
-.basil-btn--icon.basil-btn--negative { color: var(--basil-negative); }
-.basil-btn--icon.basil-btn--positive { color: var(--basil-positive); }
+.basil-btn.basil-btn--icon.basil-btn--primary  { color: var(--basil-text-secondary); }
+.basil-btn.basil-btn--icon.basil-btn--negative { color: var(--basil-negative); }
+.basil-btn.basil-btn--icon.basil-btn--positive { color: var(--basil-positive); }
 
-.basil-btn--icon:hover:not(.basil-btn--disabled) {
+.basil-btn.basil-btn--icon:hover:not(.basil-btn--disabled) {
   background: var(--basil-surface-alt);
 }
 
-/* Dense modifier */
+/* Dense modifier — min-height matches dense inputs/selects */
 .basil-btn--dense {
   padding: var(--basil-space-1) var(--basil-space-2);
   font-size: 0.8125rem;
+  min-height: 36px;
 }
 
-.basil-btn--dense.basil-btn--icon {
+.basil-btn--dense.basil-btn.basil-btn--icon {
+  min-width: 28px;
+  max-width: 28px;
   width: 28px;
+  min-height: 28px;
   height: 28px;
 }
 
@@ -562,9 +588,9 @@ a.basil-btn {
 }
 
 a.basil-btn--primary { color: white; }
-a.basil-btn--flat.basil-btn--primary  { color: var(--basil-green); }
-a.basil-btn--flat.basil-btn--negative { color: var(--basil-negative); }
-a.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); }
+a.basil-btn.basil-btn--flat.basil-btn--primary  { color: var(--basil-green); }
+a.basil-btn.basil-btn--flat.basil-btn--negative { color: var(--basil-negative); }
+a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); }
 
 /* ---- Tooltip ---- */
 
@@ -849,6 +875,7 @@ dialog.basil-tray .basil-tray__wrap--mobile {
 
 .basil-toggle--button-group {
   display: inline-flex;
+  gap: 0;
   border-radius: var(--basil-radius-md);
   border: 1px solid var(--basil-border);
   overflow: hidden;
@@ -900,8 +927,8 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   border: 1px solid var(--basil-border);
   border-radius: var(--basil-radius-sm);
   background: var(--basil-surface);
-  padding: var(--basil-space-3) var(--basil-space-3);
-  min-height: 48px;
+  padding: var(--basil-space-2) var(--basil-space-3);
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: var(--basil-space-2);
@@ -1006,6 +1033,7 @@ dialog.basil-tray .basil-tray__wrap--mobile {
 
 .basil-select__filter-input {
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--basil-border);
   border-radius: var(--basil-radius-sm);
   padding: var(--basil-space-2) var(--basil-space-3);
@@ -1098,6 +1126,220 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   color: var(--basil-text);
 }
 
+/* ---- Date Picker ---- */
+
+.basil-date-picker {
+  position: relative;
+  font-family: var(--basil-font-ui);
+}
+
+.basil-date-picker__trigger {
+  position: relative;
+  border: 1px solid var(--basil-border);
+  border-radius: var(--basil-radius-sm);
+  background: var(--basil-surface);
+  padding: var(--basil-space-2) var(--basil-space-3);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--basil-space-2);
+  cursor: pointer;
+  transition: border-color var(--basil-t-fast) var(--basil-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.basil-date-picker--open .basil-date-picker__trigger {
+  border-color: var(--basil-green);
+}
+
+.basil-date-picker--dense .basil-date-picker__trigger {
+  min-height: 36px;
+  padding: var(--basil-space-2) var(--basil-space-3);
+}
+
+.basil-date-picker--disabled .basil-date-picker__trigger {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.basil-date-picker__value {
+  flex: 1;
+  color: var(--basil-text);
+  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.basil-date-picker__value--placeholder {
+  color: var(--basil-text-muted);
+}
+
+.basil-date-picker__icon {
+  flex-shrink: 0;
+  color: var(--basil-text-muted);
+}
+
+.basil-date-picker__label {
+  position: absolute;
+  left: var(--basil-space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--basil-text-secondary);
+  font-size: 14px;
+  font-family: var(--basil-font-ui);
+  transition: all var(--basil-t-fast) var(--basil-ease);
+  pointer-events: none;
+}
+
+.basil-date-picker__label--float {
+  top: -8px;
+  transform: none;
+  font-size: 11px;
+  background: var(--basil-surface);
+  padding: 0 4px;
+}
+
+/* Dropdown (desktop) */
+
+.basil-date-picker__dropdown {
+  background: var(--basil-surface-raised);
+  border-radius: var(--basil-radius-md);
+  box-shadow: var(--basil-shadow-lg);
+  border: 1px solid var(--basil-border);
+  overflow: hidden;
+  animation: basil-date-picker-enter var(--basil-t-fast) var(--basil-ease);
+}
+
+@keyframes basil-date-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Calendar shared (desktop + tray) */
+
+.basil-date-picker__calendar {
+  padding: var(--basil-space-3);
+}
+
+.basil-date-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--basil-space-1);
+  margin-bottom: var(--basil-space-3);
+}
+
+.basil-date-picker__month-label {
+  font-size: 1.125rem;
+  color: var(--basil-text);
+  user-select: none;
+}
+
+.basil-date-picker__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: var(--basil-space-1);
+}
+
+.basil-date-picker__weekday {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  font-family: var(--basil-font-ui);
+  text-transform: uppercase;
+  padding: var(--basil-space-1) 0;
+}
+
+.basil-date-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.basil-date-picker__day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background-color var(--basil-t-fast) var(--basil-ease),
+    color var(--basil-t-fast) var(--basil-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.basil-date-picker__day-num {
+  font-family: var(--basil-font-ui);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--basil-text);
+  position: relative;
+  z-index: 1;
+}
+
+/* Outside-month days */
+.basil-date-picker__day--outside .basil-date-picker__day-num {
+  color: var(--basil-text-muted);
+}
+
+/* Today ring */
+.basil-date-picker__day--today {
+  box-shadow: inset 0 0 0 2px var(--basil-green);
+}
+
+/* Hover */
+.basil-date-picker__day--hover {
+  background: var(--basil-hover);
+}
+
+/* Selected */
+.basil-date-picker__day--selected {
+  background: var(--basil-green);
+}
+
+.basil-date-picker__day--selected .basil-date-picker__day-num {
+  color: var(--basil-text-inverse);
+}
+
+.basil-date-picker__day--selected.basil-date-picker__day--today {
+  box-shadow: none;
+}
+
+/* Tray (mobile) */
+
+.basil-date-picker__tray {
+  background: var(--basil-surface-dialog);
+  border-radius: var(--basil-radius-lg) var(--basil-radius-lg) 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.basil-date-picker__tray-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--basil-space-3) var(--basil-space-3) 0;
+}
+
+.basil-date-picker__tray-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--basil-text);
+  padding-left: var(--basil-space-1);
+}
+
 /* ---- Tabs ---- */
 
 .basil-tabs {
@@ -1105,36 +1347,63 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   flex-direction: row;
   align-items: stretch;
   font-family: var(--basil-font-ui);
+  position: relative;
 }
 
 .basil-tab {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--basil-space-1);
-  padding: var(--basil-space-2) var(--basil-space-3);
+  gap: var(--basil-space-2);
+  padding: 14px var(--basil-space-5);
   border: none;
   background: transparent;
   color: var(--basil-text-secondary);
   font-family: var(--basil-font-ui);
   font-size: 0.8125rem;
-  font-weight: 400;
+  font-weight: 500;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
   transition:
-    color var(--basil-t-fast) var(--basil-ease);
+    color var(--basil-t-fast) var(--basil-ease),
+    background-color var(--basil-t-fast) var(--basil-ease);
 }
 
-.basil-tab:hover:not(.basil-tab--disabled) {
+/* Hover — full-cell background (inactive tabs only) */
+.basil-tab:hover:not(.basil-tab--disabled):not(.basil-tab--active) {
   color: var(--basil-text);
+  background-color: var(--basil-hover);
 }
 
 .basil-tab--active {
   color: var(--basil-green);
   font-weight: 600;
+}
+
+/* Reset focus outline — show only on keyboard navigation */
+.basil-tab:focus {
+  outline: none;
+}
+
+.basil-tab:focus-visible {
+  outline: 2px solid var(--basil-green);
+  outline-offset: -2px;
+}
+
+/* Active hover — deeper green tint (matches Quasar active-tab hover) */
+.basil-tab--active:hover {
+  color: var(--basil-green);
+  background-color: rgba(76, 138, 97, 0.12);
+}
+
+/* Press — intensify the hover state layer */
+.basil-tab:active:not(.basil-tab--disabled) {
+  background-color: rgba(76, 138, 97, 0.18);
 }
 
 .basil-tab--disabled {
@@ -1143,31 +1412,10 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   pointer-events: none;
 }
 
-/* Icon wrapper — used for the active pill indicator in bottom nav */
 .basil-tab__icon-wrap {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Active pill behind the icon — bottom nav pattern (M3 / Gmail) */
-.basil-tab__icon-wrap::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 64px;
-  height: 32px;
-  border-radius: 16px;
-  background-color: transparent;
-  transition: background-color var(--basil-t-fast) var(--basil-ease);
-  z-index: -1;
-}
-
-.basil-tab--active .basil-tab__icon-wrap::before {
-  background-color: var(--basil-green-subtle);
 }
 
 .basil-tab__icon {
@@ -1179,6 +1427,7 @@ dialog.basil-tray .basil-tray__wrap--mobile {
 .basil-tab__label {
   font-size: 0.6875rem;
   line-height: 1;
+  text-transform: uppercase;
 }
 
 /* Remove default anchor styles when tab renders as router-link */
@@ -1189,4 +1438,44 @@ a.basil-tab {
 
 a.basil-tab.basil-tab--active {
   color: var(--basil-green);
+}
+
+/* Sliding active indicator — single element positioned by JS */
+.basil-tabs__indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--basil-green);
+  transition:
+    transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 150ms ease;
+  pointer-events: none;
+}
+
+/* ========================================
+   Shared ripple effect
+   ======================================== */
+.basil-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(76, 138, 97, 0.25);
+  pointer-events: none;
+  animation: basil-ripple 500ms ease-out forwards;
+}
+
+.basil-ripple--neutral {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@keyframes basil-ripple {
+  from {
+    transform: scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
