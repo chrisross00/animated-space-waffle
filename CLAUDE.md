@@ -270,21 +270,12 @@ name pattern / amount / amount + institution".
 ## Backlog
 
 ### High priority
-- [ ] **PWA mobile: nav chin sits ~10px too high** — `--basil-bottom-nav-height` (56px)
-      doesn't match actual tab content height after padding increase. Needs careful
-      measurement on real device.
+- [ ] **BasilTray animations** — Trays currently open/close instantly. Need slide-up
+      enter, slide-down exit, and swipe-to-dismiss should continue drag momentum into
+      the close animation. CSS transitions on the wrap element + gesture coordination.
 - [ ] **PWA mobile: scroll-behind open trays + pull-to-refresh conflict** — Body
-      scrolls behind open dialogs on iOS PWA. `overflow:hidden` insufficient,
-      `position:fixed` caused background jumps. Drag-to-dismiss on trays also triggers
-      PullToRefresh. Needs iOS-specific scroll containment tested on device.
-- [ ] **PWA mobile: keyboard stops working after category tray search** — After using
-      search in category selection child tray, keyboard won't open for other fields
-      until page navigation. Stale state not cleaned up when child tray closes.
-- [ ] **BasilKeyboard: replace DOM appendChild with proper Teleport** — The keyboard
-      currently uses `appendChild` to move itself into open `<dialog>` elements (needed
-      because `<dialog>` top layer sits above all z-index). Vue doesn't track this DOM
-      move, so a re-render could orphan the keyboard element. Replace with a reactive
-      Teleport target or restructure so the keyboard renders inside each tray's slot.
+      scrolls behind open dialogs on iOS PWA. `overflow:hidden` insufficient.
+      Drag-to-dismiss on trays can trigger PullToRefresh behind the tray.
 - [ ] **Income detection nudge + quick-fix** — When the current month has zero Income
       but large inbound transfers exist, surface a nudge on the budget page showing
       the suspected paycheck(s) inline: "We found a $4,700 deposit — is this income?"
