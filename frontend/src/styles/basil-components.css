@@ -719,6 +719,7 @@ dialog.basil-tray {
   padding: 0;
   margin: 0;
   background: transparent;
+  outline: none;
   max-width: none;
   max-height: none;
   width: 100%;
