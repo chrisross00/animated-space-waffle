@@ -2,7 +2,7 @@
   <dialog
     ref="dialogRef"
     class="basil-tray"
-    :class="{ 'basil-tray--visible': isVisible }"
+    :class="{ 'basil-tray--visible': backdropVisible }"
     :aria-modal="isVisible ? 'true' : undefined"
     @close="onNativeClose"
     @keydown="onKeydown"
@@ -11,7 +11,12 @@
     <div
       ref="wrapRef"
       tabindex="-1"
-      :class="['basil-tray__wrap', screen.isMobile && 'basil-tray__wrap--mobile']"
+      :class="[
+        'basil-tray__wrap',
+        screen.isMobile && 'basil-tray__wrap--mobile',
+        entered && 'basil-tray__wrap--entered',
+        dragging && 'basil-tray__wrap--dragging',
+      ]"
       :style="[
         !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
         dragStyle,
@@ -28,6 +33,14 @@ import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
 import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
 
+// Parse the sheet duration token at module level so we can use it in JS timeouts.
+// Falls back to 500ms if the CSS variable isn't available yet.
+function getSheetDuration() {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--basil-duration-sheet').trim()
+  return parseInt(raw, 10) || 500
+}
+
 export default {
   name: 'BasilTray',
   props: {
@@ -43,13 +56,16 @@ export default {
       dragging: false,
       screen,
       isVisible: false,
+      entered: false,         // true once the slide-in transition has been triggered
+      backdropVisible: false, // controls backdrop opacity separately for exit timing
+      closing: false,         // guard flag to prevent re-entrant close
     }
   },
 
   computed: {
     dragStyle() {
-      if (this.dragOffset > 0) {
-        return `transform: translateY(${this.dragOffset}px); transition: none`
+      if (this.dragging && this.dragOffset > 0) {
+        return `transform: translate3d(0, ${this.dragOffset}px, 0)`
       }
       return undefined
     },
@@ -82,6 +98,7 @@ export default {
       this.stopGesture = null
     }
     this.unlockBodyScroll()
+    if (this._exitTimer) clearTimeout(this._exitTimer)
   },
 
   methods: {
@@ -89,14 +106,29 @@ export default {
       const dialog = this.$refs.dialogRef
       if (!dialog || dialog.open) return
 
+      this.closing = false
       this.$emit('before-show')
       this._previousFocus = document.activeElement
       this.lockBodyScroll()
       this.isVisible = true
 
+      // Ensure the wrap starts offscreen before the dialog is painted
+      this.entered = false
+      this.backdropVisible = false
+
       dialog.show()
 
+      // After the browser paints the dialog in its offscreen position,
+      // flip the entered flag to trigger the CSS transition.
       nextTick(() => {
+        // Force a layout so the initial translate(100%) is committed
+        // before we add the entered class (otherwise the browser may batch
+        // both into a single frame and skip the transition).
+        // eslint-disable-next-line no-unused-expressions
+        this.$refs.wrapRef?.offsetHeight
+
+        this.entered = true
+        this.backdropVisible = true
         this.focusFirstElement()
         this.$emit('show')
         // Re-setup gesture in case refs changed
@@ -107,6 +139,8 @@ export default {
     close() {
       const dialog = this.$refs.dialogRef
       if (!dialog || !dialog.open) return
+      if (this.closing) return // prevent re-entrant calls during exit animation
+      this.closing = true
 
       // Dismiss the keyboard if it's open
       if (keyboardState.isOpen) {
@@ -114,8 +148,32 @@ export default {
       }
 
       this.$emit('before-hide')
-      dialog.close()
+
+      if (screen.isMobile) {
+        // Animate out: slide wrap down + fade backdrop
+        this.entered = false
+        this.backdropVisible = false
+
+        const duration = getSheetDuration()
+        // Wait for the transition to finish, then close the dialog element
+        this._exitTimer = setTimeout(() => {
+          this._exitTimer = null
+          this._finalizeClose(dialog)
+        }, duration)
+      } else {
+        // Desktop: close immediately (no slide animation)
+        this._finalizeClose(dialog)
+      }
+    },
+
+    _finalizeClose(dialog) {
+      if (dialog.open) dialog.close()
       this.isVisible = false
+      this.backdropVisible = false
+      this.entered = false
+      this.closing = false
+      this.dragOffset = 0
+      this.dragging = false
       this.unlockBodyScroll()
       this.$emit('hide')
 
@@ -129,6 +187,9 @@ export default {
     onNativeClose() {
       // The dialog was closed (either by us or by the browser)
       this.isVisible = false
+      this.backdropVisible = false
+      this.entered = false
+      this.closing = false
       this.unlockBodyScroll()
       if (this.modelValue) {
         this.$emit('update:modelValue', false)
@@ -231,15 +292,42 @@ export default {
           if (state.deltaY > 0) {
             this.dragOffset = state.deltaY
             this.dragging = true
+
+            // Sync backdrop opacity: fade out proportionally to drag progress
+            const wrapHeight = wrapEl.offsetHeight || 1
+            const progress = Math.min(state.deltaY / wrapHeight, 1)
+            const dialog = this.$refs.dialogRef
+            if (dialog) {
+              const opacity = 0.5 * (1 - progress)
+              dialog.style.backgroundColor = `rgba(0, 0, 0, ${opacity})`
+            }
           }
         },
         onEnd: (state) => {
           if (this.hasChildDialogOpen()) return
-          if (state.swipedDown && !this.persistent) {
+
+          const wrapHeight = wrapEl.offsetHeight || 1
+          // Velocity in px/s from useGesture; convert to px/ms for comparison
+          const velocityPxMs = Math.abs(state.velocityY) / 1000
+          const draggedPastThreshold = state.deltaY > wrapHeight * 0.25
+          const fastSwipe = velocityPxMs > 0.4
+
+          if ((fastSwipe || draggedPastThreshold) && !this.persistent) {
+            // Dismiss: let CSS transition animate from current position to offscreen
+            this.dragging = false
+            this.dragOffset = 0
+            // Clear the inline backdrop color so CSS transition takes over
+            const dialog = this.$refs.dialogRef
+            if (dialog) dialog.style.backgroundColor = ''
             this.$emit('update:modelValue', false)
+          } else {
+            // Snap back: remove dragging state so CSS transition animates to translateY(0)
+            this.dragging = false
+            this.dragOffset = 0
+            // Reset backdrop to full opacity via CSS
+            const dialog = this.$refs.dialogRef
+            if (dialog) dialog.style.backgroundColor = ''
           }
-          this.dragOffset = 0
-          this.dragging = false
         },
       })
     },
