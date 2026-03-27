@@ -72,7 +72,8 @@
 }
 
 .basil-onboarding-cta {
-  width: 100%;
+  display: flex;
+  margin: 0 auto;
 }
 
 .basil-onboarding-skip {
@@ -135,7 +136,7 @@
 .basil-onboarding-sync-steps {
   width: 100%;
   max-width: 280px;
-  margin-top: var(--basil-space-2);
+  margin: var(--basil-space-2) auto 0;
 }
 
 .basil-onboarding-sync-step {
