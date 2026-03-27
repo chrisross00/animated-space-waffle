@@ -1,9 +1,11 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" :persistent="persistent" max-width="400px">
     <BasilCard class="basil-dialog-card" flat>
-      <div style="font-size: 1rem; font-weight: 500;">{{ title }}</div>
-      <div v-if="message" style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: var(--basil-space-1);">
-        {{ message }}
+      <div class="basil-card__body">
+        <div style="font-size: 1rem; font-weight: 500;">{{ title }}</div>
+        <div v-if="message" style="color: var(--basil-text-secondary); font-size: 0.875rem; margin-top: var(--basil-space-1);">
+          {{ message }}
+        </div>
       </div>
       <template #actions>
         <BasilButton variant="flat" :label="cancelLabel" @click="$emit('update:modelValue', false)" />

@@ -103,9 +103,10 @@ export default {
   },
 
   beforeUnmount() {
-    // If this input owns the keyboard (it's focused), dismiss on destroy
-    // so the keyboard doesn't stay open after the input's parent is removed.
-    if (this.isFocused && getActiveInputEl() === this.$el) {
+    // If this input owns the keyboard OR if the keyboard thinks it's open but
+    // we were the last focused input, dismiss to prevent stale state.
+    const ownsKeyboard = getActiveInputEl() === this.$el
+    if (ownsKeyboard || (this.isFocused && this.isMobile)) {
       dismissKeyboard()
     }
     clearTimeout(this.debounceTimer)

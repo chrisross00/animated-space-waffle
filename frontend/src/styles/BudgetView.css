@@ -801,7 +801,7 @@
 
 .basil-tosort-card__headline {
   font-size: 0.9375rem;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
 }
 
 .basil-tosort-card__hint {
@@ -824,7 +824,7 @@
 .basil-triage__title {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
   flex: 1;
 }
 
@@ -841,14 +841,14 @@
 .basil-triage__amount {
   font-family: var(--basil-font-display);
   font-size: 2rem;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
   line-height: 1.1;
 }
 
 .basil-triage__merchant {
   font-size: 1rem;
   font-weight: 500;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
   margin-top: var(--basil-space-1);
 }
 
@@ -935,7 +935,7 @@
 .basil-triage__done-heading {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
 }
 
 /* ---- Detailed PFC sub-breakdown (attached to category row) ---- */

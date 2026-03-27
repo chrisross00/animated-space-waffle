@@ -114,7 +114,7 @@ export default {
 .basil-rel-pair__name {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -128,7 +128,7 @@ export default {
 }
 
 .basil-rel-pair__amount--negative {
-  color: var(--basil-text-primary);
+  color: var(--basil-text);
 }
 
 .basil-rel-pair__amount--positive {
