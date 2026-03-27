@@ -23,6 +23,7 @@
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
+import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
 
 export default {
   name: 'BasilTray',
@@ -99,6 +100,13 @@ export default {
     close() {
       const dialog = this.$refs.dialogRef
       if (!dialog || !dialog.open) return
+
+      // If the keyboard is open inside this tray, dismiss it before closing.
+      // Otherwise keyboardState.isOpen stays true and the keyboard DOM gets
+      // orphaned inside the closed dialog — invisible and unrecoverable.
+      if (keyboardState.isOpen && dialog.querySelector('.basil-keyboard')) {
+        dismissKeyboard()
+      }
 
       this.$emit('before-hide')
       dialog.close()
