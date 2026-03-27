@@ -2,11 +2,12 @@
   <dialog
     ref="dialogRef"
     class="basil-tray"
+    :class="{ 'basil-tray--visible': isVisible }"
     :aria-modal="isVisible ? 'true' : undefined"
     @close="onNativeClose"
     @keydown="onKeydown"
+    @click="onDialogClick"
   >
-    <div v-if="isVisible" class="basil-tray__backdrop" @click="onBackdropClick" />
     <div
       ref="wrapRef"
       tabindex="-1"
@@ -182,7 +183,10 @@ export default {
       }
     },
 
-    onBackdropClick() {
+    onDialogClick(e) {
+      // Only treat clicks directly on the dialog element as backdrop clicks.
+      // Clicks on the wrap or its children have a different target.
+      if (e.target !== this.$refs.dialogRef) return
       if (this.persistent) return
       this.$emit('update:modelValue', false)
     },

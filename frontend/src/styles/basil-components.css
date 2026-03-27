@@ -720,6 +720,7 @@ dialog.basil-tray {
   margin: 0;
   background: transparent;
   outline: none;
+  transition: background-color 200ms ease;
   max-width: none;
   max-height: none;
   width: 100%;
@@ -730,9 +731,7 @@ dialog.basil-tray {
   z-index: 1000;
 }
 
-.basil-tray__backdrop {
-  position: fixed;
-  inset: 0;
+dialog.basil-tray--visible {
   background: rgba(0, 0, 0, 0.5);
 }
 
