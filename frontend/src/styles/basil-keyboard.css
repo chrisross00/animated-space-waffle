@@ -48,7 +48,6 @@
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  transition: transform 75ms ease, background-color 75ms ease;
 }
 
 .basil-keyboard__key:active {
@@ -84,6 +83,7 @@
   color: var(--basil-text-inverse);
   font-weight: 600;
   font-size: 14px;
+  max-width: 64px;
 }
 
 .basil-keyboard__key--action:active {
@@ -92,7 +92,7 @@
 }
 
 .basil-keyboard__key--space {
-  flex: 3;
+  flex: 5;
 }
 
 .basil-keyboard__key--wide {

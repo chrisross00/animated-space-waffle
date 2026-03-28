@@ -3,48 +3,48 @@
     <!-- QWERTY layout -->
     <template v-if="mode === 'qwerty'">
       <div class="basil-keyboard__row">
-        <div v-for="key in qwertyRows[0]" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
+        <div v-for="key in qwertyRows[0]" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
       </div>
       <div class="basil-keyboard__row" style="padding: 0 4%;">
-        <div v-for="key in qwertyRows[1]" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
+        <div v-for="key in qwertyRows[1]" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
       </div>
       <div class="basil-keyboard__row">
-        <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--shift" :class="{ 'basil-keyboard__key--shift-active': shifted, 'basil-keyboard__key--shift-locked': capsLock }" @pointerdown.prevent @click="onShift">
+        <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--shift" :class="{ 'basil-keyboard__key--shift-active': shifted, 'basil-keyboard__key--shift-locked': capsLock }" @pointerdown.prevent="onShift">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :fill="shifted ? 'currentColor' : 'none'"><path d="M12 3l-8 9h5v8h6v-8h5z"/></svg>
         </div>
-        <div v-for="key in qwertyRows[2]" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
-        <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--wide" @pointerdown.prevent @click="onBackspace">
+        <div v-for="key in qwertyRows[2]" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ shifted ? key : key.toLowerCase() }}</div>
+        <div class="basil-keyboard__key basil-keyboard__key--modifier basil-keyboard__key--wide" @pointerdown.prevent="onBackspace">
           <svg width="20" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
         </div>
       </div>
       <div class="basil-keyboard__row">
         <div class="basil-keyboard__key basil-keyboard__key--modifier" @pointerdown.prevent>123</div>
-        <div class="basil-keyboard__key" @pointerdown.prevent @click="onKey('.')">.</div>
-        <div class="basil-keyboard__key basil-keyboard__key--space" @pointerdown.prevent @click="onKey(' ')">space</div>
-        <div class="basil-keyboard__key basil-keyboard__key--action" @pointerdown.prevent @click="onDone">Done</div>
+        <div class="basil-keyboard__key basil-keyboard__key--modifier" @pointerdown.prevent="onKey('.')">.</div>
+        <div class="basil-keyboard__key basil-keyboard__key--space" @pointerdown.prevent="onKey(' ')">space</div>
+        <div class="basil-keyboard__key basil-keyboard__key--action basil-keyboard__key--modifier" @pointerdown.prevent="onDone">Done</div>
       </div>
     </template>
 
     <!-- Numpad layout -->
     <template v-else>
       <div class="basil-keyboard__row">
-        <div v-for="key in ['1','2','3']" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ key }}</div>
+        <div v-for="key in ['1','2','3']" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ key }}</div>
       </div>
       <div class="basil-keyboard__row">
-        <div v-for="key in ['4','5','6']" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ key }}</div>
+        <div v-for="key in ['4','5','6']" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ key }}</div>
       </div>
       <div class="basil-keyboard__row">
-        <div v-for="key in ['7','8','9']" :key="key" class="basil-keyboard__key" @pointerdown.prevent @click="onKey(key)">{{ key }}</div>
+        <div v-for="key in ['7','8','9']" :key="key" class="basil-keyboard__key" @pointerdown.prevent="onKey(key)">{{ key }}</div>
       </div>
       <div class="basil-keyboard__row">
-        <div class="basil-keyboard__key" @pointerdown.prevent @click="onKey('.')">.</div>
-        <div class="basil-keyboard__key" @pointerdown.prevent @click="onKey('0')">0</div>
-        <div class="basil-keyboard__key basil-keyboard__key--modifier" @pointerdown.prevent @click="onBackspace">
+        <div class="basil-keyboard__key" @pointerdown.prevent="onKey('.')">.</div>
+        <div class="basil-keyboard__key" @pointerdown.prevent="onKey('0')">0</div>
+        <div class="basil-keyboard__key basil-keyboard__key--modifier" @pointerdown.prevent="onBackspace">
           <svg width="22" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
         </div>
       </div>
       <div class="basil-keyboard__row">
-        <div class="basil-keyboard__key basil-keyboard__key--action" @pointerdown.prevent @click="onDone">Done</div>
+        <div class="basil-keyboard__key basil-keyboard__key--action" @pointerdown.prevent="onDone">Done</div>
       </div>
     </template>
   </div>
