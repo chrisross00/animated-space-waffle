@@ -1,0 +1,15 @@
+node_modules
+frontend/node_modules
+admin/node_modules
+.git
+.github
+.husky
+.devcontainer
+plans
+docs
+__tests__
+*.md
+.env
+.nvmrc
+.gitignore
+vitest.config.mjs

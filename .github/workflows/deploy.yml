@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - '**.md'
-      - 'plans/**'
-      - '.claude/**'
-  workflow_dispatch: # manual trigger from GitHub UI
+      - "**.md"
+      - "plans/**"
+      - ".claude/**"
+  workflow_dispatch:
 
 jobs:
   test:
@@ -33,22 +33,25 @@ jobs:
           username: root
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -e
             cd /opt/basil/app
             git pull origin main
 
-            # Install dependencies (--ignore-scripts skips husky prepare)
-            npm install --omit=dev --ignore-scripts
-            npm install --prefix frontend
-            npm install --prefix admin
+            cd /opt/basil
+            docker compose up --build -d
+            docker builder prune -af 2>/dev/null || true
+            docker system prune -af 2>/dev/null || true
 
-            # Build frontends
-            npm run build --prefix frontend
-            npm run build --prefix admin
+            # Health check
+            for i in $(seq 1 10); do
+              if curl -sf http://127.0.0.1:3000 > /dev/null 2>&1; then
+                echo "Health check passed"
+                exit 0
+              fi
+              echo "Waiting for container... ($i/10)"
+              sleep 3
+            done
 
-            # Start or restart with PM2
-            if pm2 list | grep -q basil; then
-              pm2 restart basil
-            else
-              pm2 start index.js --name basil
-              pm2 save
-            fi
+            echo "Health check failed"
+            docker compose logs --tail 50
+            exit 1
