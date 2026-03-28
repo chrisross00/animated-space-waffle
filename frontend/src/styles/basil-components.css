@@ -728,6 +728,12 @@ a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); 
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.basil-tray__backdrop--visible {
+  opacity: 1;
 }
 
 /* Desktop: center the wrap */
@@ -738,13 +744,39 @@ a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); 
   overflow: hidden;
 }
 
-/* Mobile: anchor to bottom */
+/* Mobile: anchor to bottom, slide up on open */
 .basil-tray .basil-tray__wrap--mobile {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 1;
+  transform: translateY(100%);
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.basil-tray .basil-tray__wrap--mobile.basil-tray__wrap--visible {
+  transform: translateY(0);
+}
+
+/* Gap coverage — prevents page from showing below tray during drag/animation */
+.basil-tray .basil-tray__wrap--mobile::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 200%;
+  background: inherit;
+  background-color: inherit;
+}
+
+/* Desktop: prevent text selection during drag */
+@media (hover: hover) and (pointer: fine) {
+  .basil-tray__wrap {
+    user-select: none;
+  }
 }
 
 /* ---- Toggle (switch / checkbox / button-group) ---- */

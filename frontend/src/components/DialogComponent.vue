@@ -636,9 +636,16 @@ computed: {
   },
   methods: {
         closeTray() {
-          // Close the nearest native <dialog> ancestor (BasilTray).
-          // BasilTray's onNativeClose handler will emit update:modelValue = false.
-          this.$el.closest('dialog')?.close();
+          // Find the parent BasilTray and close it via its exposed method.
+          // Walk up the Vue component tree to find the nearest BasilTray ancestor.
+          let parent = this.$parent
+          while (parent) {
+            if (parent.$options.name === 'BasilTray') {
+              parent.$emit('update:modelValue', false)
+              return
+            }
+            parent = parent.$parent
+          }
         },
         onTransactionFormReset () {
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));
