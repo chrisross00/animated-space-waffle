@@ -439,7 +439,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: var(--basil-space-4);
+  padding: var(--basil-space-5) var(--basil-space-4);
   border-top: 1px solid var(--basil-border);
   margin-top: auto;
   flex-shrink: 0;
