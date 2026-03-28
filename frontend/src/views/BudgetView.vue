@@ -94,6 +94,16 @@
                 Based on deposits this month. <router-link to="/plan" class="basil-hero-link">Set your income</router-link> for a more accurate number.
               </div>
             </template>
+
+            <!-- Spending breakdown -->
+            <template v-if="expenseTransactions.length > 0">
+              <div class="basil-card-rule"></div>
+              <SpendingBreakdown
+                :transactions="expenseTransactions"
+                :categories="$store.state.categories || []"
+                @edit-category="openEditCategoryFromBreakdown"
+              />
+            </template>
           </div>
         </BasilCard>
 
@@ -937,6 +947,7 @@
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
+  import SpendingBreakdown from '@/components/SpendingBreakdown.vue';
   import BasilTray from '@/components/BasilTray.vue';
   import BasilSearch from '@/components/BasilSearch';
   import BasilAmount from '@/components/BasilAmount';
@@ -971,6 +982,7 @@
       BasilNote,
       VenmoEnrichmentDialog,
       TagPicker,
+      SpendingBreakdown,
     },
 
     setup() {
@@ -1083,6 +1095,19 @@
       },
       isOnboarded() {
         return !!store.state.user?.onboarded_at;
+      },
+      expenseTransactions() {
+        const expenseNames = new Set(
+          (store.state.categories || [])
+            .filter(c => c.type === 'expense')
+            .map(c => c.category)
+        )
+        const sel = this.selectedDate.actual
+        return (this.transactions || []).filter(t => {
+          if (!expenseNames.has(t.mappedCategory) || t.excludeFromTotal) return false
+          const d = dayjs(t.effectiveDate || t.date)
+          return d.year() === sel.year() && d.month() === sel.month()
+        })
       },
       categoryTypeMap() {
         const map = {};
@@ -1807,6 +1832,11 @@ monthStats() {
       addCategoryDialog(){
         this.newCategory = !this.newCategory;
         return this.newCategory
+      },
+      openEditCategoryFromBreakdown(categoryName) {
+        if (this.groupedTransactions[categoryName]) {
+          this.buildEditCategoryDialog(categoryName)
+        }
       },
       buildEditCategoryDialog(category){ // Should this code live on DialogComponent
         this.clicker = !this.clicker;
