@@ -85,7 +85,7 @@ import { humanizeDetailedPfc } from '@/utils/pfcLabels'
 
 use([PieChart, TooltipComponent, GraphicComponent, CanvasRenderer])
 
-const OTHER_THRESHOLD = 0.02 // 2% collapse
+const OTHER_THRESHOLD = 0.01 // 1% collapse
 
 export default {
   name: 'SpendingBreakdown',
@@ -161,10 +161,10 @@ export default {
       const slices = this.activeBreakdown
       if (!slices.length) return {}
 
-      const isDark = document.documentElement.classList.contains('basil-dark')
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
       const surfaceColor = isDark ? '#181c24' : '#ffffff'
-      const textColor = isDark ? '#e5e0d8' : '#2a2a2a'
-      const textMutedColor = isDark ? '#8a8580' : '#888888'
+      const textColor = isDark ? '#f0ece6' : '#2a2a2a'
+      const textMutedColor = isDark ? '#9a9590' : '#888888'
 
       return {
         ...CHART_ANIMATION,
@@ -173,8 +173,8 @@ export default {
           radius: ['54%', '72%'],
           center: ['50%', '50%'],
           minAngle: 8,
-          padAngle: 2,
-          itemStyle: { borderColor: surfaceColor, borderWidth: 2, borderRadius: 2 },
+          padAngle: 3,
+          itemStyle: { borderColor: surfaceColor, borderWidth: 3 },
           label: { show: false },
           emphasis: { scale: true, scaleSize: 4 },
           data: slices.map((s, i) => ({
