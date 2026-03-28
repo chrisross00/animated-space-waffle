@@ -69,6 +69,12 @@
   flex-direction: column;
 }
 
+/* When a child dialog is open on top, remove parent tray's rounded corners
+   so the white edge doesn't peek through the backdrop */
+dialog.basil-tray:has(dialog[open]) .basil-tray__wrap--mobile {
+  border-radius: 0;
+}
+
 .basil-tray__wrap--mobile > .basil-card {
   border-radius: 0 !important;
   max-height: 100%;

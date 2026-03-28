@@ -720,13 +720,12 @@ dialog.basil-tray {
   margin: 0;
   background: transparent;
   outline: none;
-  transition: background-color var(--basil-duration-sheet) var(--basil-ease-sheet);
+  transition: background-color 200ms ease;
   max-width: none;
   max-height: none;
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  overscroll-behavior: contain;
+  overflow: visible;
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -752,31 +751,6 @@ dialog.basil-tray .basil-tray__wrap--mobile {
   bottom: 0;
   left: 0;
   right: 0;
-  transform: translate3d(0, 100%, 0);
-  transition: transform var(--basil-duration-sheet) var(--basil-ease-sheet);
-  will-change: transform;
-  -webkit-backface-visibility: hidden;
-}
-
-/* Slide-in state: applied after dialog.show() + nextTick */
-dialog.basil-tray .basil-tray__wrap--mobile.basil-tray__wrap--entered {
-  transform: translate3d(0, 0, 0);
-}
-
-/* Disable transition during active drag */
-dialog.basil-tray .basil-tray__wrap--mobile.basil-tray__wrap--dragging {
-  transition: none !important;
-}
-
-/* Overscroll bleed guard — prevents gap below sheet during bounce */
-.basil-tray__wrap--mobile::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 200%;
-  background: inherit;
 }
 
 /* ---- Toggle (switch / checkbox / button-group) ---- */
