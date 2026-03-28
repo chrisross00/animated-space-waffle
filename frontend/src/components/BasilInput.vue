@@ -60,6 +60,7 @@ export default {
       selectAll: false,
       displayString: '',
       debounceTimer: null,
+      pendingValue: null, // tracks what we're about to emit during debounce
     }
   },
 
@@ -77,12 +78,13 @@ export default {
       return ''
     },
     effectiveDebounce() {
-      return this.debounce || (this.variant === 'search' ? 300 : 0)
+      return this.debounce || (this.variant === 'search' ? 100 : 0)
     },
     displayValue() {
       if (this.variant === 'amount') {
         return this.displayString || (this.modelValue ? String(this.modelValue) : '')
       }
+      if (this.pendingValue != null) return this.pendingValue
       return String(this.modelValue)
     },
   },
@@ -113,13 +115,16 @@ export default {
 
   methods: {
     emitDebounced(value) {
+      this.pendingValue = value
       if (this.effectiveDebounce > 0) {
         clearTimeout(this.debounceTimer)
         this.debounceTimer = setTimeout(() => {
           this.$emit('update:modelValue', value)
+          this.pendingValue = null
         }, this.effectiveDebounce)
       } else {
         this.$emit('update:modelValue', value)
+        this.pendingValue = null
       }
     },
 
@@ -139,6 +144,8 @@ export default {
       // Register blur callback so the singleton can unfocus us when another input takes over
       setActiveBlur(() => {
         this.isFocused = false
+        this.pendingValue = null
+        clearTimeout(this.debounceTimer)
         this.$emit('blur')
       })
       this.$emit('focus')
@@ -180,7 +187,8 @@ export default {
         this.$emit('update:modelValue', parsed || 0)
         return
       }
-      this.emitDebounced(String(this.modelValue) + char)
+      const current = this.pendingValue != null ? this.pendingValue : String(this.modelValue)
+      this.emitDebounced(current + char)
     },
 
     onBackspace() {
@@ -200,7 +208,8 @@ export default {
         this.$emit('update:modelValue', isNaN(parsed) ? 0 : parsed)
         return
       }
-      this.emitDebounced(String(this.modelValue).slice(0, -1))
+      const current = this.pendingValue != null ? this.pendingValue : String(this.modelValue)
+      this.emitDebounced(current.slice(0, -1))
     },
 
     onDone() {
