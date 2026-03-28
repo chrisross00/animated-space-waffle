@@ -341,22 +341,9 @@ export default {
 
           const wrapHeight = wrapEl.offsetHeight || 1
           // Velocity in px/s from useGesture; convert to px/ms for comparison
-          const velocityPxMs = Math.abs(state.velocityY) / 1000
+          const velocityPxMs = state.velocityY / 1000  // positive = downward
           const draggedPastThreshold = state.deltaY > wrapHeight * 0.25
-          const fastSwipe = velocityPxMs > 0.4
-
-          // DEBUG: remove after testing
-          console.log('[BasilTray onEnd]', {
-            deltaY: state.deltaY,
-            velocityY: state.velocityY,
-            velocityPxMs,
-            wrapHeight,
-            threshold25pct: wrapHeight * 0.25,
-            draggedPastThreshold,
-            fastSwipe,
-            willDismiss: (fastSwipe || draggedPastThreshold) && !this.persistent,
-            swipedDown: state.swipedDown,
-          })
+          const fastSwipe = velocityPxMs > 0.4  // only fast DOWNWARD swipes
 
           if ((fastSwipe || draggedPastThreshold) && !this.persistent) {
             // Dismiss: let CSS transition animate from current position to offscreen
