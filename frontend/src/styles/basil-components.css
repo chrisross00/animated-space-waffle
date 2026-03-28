@@ -463,11 +463,10 @@
   outline-offset: 2px;
 }
 
-/* dialog showModal() autofocus triggers :focus-visible on iOS Safari.
-   Suppress the outline on icon buttons inside dialogs — they have
+/* Suppress :focus-visible outline on icon buttons inside trays — they have
    hover/active feedback and the ring is visually disruptive on the
    round shape.  Keyboard focus still works for labeled buttons.      */
-dialog .basil-btn.basil-btn--icon:focus-visible {
+.basil-tray .basil-btn.basil-btn--icon:focus-visible {
   outline: none;
 }
 

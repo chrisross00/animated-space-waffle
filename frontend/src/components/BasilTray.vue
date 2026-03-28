@@ -34,7 +34,8 @@
 <script>
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
-import { nextTick } from 'vue'
+import { keyboardState, getActiveInputEl } from '@/utils/basilKeyboard'
+import { nextTick, watch } from 'vue'
 
 // Module-level tray stack for nested tray detection
 const trayStack = []
@@ -101,6 +102,7 @@ function lockScroll() {
 }
 
 function unlockScroll() {
+  if (scrollLockCount <= 0) return
   scrollLockCount--
   if (scrollLockCount > 0) return
   if (scrollLockCleanup) { scrollLockCleanup(); scrollLockCleanup = null }
@@ -179,9 +181,56 @@ export default {
     this.stopGesture = null
     this._closeTimer = null
     this._closing = false
+    // When keyboard opens inside this tray, adapt:
+    // - Snap point trays: expand to full (and stay there)
+    // - Standard trays: shift up so keyboard doesn't cover the input
+    // Watch height (not isOpen) because height is set after isOpen on nextTick.
+    this._stopKeyboardWatch = watch(
+      () => keyboardState.height,
+      (height) => {
+        if (!this.mounted || !this.isTopmostTray()) return
+        if (!this.screen.isMobile) return
+
+        const wrapEl = this.$refs.wrapRef
+        if (!wrapEl) return
+
+        if (this.hasSnapPoints) {
+          // Snap point tray: expand to full and stay there
+          if (height > 0) {
+            const lastIdx = this.snapPoints.length - 1
+            if (this._snapIndex < lastIdx) this._snapToIndex(lastIdx)
+          }
+        } else {
+          // Standard tray: shift up just enough so focused input clears the keyboard
+          if (height > 0) {
+            const inputEl = getActiveInputEl()
+            if (inputEl) {
+              const inputBottom = inputEl.getBoundingClientRect().bottom
+              const keyboardTop = window.innerHeight - height
+              const padding = 40 // breathing room above keyboard
+              const overlap = inputBottom - keyboardTop + padding
+              if (overlap > 0) {
+                wrapEl.style.transition = TRANSITION_CSS
+                wrapEl.style.bottom = `${overlap}px`
+              }
+            }
+          } else {
+            wrapEl.style.transition = TRANSITION_CSS
+            wrapEl.style.bottom = '0'
+            this._waitForTransitionEnd(() => {
+              if (wrapEl.style.bottom === '0px' || wrapEl.style.bottom === '0') {
+                wrapEl.style.bottom = ''
+                wrapEl.style.transition = ''
+              }
+            })
+          }
+        }
+      },
+    )
   },
 
   beforeUnmount() {
+    if (this._stopKeyboardWatch) { this._stopKeyboardWatch(); this._stopKeyboardWatch = null }
     if (this.stopGesture) { this.stopGesture(); this.stopGesture = null }
     clearTimeout(this._closeTimer)
     if (this.mounted) {
@@ -283,8 +332,6 @@ export default {
       this.$emit('before-hide')
 
       if (this.stopGesture) { this.stopGesture(); this.stopGesture = null }
-      trayStack.splice(trayStack.indexOf(this), 1)
-      unlockScroll()
 
       if (this.screen.isMobile) {
         if (this.hasSnapPoints) {
@@ -320,8 +367,6 @@ export default {
       this.$emit('before-hide')
 
       if (this.stopGesture) { this.stopGesture(); this.stopGesture = null }
-      trayStack.splice(trayStack.indexOf(this), 1)
-      unlockScroll()
 
       const wrapEl = this.$refs.wrapRef
       const backdropEl = this.$refs.backdropRef
@@ -341,19 +386,18 @@ export default {
       })
     },
 
-    // ── Animated reset (snap back after insufficient drag) ──
-    _animateReset(targetOffset = null) {
+    // ── Animated reset (snap back to open after insufficient drag) ──
+    _animateReset() {
       const wrapEl = this.$refs.wrapRef
       const backdropEl = this.$refs.backdropRef
-      const target = targetOffset != null ? `translateY(${targetOffset}px)` : 'translateY(0)'
 
       if (wrapEl) {
         wrapEl.style.transition = TRANSITION_CSS
-        wrapEl.style.transform = target
+        wrapEl.style.transform = 'translateY(0)'
       }
       if (backdropEl) {
         backdropEl.style.transition = OPACITY_TRANSITION_CSS
-        backdropEl.style.opacity = this._snapIndex >= this._fadeFromIndex ? '1' : (targetOffset != null ? '0' : '1')
+        backdropEl.style.opacity = '1'
       }
 
       this._waitForTransitionEnd(() => {
@@ -387,6 +431,8 @@ export default {
     _finishClose() {
       if (!this._closing) return
       this._closing = false
+      trayStack.splice(trayStack.indexOf(this), 1)
+      unlockScroll()
       this.mounted = false
       this.$emit('hide')
       nextTick(() => {
