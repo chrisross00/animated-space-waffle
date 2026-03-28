@@ -85,7 +85,7 @@ import { humanizeDetailedPfc } from '@/utils/pfcLabels'
 
 use([PieChart, TooltipComponent, GraphicComponent, CanvasRenderer])
 
-const OTHER_THRESHOLD = 0.01 // 1% collapse
+const OTHER_THRESHOLD = 0.02 // 2% collapse
 
 export default {
   name: 'SpendingBreakdown',
