@@ -442,9 +442,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--basil-space-4) var(--basil-space-5);
-  border-top: 1px solid var(--basil-border);
+  padding: var(--basil-space-3) var(--basil-space-5);
   flex-shrink: 0;
+  border-top: 1px solid var(--basil-border);
 }
 
 .basil-dialog-actions__right {
