@@ -88,7 +88,7 @@ npm run build          # outputs to frontend/dist/ (served by Express in product
 | `frontend/src/store.js` | Vuex store (user, session, transactionsByMonth, categories, rules) |
 | `frontend/src/api.js` | All fetch calls to backend API + auth helpers |
 | `frontend/src/components/basil/` | Basil component library — globally registered UI components (BasilButton, BasilCard, BasilSelect, BasilToggle, BasilList, BasilTabs, BasilTable, etc.) |
-| `frontend/src/composables/` | Vue composables — `useScreen` (breakpoints), `useGesture` (swipe/drag), `useToast` (notifications) |
+| `frontend/src/composables/` | Vue composables — `useScreen` (breakpoints), `useGesture` (swipe/drag), `useToast` (notifications), `useScrollLock` (iOS body scroll prevention) |
 | `utils/venmoEnrichment.js` | Venmo CSV parser + transaction enrichment matching |
 | `utils/categoryMapping.js` | Transaction categorization rule engine |
 
@@ -270,11 +270,12 @@ name pattern / amount / amount + institution".
 ## Backlog
 
 ### High priority
-- [ ] **BasilKeyboard: replace DOM appendChild with proper Teleport** — The keyboard
-      currently uses `appendChild` to move itself into open `<dialog>` elements (needed
-      because `<dialog>` top layer sits above all z-index). Vue doesn't track this DOM
-      move, so a re-render could orphan the keyboard element. Replace with a reactive
-      Teleport target or restructure so the keyboard renders inside each tray's slot.
+- [ ] **BasilTray: shouldDrag gesture handoff** — Implement Vaul's `shouldDrag` decision
+      tree for snap point trays. Enables continuous gesture handoff between tray drag and
+      content scroll (Apple Maps behavior): drag tray to full → finger keeps moving →
+      content scrolls. And reverse: scroll content to top → keep pulling down → tray drags
+      closed. Without this, flicking a snap tray open also scrolls its content body.
+      See `plans/basil-tray-vaul.md` "shouldDrag decision tree" section for full spec.
 - [ ] **Income detection nudge + quick-fix** — When the current month has zero Income
       but large inbound transfers exist, surface a nudge on the budget page showing
       the suspected paycheck(s) inline: "We found a $4,700 deposit — is this income?"
@@ -314,6 +315,9 @@ name pattern / amount / amount + institution".
       specific transaction.
 
 ### Tech debt
+- [ ] **Scroll-into-view smoothness** — `smoothScrollBy` in `basilKeyboard.js` uses
+      RAF-based JS scrolling (low FPS on ProMotion). Replace with
+      `scrollParent.scrollTo({ top, behavior: 'smooth' })` for compositor-driven animation.
 - [ ] **Admin toolbox route consolidation** — shared helper for test data insert routes.
 - [ ] **Rename `plaid_items` → `plaid_links`** — cosmetic, do when convenient.
 - [ ] **BudgetView: eliminate local transaction array** — low priority cleanup.
