@@ -20,6 +20,7 @@
     </div>
 
     <!-- Expanded breakdown -->
+    <Transition name="basil-breakdown">
     <div v-if="expanded" class="basil-breakdown__body">
       <!-- Back link (drill-down only) -->
       <div v-if="mode === 'detail-single'" class="basil-breakdown__back" @click="backToCategories">
@@ -46,7 +47,7 @@
       </div>
 
       <!-- Chip legend -->
-      <div class="basil-breakdown__chips">
+      <div class="basil-breakdown__chips" :key="mode + (drillCategory || '')">
         <span
           v-for="chip in chips"
           :key="chip.label"
@@ -69,6 +70,7 @@
         Set a limit for {{ drillCategory }} →
       </div>
     </div>
+    </Transition>
   </div>
 </template>
 
@@ -159,6 +161,11 @@ export default {
       const slices = this.activeBreakdown
       if (!slices.length) return {}
 
+      const isDark = document.documentElement.classList.contains('basil-dark')
+      const surfaceColor = isDark ? '#181c24' : '#ffffff'
+      const textColor = isDark ? '#e5e0d8' : '#2a2a2a'
+      const textMutedColor = isDark ? '#8a8580' : '#888888'
+
       return {
         ...CHART_ANIMATION,
         series: [{
@@ -167,7 +174,7 @@ export default {
           center: ['50%', '50%'],
           minAngle: 8,
           padAngle: 2,
-          itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 2 },
+          itemStyle: { borderColor: surfaceColor, borderWidth: 2, borderRadius: 2 },
           label: { show: false },
           emphasis: { scale: true, scaleSize: 4 },
           data: slices.map((s, i) => ({
@@ -185,7 +192,7 @@ export default {
             textAlign: 'center',
             fontSize: 20,
             fontWeight: 500,
-            fill: 'var(--basil-text)',
+            fill: textColor,
           },
         }, {
           type: 'text',
@@ -195,7 +202,7 @@ export default {
             text: this.centerLabel.sub,
             textAlign: 'center',
             fontSize: 11,
-            fill: 'var(--basil-text-muted)',
+            fill: textMutedColor,
           },
         }],
         tooltip: {
@@ -372,5 +379,18 @@ export default {
   margin-top: var(--basil-space-3);
   padding: var(--basil-space-2);
   -webkit-tap-highlight-color: transparent;
+}
+
+.basil-breakdown-enter-active {
+  animation: breakdownExpand 300ms ease-out;
+}
+
+.basil-breakdown-leave-active {
+  animation: breakdownExpand 200ms ease-in reverse;
+}
+
+@keyframes breakdownExpand {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
