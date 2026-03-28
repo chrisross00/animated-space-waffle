@@ -110,7 +110,15 @@ export default {
   methods: {
     open() {
       const dialog = this.$refs.dialogRef
-      if (!dialog || dialog.open) return
+      if (!dialog) return
+
+      // Cancel any pending exit animation from a previous close
+      if (this._exitTimer) {
+        clearTimeout(this._exitTimer)
+        this._exitTimer = null
+      }
+
+      if (dialog.open && !this.closing) return
 
       this.closing = false
       this.$emit('before-show')
@@ -173,13 +181,23 @@ export default {
     },
 
     _finalizeClose(dialog) {
-      if (dialog.open) dialog.close()
+      // Set isVisible false BEFORE dialog.close() so onNativeClose
+      // (which fires synchronously from dialog.close()) can detect
+      // that _finalizeClose already handled cleanup and skip it.
       this.isVisible = false
+      if (dialog.open) dialog.close()
       this.backdropVisible = false
       this.entered = false
       this.closing = false
       this.dragOffset = 0
       this.dragging = false
+      // Clean up gesture so stale internal state doesn't affect next open
+      if (this.stopGesture) {
+        this.stopGesture()
+        this.stopGesture = null
+      }
+      // Clear any inline backdrop color from drag
+      if (dialog) dialog.style.backgroundColor = ''
       this.unlockBodyScroll()
       this.$emit('hide')
 
@@ -191,7 +209,10 @@ export default {
     },
 
     onNativeClose() {
-      // The dialog was closed (either by us or by the browser)
+      // If _finalizeClose already handled cleanup, skip to avoid
+      // double-decrementing the scroll lock counter.
+      if (!this.isVisible) return
+
       this.isVisible = false
       this.backdropVisible = false
       this.entered = false
