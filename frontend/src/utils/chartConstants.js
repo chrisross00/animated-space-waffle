@@ -1,8 +1,9 @@
-/** Warm/editorial chart palette — 15 distinct colours, cycled via index % length. */
+/** Warm editorial chart palette — earth tones with muted cool accents.
+ *  15 distinct colours, cycled via index % length. */
 export const CHART_PALETTE = [
-  '#4a8b6c', '#c07a1a', '#2366a8', '#b05a3a', '#7a5ab5',
-  '#5a8a4a', '#b54a6a', '#3a8b8b', '#b07040', '#5a6ab5',
-  '#8b4a7a', '#3a6b8b', '#8a6a2a', '#3a7a3a', '#a84a4a',
+  '#4a8b6c', '#c48a2a', '#7a8fa5', '#c25a40', '#8a7a9a',
+  '#6a9a6a', '#b07858', '#5a8a7a', '#a08a3a', '#8a6a5a',
+  '#6a7a8a', '#9a7a6a', '#5a9a8a', '#b0885a', '#7a9a7a',
 ]
 
 /** Shared ECharts animation config. */

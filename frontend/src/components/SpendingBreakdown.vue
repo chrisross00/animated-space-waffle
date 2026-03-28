@@ -14,7 +14,7 @@
             stroke="var(--basil-border)" stroke-dasharray="18 38" stroke-dashoffset="-20"
             style="transform: rotate(-90deg); transform-origin: center;" />
         </svg>
-        <span class="basil-breakdown__trigger-label">Where's my spending?</span>
+        <span class="basil-breakdown__trigger-label">Spending breakdown</span>
       </div>
       <BasilIcon :name="expanded ? 'expand_less' : 'chevron_right'" size="18px" class="basil-breakdown__chevron" />
     </div>
@@ -32,6 +32,7 @@
         class="basil-breakdown__chart"
         :option="chartOption"
         autoresize
+        @click="onChartClick"
       />
 
       <!-- Detailed view toggle (hidden during drill-down) -->
@@ -121,7 +122,7 @@ export default {
     },
 
     categoryBreakdown() {
-      return this._buildBreakdown(this.expenseTransactions, t => t.mappedCategory, label => label)
+      return this._buildBreakdown(this.expenseTransactions, t => t.mappedCategory, label => label, false)
     },
 
     detailBreakdown() {
@@ -162,9 +163,11 @@ export default {
         ...CHART_ANIMATION,
         series: [{
           type: 'pie',
-          radius: ['40%', '70%'],
+          radius: ['54%', '72%'],
           center: ['50%', '50%'],
           minAngle: 8,
+          padAngle: 2,
+          itemStyle: { borderColor: '#fff', borderWidth: 2, borderRadius: 2 },
           label: { show: false },
           emphasis: { scale: true, scaleSize: 4 },
           data: slices.map((s, i) => ({
@@ -230,7 +233,14 @@ export default {
       this.mode = 'category'
     },
 
-    _buildBreakdown(txns, keyFn, labelFn) {
+    onChartClick(params) {
+      if (this.mode !== 'category' || !params.name) return
+      // Find the original key for this slice (category name matches the label in category mode)
+      const chip = this.chips.find(c => c.label === params.name)
+      if (chip) this.drillInto(chip.categoryName)
+    },
+
+    _buildBreakdown(txns, keyFn, labelFn, collapseSmall = true) {
       const groups = {}
       for (const t of txns) {
         const key = keyFn(t)
@@ -241,6 +251,10 @@ export default {
       const sorted = Object.values(groups).sort((a, b) => b.total - a.total)
       const total = sorted.reduce((s, g) => s + g.total, 0)
       if (total === 0) return []
+
+      if (!collapseSmall) {
+        return sorted.map(g => ({ key: g.key, label: labelFn(g.key), total: g.total }))
+      }
 
       const result = []
       let otherTotal = 0
@@ -299,7 +313,7 @@ export default {
 
 .basil-breakdown__chart {
   width: 100%;
-  height: 200px;
+  height: 280px;
 }
 
 .basil-breakdown__toggle {

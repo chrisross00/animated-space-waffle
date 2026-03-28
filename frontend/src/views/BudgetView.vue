@@ -100,7 +100,7 @@
               <div class="basil-card-rule"></div>
               <SpendingBreakdown
                 :transactions="expenseTransactions"
-                :categories="store.state.categories || []"
+                :categories="$store.state.categories || []"
                 @edit-category="openEditCategoryFromBreakdown"
               />
             </template>
@@ -1102,9 +1102,12 @@
             .filter(c => c.type === 'expense')
             .map(c => c.category)
         )
-        return (this.transactions || []).filter(
-          t => expenseNames.has(t.mappedCategory) && !t.excludeFromTotal
-        )
+        const sel = this.selectedDate.actual
+        return (this.transactions || []).filter(t => {
+          if (!expenseNames.has(t.mappedCategory) || t.excludeFromTotal) return false
+          const d = dayjs(t.effectiveDate || t.date)
+          return d.year() === sel.year() && d.month() === sel.month()
+        })
       },
       categoryTypeMap() {
         const map = {};
