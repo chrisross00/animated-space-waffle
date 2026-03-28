@@ -11,7 +11,7 @@
     >
       <div
         ref="backdropRef"
-        :class="['basil-tray__backdrop', visible && !hasSnapPoints && 'basil-tray__backdrop--visible']"
+        :class="['basil-tray__backdrop', visible && (!hasSnapPoints || !screen.isMobile) && 'basil-tray__backdrop--visible']"
         @click="onBackdropClick"
       ></div>
       <div
@@ -34,93 +34,21 @@
 <script>
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
+import { lockScroll, unlockScroll } from '@/composables/useScrollLock'
 import { keyboardState, getActiveInputEl } from '@/utils/basilKeyboard'
 import { nextTick, watch } from 'vue'
 
 // Module-level tray stack for nested tray detection
 const trayStack = []
 
-// Scroll lock reference counting
-let scrollLockCount = 0
-let savedScrollY = 0
-let scrollLockCleanup = null
-
-function lockScroll() {
-  scrollLockCount++
-  if (scrollLockCount > 1) return
-
-  savedScrollY = window.scrollY
-  const body = document.body
-  body.style.position = 'fixed'
-  body.style.top = `-${savedScrollY}px`
-  body.style.left = '0'
-  body.style.right = '0'
-
-  let scrollable = null
-  let lastY = 0
-
-  function getScrollParent(node) {
-    if (!node) return null
-    if (isScrollable(node)) node = node.parentElement
-    while (node) {
-      if (isScrollable(node)) return node
-      node = node.parentElement
-    }
-    return null
-  }
-
-  function isScrollable(el) {
-    if (!el || el === document.documentElement || el === document.body) return false
-    const style = window.getComputedStyle(el)
-    return /(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)
-  }
-
-  function onTouchStart(e) {
-    scrollable = getScrollParent(e.target)
-    lastY = e.changedTouches[0].pageY
-  }
-
-  function onTouchMove(e) {
-    if (!scrollable) { e.preventDefault(); return }
-    const y = e.changedTouches[0].pageY
-    const scrollTop = scrollable.scrollTop
-    const bottom = scrollable.scrollHeight - scrollable.clientHeight
-    if (bottom === 0) return
-    if ((scrollTop <= 0 && y > lastY) || (scrollTop >= bottom && y < lastY)) {
-      e.preventDefault()
-    }
-    lastY = y
-  }
-
-  document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
-  document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
-
-  scrollLockCleanup = () => {
-    document.removeEventListener('touchstart', onTouchStart, { capture: true })
-    document.removeEventListener('touchmove', onTouchMove, { capture: true })
-  }
-}
-
-function unlockScroll() {
-  if (scrollLockCount <= 0) return
-  scrollLockCount--
-  if (scrollLockCount > 0) return
-  if (scrollLockCleanup) { scrollLockCleanup(); scrollLockCleanup = null }
-  const body = document.body
-  body.style.position = ''
-  body.style.top = ''
-  body.style.left = ''
-  body.style.right = ''
-  window.scrollTo(0, savedScrollY)
-}
-
 // --- Vaul constants ---
 const TRANSITION_CSS = 'transform 0.5s cubic-bezier(0.32, 0.72, 0, 1)'
 const OPACITY_TRANSITION_CSS = 'opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1)'
 const ANIM_DURATION = 500
-const VELOCITY_THRESHOLD = 400   // px/s
-const CLOSE_THRESHOLD = 0.25     // fraction of drawer height
+const VELOCITY_THRESHOLD = 400   // px/s (Vaul uses 0.4 px/ms)
+const CLOSE_THRESHOLD = 0.25     // close when dragged > 25% of drawer height
 
+// Vaul's rubber-band dampening: 8 * (Math.log(v + 1) - 2)
 function dampenValue(v) {
   return 8 * (Math.log(v + 1) - 2)
 }
@@ -146,7 +74,6 @@ export default {
       visible: false,
       dragging: false,
       screen,
-      _snapIndex: 0,  // internal snap point tracking
     }
   },
 
@@ -178,9 +105,15 @@ export default {
 
   mounted() {
     if (this.modelValue) this.open(true)
+
+    // Non-reactive private state (not in data() — no need for Vue proxying)
     this.stopGesture = null
     this._closeTimer = null
     this._closing = false
+    this._transitionGen = 0
+    this._snapIndex = 0
+    this._keyboardShift = 0
+
     // When keyboard opens inside this tray, adapt:
     // - Snap point trays: expand to full (and stay there)
     // - Standard trays: shift up so keyboard doesn't cover the input
@@ -207,21 +140,20 @@ export default {
             if (inputEl) {
               const inputBottom = inputEl.getBoundingClientRect().bottom
               const keyboardTop = window.innerHeight - height
-              const padding = 40 // breathing room above keyboard
+              const padding = 40
               const overlap = inputBottom - keyboardTop + padding
               if (overlap > 0) {
+                this._keyboardShift = overlap
                 wrapEl.style.transition = TRANSITION_CSS
-                wrapEl.style.bottom = `${overlap}px`
+                wrapEl.style.transform = `translateY(-${overlap}px)`
               }
             }
-          } else {
+          } else if (this._keyboardShift > 0) {
+            this._keyboardShift = 0
             wrapEl.style.transition = TRANSITION_CSS
-            wrapEl.style.bottom = '0'
+            wrapEl.style.transform = 'translateY(0)'
             this._waitForTransitionEnd(() => {
-              if (wrapEl.style.bottom === '0px' || wrapEl.style.bottom === '0') {
-                wrapEl.style.bottom = ''
-                wrapEl.style.transition = ''
-              }
+              this._clearInlineStyles()
             })
           }
         }
@@ -286,10 +218,9 @@ export default {
       // If closing animation is in progress, cancel it and reopen
       if (this._closing) {
         this._closing = false
-        this._transitionGen = (this._transitionGen || 0) + 1 // invalidate pending callbacks
+        this._transitionGen++
         clearTimeout(this._closeTimer)
         this._clearInlineStyles()
-        // Already mounted, just re-show
         this.visible = true
         this.setupGesture()
         return
@@ -430,11 +361,11 @@ export default {
       // Generation counter prevents stale callbacks from firing.
       // Each call increments the generation; if a newer call arrives
       // before the old one resolves, the old callback is silently dropped.
-      this._transitionGen = (this._transitionGen || 0) + 1
+      this._transitionGen++
       const gen = this._transitionGen
 
       const invoke = () => {
-        if (this._transitionGen !== gen) return // stale — a newer call superseded us
+        if (this._transitionGen !== gen) return
         callback()
       }
 
@@ -551,10 +482,8 @@ export default {
           const offsets = this._getSnapOffsets()
           const activeOffset = offsets[this._snapIndex]
           const deltaY = state.deltaY
-          // draggedDistance: positive = toward open (up), negative = toward close (down)
-          // For snap points, we track displacement from the active snap point.
-          const draggedDistance = -deltaY // invert: finger down = negative drag distance
-          const newPosition = activeOffset - draggedDistance // lower offset = more visible
+          const draggedDistance = -deltaY
+          const newPosition = activeOffset - draggedDistance
 
           // Clamp: don't go past the last (most visible) snap point
           const lastOffset = offsets[offsets.length - 1]
@@ -588,7 +517,7 @@ export default {
           const draggedDistance = -state.deltaY
           const currentPosition = activeOffset - draggedDistance
           const velocity = Math.abs(state.velocityY)
-          const draggingDown = state.deltaY > 0 // finger moved down
+          const draggingDown = state.deltaY > 0
 
           // Fast flick down → close from any snap point
           if (velocity > VELOCITY_THRESHOLD && draggingDown && !this.persistent) {
@@ -614,7 +543,7 @@ export default {
             }
           }
 
-          // If closest is below the first snap point and dismissible, close
+          // If dragged below first snap point past close threshold, dismiss
           if (currentPosition > offsets[0] && !this.persistent) {
             const overshoot = currentPosition - offsets[0]
             const wrapHeight = wrapEl.offsetHeight

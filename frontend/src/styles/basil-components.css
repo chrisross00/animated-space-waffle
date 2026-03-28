@@ -759,7 +759,8 @@ a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); 
   transform: translateY(0);
 }
 
-/* Gap coverage — prevents page from showing below tray during drag/animation */
+/* Gap coverage — extends tray background below the visible area so the page
+   doesn't peek through during drag, close animation, or overscroll bounce */
 .basil-tray .basil-tray__wrap--mobile::after {
   content: '';
   position: absolute;
