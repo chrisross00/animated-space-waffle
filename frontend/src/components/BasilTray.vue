@@ -28,6 +28,13 @@ import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
 import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
 
+// Global scroll lock — counter prevents child tray unlock from reverting parent lock.
+// position:fixed on body is the only reliable way to prevent iOS Safari from scrolling
+// the page behind an overlay (overflow:hidden on body is ignored by iOS).
+let scrollLockCount = 0
+let savedScrollY = 0
+let savedBodyStyles = {}
+
 export default {
   name: 'BasilTray',
   props: {
@@ -41,6 +48,7 @@ export default {
     return {
       dragOffset: 0,
       dragging: false,
+      hasScrollLock: false,
       screen,
       isVisible: false,
     }
@@ -114,8 +122,10 @@ export default {
       }
 
       this.$emit('before-hide')
-      dialog.close()
+      // Set isVisible false BEFORE dialog.close() so onNativeClose
+      // (which fires synchronously) can skip its own cleanup.
       this.isVisible = false
+      dialog.close()
       this.unlockBodyScroll()
       this.$emit('hide')
 
@@ -127,7 +137,10 @@ export default {
     },
 
     onNativeClose() {
-      // The dialog was closed (either by us or by the browser)
+      // If close() already handled cleanup, skip to avoid double-decrementing
+      // the scroll lock counter.
+      if (!this.isVisible) return
+
       this.isVisible = false
       this.unlockBodyScroll()
       if (this.modelValue) {
@@ -192,14 +205,32 @@ export default {
     },
 
     lockBodyScroll() {
-      this._prevOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
+      if (scrollLockCount === 0) {
+        savedScrollY = window.scrollY
+        savedBodyStyles = {
+          position: document.body.style.position,
+          top: document.body.style.top,
+          left: document.body.style.left,
+          right: document.body.style.right,
+          overflow: document.body.style.overflow,
+        }
+        document.body.style.position = 'fixed'
+        document.body.style.top = `-${savedScrollY}px`
+        document.body.style.left = '0'
+        document.body.style.right = '0'
+        document.body.style.overflow = 'hidden'
+      }
+      scrollLockCount++
+      this.hasScrollLock = true
     },
 
     unlockBodyScroll() {
-      if (this._prevOverflow !== undefined) {
-        document.body.style.overflow = this._prevOverflow
-        this._prevOverflow = undefined
+      if (!this.hasScrollLock) return
+      this.hasScrollLock = false
+      scrollLockCount = Math.max(0, scrollLockCount - 1)
+      if (scrollLockCount === 0) {
+        Object.assign(document.body.style, savedBodyStyles)
+        window.scrollTo(0, savedScrollY)
       }
     },
 
