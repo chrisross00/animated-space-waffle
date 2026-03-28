@@ -341,9 +341,9 @@ export default {
 
           const wrapHeight = wrapEl.offsetHeight || 1
           // Velocity in px/s from useGesture; convert to px/ms for comparison
-          const velocityPxMs = state.velocityY / 1000  // positive = downward
+          const velocityPxMs = Math.abs(state.velocityY) / 1000
           const draggedPastThreshold = state.deltaY > wrapHeight * 0.25
-          const fastSwipe = velocityPxMs > 0.4  // only fast DOWNWARD swipes
+          const fastSwipe = velocityPxMs > 0.4 && state.deltaY > 0  // fast + downward direction
 
           if ((fastSwipe || draggedPastThreshold) && !this.persistent) {
             // Dismiss: let CSS transition animate from current position to offscreen
