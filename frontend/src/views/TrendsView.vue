@@ -186,17 +186,9 @@ import dayjs from 'dayjs'
 import store from '../store'
 import { ensureAppData, fetchMonthRange } from '@/api'
 import EmptyState from '../components/EmptyState.vue'
+import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
-
-// Warm/editorial chart palette — 15 distinct colours
-const CHART_PALETTE = [
-  '#4a8b6c', '#c07a1a', '#2366a8', '#b05a3a', '#7a5ab5',
-  '#5a8a4a', '#b54a6a', '#3a8b8b', '#b07040', '#5a6ab5',
-  '#8b4a7a', '#3a6b8b', '#8a6a2a', '#3a7a3a', '#a84a4a',
-];
-
-const ANIMATION = { animation: true, animationDuration: 800, animationEasing: 'cubicOut' };
 
 export default {
   name: 'TrendsView',
@@ -282,7 +274,7 @@ export default {
 
     spendingChartOption() {
       return {
-        ...ANIMATION,
+        ...CHART_ANIMATION,
         tooltip: {
           trigger: 'item',
           formatter: (p) => `<strong>${p.name}</strong><br/>${p.marker}${p.seriesName}: $${p.value.toFixed(2)}`,
@@ -300,7 +292,7 @@ export default {
       const netValues = this.monthlyNet;
 
       return {
-        ...ANIMATION,
+        ...CHART_ANIMATION,
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -340,7 +332,7 @@ export default {
       const max = Math.max(...cumulativeValues, 0);
 
       return {
-        ...ANIMATION,
+        ...CHART_ANIMATION,
         tooltip: {
           trigger: 'axis',
           formatter: (params) => {
@@ -399,7 +391,7 @@ export default {
       }
 
       return {
-        ...ANIMATION,
+        ...CHART_ANIMATION,
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'cross' },
