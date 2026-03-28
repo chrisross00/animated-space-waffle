@@ -69,6 +69,8 @@ export default {
     onStart(e) {
       if (this.state === 'refreshing') return;
       if (!this.isMobile) return;
+      // Don't activate when a tray/dialog is open — touch events belong to the tray
+      if (document.querySelector('dialog.basil-tray[open]')) return;
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
       if (scrollTop > 0) return;
       this.startY = e.touches[0].clientY;
