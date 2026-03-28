@@ -1,28 +1,130 @@
 <template>
-  <dialog
-    ref="dialogRef"
-    class="basil-tray"
-    @close="onNativeClose"
-    @cancel="onCancel"
-    @click="onBackdropClick"
-  >
+  <Teleport to="body">
     <div
-      ref="wrapRef"
-      :class="['basil-tray__wrap', screen.isMobile && 'basil-tray__wrap--mobile']"
-      :style="[
-        !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
-        dragStyle,
-      ]"
+      v-if="isOpen"
+      ref="rootRef"
+      class="basil-tray"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      @keydown.esc="onEsc"
     >
-      <slot />
+      <div class="basil-tray__backdrop" @click="onBackdropClick"></div>
+      <div
+        ref="wrapRef"
+        :class="['basil-tray__wrap', screen.isMobile && 'basil-tray__wrap--mobile']"
+        :style="[
+          !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
+          dragStyle,
+        ]"
+      >
+        <slot />
+      </div>
     </div>
-  </dialog>
+  </Teleport>
 </template>
 
 <script>
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
+
+// Module-level tray stack for nested tray detection
+const trayStack = []
+
+// Scroll lock reference counting — only restore when last tray closes
+let scrollLockCount = 0
+let savedScrollY = 0
+let scrollLockCleanup = null
+
+function lockScroll() {
+  scrollLockCount++
+  if (scrollLockCount > 1) return
+
+  // Save scroll position and fix the body in place
+  savedScrollY = window.scrollY
+  const body = document.body
+  body.style.position = 'fixed'
+  body.style.top = `-${savedScrollY}px`
+  body.style.left = '0'
+  body.style.right = '0'
+
+  // iOS touch interception (from Vaul's preventScrollMobileSafari)
+  let scrollable = null
+  let lastY = 0
+
+  function getScrollParent(node) {
+    if (!node) return null
+    // If node itself is scrollable, start from parent
+    if (isScrollable(node)) node = node.parentElement
+    while (node) {
+      if (isScrollable(node)) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  function isScrollable(el) {
+    if (!el || el === document.documentElement || el === document.body) return false
+    const style = window.getComputedStyle(el)
+    return /(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)
+  }
+
+  function onTouchStart(e) {
+    scrollable = getScrollParent(e.target)
+    lastY = e.changedTouches[0].pageY
+  }
+
+  function onTouchMove(e) {
+    // No scrollable parent — block touch entirely (prevents viewport scroll)
+    if (!scrollable) {
+      e.preventDefault()
+      return
+    }
+
+    const y = e.changedTouches[0].pageY
+    const scrollTop = scrollable.scrollTop
+    const bottom = scrollable.scrollHeight - scrollable.clientHeight
+
+    // Element has no scrollable range
+    if (bottom === 0) {
+      return
+    }
+
+    // At top scrolling down, or at bottom scrolling up — block to prevent
+    // iOS from scrolling the viewport instead of the nested element
+    if ((scrollTop <= 0 && y > lastY) || (scrollTop >= bottom && y < lastY)) {
+      e.preventDefault()
+    }
+
+    lastY = y
+  }
+
+  document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
+  document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+
+  scrollLockCleanup = () => {
+    document.removeEventListener('touchstart', onTouchStart, { capture: true })
+    document.removeEventListener('touchmove', onTouchMove, { capture: true })
+  }
+}
+
+function unlockScroll() {
+  scrollLockCount--
+  if (scrollLockCount > 0) return
+
+  if (scrollLockCleanup) {
+    scrollLockCleanup()
+    scrollLockCleanup = null
+  }
+
+  const body = document.body
+  body.style.position = ''
+  body.style.top = ''
+  body.style.left = ''
+  body.style.right = ''
+  window.scrollTo(0, savedScrollY)
+}
 
 export default {
   name: 'BasilTray',
@@ -35,6 +137,7 @@ export default {
 
   data() {
     return {
+      isOpen: false,
       dragOffset: 0,
       dragging: false,
       screen,
@@ -61,14 +164,10 @@ export default {
   },
 
   mounted() {
-    // If initially open, show immediately
     if (this.modelValue) {
       this.open()
     }
-
-    // Set up gesture for drag-to-dismiss
     this.stopGesture = null
-    this.setupGesture()
   },
 
   beforeUnmount() {
@@ -76,82 +175,75 @@ export default {
       this.stopGesture()
       this.stopGesture = null
     }
-    this.unlockBodyScroll()
+    if (this.isOpen) {
+      trayStack.splice(trayStack.indexOf(this), 1)
+      unlockScroll()
+      this.isOpen = false
+    }
   },
 
   methods: {
     open() {
-      const dialog = this.$refs.dialogRef
-      if (!dialog || dialog.open) return
+      if (this.isOpen) return
 
+      this._previousFocus = document.activeElement
       this.$emit('before-show')
-      this.lockBodyScroll()
-
-      dialog.showModal()
+      this.isOpen = true
+      trayStack.push(this)
+      lockScroll()
 
       nextTick(() => {
+        this.$refs.rootRef?.focus()
         this.$emit('show')
-        // Re-setup gesture in case refs changed
         this.setupGesture()
       })
     },
 
     close() {
-      const dialog = this.$refs.dialogRef
-      if (!dialog || !dialog.open) return
+      if (!this.isOpen) return
 
       this.$emit('before-hide')
-      dialog.close()
-      this.unlockBodyScroll()
-      this.$emit('hide')
-    },
 
-    onNativeClose() {
-      // The dialog was closed (either by us or by the browser)
-      this.unlockBodyScroll()
+      if (this.stopGesture) {
+        this.stopGesture()
+        this.stopGesture = null
+      }
+
+      trayStack.splice(trayStack.indexOf(this), 1)
+      unlockScroll()
+      this.isOpen = false
+
+      this.$emit('hide')
+
+      // Restore focus to previously focused element
+      nextTick(() => {
+        this._previousFocus?.focus()
+        this._previousFocus = null
+      })
+
+      // Sync v-model if not already false
       if (this.modelValue) {
         this.$emit('update:modelValue', false)
       }
     },
 
-    onCancel(e) {
-      // Native cancel event fires on Escape key press
-      if (this.persistent) {
-        e.preventDefault()
-        return
-      }
-      // Allow close — onNativeClose will fire next and emit update:modelValue
+    onEsc() {
+      if (this.persistent) return
+      // Only close the topmost tray
+      if (trayStack[trayStack.length - 1] !== this) return
+      this.$emit('update:modelValue', false)
     },
 
-    onBackdropClick(e) {
-      // Native <dialog> backdrop is the dialog element itself.
-      // Clicks on child elements (the wrap) won't have target === dialog.
-      if (e.target !== this.$refs.dialogRef) return
+    onBackdropClick() {
       if (this.persistent) return
       this.$emit('update:modelValue', false)
     },
 
-    lockBodyScroll() {
-      this._prevOverflow = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-    },
-
-    unlockBodyScroll() {
-      if (this._prevOverflow !== undefined) {
-        document.body.style.overflow = this._prevOverflow
-        this._prevOverflow = undefined
-      }
-    },
-
-    hasChildDialogOpen() {
-      // Check if another dialog is open on top of this one (e.g. date picker tray inside edit tray)
-      const dialog = this.$refs.dialogRef
-      if (!dialog) return false
-      return dialog.querySelector('dialog[open]') !== null
+    isTopmostTray() {
+      return trayStack[trayStack.length - 1] === this
     },
 
     setupGesture() {
-      // Clean up any existing gesture
       if (this.stopGesture) {
         this.stopGesture()
         this.stopGesture = null
@@ -165,16 +257,14 @@ export default {
       this.stopGesture = useGesture(wrapEl, {
         direction: 'vertical',
         onMove: (state) => {
-          // Ignore gestures if another dialog is stacked on top of this one
-          if (this.hasChildDialogOpen()) return
-          // Only allow dragging downward
+          if (!this.isTopmostTray()) return
           if (state.deltaY > 0) {
             this.dragOffset = state.deltaY
             this.dragging = true
           }
         },
         onEnd: (state) => {
-          if (this.hasChildDialogOpen()) return
+          if (!this.isTopmostTray()) return
           if (state.swipedDown && !this.persistent) {
             this.$emit('update:modelValue', false)
           }
