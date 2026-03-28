@@ -8,6 +8,7 @@
       aria-modal="true"
       tabindex="-1"
       @keydown.esc="onEsc"
+      @pointerdown="onRootPointerDown"
     >
       <div
         ref="backdropRef"
@@ -113,6 +114,8 @@ export default {
     this._transitionGen = 0
     this._snapIndex = 0
     this._keyboardShift = 0
+    this._justReleased = false
+    this._justReleasedTimer = null
 
     // When keyboard opens inside this tray, adapt:
     // - Snap point trays: expand to full (and stay there)
@@ -397,7 +400,23 @@ export default {
       if (this.modelValue) this.$emit('update:modelValue', false)
     },
 
+    // ── justReleased — prevents accidental input focus after fast drag ──
+    _setJustReleased(velocity) {
+      if (velocity <= 50) return // only for meaningful drags (px/s)
+      this._justReleased = true
+      clearTimeout(this._justReleasedTimer)
+      this._justReleasedTimer = setTimeout(() => { this._justReleased = false }, 200)
+    },
+
     // ── Event handlers ───────────────────────────────────
+    onRootPointerDown(e) {
+      // After a fast drag release, prevent the ending touch from accidentally
+      // focusing an input that happens to be under the finger.
+      if (this._justReleased) {
+        e.preventDefault()
+      }
+    },
+
     onEsc() {
       if (this.persistent) return
       if (trayStack[trayStack.length - 1] !== this) return
@@ -462,6 +481,8 @@ export default {
           const dragDistance = state.deltaY
           const velocity = Math.abs(state.velocityY)
 
+          this._setJustReleased(velocity)
+
           if (dragDistance <= 0) { this._animateReset(); return }
           if (this.persistent) { this._animateReset(); return }
           if (velocity > VELOCITY_THRESHOLD) { this._animateClose(); return }
@@ -485,24 +506,31 @@ export default {
           const draggedDistance = -deltaY
           const newPosition = activeOffset - draggedDistance
 
-          // Clamp: don't go past the last (most visible) snap point
+          // Past the last (most visible) snap point — rubber-band
           const lastOffset = offsets[offsets.length - 1]
-          const clampedPosition = Math.max(newPosition, lastOffset)
+          let finalPosition
+          if (newPosition < lastOffset) {
+            const overDrag = lastOffset - newPosition
+            const dampened = dampenValue(overDrag)
+            finalPosition = lastOffset - Math.max(dampened, 0)
+          } else {
+            finalPosition = newPosition
+          }
 
           this.dragging = true
           wrapEl.style.transition = 'none'
-          wrapEl.style.transform = `translateY(${clampedPosition}px)`
+          wrapEl.style.transform = `translateY(${finalPosition}px)`
 
           // Backdrop opacity: interpolate based on position relative to fadeFromIndex
           if (backdropEl) {
             const fadeOffset = offsets[this._fadeFromIndex] || offsets[offsets.length - 1]
             const firstOffset = offsets[0]
-            if (clampedPosition <= fadeOffset) {
+            if (finalPosition <= fadeOffset) {
               backdropEl.style.opacity = '1'
-            } else if (clampedPosition >= firstOffset) {
+            } else if (finalPosition >= firstOffset) {
               backdropEl.style.opacity = '0'
             } else {
-              const pct = (clampedPosition - fadeOffset) / (firstOffset - fadeOffset)
+              const pct = (finalPosition - fadeOffset) / (firstOffset - fadeOffset)
               backdropEl.style.opacity = String(Math.max(0, Math.min(1, 1 - pct)))
             }
             backdropEl.style.transition = 'none'
@@ -518,6 +546,8 @@ export default {
           const currentPosition = activeOffset - draggedDistance
           const velocity = Math.abs(state.velocityY)
           const draggingDown = state.deltaY > 0
+
+          this._setJustReleased(velocity)
 
           // Fast flick down → close from any snap point
           if (velocity > VELOCITY_THRESHOLD && draggingDown && !this.persistent) {
