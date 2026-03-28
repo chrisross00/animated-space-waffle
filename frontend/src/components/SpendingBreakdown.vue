@@ -209,7 +209,7 @@ export default {
           trigger: 'item',
           confine: true,
           formatter: p => {
-            if (p.componentType !== 'series') return ''
+            if (!p.name || isNaN(p.value)) return ''
             return `${p.name}: $${Math.round(p.value).toLocaleString()} (${p.percent}%)`
           },
         },
