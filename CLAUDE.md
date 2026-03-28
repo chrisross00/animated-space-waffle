@@ -315,14 +315,6 @@ name pattern / amount / amount + institution".
       specific transaction.
 
 ### Tech debt
-- [ ] **Custom keyboard typing speed on mobile** — search fields (Category picker,
-      Show All table) feel sluggish on mobile. Desktop is fine. The keystroke path is
-      `BasilKeyboard → emitKey → BasilInput.onKey → emitDebounced → parent`. Needs
-      profiling on a real device to identify the bottleneck. The 300ms search debounce
-      delays the parent update but shouldn't block display — yet the display reads
-      `modelValue` which doesn't update until the debounce fires. A local buffer
-      approach was attempted and broke (characters stopped appearing after a few keys).
-      Root cause TBD.
 - [ ] **Scroll-into-view smoothness** — `smoothScrollBy` in `basilKeyboard.js` uses
       RAF-based JS scrolling (low FPS on ProMotion). Replace with
       `scrollParent.scrollTo({ top, behavior: 'smooth' })` for compositor-driven animation.
