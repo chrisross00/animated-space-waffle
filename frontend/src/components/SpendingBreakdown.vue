@@ -207,7 +207,11 @@ export default {
         }],
         tooltip: {
           trigger: 'item',
-          formatter: p => `${p.name}: $${Math.round(p.value).toLocaleString()} (${p.percent}%)`,
+          confine: true,
+          formatter: p => {
+            if (p.componentType !== 'series') return ''
+            return `${p.name}: $${Math.round(p.value).toLocaleString()} (${p.percent}%)`
+          },
         },
       }
     },
