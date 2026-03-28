@@ -281,10 +281,19 @@ export default {
 
     // ── Open ──────────────────────────────────────────────
     open(skipAnimation = false) {
-      if (this.mounted) return
+      if (this.mounted && !this._closing) return
 
-      clearTimeout(this._closeTimer)
-      this._closing = false
+      // If closing animation is in progress, cancel it and reopen
+      if (this._closing) {
+        this._closing = false
+        this._transitionGen = (this._transitionGen || 0) + 1 // invalidate pending callbacks
+        clearTimeout(this._closeTimer)
+        this._clearInlineStyles()
+        // Already mounted, just re-show
+        this.visible = true
+        this.setupGesture()
+        return
+      }
       this._previousFocus = document.activeElement
       this.$emit('before-show')
       trayStack.push(this)
@@ -332,6 +341,10 @@ export default {
       this.$emit('before-hide')
 
       if (this.stopGesture) { this.stopGesture(); this.stopGesture = null }
+
+      // Clear any in-progress drag/reset inline styles so the CSS
+      // class transition can take effect for the close animation
+      this._clearInlineStyles()
 
       if (this.screen.isMobile) {
         if (this.hasSnapPoints) {
@@ -414,17 +427,28 @@ export default {
     },
 
     _waitForTransitionEnd(callback) {
+      // Generation counter prevents stale callbacks from firing.
+      // Each call increments the generation; if a newer call arrives
+      // before the old one resolves, the old callback is silently dropped.
+      this._transitionGen = (this._transitionGen || 0) + 1
+      const gen = this._transitionGen
+
+      const invoke = () => {
+        if (this._transitionGen !== gen) return // stale — a newer call superseded us
+        callback()
+      }
+
       const wrapEl = this.$refs.wrapRef
       const onEnd = (e) => {
         if (e.target !== wrapEl) return
         wrapEl?.removeEventListener('transitionend', onEnd)
         clearTimeout(this._closeTimer)
-        callback()
+        invoke()
       }
       wrapEl?.addEventListener('transitionend', onEnd)
       this._closeTimer = setTimeout(() => {
         wrapEl?.removeEventListener('transitionend', onEnd)
-        callback()
+        invoke()
       }, ANIM_DURATION + 50)
     },
 
