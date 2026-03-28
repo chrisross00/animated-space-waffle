@@ -29,11 +29,59 @@ import { nextTick } from 'vue'
 import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
 
 // Global scroll lock — counter prevents child tray unlock from reverting parent lock.
-// position:fixed on body is the only reliable way to prevent iOS Safari from scrolling
-// the page behind an overlay (overflow:hidden on body is ignored by iOS).
+// iOS Safari ignores overflow:hidden on body. The only reliable prevention is
+// intercepting touchmove events with { passive: false } and calling preventDefault().
+// This is the same technique used by Vaul, body-scroll-lock, and React Aria.
 let scrollLockCount = 0
-let savedScrollY = 0
 let savedBodyStyles = {}
+let scrollPreventCleanup = null
+
+function preventScrolliOS() {
+  let scrollable, lastY
+
+  function isScrollable(node) {
+    const style = window.getComputedStyle(node)
+    return /(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)
+  }
+
+  function getScrollParent(node) {
+    while (node && node !== document.body && node !== document.documentElement) {
+      if (isScrollable(node)) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  function onTouchStart(e) {
+    scrollable = getScrollParent(e.target)
+    lastY = e.changedTouches[0].pageY
+  }
+
+  function onTouchMove(e) {
+    // No scrollable ancestor inside the tray — block the scroll entirely
+    if (!scrollable) {
+      e.preventDefault()
+      return
+    }
+    // Inside a scrollable element — allow scrolling within but block at boundaries
+    // (at boundaries, iOS would "escape" and scroll the page behind)
+    const y = e.changedTouches[0].pageY
+    const top = scrollable.scrollTop
+    const bottom = scrollable.scrollHeight - scrollable.clientHeight
+    if (bottom > 0 && ((top <= 0 && y > lastY) || (top >= bottom && y < lastY))) {
+      e.preventDefault()
+    }
+    lastY = y
+  }
+
+  document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
+  document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+
+  return () => {
+    document.removeEventListener('touchstart', onTouchStart, true)
+    document.removeEventListener('touchmove', onTouchMove, true)
+  }
+}
 
 export default {
   name: 'BasilTray',
@@ -206,19 +254,9 @@ export default {
 
     lockBodyScroll() {
       if (scrollLockCount === 0) {
-        savedScrollY = window.scrollY
-        savedBodyStyles = {
-          position: document.body.style.position,
-          top: document.body.style.top,
-          left: document.body.style.left,
-          right: document.body.style.right,
-          overflow: document.body.style.overflow,
-        }
-        document.body.style.position = 'fixed'
-        document.body.style.top = `-${savedScrollY}px`
-        document.body.style.left = '0'
-        document.body.style.right = '0'
+        savedBodyStyles = { overflow: document.body.style.overflow }
         document.body.style.overflow = 'hidden'
+        scrollPreventCleanup = preventScrolliOS()
       }
       scrollLockCount++
       this.hasScrollLock = true
@@ -229,8 +267,11 @@ export default {
       this.hasScrollLock = false
       scrollLockCount = Math.max(0, scrollLockCount - 1)
       if (scrollLockCount === 0) {
+        if (scrollPreventCleanup) {
+          scrollPreventCleanup()
+          scrollPreventCleanup = null
+        }
         Object.assign(document.body.style, savedBodyStyles)
-        window.scrollTo(0, savedScrollY)
       }
     },
 
