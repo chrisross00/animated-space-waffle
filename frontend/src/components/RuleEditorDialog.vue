@@ -1,6 +1,6 @@
 <template>
   <BasilTray :model-value="modelValue" @update:model-value="onModelValueUpdate"
-    max-width="680px">
+    max-width="680px" :snap-points="[0.45, 0.9]">
     <BasilCard class="basil-dialog-card basil-re__card" flat>
 
       <!-- Header -->
@@ -238,7 +238,6 @@
   overflow-y: auto;
   min-height: 0;
   border-top: 1px solid var(--basil-border);
-  padding-bottom: var(--basil-keyboard-height, 0px);
 }
 
 /* Body: side-by-side on md+, stacked on mobile */

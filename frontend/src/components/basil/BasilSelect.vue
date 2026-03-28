@@ -167,11 +167,6 @@ export default {
   },
 
   mounted() {
-    // If inside a modal <dialog>, teleport dropdown there instead of body
-    // (showModal() blocks interaction with elements outside the dialog's DOM tree)
-    const parentDialog = this.$el.closest('dialog')
-    if (parentDialog) this.teleportTarget = parentDialog
-
     this._onClickOutside = (e) => {
       if (!this.isOpen || this.isMobile) return
       if (this.$refs.rootRef?.contains(e.target)) return
@@ -283,7 +278,7 @@ export default {
         left: `${rect.left}px`,
         width: `${rect.width}px`,
         maxHeight: `${maxH}px`,
-        zIndex: 8000,
+        zIndex: 10001,
       }
     },
 

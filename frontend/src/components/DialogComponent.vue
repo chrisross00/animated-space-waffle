@@ -128,28 +128,29 @@
         />
       </div>
 
-      <div class="basil-dialog-actions">
-        <template v-if="splitMode">
-          <BasilButton variant="flat" label="Cancel" @click="exitSplitMode()" />
-          <BasilButton
-            label="Save split"
-            :disabled="!splitValid || splitSaving"
-            :loading="splitSaving"
-            @click="saveSplit()"
-          />
-        </template>
-        <template v-else>
-          <div style="display: flex; gap: var(--basil-space-1);">
-            <BasilButton variant="flat" label="Cancel" @click="closeTray" />
-            <BasilButton v-if="canSplit" variant="flat" label="Split" @click="enterSplitMode()" />
-            <BasilButton v-if="isSplitChild" variant="flat" label="Unsplit" @click="requestUnsplit()" />
-          </div>
-          <div class="basil-dialog-actions__right">
-            <BasilButton variant="flat" label="Reset" @click="resetData()" />
-            <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateTransaction" />
-          </div>
-        </template>
       </div>
+
+    <div v-if="dialogType === 'transaction'" class="basil-dialog-actions">
+      <template v-if="splitMode">
+        <BasilButton variant="flat" label="Cancel" @click="exitSplitMode()" />
+        <BasilButton
+          label="Save split"
+          :disabled="!splitValid || splitSaving"
+          :loading="splitSaving"
+          @click="saveSplit()"
+        />
+      </template>
+      <template v-else>
+        <div style="display: flex; gap: var(--basil-space-1);">
+          <BasilButton variant="flat" label="Cancel" @click="closeTray" />
+          <BasilButton v-if="canSplit" variant="flat" label="Split" @click="enterSplitMode()" />
+          <BasilButton v-if="isSplitChild" variant="flat" label="Unsplit" @click="requestUnsplit()" />
+        </div>
+        <div class="basil-dialog-actions__right">
+          <BasilButton variant="flat" label="Reset" @click="resetData()" />
+          <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateTransaction" />
+        </div>
+      </template>
     </div>
 
     <!-- ── EDIT CATEGORY form ─────────────────────────── -->
@@ -238,12 +239,13 @@
         </p>
       </div>
 
-      <div class="basil-dialog-actions">
-        <BasilButton variant="flat" label="Cancel" @click="closeTray" />
-        <div class="basil-dialog-actions__right">
-          <BasilButton variant="flat" label="Reset" @click="resetData()" />
-          <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateCategory" />
-        </div>
+    </div>
+
+    <div v-if="dialogType === 'editCategory'" class="basil-dialog-actions">
+      <BasilButton variant="flat" label="Cancel" @click="closeTray" />
+      <div class="basil-dialog-actions__right">
+        <BasilButton variant="flat" label="Reset" @click="resetData()" />
+        <BasilButton label="Submit" :disabled="!formSubmittable" @click="updateCategory" />
       </div>
     </div>
 
@@ -266,12 +268,13 @@
         </div>
       </div>
 
-      <div class="basil-dialog-actions">
-        <BasilButton variant="flat" label="Cancel" @click="closeTray" />
-        <div class="basil-dialog-actions__right">
-          <BasilButton variant="flat" label="Reset" @click="resetData()" />
-          <BasilButton label="Submit" :disabled="!formSubmittable" @click="addCategory" />
-        </div>
+    </div>
+
+    <div v-if="dialogType === 'addCategory'" class="basil-dialog-actions">
+      <BasilButton variant="flat" label="Cancel" @click="closeTray" />
+      <div class="basil-dialog-actions__right">
+        <BasilButton variant="flat" label="Reset" @click="resetData()" />
+        <BasilButton label="Submit" :disabled="!formSubmittable" @click="addCategory" />
       </div>
     </div>
 
@@ -287,7 +290,7 @@
   flex-direction: column;
   gap: var(--basil-space-5);
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
 }
 
 /* ── Transaction hero ── */
@@ -434,15 +437,14 @@
   opacity: 1;
 }
 
-/* ── Action row ── */
+/* ── Action row (sibling of body, not inside scroll container) ── */
 .basil-dialog-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: var(--basil-space-4);
-  border-top: 1px solid var(--basil-border);
-  margin-top: auto;
+  padding: var(--basil-space-3) var(--basil-space-5);
   flex-shrink: 0;
+  border-top: 1px solid var(--basil-border);
 }
 
 .basil-dialog-actions__right {
@@ -634,9 +636,16 @@ computed: {
   },
   methods: {
         closeTray() {
-          // Close the nearest native <dialog> ancestor (BasilTray).
-          // BasilTray's onNativeClose handler will emit update:modelValue = false.
-          this.$el.closest('dialog')?.close();
+          // Find the parent BasilTray and close it via its exposed method.
+          // Walk up the Vue component tree to find the nearest BasilTray ancestor.
+          let parent = this.$parent
+          while (parent) {
+            if (parent.$options.name === 'BasilTray') {
+              parent.$emit('update:modelValue', false)
+              return
+            }
+            parent = parent.$parent
+          }
         },
         onTransactionFormReset () {
             this.dialogBody = JSON.parse(JSON.stringify(this.initialData));

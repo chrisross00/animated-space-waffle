@@ -54,7 +54,8 @@ async function getStoreState(page) {
 /** Close ALL open dialog/tray elements via JS (bypasses pointer interception). */
 async function closeAllTrays(page) {
   await page.evaluate(() => {
-    document.querySelectorAll('dialog[open]').forEach(d => d.close());
+    // Trays are portal divs with role="dialog" — click each backdrop to close
+    document.querySelectorAll('.basil-tray .basil-tray__backdrop').forEach(b => b.click());
   });
   await page.waitForTimeout(600);
 }
@@ -76,9 +77,9 @@ async function clickTab(page, label) {
   await page.waitForTimeout(1500);
 }
 
-/** Wait for a BasilTray dialog to be open. */
+/** Wait for a BasilTray to be open. */
 async function waitForTray(page, timeout = 5000) {
-  await page.waitForSelector('dialog.basil-tray[open]', { timeout });
+  await page.waitForSelector('.basil-tray[role="dialog"]', { timeout });
   await page.waitForTimeout(500);
 }
 
@@ -179,7 +180,7 @@ async function pickBasilSelect(page, container, label, optionText) {
     await page.waitForTimeout(1000);
     await waitForTray(page);
 
-    const dialog = page.locator('dialog.basil-tray[open]');
+    const dialog = page.locator('.basil-tray[role="dialog"]');
 
     // Find a different category
     const altCats = before.categories.filter(c => c.name !== txn.category && c.type === 'expense' && c.name !== 'To Sort');
@@ -226,7 +227,7 @@ async function pickBasilSelect(page, container, label, optionText) {
     await page.waitForTimeout(800);
     await waitForTray(page);
 
-    const dialog = page.locator('dialog.basil-tray[open]');
+    const dialog = page.locator('.basil-tray[role="dialog"]');
     const testNote = 'TestNote' + Date.now();
 
     // Find the BasilNote input
@@ -245,7 +246,7 @@ async function pickBasilSelect(page, container, label, optionText) {
 
     // Force isFormSubmittable via Vue evaluate in case blur didn't trigger
     await page.evaluate(() => {
-      const tray = document.querySelector('dialog.basil-tray[open]');
+      const tray = document.querySelector('.basil-tray[role="dialog"]');
       if (tray) {
         const vm = tray.querySelector('.basil-dialog-card')?.__vue_parent__;
         // Walk the component tree to find DialogComponent
@@ -299,10 +300,10 @@ async function pickBasilSelect(page, container, label, optionText) {
       await row.click();
       await page.waitForTimeout(1000);
 
-      const trayOpen = await page.locator('dialog.basil-tray[open]').isVisible().catch(() => false);
+      const trayOpen = await page.locator('.basil-tray[role="dialog"]').isVisible().catch(() => false);
       if (!trayOpen) continue;
 
-      const dialog = page.locator('dialog.basil-tray[open]');
+      const dialog = page.locator('.basil-tray[role="dialog"]');
 
       // First change the category to enable submit
       const currentCatText = await dialog.locator('.basil-select').filter({ has: page.locator('text="Category"') }).first()
@@ -343,7 +344,7 @@ async function pickBasilSelect(page, container, label, optionText) {
           // A rule was either newly created (count increased) OR an existing rule was
           // moved to the new category (count stays the same but the submit succeeded).
           // We verify the toggle was checked and submit completed — the tray closed.
-          const trayClosed = !(await page.locator('dialog.basil-tray[open]').isVisible().catch(() => false));
+          const trayClosed = !(await page.locator('.basil-tray[role="dialog"]').isVisible().catch(() => false));
           const ruleCreated = afterSnapshot.total > beforeSnapshot.total;
           const success = ruleCreated || trayClosed;
           log('4. Rule Creation ("Remember for future")', success,
@@ -381,10 +382,10 @@ async function pickBasilSelect(page, container, label, optionText) {
         await row.click();
         await page.waitForTimeout(1000);
 
-        const trayOpen = await page.locator('dialog.basil-tray[open]').isVisible().catch(() => false);
+        const trayOpen = await page.locator('.basil-tray[role="dialog"]').isVisible().catch(() => false);
         if (!trayOpen) continue;
 
-        const dialog = page.locator('dialog.basil-tray[open]');
+        const dialog = page.locator('.basil-tray[role="dialog"]');
         const splitBtn = dialog.locator('button').filter({ hasText: /^Split$/ }).first();
         const canSplit = await splitBtn.isVisible({ timeout: 1500 }).catch(() => false);
 
@@ -495,7 +496,7 @@ async function pickBasilSelect(page, container, label, optionText) {
       await page.waitForTimeout(1000);
       await waitForTray(page);
 
-      const dialog = page.locator('dialog.basil-tray[open]');
+      const dialog = page.locator('.basil-tray[role="dialog"]');
       const state = await getStoreState(page);
       const expCat = state.categories.find(c => c.type === 'expense' && c.name !== 'To Sort');
 
@@ -536,9 +537,9 @@ async function pickBasilSelect(page, container, label, optionText) {
       await planRow.click({ force: true });
       await page.waitForTimeout(1000);
 
-      const trayOpen = await page.locator('dialog.basil-tray[open]').isVisible().catch(() => false);
+      const trayOpen = await page.locator('.basil-tray[role="dialog"]').isVisible().catch(() => false);
       if (trayOpen) {
-        const dialog = page.locator('dialog.basil-tray[open]');
+        const dialog = page.locator('.basil-tray[role="dialog"]');
         // Find the Monthly Limit input inside the edit category dialog
         const limitInput = dialog.locator('.basil-input').filter({ hasText: 'Monthly Limit' }).first().locator('input');
         if (await limitInput.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -641,7 +642,7 @@ async function pickBasilSelect(page, container, label, optionText) {
     await page.waitForTimeout(800);
     await waitForTray(page);
 
-    const dialog = page.locator('dialog.basil-tray[open]');
+    const dialog = page.locator('.basil-tray[role="dialog"]');
 
     // Fill rule name
     const ruleNameInput = dialog.locator('.basil-re__condition').first().locator('input').first();
@@ -695,7 +696,7 @@ async function pickBasilSelect(page, container, label, optionText) {
         await page.waitForTimeout(800);
         await waitForTray(page);
 
-        const editDialog = page.locator('dialog.basil-tray[open]');
+        const editDialog = page.locator('.basil-tray[role="dialog"]');
         const deleteBtn = editDialog.locator('button').filter({ hasText: 'Delete' }).first();
         if (await deleteBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await deleteBtn.click();
@@ -703,7 +704,7 @@ async function pickBasilSelect(page, container, label, optionText) {
 
           // Confirm in the confirm tray that opens
           // The confirm tray appears as another dialog
-          const confirmDialog = page.locator('dialog.basil-tray[open]');
+          const confirmDialog = page.locator('.basil-tray[role="dialog"]');
           const confirmDeleteBtn = confirmDialog.locator('button').filter({ hasText: 'Delete' }).last();
           if (await confirmDeleteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
             await confirmDeleteBtn.click();
@@ -747,7 +748,7 @@ async function pickBasilSelect(page, container, label, optionText) {
     await page.waitForTimeout(800);
     await waitForTray(page);
 
-    const dialog = page.locator('dialog.basil-tray[open]');
+    const dialog = page.locator('.basil-tray[role="dialog"]');
     const tagPicker = dialog.locator('.basil-tag-picker__chips').first();
     const hasTagPicker = await tagPicker.isVisible({ timeout: 2000 }).catch(() => false);
 
@@ -816,7 +817,7 @@ async function pickBasilSelect(page, container, label, optionText) {
     await page.waitForTimeout(800);
     await waitForTray(page);
 
-    const dialog = page.locator('dialog.basil-tray[open]');
+    const dialog = page.locator('.basil-tray[role="dialog"]');
     const excludeToggle = dialog.locator('.basil-toggle').filter({ hasText: 'Exclude from total' }).first();
     const hasExclude = await excludeToggle.isVisible({ timeout: 2000 }).catch(() => false);
 
@@ -844,7 +845,7 @@ async function pickBasilSelect(page, container, label, optionText) {
       await page.locator('.basil-txn-row').nth(3).click();
       await page.waitForTimeout(800);
       await waitForTray(page);
-      const d2 = page.locator('dialog.basil-tray[open]');
+      const d2 = page.locator('.basil-tray[role="dialog"]');
       const et2 = d2.locator('.basil-toggle').filter({ hasText: 'Exclude from total' }).first();
       await et2.click();
       await page.waitForTimeout(300);

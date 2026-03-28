@@ -10,7 +10,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 7000;
+  z-index: 10000;
   background: var(--basil-surface-dialog);
   border-top: 1px solid var(--basil-border-strong);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);

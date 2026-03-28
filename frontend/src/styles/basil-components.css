@@ -463,11 +463,10 @@
   outline-offset: 2px;
 }
 
-/* dialog showModal() autofocus triggers :focus-visible on iOS Safari.
-   Suppress the outline on icon buttons inside dialogs — they have
+/* Suppress :focus-visible outline on icon buttons inside trays — they have
    hover/active feedback and the ring is visually disruptive on the
    round shape.  Keyboard focus still works for labeled buttons.      */
-dialog .basil-btn.basil-btn--icon:focus-visible {
+.basil-tray .basil-btn.basil-btn--icon:focus-visible {
   outline: none;
 }
 
@@ -712,40 +711,72 @@ a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); 
   padding: 0 var(--basil-space-3) var(--basil-space-2);
 }
 
-/* ---- Tray (native dialog) ---- */
+/* ---- Tray (portal-based dialog) ---- */
 
-dialog.basil-tray {
-  border: none;
-  padding: 0;
-  margin: 0;
-  background: transparent;
-  max-width: none;
-  max-height: none;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+.basil-tray {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
 }
 
-dialog.basil-tray::backdrop {
+.basil-tray__backdrop {
+  position: absolute;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.basil-tray__backdrop--visible {
+  opacity: 1;
 }
 
 /* Desktop: center the wrap */
-dialog.basil-tray .basil-tray__wrap:not(.basil-tray__wrap--mobile) {
-  margin: auto;
+.basil-tray .basil-tray__wrap:not(.basil-tray__wrap--mobile) {
   position: relative;
-  top: 50%;
-  transform: translateY(-50%);
+  z-index: 1;
   border-radius: var(--basil-radius-md);
   overflow: hidden;
 }
 
-/* Mobile: anchor to bottom */
-dialog.basil-tray .basil-tray__wrap--mobile {
-  position: fixed;
+/* Mobile: anchor to bottom, slide up on open */
+.basil-tray .basil-tray__wrap--mobile {
+  position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 1;
+  transform: translateY(100%);
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.basil-tray .basil-tray__wrap--mobile.basil-tray__wrap--visible {
+  transform: translateY(0);
+}
+
+/* Gap coverage — extends tray background below the visible area so the page
+   doesn't peek through during drag, close animation, or overscroll bounce */
+.basil-tray .basil-tray__wrap--mobile::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 200%;
+  background: inherit;
+  background-color: inherit;
+}
+
+/* Desktop: prevent text selection during drag */
+@media (hover: hover) and (pointer: fine) {
+  .basil-tray__wrap {
+    user-select: none;
+  }
 }
 
 /* ---- Toggle (switch / checkbox / button-group) ---- */
