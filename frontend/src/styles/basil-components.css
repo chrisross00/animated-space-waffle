@@ -1092,6 +1092,7 @@ a.basil-btn.basil-btn--flat.basil-btn--positive { color: var(--basil-positive); 
 }
 
 .basil-select__options--tray {
+  min-height: 50vh;
   max-height: 50vh;
 }
 
