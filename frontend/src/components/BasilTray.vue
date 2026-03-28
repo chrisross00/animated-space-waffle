@@ -2,15 +2,12 @@
   <dialog
     ref="dialogRef"
     class="basil-tray"
-    :class="{ 'basil-tray--visible': isVisible }"
-    :aria-modal="isVisible ? 'true' : undefined"
     @close="onNativeClose"
-    @keydown="onKeydown"
-    @click="onDialogClick"
+    @cancel="onCancel"
+    @click="onBackdropClick"
   >
     <div
       ref="wrapRef"
-      tabindex="-1"
       :class="['basil-tray__wrap', screen.isMobile && 'basil-tray__wrap--mobile']"
       :style="[
         !screen.isMobile ? `max-width: ${maxWidth}` : undefined,
@@ -26,62 +23,6 @@
 import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
-import { keyboardState, dismissKeyboard } from '@/utils/basilKeyboard'
-
-// Global scroll lock — counter prevents child tray unlock from reverting parent lock.
-// iOS Safari ignores overflow:hidden on body. The only reliable prevention is
-// intercepting touchmove events with { passive: false } and calling preventDefault().
-// This is the same technique used by Vaul, body-scroll-lock, and React Aria.
-let scrollLockCount = 0
-let savedBodyStyles = {}
-let scrollPreventCleanup = null
-
-function preventScrolliOS() {
-  let scrollable, lastY
-
-  function isScrollable(node) {
-    const style = window.getComputedStyle(node)
-    return /(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)
-  }
-
-  function getScrollParent(node) {
-    while (node && node !== document.body && node !== document.documentElement) {
-      if (isScrollable(node)) return node
-      node = node.parentElement
-    }
-    return null
-  }
-
-  function onTouchStart(e) {
-    scrollable = getScrollParent(e.target)
-    lastY = e.changedTouches[0].pageY
-  }
-
-  function onTouchMove(e) {
-    // No scrollable ancestor inside the tray — block the scroll entirely
-    if (!scrollable) {
-      e.preventDefault()
-      return
-    }
-    // Inside a scrollable element — allow scrolling within but block at boundaries
-    // (at boundaries, iOS would "escape" and scroll the page behind)
-    const y = e.changedTouches[0].pageY
-    const top = scrollable.scrollTop
-    const bottom = scrollable.scrollHeight - scrollable.clientHeight
-    if (bottom > 0 && ((top <= 0 && y > lastY) || (top >= bottom && y < lastY))) {
-      e.preventDefault()
-    }
-    lastY = y
-  }
-
-  document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
-  document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
-
-  return () => {
-    document.removeEventListener('touchstart', onTouchStart, true)
-    document.removeEventListener('touchmove', onTouchMove, true)
-  }
-}
 
 export default {
   name: 'BasilTray',
@@ -96,9 +37,7 @@ export default {
     return {
       dragOffset: 0,
       dragging: false,
-      hasScrollLock: false,
       screen,
-      isVisible: false,
     }
   },
 
@@ -146,14 +85,11 @@ export default {
       if (!dialog || dialog.open) return
 
       this.$emit('before-show')
-      this._previousFocus = document.activeElement
       this.lockBodyScroll()
-      this.isVisible = true
 
-      dialog.show()
+      dialog.showModal()
 
       nextTick(() => {
-        this.focusFirstElement()
         this.$emit('show')
         // Re-setup gesture in case refs changed
         this.setupGesture()
@@ -164,114 +100,46 @@ export default {
       const dialog = this.$refs.dialogRef
       if (!dialog || !dialog.open) return
 
-      // Dismiss the keyboard if it's open
-      if (keyboardState.isOpen) {
-        dismissKeyboard()
-      }
-
       this.$emit('before-hide')
-      // Set isVisible false BEFORE dialog.close() so onNativeClose
-      // (which fires synchronously) can skip its own cleanup.
-      this.isVisible = false
       dialog.close()
       this.unlockBodyScroll()
       this.$emit('hide')
-
-      // Restore focus to element that was focused before tray opened
-      if (this._previousFocus && this._previousFocus.focus) {
-        this._previousFocus.focus()
-        this._previousFocus = null
-      }
     },
 
     onNativeClose() {
-      // If close() already handled cleanup, skip to avoid double-decrementing
-      // the scroll lock counter.
-      if (!this.isVisible) return
-
-      this.isVisible = false
+      // The dialog was closed (either by us or by the browser)
       this.unlockBodyScroll()
       if (this.modelValue) {
         this.$emit('update:modelValue', false)
       }
     },
 
-    onKeydown(e) {
-      // Escape handling — dialog.show() does NOT fire cancel on Escape
-      if (e.key === 'Escape') {
-        if (this.persistent) {
-          e.preventDefault()
-          return
-        }
+    onCancel(e) {
+      // Native cancel event fires on Escape key press
+      if (this.persistent) {
         e.preventDefault()
-        this.$emit('update:modelValue', false)
         return
       }
-
-      // Focus trapping on Tab
-      if (e.key === 'Tab') {
-        const focusable = this.getFocusableElements()
-        if (!focusable.length) return
-
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
+      // Allow close — onNativeClose will fire next and emit update:modelValue
     },
 
-    getFocusableElements() {
-      const dialog = this.$refs.dialogRef
-      if (!dialog) return []
-      return [...dialog.querySelectorAll(
-        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      )]
-    },
-
-    focusFirstElement() {
-      const focusable = this.getFocusableElements()
-      if (focusable.length) {
-        focusable[0].focus()
-      } else {
-        // Focus the wrap div as fallback
-        this.$refs.wrapRef?.focus()
-      }
-    },
-
-    onDialogClick(e) {
-      // Only treat clicks directly on the dialog element as backdrop clicks.
-      // Clicks on the wrap or its children have a different target.
+    onBackdropClick(e) {
+      // Native <dialog> backdrop is the dialog element itself.
+      // Clicks on child elements (the wrap) won't have target === dialog.
       if (e.target !== this.$refs.dialogRef) return
       if (this.persistent) return
       this.$emit('update:modelValue', false)
     },
 
     lockBodyScroll() {
-      if (scrollLockCount === 0) {
-        savedBodyStyles = { overflow: document.body.style.overflow }
-        document.body.style.overflow = 'hidden'
-        scrollPreventCleanup = preventScrolliOS()
-      }
-      scrollLockCount++
-      this.hasScrollLock = true
+      this._prevOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
     },
 
     unlockBodyScroll() {
-      if (!this.hasScrollLock) return
-      this.hasScrollLock = false
-      scrollLockCount = Math.max(0, scrollLockCount - 1)
-      if (scrollLockCount === 0) {
-        if (scrollPreventCleanup) {
-          scrollPreventCleanup()
-          scrollPreventCleanup = null
-        }
-        Object.assign(document.body.style, savedBodyStyles)
+      if (this._prevOverflow !== undefined) {
+        document.body.style.overflow = this._prevOverflow
+        this._prevOverflow = undefined
       }
     },
 

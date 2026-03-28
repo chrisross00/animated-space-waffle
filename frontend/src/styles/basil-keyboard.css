@@ -125,7 +125,6 @@
   align-items: center;
   gap: var(--basil-space-2);
   cursor: text;
-  outline: none;
   transition: border-color var(--basil-t-fast) var(--basil-ease);
 }
 

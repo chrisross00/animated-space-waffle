@@ -9,8 +9,8 @@
       <span v-if="label" class="basil-select__label" :class="{ 'basil-select__label--float': hasValue || isOpen || placeholder }">{{ label }}</span>
     </div>
 
-    <!-- Desktop dropdown -->
-    <Teleport to="body">
+    <!-- Desktop dropdown — teleport to nearest dialog (if inside one) or body -->
+    <Teleport :to="teleportTarget">
       <div v-if="isOpen && !isMobile" ref="dropdownRef" class="basil-select__dropdown" :style="dropdownStyle" @mousedown.prevent>
         <div v-if="filterable" class="basil-select__filter">
           <input
@@ -115,6 +115,7 @@ export default {
       filterText: '',
       focusedIndex: -1,
       dropdownStyle: {},
+      teleportTarget: 'body',
     }
   },
 
@@ -166,6 +167,11 @@ export default {
   },
 
   mounted() {
+    // If inside a modal <dialog>, teleport dropdown there instead of body
+    // (showModal() blocks interaction with elements outside the dialog's DOM tree)
+    const parentDialog = this.$el.closest('dialog')
+    if (parentDialog) this.teleportTarget = parentDialog
+
     this._onClickOutside = (e) => {
       if (!this.isOpen || this.isMobile) return
       if (this.$refs.rootRef?.contains(e.target)) return

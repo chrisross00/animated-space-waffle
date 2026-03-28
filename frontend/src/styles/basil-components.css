@@ -574,8 +574,7 @@ dialog .basil-btn.basil-btn--icon:focus-visible {
 }
 
 .basil-card__actions {
-  padding: var(--basil-space-5) var(--basil-space-4);
-  border-top: 1px solid var(--basil-border);
+  padding: var(--basil-space-3) var(--basil-space-4);
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
@@ -720,19 +719,14 @@ dialog.basil-tray {
   padding: 0;
   margin: 0;
   background: transparent;
-  outline: none;
-  transition: background-color 200ms ease;
   max-width: none;
   max-height: none;
   width: 100%;
   height: 100%;
   overflow: visible;
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
 }
 
-dialog.basil-tray--visible {
+dialog.basil-tray::backdrop {
   background: rgba(0, 0, 0, 0.5);
 }
 

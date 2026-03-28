@@ -270,12 +270,11 @@ name pattern / amount / amount + institution".
 ## Backlog
 
 ### High priority
-- [ ] **BasilTray animations** — Trays currently open/close instantly. Need slide-up
-      enter, slide-down exit, and swipe-to-dismiss should continue drag momentum into
-      the close animation. CSS transitions on the wrap element + gesture coordination.
-- [ ] **PWA mobile: scroll-behind open trays + pull-to-refresh conflict** — Body
-      scrolls behind open dialogs on iOS PWA. `overflow:hidden` insufficient.
-      Drag-to-dismiss on trays can trigger PullToRefresh behind the tray.
+- [ ] **BasilKeyboard: replace DOM appendChild with proper Teleport** — The keyboard
+      currently uses `appendChild` to move itself into open `<dialog>` elements (needed
+      because `<dialog>` top layer sits above all z-index). Vue doesn't track this DOM
+      move, so a re-render could orphan the keyboard element. Replace with a reactive
+      Teleport target or restructure so the keyboard renders inside each tray's slot.
 - [ ] **Income detection nudge + quick-fix** — When the current month has zero Income
       but large inbound transfers exist, surface a nudge on the budget page showing
       the suspected paycheck(s) inline: "We found a $4,700 deposit — is this income?"
