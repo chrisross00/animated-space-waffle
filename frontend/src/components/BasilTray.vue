@@ -345,6 +345,19 @@ export default {
           const draggedPastThreshold = state.deltaY > wrapHeight * 0.25
           const fastSwipe = velocityPxMs > 0.4
 
+          // DEBUG: remove after testing
+          console.log('[BasilTray onEnd]', {
+            deltaY: state.deltaY,
+            velocityY: state.velocityY,
+            velocityPxMs,
+            wrapHeight,
+            threshold25pct: wrapHeight * 0.25,
+            draggedPastThreshold,
+            fastSwipe,
+            willDismiss: (fastSwipe || draggedPastThreshold) && !this.persistent,
+            swipedDown: state.swipedDown,
+          })
+
           if ((fastSwipe || draggedPastThreshold) && !this.persistent) {
             // Dismiss: let CSS transition animate from current position to offscreen
             this.dragging = false
