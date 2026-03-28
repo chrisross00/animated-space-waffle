@@ -24,6 +24,55 @@ import { screen } from '@/composables/useScreen'
 import { useGesture } from '@/composables/useGesture'
 import { nextTick } from 'vue'
 
+// iOS Safari ignores overflow:hidden on body. The only reliable prevention is
+// intercepting touchmove events with { passive: false } and calling preventDefault().
+// Same technique used by Vaul, body-scroll-lock, and React Aria.
+let scrollPreventCleanup = null
+
+function preventScrolliOS() {
+  let scrollable, lastY
+
+  function isScrollable(node) {
+    const style = window.getComputedStyle(node)
+    return /(auto|scroll)/.test(style.overflow + style.overflowX + style.overflowY)
+  }
+
+  function getScrollParent(node) {
+    while (node && node !== document.body && node !== document.documentElement) {
+      if (isScrollable(node)) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  function onTouchStart(e) {
+    scrollable = getScrollParent(e.target)
+    lastY = e.changedTouches[0].pageY
+  }
+
+  function onTouchMove(e) {
+    if (!scrollable) {
+      e.preventDefault()
+      return
+    }
+    const y = e.changedTouches[0].pageY
+    const top = scrollable.scrollTop
+    const bottom = scrollable.scrollHeight - scrollable.clientHeight
+    if (bottom > 0 && ((top <= 0 && y > lastY) || (top >= bottom && y < lastY))) {
+      e.preventDefault()
+    }
+    lastY = y
+  }
+
+  document.addEventListener('touchstart', onTouchStart, { passive: false, capture: true })
+  document.addEventListener('touchmove', onTouchMove, { passive: false, capture: true })
+
+  return () => {
+    document.removeEventListener('touchstart', onTouchStart, true)
+    document.removeEventListener('touchmove', onTouchMove, true)
+  }
+}
+
 export default {
   name: 'BasilTray',
   props: {
@@ -134,12 +183,19 @@ export default {
     lockBodyScroll() {
       this._prevOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
+      if (!scrollPreventCleanup) {
+        scrollPreventCleanup = preventScrolliOS()
+      }
     },
 
     unlockBodyScroll() {
       if (this._prevOverflow !== undefined) {
         document.body.style.overflow = this._prevOverflow
         this._prevOverflow = undefined
+      }
+      if (scrollPreventCleanup) {
+        scrollPreventCleanup()
+        scrollPreventCleanup = null
       }
     },
 
