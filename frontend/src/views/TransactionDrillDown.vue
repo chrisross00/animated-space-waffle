@@ -82,6 +82,7 @@
 <script>
 import dayjs from 'dayjs';
 import { humanizeDetailedPfc } from '@/utils/pfcLabels';
+import { fetchTransactionsForMonth } from '@/api';
 import { merchantInitials as getMerchantInitials, merchantColor as getMerchantColor, isVenmo as getIsVenmo } from '@/utils/merchantDisplay';
 
 export default {
@@ -218,6 +219,19 @@ export default {
     onListScroll(e) {
       this.collapsed = e.target.scrollTop > 0;
     },
+  },
+
+  mounted() {
+    if (this.month) {
+      const prevMonth = dayjs(this.month).subtract(1, 'month').format('YYYY-MM')
+      if (!this.$store.state.transactionsByMonth[prevMonth]) {
+        fetchTransactionsForMonth(prevMonth).then(result => {
+          if (result?.transactions) {
+            this.$store.commit('setMonthTransactions', { month: prevMonth, transactions: result.transactions })
+          }
+        })
+      }
+    }
   },
 };
 </script>
