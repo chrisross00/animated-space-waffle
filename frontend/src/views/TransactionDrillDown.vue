@@ -21,6 +21,16 @@
         :key="txn.transaction_id"
         class="basil-drilldown__row"
       >
+        <!-- Venmo logo avatar -->
+        <div v-if="isVenmo(txn)" class="basil-drilldown__avatar basil-drilldown__avatar--venmo">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff">
+            <path d="M19.5 1.6c.8 1.3 1.1 2.6 1.1 4.3 0 5.3-4.5 12.2-8.2 17.1H5.2L2.4 2.1l6.3-.6 1.6 12.9c1.5-2.4 3.3-6.2 3.3-8.8 0-1.6-.3-2.7-.7-3.6l6.6-0.4z"/>
+          </svg>
+        </div>
+        <!-- Standard initials avatar -->
+        <div v-else class="basil-drilldown__avatar" :style="{ background: merchantColor(txn) }">
+          {{ merchantInitials(txn) }}
+        </div>
         <div class="basil-drilldown__row-left">
           <div class="basil-drilldown__merchant">{{ txn.merchant_name || txn.name }}</div>
           <div class="basil-drilldown__date">{{ formatDate(txn.effectiveDate || txn.date) }}</div>
@@ -39,6 +49,7 @@
 <script>
 import dayjs from 'dayjs';
 import { humanizeDetailedPfc } from '@/utils/pfcLabels';
+import { merchantInitials as getMerchantInitials, merchantColor as getMerchantColor, isVenmo as getIsVenmo } from '@/utils/merchantDisplay';
 
 export default {
   name: 'TransactionDrillDown',
@@ -100,7 +111,16 @@ export default {
 
   methods: {
     formatDate(date) {
-      return dayjs(date).format('MMM D, YYYY');
+      return dayjs(date).format('MMM D');
+    },
+    merchantInitials(row) {
+      return getMerchantInitials(row);
+    },
+    merchantColor(row) {
+      return getMerchantColor(row);
+    },
+    isVenmo(row) {
+      return getIsVenmo(row);
     },
   },
 };
@@ -235,5 +255,22 @@ export default {
 
 .basil-drilldown__row-amount--credit {
   color: var(--basil-positive);
+}
+
+.basil-drilldown__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.basil-drilldown__avatar--venmo {
+  background: #008CFF;
 }
 </style>
