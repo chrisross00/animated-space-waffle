@@ -296,6 +296,11 @@ name pattern / amount / amount + institution".
       Recurring transactions handled by existing compound rule matching — no new rule
       layer. Differentiator: no competitor lets users control subcategory data.
       Needs full brainstorm + design before implementation.
+- [ ] **Design language: shadow and depth** — Basil currently uses flat surfaces with
+      borders, no shadows (except tray). Brainstorm whether introducing a deliberate
+      shadow/elevation system would improve the design — e.g., interactive elements
+      feeling tappable, cards lifting on hover/press, layered surfaces. Needs to be
+      cohesive, not ad-hoc. Full brainstorm before any implementation.
 
 ### Medium priority
 - [ ] **Post-onboarding in-flow prompts** — soft-gate dialogs for actions like Add to

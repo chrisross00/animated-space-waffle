@@ -57,6 +57,7 @@
         >
           <span class="basil-breakdown__chip-dot" :style="{ background: chip.color }"></span>
           {{ chip.label }} ${{ Math.round(chip.total).toLocaleString() }}
+          <span v-if="mode === 'category' || mode === 'detail-single'" class="basil-breakdown__chip-chevron">›</span>
         </span>
       </div>
 
@@ -263,6 +264,7 @@ export default {
 
     onChartClick(params) {
       if (!params.name) return
+      if ('ontouchstart' in window) return // touch devices use chips for navigation
       const chip = this.chips.find(c => c.label === params.name)
       if (chip) this.onChipClick(chip)
     },
@@ -381,6 +383,12 @@ export default {
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.basil-breakdown__chip-chevron {
+  color: var(--basil-text-muted);
+  font-size: 0.8125rem;
+  margin-left: 1px;
 }
 
 .basil-breakdown__hint {
