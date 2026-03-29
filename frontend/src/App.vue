@@ -139,9 +139,9 @@
       </template>
       <template v-else>
         <PullToRefresh>
-          <router-view v-slot="{ Component }">
-            <Transition name="basil-page" mode="out-in">
-              <component :is="Component" />
+          <router-view v-slot="{ Component, route }">
+            <Transition :name="transitionName" :mode="transitionName === 'basil-page' ? 'out-in' : undefined">
+              <component :is="Component" :key="route.path" />
             </Transition>
           </router-view>
         </PullToRefresh>
@@ -275,6 +275,26 @@
   opacity: 0;
 }
 
+/* Slide transition for drill-down navigation */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.3s ease;
+}
+.slide-left-enter-from {
+  transform: translateX(100%);
+}
+.slide-left-leave-to {
+  transform: translateX(-30%);
+}
+.slide-right-enter-from {
+  transform: translateX(-30%);
+}
+.slide-right-leave-to {
+  transform: translateX(100%);
+}
+
 /* ========================================
    Desktop tabs — horizontal alignment
    ======================================== */
@@ -347,6 +367,7 @@ export default {
       syncing: false,
       hasError: false,
       venmoDialogOpen: false,
+      transitionName: 'basil-page',
     }
   },
 
@@ -393,6 +414,17 @@ export default {
     },
     isDark() {
       return this.$store.state.theme === 'dark';
+    },
+  },
+
+  watch: {
+    $route(to, from) {
+      if (to.meta.transition === 'slide' || from.meta.transition === 'slide') {
+        // Navigating TO a slide route = slide-left (forward), FROM = slide-right (back)
+        this.transitionName = to.meta.transition === 'slide' ? 'slide-left' : 'slide-right'
+      } else {
+        this.transitionName = 'basil-page'
+      }
     },
   },
 

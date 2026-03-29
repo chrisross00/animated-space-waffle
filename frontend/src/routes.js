@@ -28,6 +28,12 @@ const routes = [
     component: RulesView
   },
   {
+    path: '/budget/transactions',
+    name: 'TransactionDrillDown',
+    component: () => import('./views/TransactionDrillDown.vue'),
+    meta: { transition: 'slide' },
+  },
+  {
     path: '/budget',
     name: 'BudgetView',
     component: BudgetView
