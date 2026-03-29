@@ -972,6 +972,7 @@
   dayjs.extend(customParseFormat);
 
   export default {
+    name: 'BudgetView',
     components: {
       DialogComponent,
       RelationshipCard,
