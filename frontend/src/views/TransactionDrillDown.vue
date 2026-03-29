@@ -11,16 +11,13 @@
       </div>
     </div>
 
-    <div v-if="filteredTransactions.length > 0" class="basil-drilldown__summary" :class="{ 'basil-drilldown__summary--collapsed': collapsed }">
-      <!-- Compact bar (always rendered, visible when collapsed) -->
-      <div class="basil-drilldown__compact">
-        <span class="basil-drilldown__compact-left">{{ count }} transactions · {{ monthLabel }}</span>
-        <span v-if="trendDisplay" class="basil-drilldown__compact-trend" :class="trendDisplay.isIncrease ? 'basil-drilldown__compact-trend--up' : 'basil-drilldown__compact-trend--down'">
-          {{ trendDisplay.text }}
-        </span>
-      </div>
-      <!-- Stat cards (collapse on scroll) -->
-      <div class="basil-drilldown__stats">
+    <div v-if="filteredTransactions.length === 0" class="basil-drilldown__empty">
+      No transactions
+    </div>
+
+    <div v-else ref="list" class="basil-drilldown__list" @scroll.passive="_onScroll">
+      <!-- Stat cards — scroll naturally, fade as they leave -->
+      <div ref="stats" class="basil-drilldown__stats">
         <div class="basil-drilldown__stat-row">
           <span class="basil-drilldown__stat-meta">{{ monthLabel.toUpperCase() }}</span>
           <span class="basil-drilldown__stat-meta">{{ count }} transactions</span>
@@ -36,19 +33,20 @@
           </div>
           <div class="basil-drilldown__stat-card">
             <div class="basil-drilldown__stat-label">vs {{ prevMonthLabel }}</div>
-            <div class="basil-drilldown__stat-value" :class="trendPercent > 0 ? 'basil-drilldown__stat-value--up' : trendPercent < 0 ? 'basil-drilldown__stat-value--down' : ''">
-              {{ trendPercent === null ? '—' : `${trendPercent > 0 ? '+' : ''}${trendPercent}%` }}
+            <div class="basil-drilldown__stat-value" :class="trendDelta > 0 ? 'basil-drilldown__stat-value--up' : trendDelta < 0 ? 'basil-drilldown__stat-value--down' : ''">
+              {{ trendDelta === null ? '—' : `${trendDelta > 0 ? '+' : '-'}$${Math.abs(Math.round(trendDelta)).toLocaleString()}` }}
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div v-if="filteredTransactions.length === 0" class="basil-drilldown__empty">
-      No transactions
-    </div>
-
-    <div v-else class="basil-drilldown__list" @scroll="onListScroll">
+      <!-- Compact bar — sticks to top when stats scroll away -->
+      <div class="basil-drilldown__compact">
+        <span class="basil-drilldown__compact-left">{{ count }} transactions · {{ monthLabel }}</span>
+        <span v-if="trendDisplay" class="basil-drilldown__compact-trend" :class="trendDisplay.isIncrease ? 'basil-drilldown__compact-trend--up' : 'basil-drilldown__compact-trend--down'">
+          {{ trendDisplay.text }}
+        </span>
+      </div>
       <div
         v-for="txn in filteredTransactions"
         :key="txn.transaction_id"
@@ -89,9 +87,7 @@ export default {
   name: 'TransactionDrillDown',
 
   data() {
-    return {
-      collapsed: false,
-    };
+    return {};
   },
 
   computed: {
@@ -188,6 +184,11 @@ export default {
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     },
 
+    trendDelta() {
+      if (this.prevMonthTotal === null) return null;
+      return this.total - this.prevMonthTotal;
+    },
+
     trendPercent() {
       if (this.prevMonthTotal === null || this.prevMonthTotal === 0) return null;
       return Math.round(((this.total - this.prevMonthTotal) / this.prevMonthTotal) * 100);
@@ -201,6 +202,7 @@ export default {
         isIncrease: this.trendPercent > 0,
       };
     },
+
   },
 
   methods: {
@@ -216,8 +218,14 @@ export default {
     isVenmo(row) {
       return getIsVenmo(row);
     },
-    onListScroll(e) {
-      this.collapsed = e.target.scrollTop > 0;
+    _onScroll() {
+      const stats = this.$refs.stats
+      if (!stats) return
+      const scrollTop = this.$refs.list.scrollTop
+      const h = stats.offsetHeight
+      const progress = Math.min(scrollTop / h, 1)
+      stats.style.opacity = 1 - progress
+      stats.style.transform = `scale(${1 - 0.04 * progress})`
     },
   },
 
@@ -233,6 +241,7 @@ export default {
       }
     }
   },
+
 };
 </script>
 
@@ -240,15 +249,21 @@ export default {
 .basil-drilldown {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: calc(100dvh - var(--basil-header-height) - var(--basil-bottom-nav-height) - env(safe-area-inset-bottom));
+  overflow: hidden;
   background: var(--basil-surface);
+}
+
+@media (min-width: 600px) {
+  .basil-drilldown {
+    /* Desktop: no bottom nav */
+    height: calc(100dvh - var(--basil-header-height));
+  }
 }
 
 /* Header */
 .basil-drilldown__header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: var(--basil-space-3);
@@ -300,7 +315,6 @@ export default {
 }
 
 .basil-drilldown__amount {
-  font-family: var(--basil-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 1rem;
   font-weight: 600;
@@ -308,21 +322,17 @@ export default {
   flex-shrink: 0;
 }
 
-/* Summary header */
-.basil-drilldown__summary {
-  position: sticky;
-  top: 53px;
-  z-index: 5;
-  background: var(--basil-surface-alt);
-  border-bottom: 1px solid var(--basil-border);
-  overflow: hidden;
-}
-
+/* Compact bar — sticky within list */
 .basil-drilldown__compact {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: var(--basil-space-2) var(--basil-space-4);
+  background: var(--basil-surface-alt);
+  border-bottom: 1px solid var(--basil-border);
 }
 
 .basil-drilldown__compact-left {
@@ -343,18 +353,12 @@ export default {
   color: var(--basil-positive);
 }
 
+/* Stat cards — scroll with list content, fade on scroll */
 .basil-drilldown__stats {
-  padding: 0 var(--basil-space-4) var(--basil-space-3);
-  max-height: 120px;
-  opacity: 1;
-  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
-}
-
-.basil-drilldown__summary--collapsed .basil-drilldown__stats {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: var(--basil-space-3) var(--basil-space-4);
+  background: var(--basil-surface-alt);
+  transform-origin: top center;
+  will-change: opacity, transform;
 }
 
 .basil-drilldown__stat-row {
@@ -391,7 +395,6 @@ export default {
 }
 
 .basil-drilldown__stat-value {
-  font-family: var(--basil-font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   font-size: 0.875rem;
@@ -454,7 +457,6 @@ export default {
 }
 
 .basil-drilldown__row-amount {
-  font-family: var(--basil-font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 0.9375rem;
   font-weight: 500;
