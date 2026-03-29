@@ -428,12 +428,21 @@ export default {
 
   watch: {
     $route(to, from) {
+      const main = document.querySelector('.basil-main')
+
       // Only slide forward (into drill-down). Back navigation uses the
       // default fade — iOS Safari's native swipe-back already provides
       // a slide animation, so a CSS slide-right would double up.
       if (to.meta.transition === 'slide') {
+        // Save scroll position before leaving
+        if (main) this._savedScroll = { path: from.path, top: main.scrollTop }
         this.transitionName = 'slide-left'
       } else {
+        // Restore scroll position when returning
+        if (main && this._savedScroll && this._savedScroll.path === to.path) {
+          this.$nextTick(() => { main.scrollTop = this._savedScroll.top })
+          this._savedScroll = null
+        }
         this.transitionName = 'basil-page'
       }
     },
