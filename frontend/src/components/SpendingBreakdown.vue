@@ -52,12 +52,12 @@
           v-for="chip in chips"
           :key="chip.label"
           class="basil-breakdown__chip"
-          :class="{ 'basil-breakdown__chip--tappable': mode === 'category' || mode === 'detail-single' }"
+          :class="{ 'basil-breakdown__chip--tappable': true }"
           @click="onChipClick(chip)"
         >
           <span class="basil-breakdown__chip-dot" :style="{ background: chip.color }"></span>
           {{ chip.label }} ${{ Math.round(chip.total).toLocaleString() }}
-          <span v-if="mode === 'category' || mode === 'detail-single'" class="basil-breakdown__chip-chevron">›</span>
+          <span class="basil-breakdown__chip-chevron">›</span>
         </span>
       </div>
 
@@ -135,9 +135,30 @@ export default {
       )
     },
 
+    otherCategories() {
+      // Categories that were collapsed into the "Other" bucket
+      const total = this.totalSpent
+      if (total === 0) return []
+      const groups = {}
+      for (const t of this.expenseTransactions) {
+        const key = t.mappedCategory
+        if (!groups[key]) groups[key] = 0
+        groups[key] += Math.abs(t.amount)
+      }
+      return Object.entries(groups)
+        .filter(([, amt]) => amt / total < 0.02)
+        .map(([key]) => key)
+    },
+
     drillBreakdown() {
       if (!this.drillCategory) return []
-      const filtered = this.expenseTransactions.filter(t => t.mappedCategory === this.drillCategory)
+      let filtered
+      if (this.drillCategory === '__other__') {
+        const otherSet = new Set(this.otherCategories)
+        filtered = this.expenseTransactions.filter(t => otherSet.has(t.mappedCategory))
+      } else {
+        filtered = this.expenseTransactions.filter(t => t.mappedCategory === this.drillCategory)
+      }
       return this._buildBreakdown(filtered, t => t.plaidPfcDetail || '__other__', code =>
         code === '__other__' ? 'Other' : humanizeDetailedPfc(code)
       )
@@ -151,10 +172,16 @@ export default {
 
     centerLabel() {
       if (this.mode === 'detail-single' && this.drillCategory) {
-        const catTotal = this.expenseTransactions
-          .filter(t => t.mappedCategory === this.drillCategory)
-          .reduce((sum, t) => sum + Math.abs(t.amount), 0)
-        return { amount: `$${Math.round(catTotal).toLocaleString()}`, sub: this.drillCategory }
+        let filtered
+        if (this.drillCategory === '__other__') {
+          const otherSet = new Set(this.otherCategories)
+          filtered = this.expenseTransactions.filter(t => otherSet.has(t.mappedCategory))
+        } else {
+          filtered = this.expenseTransactions.filter(t => t.mappedCategory === this.drillCategory)
+        }
+        const catTotal = filtered.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        const label = this.drillCategory === '__other__' ? 'Other' : this.drillCategory
+        return { amount: `$${Math.round(catTotal).toLocaleString()}`, sub: label }
       }
       return { amount: `$${Math.round(this.totalSpent).toLocaleString()}`, sub: 'spent' }
     },
@@ -247,8 +274,15 @@ export default {
             category: this.drillCategory,
           },
         })
+      } else if (this.mode === 'detail-all') {
+        this.$router.push({
+          path: '/budget/transactions',
+          query: {
+            pfc: chip.categoryName,
+            month: this.month,
+          },
+        })
       }
-      // detail-all: do nothing
     },
 
     drillInto(categoryName) {

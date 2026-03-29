@@ -120,8 +120,8 @@ export default {
           const d = dayjs(txn.effectiveDate || txn.date);
           if (d.year() !== m.year() || d.month() !== m.month()) return false;
 
-          // Category match
-          if (category && txn.mappedCategory !== category) return false;
+          // Category match (skip for __other__ — synthetic bucket spanning multiple categories)
+          if (category && category !== '__other__' && txn.mappedCategory !== category) return false;
 
           // PFC detail match
           if (pfc === '__other__') {
@@ -177,7 +177,7 @@ export default {
       return prevTxns
         .filter(t => {
           if (t.excludeFromTotal) return false;
-          if (t.mappedCategory !== this.category) return false;
+          if (this.category && this.category !== '__other__' && t.mappedCategory !== this.category) return false;
           if (pfc === '__other__') return !t.plaidPfcDetail;
           return t.plaidPfcDetail === pfc;
         })
@@ -195,11 +195,16 @@ export default {
     },
 
     trendDisplay() {
-      if (this.trendPercent === null) return null;
-      const arrow = this.trendPercent > 0 ? '↑' : '↓';
+      if (this.prevMonthTotal === null) return null;
+      if (this.prevMonthTotal === 0) {
+        return { text: `New vs ${this.prevMonthLabel}`, isIncrease: true };
+      }
+      const pct = this.trendPercent;
+      if (pct === null || pct === 0) return null;
+      const arrow = pct > 0 ? '↑' : '↓';
       return {
-        text: `${arrow} ${Math.abs(this.trendPercent)}% vs ${this.prevMonthLabel}`,
-        isIncrease: this.trendPercent > 0,
+        text: `${arrow} ${Math.abs(pct)}% vs ${this.prevMonthLabel}`,
+        isIncrease: pct > 0,
       };
     },
 
