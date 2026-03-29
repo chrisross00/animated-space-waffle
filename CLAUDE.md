@@ -213,6 +213,7 @@ section instead of reading the whole file.
 | `useScreen` | `frontend/src/composables/useScreen.js` | Reactive breakpoints (`isMobile`, `isDesktop`, `width`) — replaces `$q.screen`. |
 | `useGesture` | `frontend/src/composables/useGesture.js` | Swipe and drag gesture detection — replaces `v-touch-swipe`. |
 | `useToast` | `frontend/src/composables/useToast.js` | Programmatic toast notifications — replaces `$q.notify`. |
+| `merchantInitials`, `merchantColor`, `isVenmo` | `frontend/src/utils/merchantDisplay.js` | Merchant avatar initials, hash-based color, Venmo detection. Used by BudgetView + TransactionDrillDown. |
 | `keyboardState`, `requestKeyboard`, `dismissKeyboard` | `frontend/src/utils/basilKeyboard.js` | Reactive singleton for keyboard ↔ input communication. |
 | `scrollActiveInputIntoView()` | `frontend/src/utils/basilKeyboard.js` | Scrolls focused input into view when keyboard opens. Finds nearest scrollable ancestor (tray) or falls back to body padding for full-page views. |
 
