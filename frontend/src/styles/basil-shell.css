@@ -70,6 +70,7 @@ html, body {
 
 .basil-main {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background-color: var(--basil-bg);
