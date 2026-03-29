@@ -284,6 +284,11 @@ name pattern / amount / amount + institution".
       PFC misclassifies payroll as transfers and the user has no way to know.
       Design validated via UX analysis + competitor research (see `plans/`).
 
+- [ ] **Transaction drill-down polish** — The drill-down view is functional but bare.
+      Needs: merchant icons/initials, tap-to-edit (wire DialogComponent), visual
+      grouping by date, pull-to-refresh, loading skeleton if transactions haven't
+      loaded yet, and general styling love to match the rest of the app's polish level.
+
 ### Medium priority
 - [ ] **Post-onboarding in-flow prompts** — soft-gate dialogs for actions like Add to
       Home Screen (with GIF), Venmo import, trends discovery. Not nudges, not overlays —
@@ -315,6 +320,10 @@ name pattern / amount / amount + institution".
       specific transaction.
 
 ### Tech debt
+- [ ] **Transaction drill-down: animated back navigation** — back button currently does
+      an instant swap (`:css="false"`) to avoid double-animation with iOS swipe-back.
+      Explore a JS-driven reverse slide that skips when popstate (swipe) triggers it
+      but animates for the back button tap.
 - [ ] **Scroll-into-view smoothness** — `smoothScrollBy` in `basilKeyboard.js` uses
       RAF-based JS scrolling (low FPS on ProMotion). Replace with
       `scrollParent.scrollTo({ top, behavior: 'smooth' })` for compositor-driven animation.
