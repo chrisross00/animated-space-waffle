@@ -262,10 +262,9 @@ export default {
     },
 
     onChartClick(params) {
-      if (this.mode !== 'category' || !params.name) return
-      // Find the original key for this slice (category name matches the label in category mode)
+      if (!params.name) return
       const chip = this.chips.find(c => c.label === params.name)
-      if (chip) this.drillInto(chip.categoryName)
+      if (chip) this.onChipClick(chip)
     },
 
     _buildBreakdown(txns, keyFn, labelFn, collapseSmall = true) {
