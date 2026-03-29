@@ -140,7 +140,7 @@
       <template v-else>
         <PullToRefresh>
           <router-view v-slot="{ Component, route }">
-            <Transition :name="transitionName" :mode="transitionName === 'basil-page' ? 'out-in' : undefined">
+            <Transition :name="transitionName" :css="transitionName !== 'none'" :mode="transitionName === 'basil-page' ? 'out-in' : undefined">
               <KeepAlive include="BudgetView">
                 <component :is="Component" :key="route.path" />
               </KeepAlive>
