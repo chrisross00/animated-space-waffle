@@ -141,7 +141,9 @@
         <PullToRefresh>
           <router-view v-slot="{ Component, route }">
             <Transition :name="transitionName" :mode="transitionName === 'basil-page' ? 'out-in' : undefined">
-              <component :is="Component" :key="route.path" />
+              <KeepAlive include="BudgetView">
+                <component :is="Component" :key="route.path" />
+              </KeepAlive>
             </Transition>
           </router-view>
         </PullToRefresh>
@@ -275,12 +277,19 @@
   opacity: 0;
 }
 
-/* Slide transition for drill-down navigation */
+/* Slide transition for drill-down navigation.
+   Both pages must overlap during the slide, so they need
+   position:absolute within the relative PullToRefresh container. */
 .slide-left-enter-active,
 .slide-left-leave-active,
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100%;
 }
 .slide-left-enter-from {
   transform: translateX(100%);

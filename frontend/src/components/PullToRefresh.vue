@@ -153,6 +153,7 @@ export default {
 }
 
 .basil-pull__content {
+  position: relative;
   transition: transform var(--basil-t-base) var(--basil-ease);
 }
 
