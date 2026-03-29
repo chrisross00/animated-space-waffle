@@ -32,7 +32,7 @@
 }
 
 .basil-chart-delta__value {
-  font-family: var(--basil-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.01em;

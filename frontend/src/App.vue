@@ -166,7 +166,6 @@
 
 /* ---- Monospace numbers utility ---- */
 .basil-mono {
-  font-family: var(--basil-font-mono);
   font-variant-numeric: tabular-nums;
 }
 

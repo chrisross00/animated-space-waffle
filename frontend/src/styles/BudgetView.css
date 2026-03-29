@@ -681,9 +681,9 @@
   white-space: nowrap;
 }
 
-/* Monospace amount */
+/* Amount */
 .basil-txn-amount {
-  font-family: var(--basil-font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: -0.01em;
