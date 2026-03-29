@@ -285,9 +285,17 @@ name pattern / amount / amount + institution".
       Design validated via UX analysis + competitor research (see `plans/`).
 
 - [ ] **Transaction drill-down polish** — The drill-down view is functional but bare.
-      Needs: merchant icons/initials, tap-to-edit (wire DialogComponent), visual
-      grouping by date, pull-to-refresh, loading skeleton if transactions haven't
-      loaded yet, and general styling love to match the rest of the app's polish level.
+      Needs: merchant icons/initials, visual grouping by date, summary header with
+      total + category context. Read-only insight view (not tap-to-edit). Match the
+      polish level of BudgetView's category transaction rows.
+- [ ] **PFC detail override system** — Let users correct Plaid's PFC detail codes.
+      Extends compound rule actions with optional `pfcDetailOverride` field. New
+      `effective_pfc_detail` column on transactions. Spending breakdown reads
+      `effective_pfc_detail || plaidPfcDetail`. UX: tap transaction in drill-down →
+      pick correct PFC detail → auto-maps to Basil category (with override option).
+      Recurring transactions handled by existing compound rule matching — no new rule
+      layer. Differentiator: no competitor lets users control subcategory data.
+      Needs full brainstorm + design before implementation.
 
 ### Medium priority
 - [ ] **Post-onboarding in-flow prompts** — soft-gate dialogs for actions like Add to
