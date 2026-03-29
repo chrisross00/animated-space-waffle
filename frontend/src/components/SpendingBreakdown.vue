@@ -162,7 +162,7 @@ export default {
       const slices = this.activeBreakdown
       if (!slices.length) return {}
 
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
+      const isDark = this.$store.state.theme === 'dark'
       const surfaceColor = isDark ? '#181c24' : '#ffffff'
       const textColor = isDark ? '#f0ece6' : '#2a2a2a'
       const textMutedColor = isDark ? '#9a9590' : '#888888'
