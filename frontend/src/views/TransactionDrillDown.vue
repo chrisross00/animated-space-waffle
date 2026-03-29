@@ -11,11 +11,44 @@
       </div>
     </div>
 
+    <div v-if="filteredTransactions.length > 0" class="basil-drilldown__summary" :class="{ 'basil-drilldown__summary--collapsed': collapsed }">
+      <!-- Compact bar (always rendered, visible when collapsed) -->
+      <div class="basil-drilldown__compact">
+        <span class="basil-drilldown__compact-left">{{ count }} transactions · {{ monthLabel }}</span>
+        <span v-if="trendDisplay" class="basil-drilldown__compact-trend" :class="trendDisplay.isIncrease ? 'basil-drilldown__compact-trend--up' : 'basil-drilldown__compact-trend--down'">
+          {{ trendDisplay.text }}
+        </span>
+      </div>
+      <!-- Stat cards (collapse on scroll) -->
+      <div class="basil-drilldown__stats">
+        <div class="basil-drilldown__stat-row">
+          <span class="basil-drilldown__stat-meta">{{ monthLabel.toUpperCase() }}</span>
+          <span class="basil-drilldown__stat-meta">{{ count }} transactions</span>
+        </div>
+        <div class="basil-drilldown__stat-cards">
+          <div class="basil-drilldown__stat-card">
+            <div class="basil-drilldown__stat-label">Avg</div>
+            <div class="basil-drilldown__stat-value">${{ Math.round(avgAmount).toLocaleString() }}</div>
+          </div>
+          <div class="basil-drilldown__stat-card">
+            <div class="basil-drilldown__stat-label">Largest</div>
+            <div class="basil-drilldown__stat-value">${{ Math.round(largestAmount).toLocaleString() }}</div>
+          </div>
+          <div class="basil-drilldown__stat-card">
+            <div class="basil-drilldown__stat-label">vs {{ prevMonthLabel }}</div>
+            <div class="basil-drilldown__stat-value" :class="trendPercent > 0 ? 'basil-drilldown__stat-value--up' : trendPercent < 0 ? 'basil-drilldown__stat-value--down' : ''">
+              {{ trendPercent === null ? '—' : `${trendPercent > 0 ? '+' : ''}${trendPercent}%` }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="filteredTransactions.length === 0" class="basil-drilldown__empty">
       No transactions
     </div>
 
-    <div v-else class="basil-drilldown__list">
+    <div v-else class="basil-drilldown__list" @scroll="onListScroll">
       <div
         v-for="txn in filteredTransactions"
         :key="txn.transaction_id"
@@ -53,6 +86,12 @@ import { merchantInitials as getMerchantInitials, merchantColor as getMerchantCo
 
 export default {
   name: 'TransactionDrillDown',
+
+  data() {
+    return {
+      collapsed: false,
+    };
+  },
 
   computed: {
     pfc() {
@@ -107,6 +146,60 @@ export default {
     total() {
       return this.filteredTransactions.reduce((sum, txn) => sum + Math.abs(txn.amount), 0);
     },
+
+    count() {
+      return this.filteredTransactions.length;
+    },
+
+    monthLabel() {
+      if (!this.month) return '';
+      return dayjs(this.month).format('MMMM YYYY');
+    },
+
+    prevMonthLabel() {
+      if (!this.month) return '';
+      return dayjs(this.month).subtract(1, 'month').format('MMM');
+    },
+
+    avgAmount() {
+      if (this.count === 0) return 0;
+      return this.total / this.count;
+    },
+
+    largestAmount() {
+      if (this.count === 0) return 0;
+      return Math.max(...this.filteredTransactions.map(t => Math.abs(t.amount)));
+    },
+
+    prevMonthTotal() {
+      if (!this.month || !this.category) return null;
+      const prevMonth = dayjs(this.month).subtract(1, 'month').format('YYYY-MM');
+      const prevTxns = this.$store.state.transactionsByMonth[prevMonth];
+      if (!prevTxns) return null;
+      const pfc = this.pfc;
+      return prevTxns
+        .filter(t => {
+          if (t.excludeFromTotal) return false;
+          if (t.mappedCategory !== this.category) return false;
+          if (pfc === '__other__') return !t.plaidPfcDetail;
+          return t.plaidPfcDetail === pfc;
+        })
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    },
+
+    trendPercent() {
+      if (this.prevMonthTotal === null || this.prevMonthTotal === 0) return null;
+      return Math.round(((this.total - this.prevMonthTotal) / this.prevMonthTotal) * 100);
+    },
+
+    trendDisplay() {
+      if (this.trendPercent === null) return null;
+      const arrow = this.trendPercent > 0 ? '↑' : '↓';
+      return {
+        text: `${arrow} ${Math.abs(this.trendPercent)}% vs ${this.prevMonthLabel}`,
+        isIncrease: this.trendPercent > 0,
+      };
+    },
   },
 
   methods: {
@@ -121,6 +214,9 @@ export default {
     },
     isVenmo(row) {
       return getIsVenmo(row);
+    },
+    onListScroll(e) {
+      this.collapsed = e.target.scrollTop > 0;
     },
   },
 };
@@ -196,6 +292,105 @@ export default {
   font-weight: 600;
   color: var(--basil-text-secondary);
   flex-shrink: 0;
+}
+
+/* Summary header */
+.basil-drilldown__summary {
+  position: sticky;
+  top: 53px;
+  z-index: 5;
+  background: var(--basil-surface-alt);
+  border-bottom: 1px solid var(--basil-border);
+  overflow: hidden;
+}
+
+.basil-drilldown__compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--basil-space-2) var(--basil-space-4);
+}
+
+.basil-drilldown__compact-left {
+  font-size: 0.6875rem;
+  color: var(--basil-text-muted);
+}
+
+.basil-drilldown__compact-trend {
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.basil-drilldown__compact-trend--up {
+  color: var(--basil-negative);
+}
+
+.basil-drilldown__compact-trend--down {
+  color: var(--basil-positive);
+}
+
+.basil-drilldown__stats {
+  padding: 0 var(--basil-space-4) var(--basil-space-3);
+  max-height: 120px;
+  opacity: 1;
+  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
+}
+
+.basil-drilldown__summary--collapsed .basil-drilldown__stats {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.basil-drilldown__stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--basil-space-2);
+}
+
+.basil-drilldown__stat-meta {
+  font-size: 0.6875rem;
+  color: var(--basil-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.basil-drilldown__stat-cards {
+  display: flex;
+  gap: var(--basil-space-3);
+}
+
+.basil-drilldown__stat-card {
+  flex: 1;
+  background: var(--basil-surface);
+  border-radius: var(--basil-radius-sm);
+  padding: var(--basil-space-2) var(--basil-space-3);
+  border: 1px solid var(--basil-border);
+}
+
+.basil-drilldown__stat-label {
+  font-size: 0.625rem;
+  color: var(--basil-text-muted);
+  text-transform: uppercase;
+}
+
+.basil-drilldown__stat-value {
+  font-family: var(--basil-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-top: var(--basil-space-1);
+  color: var(--basil-text);
+}
+
+.basil-drilldown__stat-value--up {
+  color: var(--basil-negative);
+}
+
+.basil-drilldown__stat-value--down {
+  color: var(--basil-positive);
 }
 
 /* Empty state */
