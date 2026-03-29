@@ -52,8 +52,8 @@
           v-for="chip in chips"
           :key="chip.label"
           class="basil-breakdown__chip"
-          :class="{ 'basil-breakdown__chip--tappable': mode === 'category' }"
-          @click="mode === 'category' ? drillInto(chip.categoryName) : null"
+          :class="{ 'basil-breakdown__chip--tappable': mode === 'category' || mode === 'detail-single' }"
+          @click="onChipClick(chip)"
         >
           <span class="basil-breakdown__chip-dot" :style="{ background: chip.color }"></span>
           {{ chip.label }} ${{ Math.round(chip.total).toLocaleString() }}
@@ -93,6 +93,7 @@ export default {
   props: {
     transactions: { type: Array, required: true },
     categories: { type: Array, required: true },
+    month: { type: String, default: '' },
   },
   emits: ['edit-category'],
 
@@ -233,6 +234,22 @@ export default {
   },
 
   methods: {
+    onChipClick(chip) {
+      if (this.mode === 'category') {
+        this.drillInto(chip.categoryName)
+      } else if (this.mode === 'detail-single') {
+        this.$router.push({
+          path: '/budget/transactions',
+          query: {
+            pfc: chip.categoryName,
+            month: this.month,
+            category: this.drillCategory,
+          },
+        })
+      }
+      // detail-all: do nothing
+    },
+
     drillInto(categoryName) {
       if (!categoryName) return
       this.drillCategory = categoryName

@@ -101,6 +101,7 @@
               <SpendingBreakdown
                 :transactions="expenseTransactions"
                 :categories="$store.state.categories || []"
+                :month="selectedDate.actual.format('YYYY-MM')"
                 @edit-category="openEditCategoryFromBreakdown"
               />
             </template>
