@@ -428,9 +428,11 @@ export default {
 
   watch: {
     $route(to, from) {
-      if (to.meta.transition === 'slide' || from.meta.transition === 'slide') {
-        // Navigating TO a slide route = slide-left (forward), FROM = slide-right (back)
-        this.transitionName = to.meta.transition === 'slide' ? 'slide-left' : 'slide-right'
+      // Only slide forward (into drill-down). Back navigation uses the
+      // default fade — iOS Safari's native swipe-back already provides
+      // a slide animation, so a CSS slide-right would double up.
+      if (to.meta.transition === 'slide') {
+        this.transitionName = 'slide-left'
       } else {
         this.transitionName = 'basil-page'
       }
