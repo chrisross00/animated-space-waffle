@@ -537,7 +537,7 @@ router.post('/linkTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
-    const { transactionId, partnerId, type, signals, effectiveDate, recategorize } = req.body;
+    const { transactionId, partnerId, type, signals, effectiveDate, recategorize, enrichNote } = req.body;
 
     if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
       return res.status(400).json({ message: 'transactionId and partnerId are required' });
@@ -565,6 +565,10 @@ router.post('/linkTransactions', async (req, res) => {
     if (recategorize) {
       partnerFields.mappedCategory = recategorize;
     }
+    // Enrich the secondary P2P transaction with the linked merchant name
+    if (enrichNote) {
+      partnerFields.venmo_note = enrichNote;
+    }
     await updateTransaction(uid, partnerId, partnerFields);
 
     res.json({ linked: true, transactionId, partnerId, type, effectiveDate: effectiveDate || null, recategorize: recategorize || null });
@@ -578,7 +582,7 @@ router.post('/unlinkTransactions', async (req, res) => {
   try {
     const decodedToken = await validateIdToken(req);
     const uid = decodedToken.uid;
-    const { transactionId, partnerId, revertCategory } = req.body;
+    const { transactionId, partnerId, revertCategory, revertEnrichNote } = req.body;
 
     if (!isStr(transactionId, 100) || !isStr(partnerId, 100)) {
       return res.status(400).json({ message: 'transactionId and partnerId are required' });
@@ -589,6 +593,10 @@ router.post('/unlinkTransactions', async (req, res) => {
     // Revert category if it was auto-recategorized on link
     if (revertCategory) {
       partnerFields.mappedCategory = revertCategory;
+    }
+    // Revert enrichment note if it was set on link
+    if (revertEnrichNote) {
+      partnerFields.venmo_note = null;
     }
     await updateTransaction(uid, partnerId, partnerFields);
 

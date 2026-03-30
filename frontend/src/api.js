@@ -557,14 +557,14 @@ export async function venmoEnrichmentApply(enrichments) {
   _notify({ type: 'negative', message: `Failed to update Venmo transactions (${response.status})` });
 }
 
-export async function linkTransactions(transactionId, partnerId, type, signals, effectiveDate, recategorize) {
+export async function linkTransactions(transactionId, partnerId, type, signals, effectiveDate, recategorize, enrichNote) {
   const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/linkTransactions', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId, partnerId, type, signals, ...(effectiveDate && { effectiveDate }), ...(recategorize && { recategorize }) }),
+    body: JSON.stringify({ transactionId, partnerId, type, signals, ...(effectiveDate && { effectiveDate }), ...(recategorize && { recategorize }), ...(enrichNote && { enrichNote }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to link transactions (${response.status})` });
@@ -583,14 +583,14 @@ export async function dismissRelationship(transactionId, partnerId) {
   _notify({ type: 'negative', message: `Failed to dismiss relationship (${response.status})` });
 }
 
-export async function unlinkTransactions(transactionId, partnerId, revertCategory) {
+export async function unlinkTransactions(transactionId, partnerId, revertCategory, revertEnrichNote) {
   const headers = getAuthHeaders();
   if (!headers) return;
   headers['Content-Type'] = 'application/json';
   const response = await fetch('/api/unlinkTransactions', {
     method: 'POST',
     headers,
-    body: JSON.stringify({ transactionId, partnerId, ...(revertCategory && { revertCategory }) }),
+    body: JSON.stringify({ transactionId, partnerId, ...(revertCategory && { revertCategory }), ...(revertEnrichNote && { revertEnrichNote: true }) }),
   });
   if (response.ok) return response.json();
   _notify({ type: 'negative', message: `Failed to unlink transactions (${response.status})` });

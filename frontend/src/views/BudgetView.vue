@@ -2371,6 +2371,13 @@ monthStats() {
         // Auto-recategorize secondary if it's unsorted
         const recategorize = (txnB.mappedCategory === 'To Sort') ? txnA.mappedCategory : null;
 
+        // Enrich secondary P2P transaction with the linked merchant name
+        // (only if it doesn't already have a venmo_note from CSV import)
+        const primaryMerchant = txnA.merchant_name || txnA.name;
+        const enrichNote = !txnB.venmo_note && primaryMerchant
+          ? (rel.type === 'split' ? `Split: ${primaryMerchant}` : `Return: ${primaryMerchant}`)
+          : null;
+
         // Optimistic update + immediate API call
         store.commit('linkTransaction', {
           transactionId: txnA.transaction_id,
@@ -2378,11 +2385,12 @@ monthStats() {
           type: rel.type,
           effectiveDate,
           recategorize,
+          enrichNote,
         });
         // Re-sync local transactions from store and regroup
         this.transactions = store.state.transactions || [];
         this.groupTransactions();
-        linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals, effectiveDate, recategorize);
+        linkTransactions(txnA.transaction_id, txnB.transaction_id, rel.type, signals, effectiveDate, recategorize, enrichNote);
 
         const details = [];
         if (effectiveDate) details.push(`moved to ${dayjs(effectiveDate).format('MMM YYYY')}`);
@@ -2399,10 +2407,11 @@ monthStats() {
                 transactionId: txnA.transaction_id,
                 partnerId: txnB.transaction_id,
                 revertCategory: recategorize ? 'To Sort' : null,
+                revertEnrichNote: !!enrichNote,
               });
               this.transactions = store.state.transactions || [];
               this.groupTransactions();
-              unlinkTransactions(txnA.transaction_id, txnB.transaction_id, recategorize ? 'To Sort' : null);
+              unlinkTransactions(txnA.transaction_id, txnB.transaction_id, recategorize ? 'To Sort' : null, enrichNote ? true : false);
             },
           }],
         });

@@ -152,7 +152,7 @@ const store = createStore({
                 if (flatTxn) update(flatTxn);
             }
         },
-        linkTransaction(state, { transactionId, partnerId, type, effectiveDate, recategorize }) {
+        linkTransaction(state, { transactionId, partnerId, type, effectiveDate, recategorize, enrichNote }) {
             const now = new Date().toISOString();
             const findAndUpdate = (id, partnerId) => {
                 for (const monthTxns of Object.values(state.transactionsByMonth)) {
@@ -198,6 +198,17 @@ const store = createStore({
                 const flat = state.transactions.find(t => t.transaction_id === partnerId);
                 if (flat) flat.mappedCategory = recategorize;
             }
+
+            // Enrich the partner with the linked merchant name
+            if (enrichNote) {
+                const setNote = (txn) => { txn.venmo_note = enrichNote; };
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === partnerId);
+                    if (txn) { setNote(txn); break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === partnerId);
+                if (flat) setNote(flat);
+            }
         },
         dismissRelationship(state, { transactionId, partnerId }) {
             const now = new Date().toISOString();
@@ -212,7 +223,7 @@ const store = createStore({
             mark(transactionId);
             if (partnerId) mark(partnerId);
         },
-        unlinkTransaction(state, { transactionId, partnerId, revertCategory }) {
+        unlinkTransaction(state, { transactionId, partnerId, revertCategory, revertEnrichNote }) {
             let needsRebuild = false;
             const clear = (id) => {
                 for (const [month, monthTxns] of Object.entries(state.transactionsByMonth)) {
@@ -250,6 +261,16 @@ const store = createStore({
                 }
                 const flat = state.transactions.find(t => t.transaction_id === partnerId);
                 if (flat) flat.mappedCategory = revertCategory;
+            }
+            // Revert enrichment note on the partner
+            if (revertEnrichNote) {
+                const clearNote = (txn) => { delete txn.venmo_note; };
+                for (const monthTxns of Object.values(state.transactionsByMonth)) {
+                    const txn = monthTxns.find(t => t.transaction_id === partnerId);
+                    if (txn) { clearNote(txn); break; }
+                }
+                const flat = state.transactions.find(t => t.transaction_id === partnerId);
+                if (flat) clearNote(flat);
             }
             if (needsRebuild) {
                 rebuildFlatArray(state);
