@@ -222,6 +222,10 @@ const ALIASES = {
   'steamgames.com': 'steam',
   // Instacart
   'instacart express': 'instacart',
+  // New York Times
+  'new york times': 'newyorktimes',
+  'nytimes': 'newyorktimes',
+  'nyt': 'newyorktimes',
   // Adidas
   'adidas.com': 'adidas',
   // Microsoft
@@ -253,17 +257,6 @@ for (const [alias, canonical] of Object.entries(ALIASES)) {
   LOOKUP[alias] = LOGOS[canonical]
 }
 
-// Patterns for transaction names that embed the brand
-// (e.g. "DD *DOORDASH SHAWARMAK", "UBER *EATS PENDING")
-// Checked only when exact lookup fails.
-const CONTAINS_PATTERNS = [
-  { pattern: /doordash/i, key: 'doordash' },
-  { pattern: /uber\s*eats/i, key: 'uber' },
-  { pattern: /grubhub/i, key: 'grubhub' },
-  { pattern: /instacart/i, key: 'instacart' },
-  { pattern: /cash\s*app/i, key: 'cashapp' },
-]
-
 /**
  * Look up a merchant logo by name.
  * @param {string} merchantName - merchant_name or transaction name
@@ -274,9 +267,11 @@ export function getMerchantLogo(merchantName) {
   const key = merchantName.toLowerCase().trim()
   const exact = LOOKUP[key]
   if (exact) return exact
-  // Fallback: check if the name contains a known brand
-  for (const { pattern, key: logoKey } of CONTAINS_PATTERNS) {
-    if (pattern.test(key)) return LOGOS[logoKey]
+  // Fallback: tokenize and check each word against the logo map.
+  // Catches Plaid names like "DD *DOORDASH SHAWARMAK" → "doordash" hits.
+  const tokens = key.split(/[\s*]+/)
+  for (const token of tokens) {
+    if (token.length >= 3 && LOOKUP[token]) return LOOKUP[token]
   }
   return null
 }
