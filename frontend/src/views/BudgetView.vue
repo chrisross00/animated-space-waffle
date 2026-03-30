@@ -1292,6 +1292,7 @@
       historicalCategoryMap() {
         const byMerchant = {};
         const byMerchantBucket = {};
+        const byP2PExact = {};
         const cutoff = dayjs().subtract(12, 'month');
         const resolveBest = (freqObj) => {
           let best = null, bestCount = 0;
@@ -1305,6 +1306,13 @@
           if (dayjs(txn.date).isBefore(cutoff)) continue;
           const key = (txn.merchant_name || txn.name || '').toLowerCase().trim();
           if (!key) continue;
+          // P2P: only exact-amount matching (recurring Venmo payments, etc.)
+          if (isP2PTransaction(txn)) {
+            const exactKey = `${key}::${Math.abs(txn.amount).toFixed(2)}`;
+            if (!byP2PExact[exactKey]) byP2PExact[exactKey] = {};
+            byP2PExact[exactKey][txn.mappedCategory] = (byP2PExact[exactKey][txn.mappedCategory] || 0) + 1;
+            continue;
+          }
           const bucket = amountBucket(Math.abs(txn.amount));
           if (!byMerchant[key]) byMerchant[key] = {};
           byMerchant[key][txn.mappedCategory] = (byMerchant[key][txn.mappedCategory] || 0) + 1;
@@ -1322,7 +1330,12 @@
           const r = resolveBest(cats);
           if (r) merchantBucket[mbKey] = r;
         }
-        return { merchant, merchantBucket };
+        const p2pExact = {};
+        for (const [k, cats] of Object.entries(byP2PExact)) {
+          const r = resolveBest(cats);
+          if (r) p2pExact[k] = r;
+        }
+        return { merchant, merchantBucket, p2pExact };
       },
       toSortTransactions() {
         const sel = this.selectedDate.actual;
@@ -1333,7 +1346,7 @@
         );
       },
       toSortWithSuggestions() {
-        const { merchant: merchantMap, merchantBucket: bucketMap } = this.historicalCategoryMap;
+        const { merchant: merchantMap, merchantBucket: bucketMap, p2pExact: p2pMap } = this.historicalCategoryMap;
         const recurring = this.recurringMerchants;
         const sameDayMap = {};
         for (const txn of store.state.transactions || []) {
@@ -1343,28 +1356,39 @@
           sameDayMap[d].add(txn.mappedCategory);
         }
         return this.toSortTransactions.map(txn => {
-          const key = (txn.merchant_name || txn.name || '').toLowerCase().trim();
-          const bucket = amountBucket(Math.abs(txn.amount));
-          const mbKey = `${key}::${bucket}`;
           let suggestion = null, confidence = null, reason = null;
-          const bucketMatch = key ? bucketMap[mbKey] : null;
-          const merchantMatch = key ? merchantMap[key] : null;
-          if (bucketMatch && bucketMatch.count >= 2) {
-            suggestion = bucketMatch.category;
-            confidence = bucketMatch.count >= 3 ? 'high' : 'medium';
-            reason = `Previously categorized (${bucketMatch.count}x, similar amount)`;
-            if (recurring.has(txn.merchant_name || txn.name)) confidence = 'high';
-          } else if (merchantMatch) {
-            suggestion = merchantMatch.category;
-            confidence = merchantMatch.count >= 3 ? 'medium' : 'low';
-            reason = `Previously categorized (${merchantMatch.count}x)`;
-            if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
+          const key = (txn.merchant_name || txn.name || '').toLowerCase().trim();
+          if (isP2PTransaction(txn)) {
+            // P2P: only suggest when we've seen this exact amount before
+            const exactKey = `${key}::${Math.abs(txn.amount).toFixed(2)}`;
+            const exactMatch = key ? p2pMap[exactKey] : null;
+            if (exactMatch && exactMatch.count >= 2) {
+              suggestion = exactMatch.category;
+              confidence = exactMatch.count >= 3 ? 'high' : 'medium';
+              reason = `Previously categorized (${exactMatch.count}x, exact amount)`;
+            }
           } else {
-            const dayCats = sameDayMap[txn.effectiveDate || txn.date];
-            if (dayCats && dayCats.size === 1) {
-              suggestion = [...dayCats][0];
-              confidence = 'low';
-              reason = 'Same-day context';
+            const bucket = amountBucket(Math.abs(txn.amount));
+            const mbKey = `${key}::${bucket}`;
+            const bucketMatch = key ? bucketMap[mbKey] : null;
+            const merchantMatch = key ? merchantMap[key] : null;
+            if (bucketMatch && bucketMatch.count >= 2) {
+              suggestion = bucketMatch.category;
+              confidence = bucketMatch.count >= 3 ? 'high' : 'medium';
+              reason = `Previously categorized (${bucketMatch.count}x, similar amount)`;
+              if (recurring.has(txn.merchant_name || txn.name)) confidence = 'high';
+            } else if (merchantMatch) {
+              suggestion = merchantMatch.category;
+              confidence = merchantMatch.count >= 3 ? 'medium' : 'low';
+              reason = `Previously categorized (${merchantMatch.count}x)`;
+              if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
+            } else {
+              const dayCats = sameDayMap[txn.effectiveDate || txn.date];
+              if (dayCats && dayCats.size === 1) {
+                suggestion = [...dayCats][0];
+                confidence = 'low';
+                reason = 'Same-day context';
+              }
             }
           }
           return { ...txn, suggestion, confidence, reason };
