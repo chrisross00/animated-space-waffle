@@ -384,11 +384,10 @@
                   >
                     <div class="basil-txn-row__name">
                       <div class="basil-txn-cell">
-                        <div v-if="isVenmo(item)" class="basil-txn-avatar basil-txn-avatar--venmo">
-                          <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff">
-                            <path d="M19.5 1.6c.8 1.3 1.1 2.6 1.1 4.3 0 5.3-4.5 12.2-8.2 17.1H5.2L2.4 2.1l6.3-.6 1.6 12.9c1.5-2.4 3.3-6.2 3.3-8.8 0-1.6-.3-2.7-.7-3.6l6.6-0.4z"/>
-                          </svg>
-                        </div>
+                        <div v-if="merchantLogo(item)"
+                          class="basil-txn-avatar basil-txn-avatar--logo"
+                          :style="{ background: merchantLogo(item).color }"
+                        ><svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" v-html="merchantLogo(item).paths"></svg></div>
                         <div v-else
                           class="basil-txn-avatar"
                           :style="{ background: merchantColor(item) }"
@@ -581,15 +580,13 @@
                       class="basil-txn-avatar"
                       :class="{
                         'basil-txn-avatar--selected': isMobile && isRowSelected(sortedTableTransactions[vRow.index]),
-                        'basil-txn-avatar--venmo': isVenmo(sortedTableTransactions[vRow.index]) && !(isMobile && isRowSelected(sortedTableTransactions[vRow.index]))
+                        'basil-txn-avatar--logo': merchantLogo(sortedTableTransactions[vRow.index]) && !(isMobile && isRowSelected(sortedTableTransactions[vRow.index]))
                       }"
-                      :style="isRowSelected(sortedTableTransactions[vRow.index]) && isMobile ? {} : (isVenmo(sortedTableTransactions[vRow.index]) ? {} : { background: merchantColor(sortedTableTransactions[vRow.index]) })"
+                      :style="isRowSelected(sortedTableTransactions[vRow.index]) && isMobile ? {} : (merchantLogo(sortedTableTransactions[vRow.index]) ? { background: merchantLogo(sortedTableTransactions[vRow.index]).color } : { background: merchantColor(sortedTableTransactions[vRow.index]) })"
                       @click="isMobile && selectedRows.length > 0 ? ($event.stopPropagation(), toggleRowSelection(sortedTableTransactions[vRow.index])) : null"
                     >
                       <BasilIcon v-if="isMobile && isRowSelected(sortedTableTransactions[vRow.index])" name="check" size="18px" />
-                      <svg v-else-if="isVenmo(sortedTableTransactions[vRow.index])" viewBox="0 0 24 24" width="16" height="16" fill="#fff">
-                        <path d="M19.5 1.6c.8 1.3 1.1 2.6 1.1 4.3 0 5.3-4.5 12.2-8.2 17.1H5.2L2.4 2.1l6.3-.6 1.6 12.9c1.5-2.4 3.3-6.2 3.3-8.8 0-1.6-.3-2.7-.7-3.6l6.6-0.4z"/>
-                      </svg>
+                      <svg v-else-if="merchantLogo(sortedTableTransactions[vRow.index])" viewBox="0 0 24 24" width="16" height="16" fill="#fff" v-html="merchantLogo(sortedTableTransactions[vRow.index]).paths"></svg>
                       <template v-else>{{ merchantInitials(sortedTableTransactions[vRow.index]) }}</template>
                     </div>
                     <div class="basil-txn-label">
@@ -966,7 +963,7 @@
   import BasilNote from '@/components/BasilNote';
   import { screen } from '@/composables/useScreen';
   import { toast } from '@/composables/useToast';
-  import { merchantInitials as _merchantInitials, merchantColor as _merchantColor, isVenmo as _isVenmo } from '@/utils/merchantDisplay';
+  import { merchantInitials as _merchantInitials, merchantColor as _merchantColor, merchantLogo as _merchantLogo } from '@/utils/merchantDisplay';
 
 // import e from 'express';
 
@@ -2449,8 +2446,8 @@ monthStats() {
       merchantColor(row) {
         return _merchantColor(row);
       },
-      isVenmo(row) {
-        return _isVenmo(row);
+      merchantLogo(row) {
+        return _merchantLogo(row);
       },
       toggleSort(field) {
         if (this.sortField === field) {

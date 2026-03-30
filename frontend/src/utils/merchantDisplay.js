@@ -1,3 +1,5 @@
+import { getMerchantLogo } from './merchantLogos'
+
 const MERCHANT_PALETTE = [
   '#b07d4a', '#4a8b6c', '#5a7fb5', '#8b5a4a',
   '#6b8b4a', '#7a5ab5', '#b54a6a', '#4a8b8b',
@@ -26,3 +28,14 @@ export function merchantColor(row) {
 export function isVenmo(row) {
   return VENMO_PATTERN.test(row.merchant_name || '') || VENMO_PATTERN.test(row.name || '')
 }
+
+/**
+ * Get brand logo for a transaction row.
+ * Checks merchant_name first, falls back to transaction name.
+ * @returns {{ paths: string, color: string } | null}
+ */
+export function merchantLogo(row) {
+  return getMerchantLogo(row.merchant_name) || getMerchantLogo(row.name) || null
+}
+
+export { getMerchantLogo }

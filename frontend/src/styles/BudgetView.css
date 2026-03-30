@@ -649,9 +649,6 @@
   color: var(--basil-text-inverse);
 }
 
-.basil-txn-avatar--venmo {
-  background: #008CFF;
-}
 
 .basil-txn-label {
   min-width: 0;
