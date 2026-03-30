@@ -440,8 +440,9 @@ export default {
         this.transitionName = 'none'
         const main = document.querySelector('.basil-main')
         if (main && this._savedScroll && this._savedScroll.path === to.path) {
-          this.$nextTick(() => { main.scrollTop = this._savedScroll.top })
+          const savedTop = this._savedScroll.top
           this._savedScroll = null
+          this.$nextTick(() => { main.scrollTop = savedTop })
         }
       } else {
         this.transitionName = 'basil-page'
