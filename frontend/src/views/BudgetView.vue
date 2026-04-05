@@ -953,6 +953,7 @@
   import { ensureAppData, handleDialogSubmit, bulkCategorize, deleteRule, fetchMerchants, saveRule, saveCompoundRule, updateCompoundRule, triggerSync, fetchTransactionsForMonth, fetchMonthRange, searchTransactions, linkTransactions, dismissRelationship, unlinkTransactions, undoDismissRelationship, tagTransactionsApi, untagTransactionsApi, splitTransaction, unsplitTransaction, updatePreferences } from '@/api';
   import { sweepStore, applyMerchantRuleToStore, applyCompoundRuleToStore, findSimilarTransactions, getAttribution } from '@/utils/ruleUtils';
   import { evaluateNudge } from '@/utils/budgetSetup';
+  import { freeCashFlow } from '@/utils/budgetMath';
   import { humanizeDetailedPfc } from '@/utils/pfcLabels';
   import { detectRelationships, isP2PTransaction } from '@/utils/relationshipDetector';
   import VenmoEnrichmentDialog from '@/components/VenmoEnrichmentDialog.vue';
@@ -1579,24 +1580,14 @@ monthStats() {
           let budgetRemaining = 0;
           let totalExp = 0;
           let absoluteSpend = 0;
-          let expenseSpend = 0; // expense-type categories only, positive
-          let incomeAmount = 0; // income-type categories only, positive
-          let savingsAmount = 0; // savings-type categories only, positive
           for (const category in groupedTransactions) {
-            if(groupedTransactions[category].type !== 'payment' ){
-              absoluteSpend += this.categorySum(category)
-            }
             const catSum = this.categorySum(category);
+            if(groupedTransactions[category].type !== 'payment' ){
+              absoluteSpend += catSum
+            }
             if (!isNaN(catSum)) {
-              if (this.groupedTransactions[category].type === 'expense') {
-                expenseSpend += Math.abs(catSum);
+              if (groupedTransactions[category].type === 'expense') {
                 totalExp += catSum;
-              }
-              if (this.groupedTransactions[category].type === 'income') {
-                incomeAmount += Math.abs(catSum);
-              }
-              if (this.groupedTransactions[category].type === 'savings') {
-                savingsAmount += Math.abs(catSum);
               }
             }
             if (this.isBudgetRemaining(category) == true) {
@@ -1619,6 +1610,12 @@ monthStats() {
           }
           monthlySum=monthlySum.toFixed(2),
           toSortSpending=toSortSpending.toFixed(2)
+          const sel = this.selectedDate.actual;
+          const monthTxns = this.transactions.filter(txn => {
+            const d = dayjs(txn.effectiveDate || txn.date);
+            return d.year() === sel.year() && d.month() === sel.month();
+          });
+          const fcf = freeCashFlow(monthTxns, this.categoryMonthlyLimits);
           return {
             monthlySum,
             toSortSpending,
@@ -1626,10 +1623,10 @@ monthStats() {
             budgetRemaining,
             totalExp,
             absoluteSpend,
-            expenseSpend,
-            incomeAmount,
-            savingsAmount,
-            netPosition: incomeAmount - expenseSpend - savingsAmount,
+            expenseSpend: fcf.expenses,
+            incomeAmount: fcf.income,
+            savingsAmount: fcf.savings,
+            netPosition: fcf.net,
           }
         }
       },

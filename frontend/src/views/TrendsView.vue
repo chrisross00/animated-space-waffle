@@ -187,6 +187,7 @@ import store from '../store'
 import { ensureAppData, fetchMonthRange } from '@/api'
 import EmptyState from '../components/EmptyState.vue'
 import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
+import { freeCashFlow } from '@/utils/budgetMath'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
 
@@ -228,28 +229,13 @@ export default {
 
     monthlyNet() {
       const transactions = store.state.transactions || [];
-      const months = this.monthList;
       const categories = store.state.categories || [];
-      const catTypeMap = new Map(categories.map(c => [c.category, c.type]));
 
-      return months.map(m => {
-        // Sum raw amounts per category (matches BudgetView's categorySum)
-        const catSums = {};
-        for (const txn of transactions) {
-          if (txn.excludeFromTotal) continue;
-          if (dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') !== m) continue;
-          const cat = txn.mappedCategory;
-          catSums[cat] = (catSums[cat] || 0) + txn.amount;
-        }
-        // Abs per category, then group by type (matches BudgetView's monthStats)
-        let income = 0, expenses = 0, savings = 0;
-        for (const [cat, sum] of Object.entries(catSums)) {
-          const type = catTypeMap.get(cat);
-          if (type === 'income') income += Math.abs(sum);
-          else if (type === 'expense') expenses += Math.abs(sum);
-          else if (type === 'savings') savings += Math.abs(sum);
-        }
-        return Math.round((income - expenses - savings) * 100) / 100;
+      return this.monthList.map(m => {
+        const monthTxns = transactions.filter(txn =>
+          dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') === m
+        );
+        return freeCashFlow(monthTxns, categories).net;
       });
     },
 
