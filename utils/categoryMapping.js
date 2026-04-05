@@ -1,14 +1,5 @@
 const { PFC_DETAIL_TO_CATEGORY } = require('./pfcDetailMapping');
-
-const P2P_PATTERNS = [
-  /venmo/i, /zelle/i, /cash app/i, /cashapp/i,
-  /paypal/i, /apple cash/i,
-];
-
-function isP2PTransaction(txn) {
-  const sources = [txn.account, txn.merchant_name, txn.name].filter(Boolean);
-  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
-}
+const { isP2PTransaction } = require('../shared/p2pDetection');
 
 function matchesCondition(txn, condition) {
   const { field, op, value, min, max } = condition;

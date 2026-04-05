@@ -6,6 +6,11 @@
  */
 
 import { toast } from '@/composables/useToast'
+import { P2P_PATTERNS, isP2PTransaction } from '../../../shared/p2pDetection'
+
+// Re-export as isP2P for backwards compatibility with existing consumers
+export const isP2P = isP2PTransaction;
+export { P2P_PATTERNS };
 
 const FIELD_LABELS = {
   name: 'name',
@@ -123,17 +128,10 @@ export function extractStablePrefix(name) {
   return null;
 }
 
-const P2P_PATTERNS = [/venmo/i, /zelle/i, /cash app/i, /cashapp/i, /paypal/i, /apple cash/i];
-
 /**
- * Detect P2P payment transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash).
- * P2P transactions get special handling in similarity matching — only amount+account
- * matching is useful because merchant/name matching is too broad.
+ * P2P detection is now in shared/p2pDetection.js — imported and re-exported
+ * at the top of this file as isP2P (backwards-compatible alias) + P2P_PATTERNS.
  */
-export function isP2P(txn) {
-  const sources = [txn.merchant_name, txn.name].filter(Boolean);
-  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
-}
 
 /**
  * Find an existing compound rule in the store whose conditions match exactly.

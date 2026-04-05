@@ -15,12 +15,8 @@
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-// --- P2P detection (mirrors utils/categoryMapping.js) ---
-const P2P_PATTERNS = [/venmo/i, /zelle/i, /cash app/i, /cashapp/i, /paypal/i, /apple cash/i];
-function isP2P(txn) {
-  const sources = [txn.merchant_name, txn.name].filter(Boolean);
-  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
-}
+// --- P2P detection (canonical source: shared/p2pDetection.js) ---
+const { isP2PTransaction: isP2P } = require('../shared/p2pDetection');
 
 // --- Prefix extraction ---
 // Two heuristics:

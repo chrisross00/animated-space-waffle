@@ -9,21 +9,8 @@
  * Bonus signals upgrade confidence from medium → high.
  */
 
-// --- P2P account detection ---
-
-const P2P_PATTERNS = [
-  /venmo/i, /zelle/i, /cash app/i, /cashapp/i,
-  /paypal/i, /apple cash/i,
-];
-
-/**
- * Check if a transaction is from a P2P service.
- * Checks account name, merchant_name, and transaction name.
- */
-function isP2PTransaction(txn) {
-  const sources = [txn.account, txn.merchant_name, txn.name].filter(Boolean);
-  return sources.some(s => P2P_PATTERNS.some(p => p.test(s)));
-}
+// --- P2P account detection (canonical source: shared/p2pDetection.js) ---
+import { P2P_PATTERNS, isP2PTransaction } from '../../../shared/p2pDetection';
 
 // --- PFC tiers for split likelihood (bonus signal) ---
 
