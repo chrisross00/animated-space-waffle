@@ -171,6 +171,7 @@
 import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import { getOrAddUser, seedCategories, fetchCategories, triggerSync, ensureAppData, updatePreferences } from '@/api';
 import store from '../store';
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
 
 export default {
   name: 'OnboardingView',
@@ -301,7 +302,7 @@ export default {
       // Determine which categories are expense-type (exclude income, payment, savings)
       const categories = store.state.categories || [];
       const expenseCats = new Set(
-        categories.filter(c => c.type === 'expense' && c.category !== 'To Sort').map(c => c.category)
+        categories.filter(c => c.type === CATEGORY_TYPES.EXPENSE && c.category !== 'To Sort').map(c => c.category)
       );
 
       // Total spend (expense categories only)

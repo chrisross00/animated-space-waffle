@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { CATEGORY_TYPES } = require('../shared/categoryTypes');
 
 // Parse DECIMAL/NUMERIC as float instead of string
 require('pg').types.setTypeParser(1700, val => parseFloat(val));
@@ -198,7 +199,7 @@ async function insertCategory(cat) {
   const { rows } = await pool.query(
     `INSERT INTO categories (user_id, name, type, monthly_limit, show_on_budget, plaid_pfc, fixed)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id AS "_id"`,
-    [cat.userId, cat.category || cat.name, cat.type || 'expense',
+    [cat.userId, cat.category || cat.name, cat.type || CATEGORY_TYPES.EXPENSE,
      cat.monthly_limit || 0, cat.show_on_budget !== false, cat.plaid_pfc || null,
      cat.fixed || null]
   );
@@ -214,7 +215,7 @@ async function insertCategories(cats) {
       const { rows } = await client.query(
         `INSERT INTO categories (user_id, name, type, monthly_limit, show_on_budget, plaid_pfc, fixed)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [cat.userId, cat.category || cat.name, cat.type || 'expense',
+        [cat.userId, cat.category || cat.name, cat.type || CATEGORY_TYPES.EXPENSE,
          cat.monthly_limit || 0, cat.show_on_budget !== false, cat.plaid_pfc || null,
          cat.fixed || null]
       );

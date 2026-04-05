@@ -188,6 +188,7 @@ import { ensureAppData, fetchMonthRange } from '@/api'
 import EmptyState from '../components/EmptyState.vue'
 import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
 import { freeCashFlow } from '@/utils/budgetMath'
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes'
 
 use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, MarkLineComponent, VisualMapComponent, CanvasRenderer])
 
@@ -219,10 +220,10 @@ export default {
 
     visibleCategories() {
       return (store.state.categories || []).filter(cat => {
-        if (cat.type === 'expense' && !this.showExpenses) return false;
-        if (cat.type === 'income' && !this.showIncome) return false;
-        if (cat.type === 'payment' && !this.showPayments) return false;
-        if (cat.type === 'savings' && !this.showSavings) return false;
+        if (cat.type === CATEGORY_TYPES.EXPENSE && !this.showExpenses) return false;
+        if (cat.type === CATEGORY_TYPES.INCOME && !this.showIncome) return false;
+        if (cat.type === CATEGORY_TYPES.PAYMENT && !this.showPayments) return false;
+        if (cat.type === CATEGORY_TYPES.SAVINGS && !this.showSavings) return false;
         return true;
       });
     },
@@ -366,8 +367,8 @@ export default {
       const transactions = store.state.transactions || [];
       const months = this.monthList;
       const categories = store.state.categories || [];
-      const savingsNames = new Set(categories.filter(c => c.type === 'savings').map(c => c.category));
-      const incomeNames = new Set(categories.filter(c => c.type === 'income').map(c => c.category));
+      const savingsNames = new Set(categories.filter(c => c.type === CATEGORY_TYPES.SAVINGS).map(c => c.category));
+      const incomeNames = new Set(categories.filter(c => c.type === CATEGORY_TYPES.INCOME).map(c => c.category));
 
       const savingsData = [];
       const rateData = [];

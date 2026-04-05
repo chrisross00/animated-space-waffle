@@ -83,6 +83,7 @@ import { TooltipComponent, GraphicComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
 import { humanizeDetailedPfc } from '@/utils/pfcLabels'
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes'
 
 use([PieChart, TooltipComponent, GraphicComponent, CanvasRenderer])
 
@@ -110,7 +111,7 @@ export default {
     expenseNames() {
       return new Set(
         (this.categories || [])
-          .filter(c => c.type === 'expense')
+          .filter(c => c.type === CATEGORY_TYPES.EXPENSE)
           .map(c => c.category)
       )
     },

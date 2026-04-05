@@ -160,7 +160,7 @@
         <BasilText v-model="dialogBody.categoryName" label="Category Name" @blur="isFormSubmittable()" />
         <BasilAmount v-model="dialogBody.monthly_limit" label="Monthly Limit" @blur="isFormSubmittable()" />
         <BasilToggle
-          v-if="item.type === 'expense'"
+          v-if="item.type === CATEGORY_TYPES.EXPENSE"
           v-model="dialogBody.fixed"
           label="Fixed expense (rent, subscriptions, bills)"
           style="margin-top: var(--basil-space-2)"
@@ -480,6 +480,7 @@
   import BasilAmount from '@/components/BasilAmount'
   import BasilText from '@/components/BasilText'
   import BasilNote from '@/components/BasilNote'
+  import { CATEGORY_TYPES } from '../../../shared/categoryTypes'
 
   export default {
       name: 'DialogComponent',
@@ -513,6 +514,7 @@
       data(){
         // console.log('beginning of data log: ', this.item)
         return {
+            CATEGORY_TYPES,
             maximizedToggle: ref(true),
             editedTransaction: {},
             type: ['Expense', 'Income', 'Savings', 'Payment'],

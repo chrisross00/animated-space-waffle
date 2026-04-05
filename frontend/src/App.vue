@@ -363,6 +363,7 @@ import EmptyState from './components/EmptyState.vue'
 import PullToRefresh from './components/PullToRefresh.vue'
 import BasilKeyboard from './components/BasilKeyboard.vue'
 import { keyboardState } from './utils/basilKeyboard'
+import { CATEGORY_TYPES } from '../../shared/categoryTypes'
 
 export default {
   name: 'LayoutDefault',
@@ -405,8 +406,8 @@ export default {
         if (t.pending || t.excludeFromTotal) continue;
         if (!(t.effectiveDate || t.date) || (t.effectiveDate || t.date).substring(0, 7) !== currentYM) continue;
         const type = catTypes[t.mappedCategory];
-        if (type === 'expense') expenseSpend += Math.abs(t.amount);
-        if (type === 'income') incomeAmount += Math.abs(t.amount);
+        if (type === CATEGORY_TYPES.EXPENSE) expenseSpend += Math.abs(t.amount);
+        if (type === CATEGORY_TYPES.INCOME) incomeAmount += Math.abs(t.amount);
       }
 
       return {

@@ -1,3 +1,5 @@
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
+
 /**
  * Compute free cash flow (income − expenses − savings) for a set of transactions.
  *
@@ -23,9 +25,9 @@ export function freeCashFlow(transactions, categories) {
   let income = 0, expenses = 0, savings = 0;
   for (const [cat, sum] of Object.entries(catSums)) {
     const type = catTypeMap.get(cat);
-    if (type === 'income') income += Math.abs(sum);
-    else if (type === 'expense') expenses += Math.abs(sum);
-    else if (type === 'savings') savings += Math.abs(sum);
+    if (type === CATEGORY_TYPES.INCOME) income += Math.abs(sum);
+    else if (type === CATEGORY_TYPES.EXPENSE) expenses += Math.abs(sum);
+    else if (type === CATEGORY_TYPES.SAVINGS) savings += Math.abs(sum);
   }
 
   return {

@@ -8,6 +8,7 @@ const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
 const { rateLimit } = require('express-rate-limit');
+const { CATEGORY_TYPES } = require('./shared/categoryTypes');
 
 // Tighter per-endpoint limiter for expensive Plaid sync operations
 const plaidSyncLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
@@ -945,7 +946,7 @@ router.post('/addVenmoTransactions', async (req, res) => {
 
     // Resolve real category names from the user's data so historical seeding works
     const foodCat = categories.find(c => /food|dining|restaurant/i.test(c.category))?.category
-      || categories.find(c => c.type === 'expense' && c.category !== 'To Sort')?.category
+      || categories.find(c => c.type === CATEGORY_TYPES.EXPENSE && c.category !== 'To Sort')?.category
       || 'Food & Dining';
     const housingCat = categories.find(c => /hous|rent|home/i.test(c.category))?.category || foodCat;
 

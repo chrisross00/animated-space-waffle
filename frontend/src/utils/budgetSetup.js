@@ -2,6 +2,7 @@
  * Budget setup utilities — shared logic for guided setup and nudge evaluation.
  * Extracted for testability (no Vue component dependency).
  */
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
 
 /**
  * Format a number with commas for display.
@@ -63,7 +64,7 @@ export function evaluateNudge({ isOnboarded, toSortCount, pendingRelationshipCou
   if (pendingRelationshipCount > 0) return null;
 
   const prefs = preferences || {};
-  const expenseWithLimit = categories.filter(c => c.type === 'expense' && Number(c.monthly_limit) > 0);
+  const expenseWithLimit = categories.filter(c => c.type === CATEGORY_TYPES.EXPENSE && Number(c.monthly_limit) > 0);
 
   // Nudge A: no expense categories have limits
   if (expenseWithLimit.length === 0 && !prefs.dismissed_budget_nudge) {
@@ -74,7 +75,7 @@ export function evaluateNudge({ isOnboarded, toSortCount, pendingRelationshipCou
   if (expenseWithLimit.length > 0) {
     const dismissedCats = prefs.dismissed_category_nudges || [];
     const candidates = categories
-      .filter(c => c.type === 'expense' && (!c.monthly_limit || Number(c.monthly_limit) === 0) && !dismissedCats.includes(c.category))
+      .filter(c => c.type === CATEGORY_TYPES.EXPENSE && (!c.monthly_limit || Number(c.monthly_limit) === 0) && !dismissedCats.includes(c.category))
       .map(c => ({ name: c.category, spend: getCategorySpend(c.category) }))
       .filter(c => c.spend > 0)
       .sort((a, b) => b.spend - a.spend);

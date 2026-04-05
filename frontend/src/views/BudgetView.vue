@@ -965,6 +965,7 @@
   import { screen } from '@/composables/useScreen';
   import { toast } from '@/composables/useToast';
   import { merchantInitials as _merchantInitials, merchantColor as _merchantColor, merchantLogo as _merchantLogo } from '@/utils/merchantDisplay';
+  import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
 
 // import e from 'express';
 
@@ -1111,7 +1112,7 @@
       expenseTransactions() {
         const expenseNames = new Set(
           (store.state.categories || [])
-            .filter(c => c.type === 'expense')
+            .filter(c => c.type === CATEGORY_TYPES.EXPENSE)
             .map(c => c.category)
         )
         const sel = this.selectedDate.actual
@@ -1489,13 +1490,13 @@
       },
       hasFixedCategories() {
         if (!this.groupedTransactions) return false;
-        return Object.values(this.groupedTransactions).some(g => g.fixed && g.type === 'expense');
+        return Object.values(this.groupedTransactions).some(g => g.fixed && g.type === CATEGORY_TYPES.EXPENSE);
       },
       budgetSummary() {
         if (!this.monthlyStats || !this.groupedTransactions) return null;
 
         // Income: prefer budget limit, fall back to actual
-        const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === 'income');
+        const incomeCategory = Object.values(this.groupedTransactions).find(g => g.type === CATEGORY_TYPES.INCOME);
         const incomeBudget = Number(incomeCategory?.monthly_limit) || 0;
         const incomeActual = this.monthlyStats.incomeAmount || 0;
         const hasIncomeBudget = incomeBudget > 0;
@@ -1503,7 +1504,7 @@
 
         // Total expense spending (needed for both modes)
         const spent = Object.entries(this.groupedTransactions).reduce((sum, [name, g]) => {
-          if (g.type === 'expense') {
+          if (g.type === CATEGORY_TYPES.EXPENSE) {
             const catSpend = this.categorySum(name);
             return sum + (isNaN(catSpend) ? 0 : Math.abs(catSpend));
           }
@@ -1533,7 +1534,7 @@
         let fixedCosts = 0;
         let fixedSpent = 0;
         for (const [name, g] of Object.entries(this.groupedTransactions)) {
-          if (g.fixed && g.type === 'expense') {
+          if (g.fixed && g.type === CATEGORY_TYPES.EXPENSE) {
             const limit = Number(g.monthly_limit) || 0;
             const actual = this.categorySum(name);
             const actualAbs = isNaN(actual) ? 0 : Math.abs(actual);
@@ -1543,7 +1544,7 @@
         }
 
         const savingsLimit = Object.values(this.groupedTransactions).reduce(
-          (sum, g) => g.type === 'savings' ? sum + (Number(g.monthly_limit) || 0) : sum, 0
+          (sum, g) => g.type === CATEGORY_TYPES.SAVINGS ? sum + (Number(g.monthly_limit) || 0) : sum, 0
         );
 
         const pool = income - savingsLimit;
@@ -1582,25 +1583,25 @@ monthStats() {
           let absoluteSpend = 0;
           for (const category in groupedTransactions) {
             const catSum = this.categorySum(category);
-            if(groupedTransactions[category].type !== 'payment' ){
+            if(groupedTransactions[category].type !== CATEGORY_TYPES.PAYMENT ){
               absoluteSpend += catSum
             }
             if (!isNaN(catSum)) {
-              if (groupedTransactions[category].type === 'expense') {
+              if (groupedTransactions[category].type === CATEGORY_TYPES.EXPENSE) {
                 totalExp += catSum;
               }
             }
             if (this.isBudgetRemaining(category) == true) {
               projectedSum += (Number(this.groupedTransactions[category].monthly_limit))
               if (this.groupedTransactions[category].monthly_limit >= this.categorySum(category)){
-                if (groupedTransactions[category].type == 'expense') budgetRemaining += this.budgetRemaining(category)
+                if (groupedTransactions[category].type == CATEGORY_TYPES.EXPENSE) budgetRemaining += this.budgetRemaining(category)
               }
             }
-            if (this.isBudgetRemaining(category) == false && groupedTransactions[category].type !== 'payment'){
+            if (this.isBudgetRemaining(category) == false && groupedTransactions[category].type !== CATEGORY_TYPES.PAYMENT){
               projectedSum += this.categorySum(category)
             }
             if (this.categorySum(category) && this.shouldShowCategory(category)) {
-              if(groupedTransactions[category].type == 'expense' || groupedTransactions[category].type == 'income'){
+              if(groupedTransactions[category].type == CATEGORY_TYPES.EXPENSE || groupedTransactions[category].type == CATEGORY_TYPES.INCOME){
                 monthlySum += this.categorySum(category)
               }
               if(category == 'To Sort' ){
@@ -1778,7 +1779,7 @@ monthStats() {
         const type = this.groupedTransactions[category].type;
         const sum = this.categorySum(category);
         const limit = this.groupedTransactions[category].monthly_limit;
-        if (type === 'income') {
+        if (type === CATEGORY_TYPES.INCOME) {
           if (isNaN(sum)) return 'N/A';
           const received = Math.abs(sum);
           if (!limit || limit === 0) return this.formatDollar(received.toFixed(0)) + ' received';
@@ -1787,7 +1788,7 @@ monthStats() {
             ? this.formatDollar(stillExpected.toFixed(0)) + ' expected'
             : this.formatDollar(received.toFixed(0)) + ' received';
         }
-        if (type === 'savings') {
+        if (type === CATEGORY_TYPES.SAVINGS) {
           if (isNaN(sum)) return 'N/A';
           return this.formatDollar(Math.abs(sum).toFixed(0)) + ' saved';
         }
@@ -1975,7 +1976,7 @@ monthStats() {
                     : (progressRatio < 1 && progressRatio > 0.9 
                         ? "warning" 
                         : "secondary"))
-                : this.groupedTransactions[category].type == 'income' ? "positive" : "negative"
+                : this.groupedTransactions[category].type == CATEGORY_TYPES.INCOME ? "positive" : "negative"
       },
       getProgressRatio (category) {
         let progressRatio;

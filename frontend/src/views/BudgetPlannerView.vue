@@ -238,6 +238,7 @@ import { ensureAppData, updateBudgetLimit, handleDialogSubmit, deleteCategory, f
 import { formatWithCommas, parseAmount, getLastMonthKey, getCurrentMonthKey } from '@/utils/budgetSetup';
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
+import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
 
 const SECTION_ORDER = ['income', 'expense', 'savings', 'payment'];
 const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
@@ -321,13 +322,13 @@ export default {
     },
     isFirstTimeSetup() {
       const categories = this.$store.state.categories || [];
-      const hasAnyLimit = categories.some(c => c.type === 'expense' && Number(c.monthly_limit) > 0);
+      const hasAnyLimit = categories.some(c => c.type === CATEGORY_TYPES.EXPENSE && Number(c.monthly_limit) > 0);
       const dismissed = this.$store.state.user?.preferences?.dismissed_budget_setup;
       return !hasAnyLimit && !dismissed;
     },
     incomeHint() {
       const categories = this.$store.state.categories || [];
-      const incomeCat = categories.find(c => c.type === 'income');
+      const incomeCat = categories.find(c => c.type === CATEGORY_TYPES.INCOME);
       if (!incomeCat) return null;
       const now = new Date();
       // Check last month
@@ -344,7 +345,7 @@ export default {
     },
     guidedCategories() {
       const categories = this.$store.state.categories || [];
-      const expense = categories.filter(c => (c.type === 'expense' || c.type === 'savings') && c.category !== 'To Sort');
+      const expense = categories.filter(c => (c.type === CATEGORY_TYPES.EXPENSE || c.type === CATEGORY_TYPES.SAVINGS) && c.category !== 'To Sort');
       const txns = this.$store.state.transactions || [];
       const spending = {};
       txns.forEach(t => {
@@ -500,7 +501,7 @@ export default {
       this.guidedLimits = {};
       // Pre-fill income from existing limit if set
       const categories = this.$store.state.categories || [];
-      const incomeCat = categories.find(c => c.type === 'income');
+      const incomeCat = categories.find(c => c.type === CATEGORY_TYPES.INCOME);
       this.guidedIncome = incomeCat && Number(incomeCat.monthly_limit) > 0 ? Number(incomeCat.monthly_limit) : null;
     },
     async startGuidedSetup() {
@@ -527,7 +528,7 @@ export default {
         const saves = [];
 
         // Save income limit
-        const incomeCat = categories.find(c => c.type === 'income');
+        const incomeCat = categories.find(c => c.type === CATEGORY_TYPES.INCOME);
         if (incomeCat && this.guidedIncome > 0) {
           saves.push(updateBudgetLimit(incomeCat._id || incomeCat.id, Number(this.guidedIncome)));
         }
