@@ -7,7 +7,7 @@
       <div class="basil-drilldown__title">
         <span class="basil-drilldown__label">{{ pfcLabel }}</span>
         <span class="basil-drilldown__separator">·</span>
-        <span class="basil-drilldown__amount">${{ Math.round(total).toLocaleString() }}</span>
+        <span class="basil-drilldown__amount">${{ formatDollar(total) }}</span>
       </div>
     </div>
 
@@ -25,16 +25,16 @@
         <div class="basil-drilldown__stat-cards">
           <div class="basil-drilldown__stat-card">
             <div class="basil-drilldown__stat-label">Avg</div>
-            <div class="basil-drilldown__stat-value">${{ Math.round(avgAmount).toLocaleString() }}</div>
+            <div class="basil-drilldown__stat-value">${{ formatDollar(avgAmount) }}</div>
           </div>
           <div class="basil-drilldown__stat-card">
             <div class="basil-drilldown__stat-label">Largest</div>
-            <div class="basil-drilldown__stat-value">${{ Math.round(largestAmount).toLocaleString() }}</div>
+            <div class="basil-drilldown__stat-value">${{ formatDollar(largestAmount) }}</div>
           </div>
           <div class="basil-drilldown__stat-card">
             <div class="basil-drilldown__stat-label">vs {{ prevMonthLabel }}</div>
             <div class="basil-drilldown__stat-value" :class="trendDelta > 0 ? 'basil-drilldown__stat-value--up' : trendDelta < 0 ? 'basil-drilldown__stat-value--down' : ''">
-              {{ trendDelta === null ? '—' : `${trendDelta > 0 ? '+' : '-'}$${Math.abs(Math.round(trendDelta)).toLocaleString()}` }}
+              {{ trendDelta === null ? '—' : formatSignedDollar(trendDelta).text }}
             </div>
           </div>
         </div>
@@ -80,6 +80,7 @@ import dayjs from 'dayjs';
 import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 import { fetchTransactionsForMonth } from '@/api';
 import { merchantInitials as getMerchantInitials, merchantColor as getMerchantColor, merchantLogo as getMerchantLogo } from '@/utils/merchantDisplay';
+import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
 
 export default {
   name: 'TransactionDrillDown',

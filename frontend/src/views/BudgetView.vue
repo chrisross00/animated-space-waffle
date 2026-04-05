@@ -48,7 +48,7 @@
             <!-- No income at all: spent so far -->
             <template v-if="budgetSummary.incomeState === 'none'">
               <div class="basil-display basil-hero-amount">
-                ${{ Math.round(displayedSummary.spent).toLocaleString() }}
+                ${{ formatDollar(displayedSummary.spent) }}
               </div>
               <div class="basil-hero-sub">spent this month</div>
               <div class="basil-card-rule"></div>
@@ -60,7 +60,7 @@
             <!-- Full mode: left to spend -->
             <template v-else>
               <div class="basil-display basil-hero-amount basil-hero-amount--positive">
-                ${{ Math.round(displayedSummary.remaining).toLocaleString() }}
+                ${{ formatDollar(displayedSummary.remaining) }}
               </div>
               <div class="basil-hero-sub">left to spend this month</div>
               <div v-if="budgetSummary.pace" :class="['basil-pace-badge', `basil-pace-badge--${budgetSummary.pace}`]">
@@ -75,20 +75,20 @@
                 />
               </div>
               <div class="basil-hero-progress-label">
-                ${{ Math.round(displayedSummary.spent).toLocaleString() }} of ${{ Math.round(displayedSummary.pool).toLocaleString() }} spent
+                ${{ formatDollar(displayedSummary.spent) }} of ${{ formatDollar(displayedSummary.pool) }} spent
               </div>
               <div class="basil-card-rule"></div>
               <div v-if="hasFixedCategories" class="basil-hero-detail">
                 <span>Fixed costs</span>
-                <span class="basil-mono">${{ Math.round(displayedSummary.fixedSpent).toLocaleString() }} of ${{ Math.round(displayedSummary.fixedBudget).toLocaleString() }}</span>
+                <span class="basil-mono">${{ formatDollar(displayedSummary.fixedSpent) }} of ${{ formatDollar(displayedSummary.fixedBudget) }}</span>
               </div>
               <div class="basil-flex-detail-row" :class="{ 'basil-flex-detail-row--bordered': hasFixedCategories }">
                 <span>Savings</span>
-                <span class="basil-mono">${{ Math.round(displayedSummary.savingsAmount).toLocaleString() }} of ${{ Math.round(displayedSummary.savingsBudget).toLocaleString() }}</span>
+                <span class="basil-mono">${{ formatDollar(displayedSummary.savingsAmount) }} of ${{ formatDollar(displayedSummary.savingsBudget) }}</span>
               </div>
               <div v-if="forecastedEndOfMonth && forecastedEndOfMonth.expectedRemaining > 0" class="basil-hero-detail basil-flex-detail-row--bordered">
                 <span>Recurring expected</span>
-                <span class="basil-mono">~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}</span>
+                <span class="basil-mono">~${{ formatDollar(forecastedEndOfMonth.expectedRemaining) }}</span>
               </div>
               <div v-if="budgetSummary.incomeState === 'estimated'" class="basil-hero-estimated">
                 Based on deposits this month. <router-link to="/plan" class="basil-hero-link">Set your income</router-link> for a more accurate number.
@@ -117,32 +117,32 @@
             <div class="basil-actuals-3col">
               <div class="basil-actuals-col">
                 <div class="basil-primary-stat__amount basil-display" style="color: var(--basil-positive)">
-                  ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                  ${{ formatDollar(displayedStats.incomeAmount) }}
                 </div>
                 <div class="basil-primary-stat__label">earned</div>
               </div>
               <div class="basil-primary-stats__divider"></div>
               <div class="basil-actuals-col">
                 <div class="basil-primary-stat__amount basil-display">
-                  ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                  ${{ formatDollar(displayedStats.expenseSpend) }}
                 </div>
                 <div class="basil-primary-stat__label">spent</div>
               </div>
               <div class="basil-primary-stats__divider"></div>
               <div class="basil-actuals-col">
-                <div class="basil-primary-stat__amount basil-display" :style="{ color: netPositive ? 'var(--basil-positive)' : 'var(--basil-negative)' }">
-                  {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+                <div class="basil-primary-stat__amount basil-display" :class="formatSignedDollar(displayedStats.netPosition).colorClass">
+                  {{ formatSignedDollar(displayedStats.netPosition).text }}
                 </div>
                 <div class="basil-primary-stat__label">free cash flow</div>
               </div>
             </div>
             <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
               <BasilIcon name="savings" size="xs" color="info" />
-              ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
+              ${{ formatDollar(monthlyStats.savingsAmount) }} saved
             </div>
             <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
               <BasilIcon name="warning_amber" size="xs" />
-              ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
+              ${{ formatDollar(monthlyStats.toSortSpending) }} unsorted
             </div>
           </div>
         </BasilCard>
@@ -158,14 +158,14 @@
                 <div class="basil-primary-stats">
                   <div class="basil-primary-stat">
                     <div class="basil-primary-stat__amount basil-display">
-                      ${{ Math.round(displayedStats.expenseSpend).toLocaleString() }}
+                      ${{ formatDollar(displayedStats.expenseSpend) }}
                     </div>
                     <div class="basil-primary-stat__label">spent</div>
                   </div>
                   <div class="basil-primary-stats__divider"></div>
                   <div class="basil-primary-stat basil-primary-stat--earned">
                     <div class="basil-primary-stat__amount basil-display">
-                      ${{ Math.round(displayedStats.incomeAmount).toLocaleString() }}
+                      ${{ formatDollar(displayedStats.incomeAmount) }}
                     </div>
                     <div class="basil-primary-stat__label">earned</div>
                   </div>
@@ -173,17 +173,17 @@
                 <div class="basil-card-rule"></div>
                 <div :class="['basil-net', netPositive ? 'basil-net--positive' : 'basil-net--negative']">
                   <div class="basil-net__amount basil-display">
-                    {{ netPositive ? '+' : '−' }}${{ Math.round(Math.abs(displayedStats.netPosition)).toLocaleString() }}
+                    {{ formatSignedDollar(displayedStats.netPosition).text }}
                   </div>
                   <div class="basil-net__label">{{ netPositive ? 'free cash flow' : 'over budget' }}</div>
                 </div>
                 <div v-if="monthlyStats.savingsAmount > 0" class="basil-secondary-stat">
                   <BasilIcon name="savings" size="xs" color="info" />
-                  ${{ Math.round(monthlyStats.savingsAmount).toLocaleString() }} saved
+                  ${{ formatDollar(monthlyStats.savingsAmount) }} saved
                 </div>
                 <div v-if="monthlyStats.toSortSpending > 0" class="basil-secondary-stat basil-secondary-stat--warn">
                   <BasilIcon name="warning_amber" size="xs" />
-                  ${{ Math.round(monthlyStats.toSortSpending).toLocaleString() }} unsorted
+                  ${{ formatDollar(monthlyStats.toSortSpending) }} unsorted
                 </div>
               </div>
             </BasilCard>
@@ -194,7 +194,7 @@
                 </div>
                 <div v-if="monthlyStats.budgetRemaining > 0" class="basil-primary-stat">
                   <div class="basil-primary-stat__amount basil-display">
-                    ${{ Math.round(monthlyStats.budgetRemaining).toLocaleString() }}
+                    ${{ formatDollar(monthlyStats.budgetRemaining) }}
                   </div>
                   <div class="basil-primary-stat__label">left in budgets</div>
                 </div>
@@ -203,7 +203,7 @@
                   :class="['basil-forecast', monthlyStats.budgetRemaining > 0 ? 'basil-forecast--mt' : '']"
                 >
                   <div class="basil-forecast__amount basil-display">
-                    ~${{ Math.round(forecastedEndOfMonth.expectedRemaining).toLocaleString() }}
+                    ~${{ formatDollar(forecastedEndOfMonth.expectedRemaining) }}
                   </div>
                   <div class="basil-forecast__label">
                     <span v-if="forecastedEndOfMonth.remainingRecurringCount === 1">
@@ -345,16 +345,16 @@
                 </div>
 
                 <div class="basil-list-item__caption basil-budget-row basil-mono" v-show="this.groupedTransactions[category].monthly_limit">
-                  {{ isNaN(categorySum(category)) ? "N/A" : formatDollar(categorySum(category).toFixed(this.decimalPlaces)) }}
+                  {{ isNaN(categorySum(category)) ? "N/A" : '$' + formatDollar(categorySum(category), this.decimalPlaces) }}
                   {{ isNaN(this.groupedTransactions[category].monthly_limit) ||
-                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of " + formatDollar(this.groupedTransactions[category].monthly_limit) }}
+                      this.groupedTransactions[category].monthly_limit == 0 ? "" : " out of $" + formatDollar(this.groupedTransactions[category].monthly_limit) }}
                 </div>
                 <!-- PFC sub-breakdown (inside header) -->
                 <div v-if="groupedTransactionsVisible[category] && detailedPfcBreakdown(groupedTransactions).length >= 1" class="basil-pfc-breakdown">
                   <div v-for="item in detailedPfcBreakdown(groupedTransactions)" :key="item.label"
                        class="basil-pfc-breakdown__row">
                     <span class="basil-pfc-breakdown__label">{{ item.label }}</span>
-                    <span class="basil-pfc-breakdown__amount basil-mono">{{ formatDollar(item.total.toFixed(2)) }}</span>
+                    <span class="basil-pfc-breakdown__amount basil-mono">${{ formatDollar(item.total, 2) }}</span>
                   </div>
                 </div>
 
@@ -788,8 +788,8 @@
 
           <!-- Transaction -->
           <div class="basil-triage__txn">
-            <div class="basil-triage__amount basil-mono">
-              {{ triageItems[0].amount < 0 ? `-$${Math.abs(triageItems[0].amount).toFixed(2)}` : `$${triageItems[0].amount.toFixed(2)}` }}
+            <div class="basil-triage__amount basil-mono" :class="formatSignedDollar(-triageItems[0].amount).colorClass">
+              {{ formatSignedDollar(-triageItems[0].amount, 2).text }}
             </div>
             <div class="basil-triage__merchant">{{ triageItems[0].venmo_note ? triageItems[0].venmo_note + ' · Venmo' : (triageItems[0].merchant_name || triageItems[0].name) }}</div>
             <div v-if="!triageItems[0].merchant_name && triageItems[0].account && triageItems[0].account !== '?'" class="basil-triage__institution">{{ triageItems[0].account }}</div>
@@ -966,6 +966,7 @@
   import { toast } from '@/composables/useToast';
   import { merchantInitials as _merchantInitials, merchantColor as _merchantColor, merchantLogo as _merchantLogo } from '@/utils/merchantDisplay';
   import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
+  import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
 
 // import e from 'express';
 
@@ -1711,7 +1712,7 @@ monthStats() {
         const rel = this.relationshipMap[txn.transaction_id];
         if (!rel) return '';
         const partnerName = rel.partner.merchant_name || rel.partner.name;
-        const partnerAmt = this.formatDollar(Math.abs(rel.partner.amount).toFixed(2));
+        const partnerAmt = '$' + formatDollar(Math.abs(rel.partner.amount), 2);
         if (txn.linkedTransaction) {
           return rel.type === 'split'
             ? `Split with ${partnerName} (${partnerAmt}) · confirmed`
@@ -1782,23 +1783,23 @@ monthStats() {
         if (type === CATEGORY_TYPES.INCOME) {
           if (isNaN(sum)) return 'N/A';
           const received = Math.abs(sum);
-          if (!limit || limit === 0) return this.formatDollar(received.toFixed(0)) + ' received';
+          if (!limit || limit === 0) return '$' + formatDollar(received) + ' received';
           const stillExpected = limit - received;
           return stillExpected > 0
-            ? this.formatDollar(stillExpected.toFixed(0)) + ' expected'
-            : this.formatDollar(received.toFixed(0)) + ' received';
+            ? '$' + formatDollar(stillExpected) + ' expected'
+            : '$' + formatDollar(received) + ' received';
         }
         if (type === CATEGORY_TYPES.SAVINGS) {
           if (isNaN(sum)) return 'N/A';
-          return this.formatDollar(Math.abs(sum).toFixed(0)) + ' saved';
+          return '$' + formatDollar(Math.abs(sum)) + ' saved';
         }
         // expense / payment / other
         if (isNaN(this.budgetRemaining(category))) {
-          return isNaN(sum) ? 'N/A' : this.formatDollar(sum.toFixed(0)) + ' spent';
+          return isNaN(sum) ? 'N/A' : '$' + formatDollar(sum) + ' spent';
         }
         return this.isBudgetRemaining(category)
-          ? this.formatDollar(this.budgetRemaining(category).toFixed(0)) + ' left'
-          : this.formatDollar(Math.abs(this.budgetRemaining(category).toFixed(0))) + ' over';
+          ? '$' + formatDollar(this.budgetRemaining(category)) + ' left'
+          : '$' + formatDollar(Math.abs(this.budgetRemaining(category))) + ' over';
       },
       shouldShowCategory(category) {
         const group = this.groupedTransactions[category];
@@ -1849,19 +1850,6 @@ monthStats() {
         }
       },
 
-      formatDollar(value, Prefix = null) {
-        let prefix = Prefix == null ? '' : Prefix;
-        if (value < 0) {
-          prefix = ''; // change to `prefix = '-'` for negative income values
-        }
-        const num = Math.abs(Number(value));
-        if (isNaN(num)) return prefix + '$0';
-        // Preserve caller's decimal precision: if value was passed as "591.50" keep 2 decimals
-        const str = String(value);
-        const decimalPlaces = str.includes('.') ? str.split('.')[1].length : 0;
-        const formatted = num.toFixed(decimalPlaces);
-        return prefix + '$' + formatted.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      },
       addCategoryDialog(){
         this.newCategory = !this.newCategory;
         return this.newCategory

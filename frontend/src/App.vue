@@ -364,6 +364,7 @@ import PullToRefresh from './components/PullToRefresh.vue'
 import BasilKeyboard from './components/BasilKeyboard.vue'
 import { keyboardState } from './utils/basilKeyboard'
 import { CATEGORY_TYPES } from '../../shared/categoryTypes'
+import { formatDollar } from '@/utils/formatDollar'
 
 export default {
   name: 'LayoutDefault',
@@ -411,8 +412,8 @@ export default {
       }
 
       return {
-        expenseSpendFmt: Math.round(expenseSpend).toLocaleString(),
-        incomeAmountFmt: Math.round(incomeAmount).toLocaleString(),
+        expenseSpendFmt: formatDollar(expenseSpend),
+        incomeAmountFmt: formatDollar(incomeAmount),
       };
     },
     isKeyboardOpen() {

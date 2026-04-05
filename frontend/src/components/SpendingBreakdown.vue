@@ -56,7 +56,7 @@
           @click="onChipClick(chip)"
         >
           <span class="basil-breakdown__chip-dot" :style="{ background: chip.color }"></span>
-          {{ chip.label }} ${{ Math.round(chip.total).toLocaleString() }}
+          {{ chip.label }} ${{ formatDollar(chip.total) }}
           <span class="basil-breakdown__chip-chevron">›</span>
         </span>
       </div>
@@ -84,6 +84,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
 import { humanizeDetailedPfc } from '@/utils/pfcLabels'
 import { CATEGORY_TYPES } from '../../../shared/categoryTypes'
+import { formatDollar } from '@/utils/formatDollar'
 
 use([PieChart, TooltipComponent, GraphicComponent, CanvasRenderer])
 
@@ -182,9 +183,9 @@ export default {
         }
         const catTotal = filtered.reduce((sum, t) => sum + Math.abs(t.amount), 0)
         const label = this.drillCategory === '__other__' ? 'Other' : this.drillCategory
-        return { amount: `$${Math.round(catTotal).toLocaleString()}`, sub: label }
+        return { amount: `$${formatDollar(catTotal)}`, sub: label }
       }
-      return { amount: `$${Math.round(this.totalSpent).toLocaleString()}`, sub: 'spent' }
+      return { amount: `$${formatDollar(this.totalSpent)}`, sub: 'spent' }
     },
 
     chartOption() {

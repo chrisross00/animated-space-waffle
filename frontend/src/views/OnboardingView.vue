@@ -112,7 +112,7 @@
           <BasilIcon name="check_circle" style="font-size: 28px; color: var(--basil-green)" />
         </div>
         <div class="basil-display" style="font-size: 2.25rem; color: var(--basil-text); margin-bottom: var(--basil-space-2)">
-          ${{ summaryStats.totalSpend.toLocaleString() }}
+          ${{ formatDollar(summaryStats.totalSpend) }}
         </div>
         <p class="basil-onboarding-body" style="margin-bottom: var(--basil-space-1)">
           spent this month across {{ summaryStats.total }} transactions
@@ -131,7 +131,7 @@
           class="basil-onboarding-categories__row"
         >
           <span>{{ cat.name }}</span>
-          <span class="basil-mono">${{ cat.amount.toLocaleString() }}</span>
+          <span class="basil-mono">${{ formatDollar(cat.amount) }}</span>
         </div>
       </div>
 
@@ -172,6 +172,7 @@ import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
 import { getOrAddUser, seedCategories, fetchCategories, triggerSync, ensureAppData, updatePreferences } from '@/api';
 import store from '../store';
 import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
+import { formatDollar } from '@/utils/formatDollar';
 
 export default {
   name: 'OnboardingView',

@@ -77,7 +77,7 @@
             <div style="max-width: 500px; margin: 0 auto;">
               <div style="display: flex; justify-content: space-between; font-size: 1rem; font-weight: 600; color: var(--basil-text); margin-bottom: var(--basil-space-3);">
                 <span>Total limits</span>
-                <span class="basil-mono">${{ guidedTotal.toLocaleString() }} / ${{ Number(guidedIncome || 0).toLocaleString() }}</span>
+                <span class="basil-mono">${{ formatDollar(guidedTotal) }} / ${{ formatDollar(Number(guidedIncome || 0)) }}</span>
               </div>
               <div style="display: flex; gap: var(--basil-space-2); justify-content: space-between;">
                 <BasilButton variant="flat" label="Back" @click="guidedStep = 1" />
@@ -100,28 +100,28 @@
         <div class="basil-planner-summary">
           <div class="basil-planner-summary__cell">
             <div class="basil-planner-summary__amount basil-display basil-planner-summary__amount--income">
-              ${{ summaryIncome.toLocaleString() }}
+              ${{ formatDollar(summaryIncome) }}
             </div>
             <div class="basil-planner-summary__label">Income</div>
             <div class="basil-planner-summary__sublabel">planned</div>
           </div>
           <div class="basil-planner-summary__cell">
             <div class="basil-planner-summary__amount basil-display basil-planner-summary__amount--expense">
-              ${{ summaryExpenses.toLocaleString() }}
+              ${{ formatDollar(summaryExpenses) }}
             </div>
             <div class="basil-planner-summary__label">Expenses</div>
             <div class="basil-planner-summary__sublabel">budgeted</div>
           </div>
           <div class="basil-planner-summary__cell">
             <div class="basil-planner-summary__amount basil-display basil-planner-summary__amount--savings">
-              ${{ summarySavings.toLocaleString() }}
+              ${{ formatDollar(summarySavings) }}
             </div>
             <div class="basil-planner-summary__label">Savings</div>
             <div class="basil-planner-summary__sublabel">goal</div>
           </div>
           <div class="basil-planner-summary__cell">
-            <div :class="['basil-planner-summary__amount basil-display', summaryNet >= 0 ? 'basil-planner-summary__amount--positive' : 'basil-planner-summary__amount--negative']">
-              {{ summaryNet >= 0 ? '+' : '−' }}${{ Math.abs(summaryNet).toLocaleString() }}
+            <div :class="['basil-planner-summary__amount basil-display', formatSignedDollar(summaryNet).colorClass]">
+              {{ formatSignedDollar(summaryNet).text }}
             </div>
             <div class="basil-planner-summary__label">Net</div>
             <div class="basil-planner-summary__sublabel">{{ summaryNet >= 0 ? 'surplus' : 'deficit' }}</div>
@@ -136,7 +136,7 @@
         >
           <div class="basil-planner-section__header">
             <span class="basil-planner-section__label">{{ sectionLabels[sectionType] }}</span>
-            <span class="basil-planner-section__total basil-mono">${{ sectionTotal(sectionType).toLocaleString() }}</span>
+            <span class="basil-planner-section__total basil-mono">${{ formatDollar(sectionTotal(sectionType)) }}</span>
           </div>
 
           <!-- Empty section hint -->
@@ -163,7 +163,7 @@
               <!-- Amount display -->
               <div class="basil-planner-row__controls">
                 <span class="basil-planner-row__amount basil-mono">
-                  ${{ (Number(cat.monthly_limit) || 0).toLocaleString() }}
+                  ${{ formatDollar(Number(cat.monthly_limit) || 0) }}
                 </span>
                 <BasilIcon
                   v-if="isUserCreated(cat)"
@@ -239,6 +239,7 @@ import { formatWithCommas, parseAmount, getLastMonthKey, getCurrentMonthKey } fr
 import { DEFAULT_CATEGORIES } from '@/utils/defaultCategories';
 import store from '../store';
 import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
+import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
 
 const SECTION_ORDER = ['income', 'expense', 'savings', 'payment'];
 const DEFAULT_NAMES = new Set(DEFAULT_CATEGORIES.map(c => c.category));
@@ -335,12 +336,12 @@ export default {
       const lastMonth = getLastMonthKey(now);
       const txns = this.$store.state.transactionsByMonth[lastMonth] || [];
       const incomeTotal = txns.filter(t => t.mappedCategory === incomeCat.category).reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      if (incomeTotal > 0) return `You received $${Math.round(incomeTotal).toLocaleString()} last month`;
+      if (incomeTotal > 0) return `You received $${formatDollar(incomeTotal)} last month`;
       // Fall back to current month
       const currentMonth = getCurrentMonthKey(now);
       const currentTxns = this.$store.state.transactionsByMonth[currentMonth] || [];
       const currentIncome = currentTxns.filter(t => t.mappedCategory === incomeCat.category).reduce((sum, t) => sum + Math.abs(t.amount), 0);
-      if (currentIncome > 0) return `$${Math.round(currentIncome).toLocaleString()} received so far this month`;
+      if (currentIncome > 0) return `$${formatDollar(currentIncome)} received so far this month`;
       return null;
     },
     guidedCategories() {
@@ -355,7 +356,7 @@ export default {
       });
       const withSpending = expense.filter(c => spending[c.category] > 0)
         .sort((a, b) => (spending[b.category] || 0) - (spending[a.category] || 0))
-        .map(c => ({ ...c, spendingHint: `$${Math.round(spending[c.category]).toLocaleString()} spent recently` }));
+        .map(c => ({ ...c, spendingHint: `$${formatDollar(spending[c.category])} spent recently` }));
       const withoutSpending = expense.filter(c => !spending[c.category])
         .map(c => ({ ...c, spendingHint: null }));
       return [...withSpending, ...withoutSpending];

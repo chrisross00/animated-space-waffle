@@ -3,6 +3,10 @@
    Uses --basil-* tokens exclusively. Dark mode automatic.
    ========================================================== */
 
+/* ---- Color utilities ---- */
+.basil-positive { color: var(--basil-positive); }
+.basil-negative { color: var(--basil-negative); }
+
 /* ---- Toast ---- */
 
 .basil-toast-container {
