@@ -211,6 +211,9 @@ export default {
   },
 
   methods: {
+    formatDollar,
+    formatSignedDollar,
+    txnDate,
     formatDate(date) {
       return dayjs(date).format('MMM D');
     },

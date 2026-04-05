@@ -192,6 +192,7 @@ export default {
   },
 
   methods: {
+    formatDollar,
     startPlaidLink() {
       this.showPlaidLink = true;
     },

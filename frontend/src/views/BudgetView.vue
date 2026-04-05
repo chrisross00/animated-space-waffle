@@ -1673,6 +1673,8 @@ monthStats() {
       },
     },
     methods: {
+      formatDollar,
+      formatSignedDollar,
       async dismissNudge() {
         const card = this.nudgeCard;
         if (!card) return;

@@ -367,6 +367,8 @@ export default {
   },
 
   methods: {
+    formatDollar,
+    formatSignedDollar,
     sectionTotal(type) {
       const cats = this.categoriesByType[type] || [];
       return cats.reduce((sum, c) => sum + (Number(c.monthly_limit) || 0), 0);

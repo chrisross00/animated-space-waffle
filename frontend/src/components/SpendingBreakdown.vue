@@ -264,6 +264,7 @@ export default {
   },
 
   methods: {
+    formatDollar,
     onChipClick(chip) {
       if (this.mode === 'category') {
         this.drillInto(chip.categoryName)
