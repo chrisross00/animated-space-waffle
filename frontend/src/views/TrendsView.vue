@@ -233,14 +233,21 @@ export default {
       const catTypeMap = new Map(categories.map(c => [c.category, c.type]));
 
       return months.map(m => {
-        let income = 0, expenses = 0, savings = 0;
+        // Sum raw amounts per category (matches BudgetView's categorySum)
+        const catSums = {};
         for (const txn of transactions) {
           if (txn.excludeFromTotal) continue;
           if (dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') !== m) continue;
-          const type = catTypeMap.get(txn.mappedCategory);
-          if (type === 'income') income += Math.abs(txn.amount);
-          else if (type === 'expense') expenses += Math.abs(txn.amount);
-          else if (type === 'savings') savings += Math.abs(txn.amount);
+          const cat = txn.mappedCategory;
+          catSums[cat] = (catSums[cat] || 0) + txn.amount;
+        }
+        // Abs per category, then group by type (matches BudgetView's monthStats)
+        let income = 0, expenses = 0, savings = 0;
+        for (const [cat, sum] of Object.entries(catSums)) {
+          const type = catTypeMap.get(cat);
+          if (type === 'income') income += Math.abs(sum);
+          else if (type === 'expense') expenses += Math.abs(sum);
+          else if (type === 'savings') savings += Math.abs(sum);
         }
         return Math.round((income - expenses - savings) * 100) / 100;
       });
