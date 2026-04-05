@@ -365,6 +365,7 @@ import BasilKeyboard from './components/BasilKeyboard.vue'
 import { keyboardState } from './utils/basilKeyboard'
 import { CATEGORY_TYPES } from '../../shared/categoryTypes'
 import { formatDollar } from '@/utils/formatDollar'
+import { txnDate, txnMonth } from '@/utils/transactionDate'
 
 export default {
   name: 'LayoutDefault',
@@ -405,7 +406,7 @@ export default {
       let incomeAmount = 0;
       for (const t of txns) {
         if (t.pending || t.excludeFromTotal) continue;
-        if (!(t.effectiveDate || t.date) || (t.effectiveDate || t.date).substring(0, 7) !== currentYM) continue;
+        if (!txnDate(t) || txnMonth(t) !== currentYM) continue;
         const type = catTypes[t.mappedCategory];
         if (type === CATEGORY_TYPES.EXPENSE) expenseSpend += Math.abs(t.amount);
         if (type === CATEGORY_TYPES.INCOME) incomeAmount += Math.abs(t.amount);

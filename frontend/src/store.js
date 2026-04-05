@@ -1,5 +1,6 @@
 import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
+import { txnMonth } from '@/utils/transactionDate';
 // import { firestore } from '@/firebase';
 // import { auth } from '@/firebase'
 
@@ -82,7 +83,7 @@ const store = createStore({
             // Legacy setter — also populate month-keyed cache
             const byMonth = {};
             for (const txn of transactions) {
-                const month = (txn.effectiveDate || txn.date)?.substring(0, 7);
+                const month = txnMonth(txn);
                 if (month) {
                     if (!byMonth[month]) byMonth[month] = [];
                     byMonth[month].push(txn);
@@ -119,8 +120,8 @@ const store = createStore({
             };
 
             // Detect if effective month is changing — need to re-bucket
-            const oldMonth = (txn) => (txn.effectiveDate || txn.date)?.substring(0, 7);
-            const newMonth = (updatedTransaction.effectiveDate || updatedTransaction.date)?.substring(0, 7);
+            const oldMonth = (txn) => txnMonth(txn);
+            const newMonth = txnMonth(updatedTransaction);
             let needsRebucket = false;
 
             // Search in month buckets
@@ -457,14 +458,14 @@ const store = createStore({
         },
         splitTransaction(state, { parent, children }) {
             // Update parent in month bucket
-            const parentMonth = (parent.effectiveDate || parent.date || '').slice(0, 7);
+            const parentMonth = txnMonth(parent) || '';
             if (state.transactionsByMonth[parentMonth]) {
                 const idx = state.transactionsByMonth[parentMonth].findIndex(t => t.id === parent.id);
                 if (idx !== -1) state.transactionsByMonth[parentMonth][idx] = parent;
             }
             // Insert children into their month buckets
             for (const child of children) {
-                const childMonth = (child.effectiveDate || child.date || '').slice(0, 7);
+                const childMonth = txnMonth(child) || '';
                 if (!state.transactionsByMonth[childMonth]) {
                     state.transactionsByMonth[childMonth] = [];
                 }
@@ -479,7 +480,7 @@ const store = createStore({
                     .filter(t => t.parentTransactionId !== parent.id);
             }
             // Update parent in its month bucket
-            const parentMonth = (parent.effectiveDate || parent.date || '').slice(0, 7);
+            const parentMonth = txnMonth(parent) || '';
             if (state.transactionsByMonth[parentMonth]) {
                 const idx = state.transactionsByMonth[parentMonth].findIndex(t => t.id === parent.id);
                 if (idx !== -1) state.transactionsByMonth[parentMonth][idx] = parent;

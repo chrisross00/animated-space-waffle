@@ -62,7 +62,7 @@
         </div>
         <div class="basil-drilldown__row-left">
           <div class="basil-drilldown__merchant">{{ txn.merchant_name || txn.name }}</div>
-          <div class="basil-drilldown__date">{{ formatDate(txn.effectiveDate || txn.date) }}</div>
+          <div class="basil-drilldown__date">{{ formatDate(txnDate(txn)) }}</div>
         </div>
         <div
           class="basil-drilldown__row-amount"
@@ -81,6 +81,7 @@ import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 import { fetchTransactionsForMonth } from '@/api';
 import { merchantInitials as getMerchantInitials, merchantColor as getMerchantColor, merchantLogo as getMerchantLogo } from '@/utils/merchantDisplay';
 import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
+import { txnDate, txnDayjs, txnMonth } from '@/utils/transactionDate';
 
 export default {
   name: 'TransactionDrillDown',
@@ -116,7 +117,7 @@ export default {
           if (txn.excludeFromTotal) return false;
 
           // Month match
-          const d = dayjs(txn.effectiveDate || txn.date);
+          const d = txnDayjs(txn);
           if (d.year() !== m.year() || d.month() !== m.month()) return false;
 
           // Category match (skip for __other__ — synthetic bucket spanning multiple categories)
@@ -133,8 +134,8 @@ export default {
           return true;
         })
         .sort((a, b) => {
-          const da = a.effectiveDate || a.date;
-          const db = b.effectiveDate || b.date;
+          const da = txnDate(a);
+          const db = txnDate(b);
           return da < db ? 1 : da > db ? -1 : 0;
         });
     },

@@ -967,6 +967,7 @@
   import { merchantInitials as _merchantInitials, merchantColor as _merchantColor, merchantLogo as _merchantLogo } from '@/utils/merchantDisplay';
   import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
   import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
+  import { txnDate, txnDayjs, txnMonth, isInMonth } from '@/utils/transactionDate';
 
 // import e from 'express';
 
@@ -1119,8 +1120,7 @@
         const sel = this.selectedDate.actual
         return (this.transactions || []).filter(t => {
           if (!expenseNames.has(t.mappedCategory) || t.excludeFromTotal) return false
-          const d = dayjs(t.effectiveDate || t.date)
-          return d.year() === sel.year() && d.month() === sel.month()
+          return isInMonth(t, sel)
         })
       },
       categoryTypeMap() {
@@ -1178,10 +1178,7 @@
         }
         if (this.tableMonth) {
           const m = dayjs(this.tableMonth, 'MMMM YYYY');
-          rows = rows.filter(t =>
-            dayjs(t.effectiveDate || t.date).year() === m.year() &&
-            dayjs(t.effectiveDate || t.date).month() === m.month()
-          );
+          rows = rows.filter(t => isInMonth(t, m));
         }
         if (this.amountMin !== null && this.amountMin !== '') {
           rows = rows.filter(t => Math.abs(t.amount) >= Number(this.amountMin));
@@ -1227,8 +1224,7 @@
             ? []
             : groupedTransactions.filter(
                 (transaction) =>
-                  dayjs(transaction.effectiveDate || transaction.date).year() === selectedDate.year() &&
-                  dayjs(transaction.effectiveDate || transaction.date).month() === selectedDate.month()
+                  isInMonth(transaction, selectedDate)
               );
           // console.log('filteredTransactions', filtered)
           return filtered; 
@@ -1270,7 +1266,7 @@
         for (const txn of allTxns) {
           const key = txn.merchant_name || txn.name;
           if (!key) continue;
-          const m = dayjs(txn.effectiveDate || txn.date).format('YYYY-MM');
+          const m = txnDayjs(txn).format('YYYY-MM');
           if (!merchantMonths[key]) merchantMonths[key] = new Set();
           merchantMonths[key].add(m);
         }
@@ -1341,8 +1337,7 @@
         const sel = this.selectedDate.actual;
         return (store.state.transactions || []).filter(txn =>
           !txn.pending && txn.mappedCategory === 'To Sort' &&
-          dayjs(txn.effectiveDate || txn.date).year() === sel.year() &&
-          dayjs(txn.effectiveDate || txn.date).month() === sel.month()
+          isInMonth(txn, sel)
         );
       },
       toSortWithSuggestions() {
@@ -1351,7 +1346,7 @@
         const sameDayMap = {};
         for (const txn of store.state.transactions || []) {
           if (txn.pending || !txn.mappedCategory || txn.mappedCategory === 'To Sort') continue;
-          const d = txn.effectiveDate || txn.date;
+          const d = txnDate(txn);
           if (!sameDayMap[d]) sameDayMap[d] = new Set();
           sameDayMap[d].add(txn.mappedCategory);
         }
@@ -1383,7 +1378,7 @@
               reason = `Previously categorized (${merchantMatch.count}x)`;
               if (recurring.has(txn.merchant_name || txn.name)) confidence = 'medium';
             } else {
-              const dayCats = sameDayMap[txn.effectiveDate || txn.date];
+              const dayCats = sameDayMap[txnDate(txn)];
               if (dayCats && dayCats.size === 1) {
                 suggestion = [...dayCats][0];
                 confidence = 'low';
@@ -1462,7 +1457,7 @@
           let total = 0, count = 0;
           for (const m of lastThree) {
             const monthTotal = allTxns
-              .filter(t => (t.merchant_name || t.name) === key && dayjs(t.effectiveDate || t.date).format('YYYY-MM') === m)
+              .filter(t => (t.merchant_name || t.name) === key && txnDayjs(t).format('YYYY-MM') === m)
               .reduce((s, t) => s + Math.abs(t.amount), 0);
             if (monthTotal > 0) { total += monthTotal; count++; }
           }
@@ -1471,7 +1466,7 @@
         // Which recurring merchants have already appeared this month?
         const appearedThisMonth = new Set(
           allTxns
-            .filter(t => dayjs(t.effectiveDate || t.date).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
+            .filter(t => txnDayjs(t).format('YYYY-MM') === currentMonth && recurring.has(t.merchant_name || t.name))
             .map(t => t.merchant_name || t.name)
         );
         // Sum expected remaining from recurring merchants not yet seen
@@ -1613,10 +1608,7 @@ monthStats() {
           monthlySum=monthlySum.toFixed(2),
           toSortSpending=toSortSpending.toFixed(2)
           const sel = this.selectedDate.actual;
-          const monthTxns = this.transactions.filter(txn => {
-            const d = dayjs(txn.effectiveDate || txn.date);
-            return d.year() === sel.year() && d.month() === sel.month();
-          });
+          const monthTxns = this.transactions.filter(txn => isInMonth(txn, sel));
           const fcf = freeCashFlow(monthTxns, this.categoryMonthlyLimits);
           return {
             monthlySum,
@@ -2350,8 +2342,8 @@ monthStats() {
         if (rel.ratio) signals.ratio = rel.ratio;
 
         // If months differ, align the secondary transaction to the primary's month
-        const primaryMonth = (txnA.effectiveDate || txnA.date)?.substring(0, 7);
-        const secondaryMonth = (txnB.effectiveDate || txnB.date)?.substring(0, 7);
+        const primaryMonth = txnMonth(txnA);
+        const secondaryMonth = txnMonth(txnB);
         const effectiveDate = (primaryMonth !== secondaryMonth) ? txnA.date : null;
 
         // Auto-recategorize secondary if it's unsorted
