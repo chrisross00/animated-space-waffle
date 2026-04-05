@@ -169,7 +169,7 @@ section instead of reading the whole file.
 | Triage flow | `openTriageFlow`, `triageAccept`, `triageSkip`, `triageAdvance` | Self-contained card-by-card categorization flow |
 | Table / infinite scroll | `onTableVirtualScroll`, `openTableDialog`, `applyBulkCategory` | Show All table with scroll-to-load-more + bulk ops |
 | Data lifecycle | `buildPage`, `onPullRefresh` | Sync or refresh from store, regroup, recalc stats |
-| Formatting | `formatDollar`, `formatDate`, `merchantInitials`, `merchantColor` | Pure display helpers |
+| Formatting | `formatDate`, `merchantInitials`, `merchantColor` | Pure display helpers (`formatDollar` moved to shared `formatDollar.js`) |
 
 ### `api.js` (~1,026 lines)
 
@@ -195,7 +195,12 @@ section instead of reading the whole file.
 | `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates compound rules against a transaction during batch categorization. |
 | `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Tiered similarity cascade — see "Similarity cascade" section below. |
 | `extractStablePrefix(name)` | `frontend/src/utils/ruleUtils.js` | Extracts stable prefix from transaction names (before digit runs or variable suffixes). Used by name_prefix tier. |
-| `isP2P(txn)` | `frontend/src/utils/ruleUtils.js` | Detects P2P transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash). P2P pattern list must stay in sync with `utils/categoryMapping.js`. |
+| `isP2PTransaction(txn)` | `shared/p2pDetection.js` | Detects P2P transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash). Single canonical source — checks account + merchant_name + name. Re-exported as `isP2P` from `ruleUtils.js` for backwards compatibility. |
+| `CATEGORY_TYPES` | `shared/categoryTypes.js` | Constants for category type strings (`INCOME`, `EXPENSE`, `PAYMENT`, `SAVINGS`). Import instead of hardcoding strings. |
+| `freeCashFlow(txns, cats)` | `frontend/src/utils/budgetMath.js` | Free cash flow: income − expenses − savings. Used by both BudgetView and TrendsView. |
+| `formatDollar(amount, decimals)` | `frontend/src/utils/formatDollar.js` | Format number as dollar string with commas. No `$` prefix — templates add it. |
+| `formatSignedDollar(amount, decimals)` | `frontend/src/utils/formatDollar.js` | Signed dollar with color class: `{ text: '+$1,234', colorClass: 'basil-positive' }`. |
+| `txnDate(txn)` / `txnDayjs(txn)` / `txnMonth(txn)` / `isInMonth(txn, month)` | `frontend/src/utils/transactionDate.js` | Transaction date helpers — prefer `effectiveDate`, fall back to `date`. Use instead of inline `txn.effectiveDate \|\| txn.date`. |
 | `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
 | `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/api.js` | Set `true` while `ensureAppData` is in-flight. See DESIGN.md "Loading states" for the three-state pattern. |
 | `triggerSync()` | `frontend/src/api.js` | `POST /api/sync` — triggers Plaid sync. Only call on explicit user action or stale-data check. |
@@ -257,9 +262,9 @@ name). Account is included in the rule when available but not required.
    (`"DD *DOORDASH MASCAFE"` → `"DD *DOORDASH"`)
 3. Returns `null` if result is shorter than 4 characters
 
-**P2P detection (`isP2P`)** checks `merchant_name` and `name` against a pattern
-list. The same list exists server-side in `utils/categoryMapping.js` — keep both
-in sync when adding new P2P providers.
+**P2P detection (`isP2PTransaction`)** lives in `shared/p2pDetection.js` — single
+canonical source for both frontend and backend. Checks `account`, `merchant_name`,
+and `name` against the pattern list. Add new P2P providers there.
 
 **UI:** The checkbox label adapts — "Also categorize N similar" when there are
 actionable matches, "Remember for future 'X' (N similar)" when all matches are
