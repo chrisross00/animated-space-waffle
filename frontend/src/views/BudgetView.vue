@@ -220,7 +220,7 @@
 
         <!-- To Sort Nudge Card -->
         <BasilCard
-          v-if="isOnboarded && toSortSuggestionStats.total > 0 && !showAll && !isLoading && !isRefreshing"
+          v-if="isOnboarded && toSortSuggestionStats.total > 0 && !isLoading && !isRefreshing"
           flat bordered class="basil-tosort-card basil-mb-4"
           @click="openTriageFlow()" @keydown.enter="openTriageFlow()" role="button" tabindex="0" aria-label="Sort transactions"
         >
@@ -243,7 +243,7 @@
 
         <!-- Detected Relationships Card -->
         <BasilCard
-          v-if="isOnboarded && pendingRelationships.length > 0 && !showAll && !isLoading && !isRefreshing"
+          v-if="isOnboarded && pendingRelationships.length > 0 && !isLoading && !isRefreshing"
           flat bordered
           :class="['basil-relationships-card basil-mb-4', { 'basil-relationships-card--expanded': relationshipsExpanded }]"
           @click="!relationshipsExpanded && (relationshipsExpanded = true)"
@@ -274,7 +274,7 @@
 
         <!-- Post-onboarding nudge card -->
         <BasilCard
-          v-if="nudgeCard && !showAll && !isLoading && !isRefreshing"
+          v-if="nudgeCard && !isLoading && !isRefreshing"
           flat bordered class="basil-mb-4"
         >
           <div class="basil-card__body">

@@ -230,18 +230,19 @@ export default {
       const transactions = store.state.transactions || [];
       const months = this.monthList;
       const categories = store.state.categories || [];
-      const incomeNames = new Set(categories.filter(c => c.type === 'income').map(c => c.category));
-      const expenseNames = new Set(categories.filter(c => c.type === 'expense').map(c => c.category));
+      const catTypeMap = new Map(categories.map(c => [c.category, c.type]));
 
       return months.map(m => {
-        let income = 0, expenses = 0;
+        let income = 0, expenses = 0, savings = 0;
         for (const txn of transactions) {
           if (txn.excludeFromTotal) continue;
           if (dayjs(txn.effectiveDate || txn.date).format('MMM YYYY') !== m) continue;
-          if (incomeNames.has(txn.mappedCategory)) income += Math.abs(txn.amount);
-          else if (expenseNames.has(txn.mappedCategory)) expenses += Math.abs(txn.amount);
+          const type = catTypeMap.get(txn.mappedCategory);
+          if (type === 'income') income += Math.abs(txn.amount);
+          else if (type === 'expense') expenses += Math.abs(txn.amount);
+          else if (type === 'savings') savings += Math.abs(txn.amount);
         }
-        return Math.round((income - expenses) * 100) / 100;
+        return Math.round((income - expenses - savings) * 100) / 100;
       });
     },
 
