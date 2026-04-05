@@ -7,6 +7,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
+# Copy shared modules (needed by both frontend build and backend runtime)
+COPY shared/ ./shared/
+
 # Install and build frontend
 COPY frontend/package.json frontend/package-lock.json ./frontend/
 RUN npm ci --prefix frontend
@@ -33,6 +36,7 @@ COPY --from=builder /app/admin/dist ./admin/dist
 COPY index.js api.js auth-routes.js plaid-api.js admin-api.js ./
 COPY db/ ./db/
 COPY utils/ ./utils/
+COPY shared/ ./shared/
 COPY scripts/ ./scripts/
 COPY package.json ./
 
