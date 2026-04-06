@@ -1,5 +1,5 @@
 <template>
-  <div ref="keyboard" class="basil-keyboard" :class="{ 'basil-keyboard--hidden': !isOpen, 'basil-keyboard--numpad': mode === 'numpad' }">
+  <div ref="keyboard" class="basil-keyboard" :class="{ 'basil-keyboard--hidden': !isOpen, 'basil-keyboard--numpad': mode === 'numpad' }" @pointerdown.stop>
     <!-- QWERTY layout -->
     <template v-if="mode === 'qwerty' && !numberSymbol">
       <div class="basil-keyboard__row">
