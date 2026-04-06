@@ -1,47 +1,17 @@
 # Project: animated-space-waffle (personal finance / budget tracker)
 
-## Standard operating procedures — read first
+## Top rules (always apply)
 
-These apply to every task, every session, including after context compaction.
+1. **Search for existing patterns before creating anything new.** Grep/glob the codebase
+   first. State what you found. Extend existing abstractions over building parallel ones.
+2. **Use shared utilities and Basil components.** See `.claude/rules/` for the full
+   lookup table and path-scoped rules that load automatically.
+3. **Check deployment artifacts when adding directories or moving files.** Dockerfile,
+   CI workflow, .dockerignore — they're part of the change.
 
-### Before writing ANY new code (universal gate)
-0. **Search for existing patterns first.** Before creating any new file, function,
-   component, or utility, grep/glob the codebase for existing implementations that
-   solve the same or a similar problem. Briefly state what you found and why reuse
-   isn't possible. If an existing abstraction is close, extend it rather than building
-   a parallel one. Code that duplicates existing patterns will be rejected.
-
-### Before writing any frontend UI
-1. **Read `DESIGN.md`** in full before touching any component or view.
-   It is the single source of truth for tokens, typography, spacing, dark mode,
-   component patterns, and the new-component checklist. Violations ship as bugs.
-
-### Before writing any rule, sweep, or condition logic
-2. **Check `frontend/src/utils/ruleUtils.js`** — `matchesCondition` and `sweepStore`
-   are the canonical client-side implementations. Never write inline sweep loops.
-3. **Check `api.js → sweepCompoundRule`** for the backend equivalent.
-4. If adding a new condition type or operator, update **all three**:
-   `ruleUtils.js`, `categoryMapping.js` (`evaluateCompoundRules`), and `api.js`
-   (`conditionsToPostgresFilter`).
-
-### Before building any new component or UI pattern
-5. **Check existing shared components first:**
-   `RuleEditorDialog`, `EmptyState`, `SkeletonBudget`, `dialogs.css`,
-   and all Basil components in `frontend/src/components/basil/`.
-   Reuse over rebuild. One-off implementations that duplicate existing abstractions
-   will be flagged for refactor.
-6. **Inputs: use `BasilInput` or variant wrappers.** Never use `q-input` for new inputs.
-7. **UI components: use Basil components.** Do not introduce new Quasar component
-   dependencies. See DESIGN.md "Basil Component Library" for the full component list.
-
-### Always
-6. **State changes go through store mutations.** Never mutate `store.state.*` directly.
-7. **No hardcoded colors, fonts, or spacing.** Use `var(--basil-*)` tokens.
-   `var(--basil-surface)` not `#ffffff`. `var(--basil-space-4)` not `16px`.
-8. **CSS class names use `basil-` prefix + BEM structure.**
-   `basil-[block]__[element]--[modifier]`. Never prefix with `q-`.
-9. **Dark mode: Basil components handle it automatically** via `var(--basil-*)` tokens.
-   If overriding any legacy component, the fix goes in `App.vue` global style section.
+Detailed rules live in `.claude/rules/` and load automatically based on which files
+you're touching. See: `frontend-ui.md`, `shared-utilities.md`, `sweep-and-rules.md`,
+`deployment.md`, `state-management.md`.
 
 ---
 
@@ -183,51 +153,12 @@ section instead of reading the whole file.
 | **Admin / toolbox** | 736–970 | `GET /users` · `POST /nukeTransactions` · `POST /clearManualOverrides` · `POST /clearVenmoEnrichment` · `POST /resetBalanceSnapshots` · `POST /nukeAllData` · `POST /addVenmoTransactions` · `POST /addTestTransactions` · `POST /deleteCategory` · `POST /updateBudgetLimit` |
 | **Venmo enrichment** | 971–1026 | `POST /venmoEnrichment/preview` · `POST /venmoEnrichment/apply` |
 
-## Shared utilities — check before building
+## Shared utilities
 
-**Before writing any sweep, condition-matching, or rule logic, check these first:**
-
-| Utility | Location | What it does |
-|---------|----------|--------------|
-| `matchesCondition(txn, condition)` | `frontend/src/utils/ruleUtils.js` | Evaluates a single condition against a transaction. Single source of truth for client-side matching. |
-| `sweepStore(store, conditions, categoryName, note, toSortOnly)` | `frontend/src/utils/ruleUtils.js` | Applies a rule to all matching transactions in Vuex store. Used by all rule creation/edit flows. |
-| `sweepCompoundRule(uid, conditions, action)` | `api.js` (module-level helper) | Backend equivalent — updates matching transactions in Postgres. |
-| `evaluateCompoundRules(rules, txn)` | `utils/categoryMapping.js` | Evaluates compound rules against a transaction during batch categorization. |
-| `findSimilarTransactions(txn, txns)` | `frontend/src/utils/ruleUtils.js` | Tiered similarity cascade — see "Similarity cascade" section below. |
-| `extractStablePrefix(name)` | `frontend/src/utils/ruleUtils.js` | Extracts stable prefix from transaction names (before digit runs or variable suffixes). Used by name_prefix tier. |
-| `isP2PTransaction(txn)` | `shared/p2pDetection.js` | Detects P2P transactions (Venmo, Zelle, Cash App, PayPal, Apple Cash). Single canonical source — checks account + merchant_name + name. Re-exported as `isP2P` from `ruleUtils.js` for backwards compatibility. |
-| `CATEGORY_TYPES` | `shared/categoryTypes.js` | Constants for category type strings (`INCOME`, `EXPENSE`, `PAYMENT`, `SAVINGS`). Import instead of hardcoding strings. |
-| `freeCashFlow(txns, cats)` | `frontend/src/utils/budgetMath.js` | Free cash flow: income − expenses − savings. Used by both BudgetView and TrendsView. |
-| `formatDollar(amount, decimals)` | `frontend/src/utils/formatDollar.js` | Format number as dollar string with commas. No `$` prefix — templates add it. |
-| `formatSignedDollar(amount, decimals)` | `frontend/src/utils/formatDollar.js` | Signed dollar with color class: `{ text: '+$1,234', colorClass: 'basil-positive' }`. |
-| `txnDate(txn)` / `txnDayjs(txn)` / `txnMonth(txn)` / `isInMonth(txn, month)` | `frontend/src/utils/transactionDate.js` | Transaction date helpers — prefer `effectiveDate`, fall back to `date`. Use instead of inline `txn.effectiveDate \|\| txn.date`. |
-| `RuleEditorDialog` | `frontend/src/components/RuleEditorDialog.vue` | Compound rule create/edit UI. Reuse for any flow that creates or edits compound rules. |
-| `store.state.bootstrapping` | `frontend/src/store.js` + `frontend/src/api.js` | Set `true` while `ensureAppData` is in-flight. See DESIGN.md "Loading states" for the three-state pattern. |
-| `triggerSync()` | `frontend/src/api.js` | `POST /api/sync` — triggers Plaid sync. Only call on explicit user action or stale-data check. |
-| `fetchTransactionsForMonth(month)` | `frontend/src/api.js` | `GET /api/transactions?month=YYYY-MM` — cheap DB read. Returns `{ transactions, total }`. |
-| `fetchMonthRange(store, start, end)` | `frontend/src/api.js` | Fetches missing months in parallel, skipping cached ones. |
-| `searchTransactions(search, page, limit)` | `frontend/src/api.js` | Server-side paginated search across all months. |
-| `BasilInput` / variant wrappers | `frontend/src/components/BasilInput.vue` + `Basil{Amount,Search,Text,Note}.js` | Custom input replacing `q-input`. Variants: `amount`, `search`, `text`, `note`. See DESIGN.md. |
-| `BasilButton` | `frontend/src/components/basil/BasilButton.vue` | Primary interactive element — replaces `q-btn`. |
-| `BasilCard` | `frontend/src/components/basil/BasilCard.vue` | Surface container — replaces `q-card`. |
-| `BasilSelect` | `frontend/src/components/basil/BasilSelect.vue` | Dropdown picker — replaces `q-select`. No blur-swallows-tap issue. |
-| `BasilToggle` | `frontend/src/components/basil/BasilToggle.vue` | Boolean on/off control — replaces `q-toggle`. |
-| `BasilList` / `BasilListItem` | `frontend/src/components/basil/` | List container + row — replace `q-list` / `q-item`. |
-| `BasilTabs` / `BasilTab` | `frontend/src/components/basil/` | Tab bar — replaces `q-tabs` / `q-tab`. |
-| `BasilTable` | `frontend/src/components/basil/BasilTable.vue` | Data table with virtual scroll — replaces `q-table`. |
-| `useScreen` | `frontend/src/composables/useScreen.js` | Reactive breakpoints (`isMobile`, `isDesktop`, `width`) — replaces `$q.screen`. |
-| `useGesture` | `frontend/src/composables/useGesture.js` | Swipe and drag gesture detection — replaces `v-touch-swipe`. |
-| `useToast` | `frontend/src/composables/useToast.js` | Programmatic toast notifications — replaces `$q.notify`. |
-| `merchantInitials`, `merchantColor`, `isVenmo` | `frontend/src/utils/merchantDisplay.js` | Merchant avatar initials, hash-based color, Venmo detection. Used by BudgetView + TransactionDrillDown. |
-| `keyboardState`, `requestKeyboard`, `dismissKeyboard` | `frontend/src/utils/basilKeyboard.js` | Reactive singleton for keyboard ↔ input communication. |
-| `scrollActiveInputIntoView()` | `frontend/src/utils/basilKeyboard.js` | Scrolls focused input into view when keyboard opens. Finds nearest scrollable ancestor (tray) or falls back to body padding for full-page views. |
-
-### Key architecture rules
-- **Sweep logic lives in one place.** All client-side sweeps go through `sweepStore`. All backend sweeps go through `sweepCompoundRule`. Never write inline sweep loops.
-- **Condition matching has one implementation per layer.** `matchesCondition` on the client; `conditionsToPostgresFilter` in `api.js` for the backend query; `evaluateCompoundRules` in `categoryMapping.js` for batch mapping. If you add a new condition type or operator, update **all three**.
-- **Shared components over one-off markup.** `RuleEditorDialog`, `EmptyState`, `SkeletonBudget` — use them. Don't re-implement empty states inline.
-- **Store mutations are the only way to update client state.** Never mutate `store.state.*` directly. Use existing mutations or add a new named mutation.
-- **No magic strings for fields/ops.** Condition fields (`merchant_name`, `name`, `amount`, `account`) and operators (`eq`, `contains`, `range`, `gt`, `lt`) must be consistent across `ruleUtils.js`, `categoryMapping.js`, `api.js`, and `RuleEditorDialog`. Add to all when extending.
+Full lookup table is in `.claude/rules/shared-utilities.md` (auto-loaded when touching
+relevant files). Key ones to know about: `CATEGORY_TYPES`, `freeCashFlow`, `formatDollar`,
+`formatSignedDollar`, `txnDate`/`txnDayjs`/`txnMonth`/`isInMonth`, `isP2PTransaction`,
+`matchesCondition`, `sweepStore`. All live in `shared/` or `frontend/src/utils/`.
 
 ### Similarity cascade (`findSimilarTransactions`)
 
