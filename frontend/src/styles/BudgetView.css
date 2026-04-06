@@ -50,13 +50,6 @@
     font-style: italic;
     color: var(--basil-text-muted);
   }
-  .basil-pending-badge {
-    font-size: 0.7rem;
-    color: var(--basil-text-muted);
-    margin-left: var(--basil-space-1);
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-  }
   .basil-budget-row .header {
     display: flex;
     justify-content: space-between;
