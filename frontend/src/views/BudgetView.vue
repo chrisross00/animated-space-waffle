@@ -424,6 +424,7 @@
                           </div>
                           <div class="basil-txn-label__secondary">
                             {{ formatDate(item.date) }}
+                            <span v-if="item.pending" class="basil-pending-badge">Pending</span>
                             <BasilIcon
                               v-if="item.effectiveDate && item.effectiveDate !== item.date"
                               name="event_repeat"
@@ -620,6 +621,7 @@
                       </div>
                       <div class="basil-txn-label__secondary">
                         {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
+                        <span v-if="sortedTableTransactions[vRow.index]?.pending" class="basil-pending-badge">Pending</span>
                         <BasilIcon
                           v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
                           name="event_repeat"
