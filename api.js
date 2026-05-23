@@ -3,7 +3,8 @@ const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
 const { findUser, insertUser, updateUser, updateUserPreferences, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool, findTags, insertTag, deleteTag, tagTransactions, untagTransactions, findTagSummary, findTagCategoryBreakdown, findTagTransactions, insertSplitChildren, deleteSplitChildren, findSplitChildren, TXN_COLUMNS } = require('./db/database');
-const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
+const { pullTellerTransactions, fetchAndStoreBalances } = require('./utils/tellerTools');
+const { getCachedBalances } = require('./utils/plaidTools'); // still used for cached reads until Phase 3
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
@@ -127,7 +128,7 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.uid;
     // No rejectTestUser guard — sandbox items are safe to sync
-    const syncResult = await getNewPlaidTransactions(userId);
+    const syncResult = await pullTellerTransactions(userId);
     // Also refresh balances + snapshot in the same sync
     const balanceResult = await fetchAndStoreBalances(userId);
     const items = await findPlaidItems(userId);
