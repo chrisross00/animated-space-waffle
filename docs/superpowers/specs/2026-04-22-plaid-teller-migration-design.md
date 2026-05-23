@@ -54,7 +54,16 @@
 
 ## Section 2 — DB schema changes
 
-Single migration file: `db/migrations/010-teller-migration.sql`.
+> **Refinement (2026-05-23, in the implementation plan):** the rename + cursor-column
+> drops below are **deferred to the Phase 3 cleanup PR**, not done at cutover. The
+> cutover migration (`010-teller-cutover.sql`) is **additive only** — it adds `active`,
+> `last_transactions_hash`, `enrollment_id` and swaps the unique constraint. This keeps
+> the Plaid code working during side-by-side testing and keeps rollback to a one-click
+> code revert. The SQL below documents the eventual end state; see
+> `docs/superpowers/plans/2026-05-23-plaid-teller-migration.md` Tasks 1 & 12 for the split.
+> (`enrollment_id` is a plan addition — needed for Teller reconnect, missing from the original draft.)
+
+Original single-migration sketch (now split across migration 010 + Phase 3):
 
 ```sql
 -- Drop cursor-based sync columns (Plaid-specific, unused by Teller)
