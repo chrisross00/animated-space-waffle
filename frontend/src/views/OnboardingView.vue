@@ -70,7 +70,7 @@
           </div>
         </template>
 
-        <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="onPlaidSuccess" @onPlaidExit="onPlaidExit" />
+        <BankLinkHandler v-if="showPlaidLink" @onBankSuccess="onPlaidSuccess" @onBankExit="onPlaidExit" />
       </div>
 
       <!-- Step 2: Sync progress + Summary -->
@@ -168,7 +168,7 @@
 </template>
 
 <script>
-import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
+import BankLinkHandler from '../components/BankLinkHandler.vue';
 import { getOrAddUser, seedCategories, fetchCategories, triggerSync, ensureAppData, updatePreferences } from '@/api';
 import store from '../store';
 import { CATEGORY_TYPES } from '../../../shared/categoryTypes';
@@ -176,7 +176,7 @@ import { formatDollar } from '@/utils/formatDollar';
 
 export default {
   name: 'OnboardingView',
-  components: { PlaidLinkHandler },
+  components: { BankLinkHandler },
 
   data() {
     return {

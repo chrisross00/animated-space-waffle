@@ -66,22 +66,12 @@ export async function triggerSync() {
   return null;
 }
 
-/** Create a Plaid Link token in update mode for reconnecting a stale institution. */
-export async function createUpdateLinkToken(institution) {
-  const headers = getAuthHeaders();
-  if (!headers) return null;
-  const response = await fetch(`/plaid-api/create_update_link_token?institution=${encodeURIComponent(institution)}`, { headers });
-  if (response.ok) return response.json();
-  _notify({ type: 'negative', message: `Failed to create reconnect token (${response.status})` });
-  return null;
-}
-
-/** Clear a persisted item error after successful reconnect. */
-export async function clearItemError(institution) {
+/** Clear a persisted connection error after successful reconnect. */
+export async function clearConnectionError(institution) {
   const headers = getAuthHeaders();
   if (!headers) return null;
   headers['Content-Type'] = 'application/json';
-  const response = await fetch('/plaid-api/clear_item_error', {
+  const response = await fetch('/bank-api/clear_connection_error', {
     method: 'POST', headers,
     body: JSON.stringify({ institution }),
   });
@@ -188,6 +178,16 @@ export async function getOrAddUserAccount(publicToken, metadata) {
   }
 }
 
+export async function storeEnrollment(enrollment) {
+  const headers = await getAuthHeaders();
+  const response = await fetch('/bank-api/store_enrollment', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: enrollment.accessToken, enrollment: enrollment.enrollment }),
+  });
+  return response.json();
+}
+
 export async function handleDialogSubmit(dialogBody) {
   const headers = getAuthHeaders();
   if (headers) {
@@ -209,7 +209,7 @@ export async function removeAccount(institution) {
   const headers = getAuthHeaders();
   if (headers) {
     headers['Content-Type'] = 'application/json';
-    const response = await fetch('/plaid-api/remove_account', {
+    const response = await fetch('/bank-api/remove_account', {
       method: 'POST',
       headers,
       body: JSON.stringify({ institution }),

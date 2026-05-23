@@ -753,6 +753,7 @@ function createClientSideUser(user, items=null) {
   let bankNames = hasItems ? items.map(item => item.institution) : [];
   const manualInstitutions = new Set(hasItems ? items.filter(i => i.manual).map(i => i.institution) : []);
   const itemIdByInstitution = hasItems ? Object.fromEntries(items.map(i => [i.institution, i.id])) : {};
+  const enrollmentIdByInstitution = hasItems ? Object.fromEntries(items.filter(i => i.enrollmentId).map(i => [i.institution, i.enrollmentId])) : {};
 
   // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
@@ -786,6 +787,7 @@ function createClientSideUser(user, items=null) {
     accountBalances,
     manualInstitutions: manualInstitutions.size ? [...manualInstitutions] : null,
     itemIdByInstitution: hasItems ? itemIdByInstitution : null,
+    enrollmentIdByInstitution: hasItems ? enrollmentIdByInstitution : null,
     balanceSnapshots: balanceSnapshots?.length ? balanceSnapshots : null,
     itemErrors,
     onboarded_at: user.onboarded_at || null,
