@@ -1106,3 +1106,12 @@ Linked a Teller **sandbox** Chase (env `VITE_TELLER_ENVIRONMENT=sandbox`) as `te
 ### Cutover-phase verification additions (fold into Task 11)
 - **Confirm the strict unique constraint is actually dropped on prod.** Locally there was no `plaid_items_user_id_institution_key` to drop (migration ran clean anyway). On prod the inline `UNIQUE(user_id, institution)` from migration 001 should be named `plaid_items_user_id_institution_key` and drop cleanly — but verify post-migration that NO non-partial unique constraint on `(user_id, institution)` remains, else a new active Teller "Chase" can't coexist with the frozen Plaid "Chase". Check: `SELECT conname FROM pg_constraint WHERE conrelid='plaid_items'::regclass AND contype='u';` (expect empty).
 - **Confirm the cert is reachable by the runtime.** The app runs from the Docker runtime image; `TELLER_CERT_PATH`/`TELLER_KEY_PATH` point at `/opt/basil/certs/`. Certs are NOT in the image (correct). Ensure that directory is volume-mounted into the container (or the process runs on the host) so the paths resolve at runtime.
+
+### Task 10 — real-bank (`development`) pass + archived-display fix (2026-05-23)
+Linked a **real Chase** (3 credit cards) via Teller Connect in `development`. Results:
+- **mTLS to the real bank works**; 560 real transactions synced.
+- **Amount sign validated on real data:** Airbnb/Amazon/Best Buy charges = positive (spend); "Payment Thank You" card payments = negative. Confirms the account-type-aware fix is correct for real credit-card data (490 spends / 70 payments).
+- **Reconnect/disconnect flow verified** (sandbox): simulated `disconnected`, UI showed reconnect, Teller Connect opened in update mode via `enrollmentId`, `clearConnectionError` cleared it.
+- **Archived-account display — RESOLVED.** Frozen (active=false) connections were appearing as duplicate institution groups (`user.accounts`/`bankNames` had one entry per connection). `createClientSideUser` now builds the Accounts-UI fields from **active + manual** connections only, while `balanceSnapshots` still aggregates **all** connections so Trends history survives. (Closes the spec §7 "archived-account display" open question.) Commit `ffaaff4`.
+
+**Remaining before cutover:** populate `INSTITUTION_NAME_OVERRIDES` from prod `SELECT DISTINCT account` (Task 10 Step 8); then Task 11 cutover + Task 12 Phase 3 cleanup. The two deferred minor follow-ups above (auth status codes, sync_log count) are still open.
