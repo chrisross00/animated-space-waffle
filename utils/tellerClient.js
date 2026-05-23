@@ -1,14 +1,18 @@
 // utils/tellerClient.js
 const https = require('https');
 const fs = require('fs');
+const axios = require('axios');
 
 const BASE = 'https://api.teller.io';
 
-// One shared mTLS agent for the whole process. Sandbox needs no cert, so only
-// build the agent when both paths are configured.
-let agent = null;
+// One shared mTLS agent for the whole process. Node's global fetch (undici) does
+// NOT honor a client cert passed via the `agent` option — verified with a local
+// mutual-TLS handshake (fetch+agent failed to present the cert; axios+httpsAgent
+// succeeded). So we use axios, which sends the client cert via `httpsAgent`.
+// Sandbox needs no cert, so only build the agent when both paths are configured.
+let httpsAgent = null;
 if (process.env.TELLER_CERT_PATH && process.env.TELLER_KEY_PATH) {
-  agent = new https.Agent({
+  httpsAgent = new https.Agent({
     cert: fs.readFileSync(process.env.TELLER_CERT_PATH),
     key: fs.readFileSync(process.env.TELLER_KEY_PATH),
   });
@@ -16,22 +20,24 @@ if (process.env.TELLER_CERT_PATH && process.env.TELLER_KEY_PATH) {
 
 async function request(accessToken, path) {
   const auth = Buffer.from(`${accessToken}:`).toString('base64');
-  const res = await fetch(`${BASE}${path}`, {
-    agent,
-    headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
-  });
-  if (res.status === 401) {
-    const err = new Error('Teller enrollment disconnected');
-    err.status = 401;
-    err.tellerDisconnected = true;
+  try {
+    const res = await axios.get(`${BASE}${path}`, {
+      httpsAgent,
+      headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' },
+    });
+    return res.data;
+  } catch (error) {
+    const status = error.response?.status;
+    if (status === 401) {
+      const err = new Error('Teller enrollment disconnected');
+      err.status = 401;
+      err.tellerDisconnected = true;
+      throw err;
+    }
+    const err = new Error(`Teller ${status || ''} on ${path}: ${error.message}`);
+    err.status = status;
     throw err;
   }
-  if (!res.ok) {
-    const err = new Error(`Teller ${res.status} on ${path}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
 }
 
 function client(accessToken) {
