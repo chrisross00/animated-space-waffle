@@ -968,6 +968,17 @@ async function deletePlaidItem(userId, institution) {
   return { deletedCount: result.rowCount };
 }
 
+// Delete only the ACTIVE connection for an institution (Teller path). Preserves
+// frozen Plaid-era rows that share the institution name during side-by-side.
+async function deleteActiveBankConnection(userId, institution) {
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM plaid_items WHERE user_id = $1 AND institution = $2 AND active = true`,
+    [userId, institution]
+  );
+  return { deletedCount: result.rowCount };
+}
+
 async function deleteAllPlaidItems(userId) {
   const pool = getPool();
   await pool.query(`DELETE FROM plaid_items WHERE user_id = $1`, [userId]);
@@ -1378,6 +1389,7 @@ module.exports = {
   updatePlaidItem,
   updatePlaidItemByToken,
   deletePlaidItem,
+  deleteActiveBankConnection,
   deleteAllPlaidItems,
   upsertPlaidAccounts,
   updatePlaidAccountBalances,

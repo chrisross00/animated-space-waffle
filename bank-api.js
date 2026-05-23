@@ -2,8 +2,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const {
-  findPlaidItems, findPlaidItemByInstitution, insertPlaidItem,
-  updatePlaidItem, deletePlaidItem, upsertPlaidAccounts,
+  findPlaidItems, insertPlaidItem,
+  updatePlaidItem, deleteActiveBankConnection, upsertPlaidAccounts,
 } = require('./db/database');
 const { validateIdToken, rejectTestUser } = require('./utils/authentication');
 const { client: tellerClient } = require('./utils/tellerClient');
@@ -75,7 +75,7 @@ router.post('/remove_account', async (req, res) => {
     const decodedToken = await validateIdToken(req);
     if (await rejectTestUser(decodedToken.uid, res)) return;
     const { institution } = req.body;
-    await deletePlaidItem(decodedToken.uid, institution);
+    await deleteActiveBankConnection(decodedToken.uid, institution);
     res.json({ success: true });
   } catch (error) {
     console.error('/remove_account error:', error.message);

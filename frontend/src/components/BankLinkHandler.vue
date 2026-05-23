@@ -40,14 +40,15 @@ export default {
       environment: import.meta.env.VITE_TELLER_ENVIRONMENT,
       products: ['transactions', 'balance'],
       ...(this.reconnectEnrollmentId ? { enrollmentId: this.reconnectEnrollmentId } : {}),
-      onSuccess: async (enrollment) => {
+      onSuccess: async (tellerResult) => {
         // Reconnect mode: credentials already refreshed, just tell the parent.
         if (this.reconnectEnrollmentId) {
-          this.$emit('onBankSuccess', enrollment);
+          this.$emit('onBankSuccess', tellerResult);
           return;
         }
-        await storeEnrollment(enrollment);
-        this.$emit('onBankSuccess', enrollment);
+        // Only signal success if the enrollment actually persisted server-side.
+        const stored = await storeEnrollment(tellerResult);
+        if (stored !== null) this.$emit('onBankSuccess', tellerResult);
       },
       onExit: () => this.$emit('onBankExit'),
     });

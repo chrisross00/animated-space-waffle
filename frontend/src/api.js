@@ -178,14 +178,20 @@ export async function getOrAddUserAccount(publicToken, metadata) {
   }
 }
 
-export async function storeEnrollment(enrollment) {
+// `tellerResult` is the object Teller Connect's onSuccess delivers:
+// { accessToken, enrollment: { id, institution: { name } } }.
+export async function storeEnrollment(tellerResult) {
   const headers = getAuthHeaders();
   if (!headers) return null;
   const response = await fetch('/bank-api/store_enrollment', {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ accessToken: enrollment.accessToken, enrollment: enrollment.enrollment }),
+    body: JSON.stringify({ accessToken: tellerResult.accessToken, enrollment: tellerResult.enrollment }),
   });
+  if (!response.ok) {
+    _notify({ type: 'negative', message: `Failed to link account (${response.status})` });
+    return null;
+  }
   return response.json();
 }
 
