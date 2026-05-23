@@ -1076,3 +1076,23 @@ Only after Teller is proven stable. This is where the semantic rename + Plaid re
 **Type/signature consistency:** `tellerClient` exported as `{ client }`, imported as `client: tellerClient` everywhere (Tasks 3, 5, 6). `insertPlaidItem({ …, enrollmentId })` defined in Task 4, called with `enrollmentId` in Task 6. `findPlaidItems` returns `active`, `lastTransactionsHash`, `enrollmentId` (Task 4) and those exact names are consumed in Task 5 (`conn.active`, `conn.lastTransactionsHash`) and Task 8 (`enrollmentId`). Events `onBankSuccess`/`onBankExit` consistent between `BankLinkHandler` (Task 8 Step 1) and the view wiring (Task 8 Steps 3-4). ✅
 
 **Known assumption to confirm during execution:** Teller's transaction field names (`description`, `details.counterparty.name`, `status`, `amount` as a signed string) and balance fields (`ledger`, `available`) per Teller docs as of 2026-05; verify against live sandbox payloads in Task 10 and adjust `tellerToInternal` / `fetchAndStoreBalances` field reads if Teller's shape differs.
+
+---
+
+## Build session notes (2026-05-23) — Tasks 1–9 implemented
+
+Tasks 1–9 are built, committed on branch `teller-migration`, and verified (157 backend tests pass, frontend builds, all modules load). Deviations from the plan as written, all made during the build to fix real defects:
+
+1. **axios instead of `fetch` for mTLS (Task 3).** A local mutual-TLS handshake proved Node's global `fetch` ignores the `agent` option (client cert never sent). `tellerClient.js` uses `axios` + `httpsAgent`. Plan Task 3 updated to match.
+2. **`deleteActiveBankConnection` (review fix).** `bank-api.js` `remove_account` deletes only the `active` connection, so unlinking a Teller institution during side-by-side doesn't also delete the frozen Plaid row (and its snapshots) for the same name. New helper in `db/database.js`; the shared `deletePlaidItem` (legacy Plaid path) is untouched.
+3. **Backend `enrollmentIdByInstitution` (Task 8).** `createClientSideUser` in `api.js` now exposes each connection's `enrollmentId` to the frontend — required for reconnect, which would otherwise silently no-op. Verified wired end-to-end.
+4. **Dockerfile COPY (Task 9).** Added `bank-api.js` to the runtime-stage `COPY` line — it was missing, which would have crashed prod with "Cannot find module './bank-api'".
+5. **`store_enrollment` failure handling (review fix).** Frontend `storeEnrollment` now notifies + returns null on a non-OK response, and `BankLinkHandler` only emits success if the enrollment actually persisted.
+
+### Deferred minor follow-ups (non-blocking, address before full production or in Phase 3)
+- **Auth error status codes:** `bank-api.js` `clear_connection_error` and `remove_account` return HTTP 500 (not 401) when the JWT is missing/expired, unlike `store_enrollment`. Cosmetic/debuggability only — no security impact (routes require a valid JWT to act).
+- **`sync_log.added_count` is the total pulled, not newly inserted** (`pullTellerTransactions` passes `allTxns.length`). `insertTransactions` doesn't return an insert count; accurate counts need a schema/return change. Acknowledged Teller-model limitation (see spec §7 `sync_log` note).
+
+### Cutover-phase verification additions (fold into Task 11)
+- **Confirm the strict unique constraint is actually dropped on prod.** Locally there was no `plaid_items_user_id_institution_key` to drop (migration ran clean anyway). On prod the inline `UNIQUE(user_id, institution)` from migration 001 should be named `plaid_items_user_id_institution_key` and drop cleanly — but verify post-migration that NO non-partial unique constraint on `(user_id, institution)` remains, else a new active Teller "Chase" can't coexist with the frozen Plaid "Chase". Check: `SELECT conname FROM pg_constraint WHERE conrelid='plaid_items'::regclass AND contype='u';` (expect empty).
+- **Confirm the cert is reachable by the runtime.** The app runs from the Docker runtime image; `TELLER_CERT_PATH`/`TELLER_KEY_PATH` point at `/opt/basil/certs/`. Certs are NOT in the image (correct). Ensure that directory is volume-mounted into the container (or the process runs on the host) so the paths resolve at runtime.
