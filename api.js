@@ -749,10 +749,15 @@ function aggregateSnapshots(snapshots) {
 
 function createClientSideUser(user, items=null) {
   const hasItems = items && items.length > 0;
-  let bankNames = hasItems ? items.map(item => item.institution) : [];
-  const manualInstitutions = new Set(hasItems ? items.filter(i => i.manual).map(i => i.institution) : []);
-  const itemIdByInstitution = hasItems ? Object.fromEntries(items.map(i => [i.institution, i.id])) : {};
-  const enrollmentIdByInstitution = hasItems ? Object.fromEntries(items.filter(i => i.enrollmentId).map(i => [i.institution, i.enrollmentId])) : {};
+  // The Accounts UI shows ACTIVE connections + manual accounts. Frozen connections
+  // (active=false with an access token — e.g. Plaid-era rows kept after the Teller
+  // cutover) are hidden here so they don't appear as duplicates, but their historical
+  // balance snapshots still feed the Trends chart (balanceSnapshots aggregates ALL items).
+  const displayItems = hasItems ? items.filter(i => i.active || i.manual) : [];
+  let bankNames = displayItems.map(item => item.institution);
+  const manualInstitutions = new Set(displayItems.filter(i => i.manual).map(i => i.institution));
+  const itemIdByInstitution = Object.fromEntries(displayItems.map(i => [i.institution, i.id]));
+  const enrollmentIdByInstitution = Object.fromEntries(displayItems.filter(i => i.enrollmentId).map(i => [i.institution, i.enrollmentId]));
 
   // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
@@ -760,19 +765,23 @@ function createClientSideUser(user, items=null) {
   let itemErrors = null;
   if (hasItems) {
     accountBalances = {};
-    balanceSnapshots = [];
-    for (const item of items) {
+    // Balances + errors only for displayed (active/manual) connections.
+    for (const item of displayItems) {
       if (item.balances) {
         accountBalances[item.institution] = item.balances;
-      }
-      if (item.balanceSnapshots) {
-        for (const snap of item.balanceSnapshots) {
-          balanceSnapshots.push(snap);
-        }
       }
       if (item.itemError) {
         if (!itemErrors) itemErrors = {};
         itemErrors[item.institution] = item.itemError;
+      }
+    }
+    // Snapshots from ALL items (incl. frozen) so historical net worth survives in Trends.
+    balanceSnapshots = [];
+    for (const item of items) {
+      if (item.balanceSnapshots) {
+        for (const snap of item.balanceSnapshots) {
+          balanceSnapshots.push(snap);
+        }
       }
     }
     balanceSnapshots = aggregateSnapshots(balanceSnapshots);
