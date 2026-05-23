@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { storeEnrollment, getAuthHeaders } from '@/api'; // getAuthHeaders kept for parity/future use
+import { storeEnrollment } from '@/api';
 
 let scriptPromise = null;
 function loadTellerConnect() {

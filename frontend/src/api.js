@@ -179,7 +179,8 @@ export async function getOrAddUserAccount(publicToken, metadata) {
 }
 
 export async function storeEnrollment(enrollment) {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders();
+  if (!headers) return null;
   const response = await fetch('/bank-api/store_enrollment', {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
