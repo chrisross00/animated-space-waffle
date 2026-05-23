@@ -73,6 +73,8 @@ const adminRouter = require("./admin-api");
 app.use("/auth", authRouter);
 app.use("/api", router);
 app.use("/plaid-api", plaidApiRouter);
+const bankApiRouter = require("./bank-api");
+app.use("/bank-api", bankApiRouter);
 app.use("/admin", adminRouter);
 
 // Sentry error handler — must be after routes, before SPA fallback
