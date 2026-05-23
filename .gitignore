@@ -3,6 +3,7 @@ node_modules/
 settings.json
 !.claude/settings.json
 .env
+*.pem
 config.js
 data
 renameCollection.js
