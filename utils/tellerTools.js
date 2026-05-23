@@ -28,16 +28,23 @@ function normalizeInstitutionName(name, overrideMap = INSTITUTION_NAME_OVERRIDES
 }
 
 // Map a Teller transaction to the internal shape insertTransactions expects.
-// NOTE: Teller's ledger sign is the opposite of Plaid's. The app treats positive
-// amount as money spent (BudgetView.vue:443), so we negate Teller's amount.
-function tellerToInternal(t, { userId, institution }) {
+// AMOUNT SIGN: the app treats positive = money spent (BudgetView.vue:443). Teller
+// signs amounts by their effect on the account's OWN balance, which is opposite
+// between account types:
+//   • depository purchase  → Teller negative (balance down)     → negate to get +spend
+//   • credit-card purchase → Teller positive (balance owed up)  → keep as +spend
+// So we negate for depository and keep the sign for credit. (Verified against Teller
+// sandbox: checking outflows are negative, credit-card charges are positive.)
+function tellerToInternal(t, { userId, institution, accountType }) {
+  const raw = Number(t.amount);
+  const amount = accountType === 'credit' ? raw : -raw;
   return {
     transaction_id: t.id,
     userId,
     account_id: t.account_id,
     name: t.description,
     merchant_name: t.details?.counterparty?.name || null,
-    amount: -Number(t.amount),
+    amount,
     date: t.date,
     pending: t.status === 'pending',
     account: normalizeInstitutionName(institution),
@@ -89,7 +96,12 @@ async function pullTellerTransactions(uid) {
       const hash = buildFingerprint(allTxns);
       if (hash === conn.lastTransactionsHash) continue; // nothing changed — skip import + sweep
 
-      const mapped = allTxns.map((t) => tellerToInternal(t, { userId, institution: conn.institution }));
+      // Amount sign is account-type-aware (depository vs credit), so map each
+      // transaction with its owning account's type.
+      const accountTypeById = new Map(accounts.map((a) => [a.id, a.type]));
+      const mapped = allTxns.map((t) => tellerToInternal(t, {
+        userId, institution: conn.institution, accountType: accountTypeById.get(t.account_id),
+      }));
       const categorized = await mapTransactions(mapped, ruleList, compoundRules);
       await insertTransactions(categorized);
 

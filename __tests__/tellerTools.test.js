@@ -44,13 +44,30 @@ describe('tellerToInternal', () => {
     details: { counterparty: { name: 'Starbucks' } },
   };
 
-  it('flips the sign: a Teller debit (negative) becomes a positive spend', () => {
-    expect(tellerToInternal(base, { userId: 'u1', institution: 'Chase' }).amount).toBe(42.5);
+  // Depository: Teller signs by account balance — a purchase is negative. Negate → +spend.
+  it('depository: a Teller debit (negative) becomes a positive spend', () => {
+    expect(tellerToInternal(base, { userId: 'u1', institution: 'Chase', accountType: 'depository' }).amount).toBe(42.5);
   });
 
-  it('flips the sign: a Teller credit (positive) becomes a negative inflow', () => {
+  it('depository: a Teller credit (positive) becomes a negative inflow', () => {
     const deposit = { ...base, amount: '1500.00' };
-    expect(tellerToInternal(deposit, { userId: 'u1', institution: 'Chase' }).amount).toBe(-1500);
+    expect(tellerToInternal(deposit, { userId: 'u1', institution: 'Chase', accountType: 'depository' }).amount).toBe(-1500);
+  });
+
+  // Credit card: Teller signs a purchase POSITIVE (balance owed up). Keep → +spend.
+  it('credit: a Teller charge (positive) stays a positive spend', () => {
+    const charge = { ...base, amount: '96.10' };
+    expect(tellerToInternal(charge, { userId: 'u1', institution: 'Chase', accountType: 'credit' }).amount).toBe(96.1);
+  });
+
+  it('credit: a Teller payment/refund (negative) stays a negative inflow', () => {
+    const payment = { ...base, amount: '-200.00' };
+    expect(tellerToInternal(payment, { userId: 'u1', institution: 'Chase', accountType: 'credit' }).amount).toBe(-200);
+  });
+
+  // Default (no/unknown account type) negates like depository — the common case.
+  it('defaults to depository negation when accountType is absent', () => {
+    expect(tellerToInternal(base, { userId: 'u1', institution: 'Chase' }).amount).toBe(42.5);
   });
 
   it('maps identity, name, merchant, date, pending, account', () => {
