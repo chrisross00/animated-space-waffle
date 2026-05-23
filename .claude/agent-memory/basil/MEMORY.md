@@ -135,9 +135,16 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   "Build session notes"): axios (not fetch) for mTLS — Node fetch ignores `agent`;
   `deleteActiveBankConnection` so unlinking doesn't nuke frozen Plaid rows; backend
   `enrollmentIdByInstitution` for reconnect; `bank-api.js` added to Dockerfile COPY.
-  **Next: Task 10 (interactive smoke test — user links a Teller sandbox bank, verify
-  amount sign + dedup).** Then Task 11 cutover (verify constraint drop + cert mount on
-  prod), Task 12 Phase 3 cleanup (rename tables, drop cursors, remove Plaid). NOT merged.
+  **Task 10 sandbox smoke test PASSED** (5/23): linked Teller sandbox Chase (checking
+  + savings + credit card) as test-user-active, mTLS works, 331 txns synced, fingerprint
+  short-circuit + balance snapshot OK. **Found + fixed a real bug:** credit-card charges
+  were inverted to income — Teller signs by account-balance effect (depository purchase
+  negative, credit purchase positive), so `tellerToInternal` is now account-type-aware
+  (negate depository, keep credit). `frontend/.env` left on `sandbox` — switch to
+  `development` for the real-bank pass. **Next:** real-bank (`development`) smoke pass +
+  reconnect flow + populate `INSTITUTION_NAME_OVERRIDES` from prod `SELECT DISTINCT
+  account`; then Task 11 cutover (verify constraint drop + cert mount on prod), Task 12
+  Phase 3 cleanup (rename tables, drop cursors, remove Plaid). NOT merged.
 - **[On ice 4/9] Recurring patterns detection engine.** Branch
   `feature/recurring-patterns` (~28 commits ahead). Backend complete & tested
   (`recurring_patterns` table, `utils/recurringDetection.js`, API, sync hook). Frontend
@@ -182,6 +189,12 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Decisions Log
 
+- **2026-05-23: Teller amount sign is account-type-aware.** Teller signs by effect on
+  the account's own balance (depository purchase negative, credit-card purchase
+  positive). `tellerToInternal` negates depository, keeps credit → positive=spend
+  (matches app/Plaid convention). Caught in sandbox smoke test (credit charges were
+  inverted to income). Sandbox data is random so merchant semantics don't validate
+  signs — confirmed via raw-Teller-vs-DB comparison instead.
 - **2026-05-23: Teller migration Tasks 1–9 built** (branch `teller-migration`, subagent-driven).
   Migration 010 (additive), tellerClient (axios mTLS), tellerTools (transforms + sync),
   bank-api routes, frontend BankLinkHandler, env/Docker. Caught + fixed during build:
