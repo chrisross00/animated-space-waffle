@@ -115,15 +115,22 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Open Threads → Active
 
-- **[Paused 4/22] Plaid → Teller migration.** Migrating off Plaid (cost: ~$50 for
-  March) to Teller.io (free ≤100 connections). Spec at
-  `docs/superpowers/specs/2026-04-22-plaid-teller-migration-design.md` — 6 of 7
-  sections approved; Section 7 (open questions/risks) + spec self-review + plan remain.
+- **[Ready to build 5/23] Plaid → Teller migration.** Migrating off Plaid (cost: ~$50
+  for March) to Teller.io (free `development` tier, ≤100 connections). **Spec complete**
+  (`docs/superpowers/specs/2026-04-22-plaid-teller-migration-design.md`) and **implementation
+  plan written** (`docs/superpowers/plans/2026-05-23-plaid-teller-migration.md`).
   Locked: keep auto-sync; Teller not SimpleFIN; Vanguard → manual account; freeze &
-  forward historical Plaid data; swap + semantic rename (`plaid_items` →
-  `bank_connections`); ignore Teller categorization; fingerprint early-exit on sync.
-  **User off-ramp before code:** confirm Chase + Citizens + Citizens Access coverage on
-  the Teller dashboard. Branch `teller-migration` not yet created.
+  forward historical Plaid data; ignore Teller categorization; fingerprint early-exit.
+  **Off-ramp cleared this session** (research): Chase ✅ + Citizens ✅ confirmed in
+  Teller's institution API; Citizens Access folds into the `citizens` login (manual
+  fallback if not) — confirm at first live link. Key plan decisions: use `development`
+  env (free, no dual-client); **reuse `insertTransactions` reconciliation + pending-sweep**
+  (Teller has no `pending_transaction_id`); **amount sign must be flipped** (Teller ledger
+  sign is opposite Plaid's — highest-risk transform, TDD'd); **table rename + cursor-column
+  drops deferred to Phase 3** (cutover migration 010 is additive-only for safe rollback);
+  added `enrollment_id` column for reconnect. Tasks 1–9 buildable with no Teller account;
+  Tasks 10–11 need user to sign up at teller.io + grab the dev cert. Branch
+  `teller-migration` not yet created (Phase 1 start).
 - **[On ice 4/9] Recurring patterns detection engine.** Branch
   `feature/recurring-patterns` (~28 commits ahead). Backend complete & tested
   (`recurring_patterns` table, `utils/recurringDetection.js`, API, sync hook). Frontend
@@ -168,6 +175,13 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Decisions Log
 
+- **2026-05-23: Teller migration spec finalized + implementation plan written.** Verified
+  bank coverage via Teller's institution API (Chase + Citizens ✅; Citizens Access folds
+  into citizens login). Amended spec Section 4 (reuse `insertTransactions` reconciliation
+  + pending-sweep, since Teller lacks `pending_transaction_id`). Decided: free `development`
+  env, flip amount sign, defer table rename/cursor-drops to Phase 3, add `enrollment_id`.
+  Plan: `docs/superpowers/plans/2026-05-23-plaid-teller-migration.md`. Commits `5459f53`,
+  `dfc0977`.
 - **2026-05-23: Migrated to agent memory; disabled auto-memory.** Stood up the `basil`
   agent with manual memory in `.claude/agent-memory/basil/`; set
   `autoMemoryEnabled: false` in `.claude/settings.json`. Old auto-memory dir kept as
