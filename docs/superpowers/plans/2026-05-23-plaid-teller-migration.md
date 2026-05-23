@@ -30,7 +30,13 @@ The Vitest suite tests **pure functions and SQL-string generation only** (see `_
 
 ## Amount sign convention (read before Task 2)
 
-The app follows **Plaid's convention: positive `amount` = money spent (outflow), negative = money received (inflow).** Verified in `BudgetView.vue:443-445` (`item.amount < 0` → `+` prefix + `--income` class). Teller follows the **bank-ledger convention (opposite):** a purchase is negative, a deposit positive. Therefore `tellerToInternal` must **negate** Teller's amount. Credit-card sign is account-type-dependent and is an explicit verification gate in Task 10.
+The app follows **Plaid's convention: positive `amount` = money spent (outflow), negative = money received (inflow).** Verified in `BudgetView.vue:443-445` (`item.amount < 0` → `+` prefix + `--income` class).
+
+**Teller signs amounts by their effect on the account's OWN balance — which is OPPOSITE between account types** (confirmed against Teller sandbox in Task 10, raw-vs-DB):
+- **Depository** (checking/savings): a purchase decreases the balance → Teller **negative**. Negate → `+spend`.
+- **Credit card**: a purchase increases the balance owed → Teller **positive**. Keep the sign → `+spend`.
+
+So `tellerToInternal` is **account-type-aware**: `amount = accountType === 'credit' ? raw : -raw`. `pullTellerTransactions` passes each transaction's owning-account type. A blanket negate (the original draft) inverted every credit-card charge into income — caught in Task 10 smoke testing. (Default/unknown type negates, i.e. treated as depository.)
 
 ---
 
@@ -1088,6 +1094,10 @@ Tasks 1–9 are built, committed on branch `teller-migration`, and verified (157
 3. **Backend `enrollmentIdByInstitution` (Task 8).** `createClientSideUser` in `api.js` now exposes each connection's `enrollmentId` to the frontend — required for reconnect, which would otherwise silently no-op. Verified wired end-to-end.
 4. **Dockerfile COPY (Task 9).** Added `bank-api.js` to the runtime-stage `COPY` line — it was missing, which would have crashed prod with "Cannot find module './bank-api'".
 5. **`store_enrollment` failure handling (review fix).** Frontend `storeEnrollment` now notifies + returns null on a non-OK response, and `BankLinkHandler` only emits success if the enrollment actually persisted.
+6. **Account-type-aware amount sign (Task 10 smoke-test fix).** The original blanket negate inverted every credit-card charge into income. `tellerToInternal` now negates depository, keeps credit (see "Amount sign convention"). Caught by linking a Teller sandbox Chase (checking + savings + credit card) and comparing raw-vs-DB.
+
+### Task 10 smoke test — sandbox pass (2026-05-23)
+Linked a Teller **sandbox** Chase (env `VITE_TELLER_ENVIRONMENT=sandbox`) as `test-user-active`. Results: active connection + 3 accounts created via mTLS; 331 transactions synced; **amount sign verified raw-vs-DB on both account types** (depository negated, credit kept → positive=spend); fingerprint short-circuit confirmed (2nd sync = 0 new rows); balance snapshot written; all transactions categorized "To Sort" (expected — no PFC, no rules yet). One bug found + fixed (credit sign, item 6 above). **Still to do:** real-bank (`development`) pass; disconnect/reconnect flow (Task 10 Step 7); populate `INSTITUTION_NAME_OVERRIDES` from prod `SELECT DISTINCT account` (Step 8). NOTE: `frontend/.env` is currently set to `sandbox` — switch back to `development` for the real-bank pass.
 
 ### Deferred minor follow-ups (non-blocking, address before full production or in Phase 3)
 - **Auth error status codes:** `bank-api.js` `clear_connection_error` and `remove_account` return HTTP 500 (not 401) when the JWT is missing/expired, unlike `store_enrollment`. Cosmetic/debuggability only — no security impact (routes require a valid JWT to act).
