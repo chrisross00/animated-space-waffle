@@ -311,7 +311,10 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
     const fields = {
       mappedCategory: req.body.mappedCategory,
-      categorySource: 'manual',
+      // Only an actual category change counts as reviewing a guess. A note/date-only
+      // edit must NOT clear the guess flag (the category is still unconfirmed). A rule
+      // sweep below overrides this to 'rule' when a rule is created.
+      ...(manualCategoryChange && { categorySource: 'manual' }),
       date: req.body.date,
       note: req.body.note,
       excludeFromTotal: req.body.excludeFromTotal,
