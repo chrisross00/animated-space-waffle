@@ -31,6 +31,7 @@ const TXN_COLUMNS = [
   'name', 'merchant_name', 'amount', 'date',
   'effective_date AS "effectiveDate"',
   'mapped_category AS "mappedCategory"',
+  'category_source AS "categorySource"',
   'pending', 'pending_transaction_id',
   'note', 'exclude_from_total AS "excludeFromTotal"', 'manually_set',
   'account', 'plaid_pfc', 'plaid_pfc_detail AS "plaidPfcDetail"',
@@ -52,6 +53,7 @@ const TXN_TAGS_SUBQUERY = `
 
 const TXN_FIELD_MAP = {
   mappedCategory: 'mapped_category',
+  categorySource: 'category_source',
   excludeFromTotal: 'exclude_from_total',
   manually_set: 'manually_set',
   effectiveDate: 'effective_date',
@@ -495,8 +497,8 @@ async function insertTransactions(transactions) {
            amount, date, effective_date, mapped_category, pending,
            pending_transaction_id, note, exclude_from_total, manually_set,
            account, plaid_pfc, plaid_pfc_detail, venmo_id, venmo_counterparty, venmo_note,
-           linked_transaction, dismissed_relationship
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+           linked_transaction, dismissed_relationship, category_source
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
          ON CONFLICT (transaction_id) DO UPDATE SET
            pending = EXCLUDED.pending,
            date = EXCLUDED.date`,
@@ -512,6 +514,7 @@ async function insertTransactions(transactions) {
           t.venmo_id || null, t.venmo_counterparty || null, t.venmo_note || null,
           t.linkedTransaction ? JSON.stringify(t.linkedTransaction) : null,
           t.dismissedRelationship || null,
+          t.category_source || null,
         ]
       );
     }
