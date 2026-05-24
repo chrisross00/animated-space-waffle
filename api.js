@@ -311,6 +311,7 @@ router.post('/handleDialogSubmit', async (req, res) => {
     }
     const fields = {
       mappedCategory: req.body.mappedCategory,
+      categorySource: 'manual',
       date: req.body.date,
       note: req.body.note,
       excludeFromTotal: req.body.excludeFromTotal,
@@ -336,14 +337,14 @@ router.post('/handleDialogSubmit', async (req, res) => {
         }
         if (targetCat) await addSimpleRule(targetCat._id, uid, 'merchant_name', req.body.merchantName);
         // Move matching transactions, skipping any the user has manually categorized
-        await updateTransactionsByMerchant(uid, req.body.merchantName, { mappedCategory: req.body.mappedCategory });
+        await updateTransactionsByMerchant(uid, req.body.merchantName, { mappedCategory: req.body.mappedCategory, categorySource: 'rule' });
         console.log(`Auto-learn: set merchant_name "${req.body.merchantName}" -> "${req.body.mappedCategory}"`);
       } else if (req.body.name) {
         // Clear this name from all categories so the rule only lives in one place
         await removeSimpleRuleFromAll(uid, 'name', req.body.name);
         if (targetCat) await addSimpleRule(targetCat._id, uid, 'name', req.body.name);
         // Move matching transactions, skipping any the user has manually categorized
-        await updateTransactionsByName(uid, req.body.name, { mappedCategory: req.body.mappedCategory });
+        await updateTransactionsByName(uid, req.body.name, { mappedCategory: req.body.mappedCategory, categorySource: 'rule' });
         console.log(`Auto-learn: set name "${req.body.name}" -> "${req.body.mappedCategory}"`);
       }
     }
