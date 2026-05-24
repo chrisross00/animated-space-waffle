@@ -118,44 +118,38 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Open Threads → Active
 
-- **[Tasks 1–9 built 5/23, awaiting smoke test] Plaid → Teller migration.** Migrating off Plaid (cost: ~$50
-  for March) to Teller.io (free `development` tier, ≤100 connections). **Spec complete**
-  (`docs/superpowers/specs/2026-04-22-plaid-teller-migration-design.md`) and **implementation
-  plan written** (`docs/superpowers/plans/2026-05-23-plaid-teller-migration.md`).
-  Locked: keep auto-sync; Teller not SimpleFIN; Vanguard → manual account; freeze &
-  forward historical Plaid data; ignore Teller categorization; fingerprint early-exit.
-  **Off-ramp cleared this session** (research): Chase ✅ + Citizens ✅ confirmed in
-  Teller's institution API; Citizens Access folds into the `citizens` login (manual
-  fallback if not) — confirm at first live link. Key plan decisions: use `development`
-  env (free, no dual-client); **reuse `insertTransactions` reconciliation + pending-sweep**
-  (Teller has no `pending_transaction_id`); **amount sign must be flipped** (Teller ledger
-  sign is opposite Plaid's — highest-risk transform, TDD'd); **table rename + cursor-column
-  drops deferred to Phase 3** (cutover migration 010 is additive-only for safe rollback);
-  added `enrollment_id` column for reconnect. **Tasks 1–9 are built + committed on branch
-  `teller-migration`** (14 commits, 157 backend tests pass, frontend builds). User's
-  Teller dev cert/key placed at `~/.teller/`; `app_psllaoddj7dq02pb1m000`, env
-  `development`, wired into root `.env` + `frontend/.env`. Build-time fixes (in plan
-  "Build session notes"): axios (not fetch) for mTLS — Node fetch ignores `agent`;
-  `deleteActiveBankConnection` so unlinking doesn't nuke frozen Plaid rows; backend
-  `enrollmentIdByInstitution` for reconnect; `bank-api.js` added to Dockerfile COPY.
-  **Task 10 sandbox smoke test PASSED** (5/23): linked Teller sandbox Chase (checking
-  + savings + credit card) as test-user-active, mTLS works, 331 txns synced, fingerprint
-  short-circuit + balance snapshot OK. **Found + fixed a real bug:** credit-card charges
-  were inverted to income — Teller signs by account-balance effect (depository purchase
-  negative, credit purchase positive), so `tellerToInternal` is now account-type-aware
-  (negate depository, keep credit). `frontend/.env` left on `sandbox` — now on
-  `development`. **Real-bank (`development`) pass also PASSED** (5/23):
-  linked real Chase (3 credit cards), 560 real txns, mTLS to real bank works; amount
-  sign validated on real data (Airbnb/Amazon = +spend, card "Payment Thank You" =
-  inflow). Reconnect/disconnect flow verified. **Archived-account display fixed**
-  (`createClientSideUser` shows active+manual connections only; snapshots still aggregate
-  ALL → Trends history safe; closes spec §7 open question, commit `ffaaff4`). A real Chase
-  connection + 560 txns now live in the LOCAL dev DB for test-user-active (frozen Plaid
-  test connections remain but are hidden). **Next:** populate `INSTITUTION_NAME_OVERRIDES`
-  from prod `SELECT DISTINCT account` (Task 10 Step 8); Task 11 cutover (verify constraint
-  drop + cert mount on prod); Task 12 Phase 3 cleanup (rename tables, drop cursors, remove
-  Plaid, update CLAUDE.md which still describes Plaid). Two minor follow-ups open (bank-api
-  401-vs-500, sync_log added_count). **Branch `teller-migration` NOT merged.**
+- **[SHIPPED to prod 5/23–24] Plaid → Teller migration.** Off Plaid → Teller.io (free
+  `development` tier). Built (subagent-driven, TDD), smoke-tested (sandbox + real bank),
+  cutover complete: real Chase + Citizens linked via Teller Connect, ~2yr history,
+  auto-sync forward. Spec/plan: `docs/superpowers/specs/2026-04-22-plaid-teller-migration-design.md`,
+  `docs/superpowers/plans/2026-05-23-plaid-teller-migration.md`. Bugs caught+fixed in
+  flight: mTLS (axios not fetch — Node fetch ignores `agent`), credit-card amount sign
+  (account-type-aware: negate depository, keep credit), Dockerfile missing `bank-api.js`,
+  prod's unique constraint had a custom name the migration's DROP missed, CSP needed
+  `teller.io`. Cutover overlap dupes cleaned 5/24 (decisions log). Teller env = free
+  `development` (≤100 connections); move to `production` (paid, needs KYB) only if >100
+  total connections or going properly live. **Remaining open:**
+  - **Phase 3 cleanup (not started):** rename `plaid_items`→`bank_connections`,
+    `plaid_accounts`→`bank_accounts`; drop `next_cursor`/`prev_cursor`; delete Plaid code
+    (`plaid-api.js`, `utils/plaidTools.js`, `utils/plaidClient.js`, `PlaidLinkHandler.vue`);
+    remove `plaid` dep. See plan Task 12.
+  - **⚠️ CLAUDE.md doc drift:** still says the app uses Plaid; key-files table lacks
+    `bank-api.js` / `utils/tellerTools.js` / `utils/tellerClient.js` /
+    `utils/tellerCategoryMapping.js`. Update during Phase 3.
+  - **Other real users stranded on frozen Plaid:** prod users `11113264179369…` (463 txns)
+    & `M7LLwqBRhgSx3m…` (76 txns) have Plaid data, no Teller — if real people, their
+    accounts can't sync (Plaid frozen). Decide re-onboarding / messaging.
+  - **Optional housekeeping:** purge `test-user-*` seed data from prod (invisible to the
+    real user, just DB clutter). Two minor follow-ups: bank-api 401-vs-500 on auth fail;
+    `sync_log.added_count` = total pulled not newly-inserted.
+- **[SHIPPED to prod 5/24] Teller auto-categorization.** Replaced dead Plaid PFC layer
+  with a general `TELLER_CATEGORY_TO_BASIL` map (`utils/tellerCategoryMapping.js`) + new
+  `category_source` column (migration 011: `rule`/`teller_category`/`manual`/null). No
+  history mining (don't overfit one user). Guessed categories show a quiet "auto-sorted"
+  note in the edit modal only — NO row badge / review filter (removed per UX call; backend
+  field retained). general/missing/P2P → To Sort. **No backfill** — only newly-synced
+  transactions get auto-sorted; existing cutover "To Sort" stay. Spec/plan in
+  `docs/superpowers/`.
 - **[On ice 4/9] Recurring patterns detection engine.** Branch
   `feature/recurring-patterns` (~28 commits ahead). Backend complete & tested
   (`recurring_patterns` table, `utils/recurringDetection.js`, API, sync hook). Frontend
