@@ -209,9 +209,13 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   NOT merged).** Replaces dead PFC layer with a general `TELLER_CATEGORY_TO_BASIL` map
   (`utils/tellerCategoryMapping.js`); auto-applies as a flagged "guess" via new
   `category_source` column (migration 011); user rules still win + stamp 'rule';
-  general/missing/P2P → To Sort; guess badge + "review guesses" filter in Show All. No
-  history mining (don't overfit to one user). 173 tests pass. **Remaining: plan Task 9 —
-  local smoke test, then prod rollout (run migration 011 on prod BEFORE deploy).**
+  general/missing/P2P → To Sort. No history mining (don't overfit to one user). 173 tests
+  pass. **UX revised (commit `8c084c1`):** removed always-on "Guess" badge and "Review
+  guesses" filter (too noisy — 384 txns badged); replaced with quiet muted hint inside
+  the edit-transaction dialog (DialogComponent) shown only when `categorySource ===
+  'teller_category'`, reads directly from the `item` prop (no threading needed).
+  Backend `category_source` untouched. **Remaining: plan Task 9 — local smoke test,
+  then prod rollout (run migration 011 on prod BEFORE deploy).**
 - **2026-05-23: Teller migration validated end-to-end (sandbox + real bank).** Real-bank
   pass confirmed the amount sign on real credit-card data. Hidden frozen (active=false)
   connections from the Accounts UI (`createClientSideUser` → active+manual only; snapshots
