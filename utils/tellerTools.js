@@ -49,6 +49,7 @@ function tellerToInternal(t, { userId, institution, accountType }) {
     account_id: t.account_id,
     name: t.description,
     merchant_name: t.details?.counterparty?.name || null,
+    teller_category: t.details?.category || null,
     amount,
     date: t.date,
     pending: t.status === 'pending',
