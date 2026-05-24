@@ -241,6 +241,23 @@ export default {
       });
     },
 
+    // Savings-neutral monthly cash flow for the cumulative chart: income − expenses.
+    // Savings are internal transfers (your own money, not a loss), so unlike monthlyNet
+    // (free cash flow = income − expenses − savings) we don't subtract them here, or the
+    // cumulative line plummets every time money is moved to savings. (Payment-type
+    // categories — e.g. credit-card payments — are already excluded by freeCashFlow.)
+    monthlyCashFlow() {
+      const transactions = store.state.transactions || [];
+      const categories = store.state.categories || [];
+      return this.monthList.map(m => {
+        const monthTxns = transactions.filter(txn =>
+          txnDayjs(txn).format('MMM YYYY') === m
+        );
+        const { income, expenses } = freeCashFlow(monthTxns, categories);
+        return Math.round((income - expenses) * 100) / 100;
+      });
+    },
+
     // Spending series with pre-assigned palette colours (shared by chart + legend)
     coloredSpendingSeries() {
       const transactions = store.state.transactions || [];
@@ -318,14 +335,17 @@ export default {
 
     cumulativeChartOption() {
       const months = this.monthList;
-      const netValues = this.monthlyNet;
+      const netValues = this.monthlyCashFlow;
       let running = 0;
       const cumulativeValues = netValues.map(v => {
         running += v;
         return Math.round(running * 100) / 100;
       });
-      const min = Math.min(...cumulativeValues, 0);
-      const max = Math.max(...cumulativeValues, 0);
+      let min = Math.min(...cumulativeValues, 0);
+      let max = Math.max(...cumulativeValues, 0);
+      // Avoid a degenerate visualMap range (min===max → ECharts can't interpolate the
+      // line colour → invisible line) when the cumulative is flat/at zero.
+      if (min === max) { min -= 1; max += 1; }
 
       return {
         ...CHART_ANIMATION,
@@ -470,8 +490,12 @@ export default {
           .reduce((acc, t) => acc + Math.abs(t.amount), 0);
         return { current: sum(cur), prev: sum(prev) };
       }
-      if (this.activeChart === 'cashflow' || this.activeChart === 'cumulative') {
+      if (this.activeChart === 'cashflow') {
         const nets = this.monthlyNet;
+        return { current: nets[nets.length - 1], prev: nets[nets.length - 2] };
+      }
+      if (this.activeChart === 'cumulative') {
+        const nets = this.monthlyCashFlow;
         return { current: nets[nets.length - 1], prev: nets[nets.length - 2] };
       }
       if (this.activeChart === 'savings') {
