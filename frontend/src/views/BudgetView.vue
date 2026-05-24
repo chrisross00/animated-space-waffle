@@ -756,7 +756,7 @@
             />
           </div>
           <div class="basil-triage__actions">
-            <BasilButton label="Done" class="basil-full-width" @click="showBulkTagDialog = false" />
+            <BasilButton label="Done" class="basil-full-width" @click="triageOpen = false" />
           </div>
         </template>
 
@@ -2515,7 +2515,10 @@ monthStats() {
           this.longPressTriggered = false;
           return;
         }
-        if (this.isMobile && this.selectedRows.length > 0) {
+        // In multi-select mode (any rows selected), tapping a row toggles its
+        // selection instead of opening the modal — desktop + mobile alike. The
+        // checkbox's own @click.stop is how the first row enters select mode.
+        if (this.selectedRows.length > 0) {
           this.toggleRowSelection(row);
           return;
         }
