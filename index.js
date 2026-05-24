@@ -30,12 +30,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:       ["'self'"],
-      scriptSrc:        ["'self'", "cdn.plaid.com"],
+      scriptSrc:        ["'self'", "cdn.plaid.com", "cdn.teller.io"],
       styleSrc:         ["'self'", "'unsafe-inline'", "fonts.googleapis.com"],
       fontSrc:          ["'self'", "fonts.gstatic.com"],
       imgSrc:           ["'self'", "data:", "lh3.googleusercontent.com"],
-      connectSrc:       ["'self'", "*.ingest.us.sentry.io", "*.plaid.com"],
-      frameSrc:         ["'self'", "*.plaid.com"],
+      connectSrc:       ["'self'", "*.ingest.us.sentry.io", "*.plaid.com", "teller.io", "*.teller.io"],
+      frameSrc:         ["'self'", "*.plaid.com", "teller.io", "*.teller.io"],
       frameAncestors:   ["'none'"],
       baseUri:          ["'self'"],
       formAction:       ["'self'", "https://accounts.google.com"],
