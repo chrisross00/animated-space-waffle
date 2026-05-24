@@ -12,7 +12,12 @@ const { getMappingRuleList, mapTransactions } = require('./categoryMapping');
 // `transactions.account` rows, so cutover reconciliation matches. Populated in
 // Task 10 after inspecting `SELECT DISTINCT account FROM transactions` on prod.
 // Empty = pass-through (correct when the names already match, e.g. "Chase").
-const INSTITUTION_NAME_OVERRIDES = {};
+const INSTITUTION_NAME_OVERRIDES = {
+  // Verified on prod (2026-05-23): Plaid historically stamped "Citizens Bank" on
+  // transactions.account, but Teller calls the institution "Citizens". Map it so the
+  // cutover reconciliation dedupes the ~90-day overlap instead of duplicating it.
+  Citizens: 'Citizens Bank',
+};
 
 function buildFingerprint(txns) {
   const canonical = txns

@@ -35,6 +35,14 @@ describe('normalizeInstitutionName', () => {
   it('handles null/empty input', () => {
     expect(normalizeInstitutionName(null, map)).toBe(null);
   });
+
+  it('default map normalizes Teller "Citizens" to Plaid-era "Citizens Bank"', () => {
+    expect(normalizeInstitutionName('Citizens')).toBe('Citizens Bank');
+  });
+
+  it('default map passes "Chase" through unchanged', () => {
+    expect(normalizeInstitutionName('Chase')).toBe('Chase');
+  });
 });
 
 describe('tellerToInternal', () => {
