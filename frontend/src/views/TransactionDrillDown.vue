@@ -5,7 +5,7 @@
         <BasilIcon name="arrow_back" size="20px" />
       </button>
       <div class="basil-drilldown__title">
-        <span class="basil-drilldown__label">{{ pfcLabel }}</span>
+        <span class="basil-drilldown__label">{{ merchantLabel }}</span>
         <span class="basil-drilldown__separator">·</span>
         <span class="basil-drilldown__amount">${{ formatDollar(total) }}</span>
       </div>
@@ -77,7 +77,6 @@
 
 <script>
 import dayjs from 'dayjs';
-import { humanizeDetailedPfc } from '@/utils/pfcLabels';
 import { fetchTransactionsForMonth } from '@/api';
 import { merchantInitials as getMerchantInitials, merchantColor as getMerchantColor, merchantLogo as getMerchantLogo } from '@/utils/merchantDisplay';
 import { formatDollar, formatSignedDollar } from '@/utils/formatDollar';
@@ -91,8 +90,8 @@ export default {
   },
 
   computed: {
-    pfc() {
-      return this.$route.query.pfc || null;
+    merchant() {
+      return this.$route.query.merchant || null;
     },
     month() {
       return this.$route.query.month || null;
@@ -101,13 +100,13 @@ export default {
       return this.$route.query.category || null;
     },
 
-    pfcLabel() {
-      if (!this.pfc || this.pfc === '__other__') return 'Other';
-      return humanizeDetailedPfc(this.pfc);
+    merchantLabel() {
+      if (!this.merchant || this.merchant === '__other__') return 'Other';
+      return this.merchant;
     },
 
     filteredTransactions() {
-      const { pfc, month, category } = this;
+      const { merchant, month, category } = this;
       if (!month) return [];
 
       const m = dayjs(month);
@@ -123,12 +122,12 @@ export default {
           // Category match (skip for __other__ — synthetic bucket spanning multiple categories)
           if (category && category !== '__other__' && txn.mappedCategory !== category) return false;
 
-          // PFC detail match
-          if (pfc === '__other__') {
-            // "Other" bucket: null/undefined plaidPfcDetail
-            if (txn.plaidPfcDetail) return false;
-          } else if (pfc) {
-            if (txn.plaidPfcDetail !== pfc) return false;
+          // Merchant match
+          if (merchant === '__other__') {
+            // "Other" bucket: null/undefined merchant_name
+            if (txn.merchant_name) return false;
+          } else if (merchant) {
+            if (txn.merchant_name !== merchant) return false;
           }
 
           return true;
@@ -173,13 +172,13 @@ export default {
       const prevMonth = dayjs(this.month).subtract(1, 'month').format('YYYY-MM');
       const prevTxns = this.$store.state.transactionsByMonth[prevMonth];
       if (!prevTxns) return null;
-      const pfc = this.pfc;
+      const merchant = this.merchant;
       return prevTxns
         .filter(t => {
           if (t.excludeFromTotal) return false;
           if (this.category && this.category !== '__other__' && t.mappedCategory !== this.category) return false;
-          if (pfc === '__other__') return !t.plaidPfcDetail;
-          return t.plaidPfcDetail === pfc;
+          if (merchant === '__other__') return !t.merchant_name;
+          return t.merchant_name === merchant;
         })
         .reduce((sum, t) => sum + Math.abs(t.amount), 0);
     },
