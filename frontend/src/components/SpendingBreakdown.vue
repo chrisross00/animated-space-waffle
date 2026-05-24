@@ -82,7 +82,6 @@ import { PieChart } from 'echarts/charts'
 import { TooltipComponent, GraphicComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { CHART_PALETTE, CHART_ANIMATION } from '@/utils/chartConstants'
-import { humanizeDetailedPfc } from '@/utils/pfcLabels'
 import { CATEGORY_TYPES } from '../../../shared/categoryTypes'
 import { formatDollar } from '@/utils/formatDollar'
 
@@ -132,8 +131,8 @@ export default {
     },
 
     detailBreakdown() {
-      return this._buildBreakdown(this.expenseTransactions, t => t.plaidPfcDetail || '__other__', code =>
-        code === '__other__' ? 'Other spending' : humanizeDetailedPfc(code)
+      return this._buildBreakdown(this.expenseTransactions, t => t.merchant_name || '__other__', key =>
+        key === '__other__' ? 'Other spending' : key
       )
     },
 
@@ -161,8 +160,8 @@ export default {
       } else {
         filtered = this.expenseTransactions.filter(t => t.mappedCategory === this.drillCategory)
       }
-      return this._buildBreakdown(filtered, t => t.plaidPfcDetail || '__other__', code =>
-        code === '__other__' ? 'Other' : humanizeDetailedPfc(code)
+      return this._buildBreakdown(filtered, t => t.merchant_name || '__other__', key =>
+        key === '__other__' ? 'Other' : key
       )
     },
 
@@ -272,7 +271,7 @@ export default {
         this.$router.push({
           path: '/budget/transactions',
           query: {
-            pfc: chip.categoryName,
+            merchant: chip.categoryName,
             month: this.month,
             category: this.drillCategory,
           },
@@ -281,7 +280,7 @@ export default {
         this.$router.push({
           path: '/budget/transactions',
           query: {
-            pfc: chip.categoryName,
+            merchant: chip.categoryName,
             month: this.month,
           },
         })
