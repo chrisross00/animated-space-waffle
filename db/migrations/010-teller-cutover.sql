@@ -16,7 +16,11 @@ ALTER TABLE plaid_items ADD COLUMN IF NOT EXISTS enrollment_id TEXT;
 -- Replace the strict (user_id, institution) uniqueness with a partial index that
 -- only applies to active rows. This lets a frozen Plaid "Chase" and a new active
 -- Teller "Chase" coexist.
+-- The strict unique constraint may carry either Postgres's default name OR a custom
+-- one depending on how the DB was created. Drop both known names (prod uses the custom
+-- `plaid_items_user_institution_unique`; a fresh DB from migration 001 uses the default).
 ALTER TABLE plaid_items DROP CONSTRAINT IF EXISTS plaid_items_user_id_institution_key;
+ALTER TABLE plaid_items DROP CONSTRAINT IF EXISTS plaid_items_user_institution_unique;
 CREATE UNIQUE INDEX IF NOT EXISTS bank_connections_user_institution_active_uk
   ON plaid_items (user_id, institution) WHERE active = true;
 
