@@ -425,7 +425,6 @@
                           <div class="basil-txn-label__secondary">
                             {{ formatDate(item.date) }}
                             <span v-if="item.pending" class="basil-txn-pending">Pending</span>
-                            <span v-if="item.categorySource === 'teller_category'" class="basil-txn-guess">Guess</span>
                             <BasilIcon
                               v-if="item.effectiveDate && item.effectiveDate !== item.date"
                               name="event_repeat"
@@ -505,13 +504,7 @@
               variant="flat"
               label="Clear"
               :disabled="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
-              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null; showGuessesOnly = false"
-            />
-            <BasilButton
-              v-if="guessCount > 0"
-              variant="flat"
-              :label="showGuessesOnly ? 'Show all' : `Review ${guessCount} guesses`"
-              @click="showGuessesOnly = !showGuessesOnly"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null"
             />
           </template>
 
@@ -629,7 +622,6 @@
                       <div class="basil-txn-label__secondary">
                         {{ formatDate(sortedTableTransactions[vRow.index]?.date) }}
                         <span v-if="sortedTableTransactions[vRow.index]?.pending" class="basil-txn-pending">Pending</span>
-                        <span v-if="sortedTableTransactions[vRow.index]?.categorySource === 'teller_category'" class="basil-txn-guess">Guess</span>
                         <BasilIcon
                           v-if="sortedTableTransactions[vRow.index]?.effectiveDate && sortedTableTransactions[vRow.index]?.effectiveDate !== sortedTableTransactions[vRow.index]?.date"
                           name="event_repeat"
@@ -674,7 +666,6 @@
                 <!-- Status (desktop only) -->
                 <div class="basil-txn-row__status basil-desktop-only">
                   <span v-if="sortedTableTransactions[vRow.index]?.pending" class="basil-txn-pending">Pending</span>
-                  <span v-if="sortedTableTransactions[vRow.index]?.categorySource === 'teller_category'" class="basil-txn-guess">Guess</span>
                 </div>
               </div>
             </template>
@@ -1111,7 +1102,6 @@
         splitUndoData: null,
         triageSplitMode: false,
         triageSplitRows: [],
-        showGuessesOnly: false,
       };
     },
     computed: {
@@ -1201,13 +1191,7 @@
         if (this.tagFilter) {
           rows = rows.filter(t => t.tags?.some(tag => tag.id === this.tagFilter));
         }
-        if (this.showGuessesOnly) {
-          rows = rows.filter(t => t.categorySource === 'teller_category');
-        }
         return rows;
-      },
-      guessCount() {
-        return (this.transactions || []).filter(t => t.categorySource === 'teller_category').length;
       },
       sortedTableTransactions() {
         const rows = this.tableTransactions;
