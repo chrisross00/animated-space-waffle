@@ -59,6 +59,9 @@
             :options="dropDownOptions"
             filterable
           />
+          <div v-if="item?.categorySource === 'teller_category'" class="basil-dialog-autosorted-hint">
+            Auto-sorted from your bank's category — change it if it's wrong.
+          </div>
           <BasilNote v-model="dialogBody.note" label="Note" @blur="isFormSubmittable()" />
         </div>
 
@@ -469,6 +472,14 @@
   color: var(--basil-text-muted);
   margin-top: var(--basil-space-1);
   padding-left: calc(var(--basil-space-6) + 2px);
+}
+
+.basil-dialog-autosorted-hint {
+  font-size: 0.75rem;
+  color: var(--basil-text-muted);
+  margin-top: calc(var(--basil-space-1) * -1);
+  margin-bottom: var(--basil-space-1);
+  padding: 0 var(--basil-space-1);
 }
 </style>
 

@@ -100,4 +100,14 @@ describe('tellerToInternal', () => {
     const noCp = { ...base, details: {} };
     expect(tellerToInternal(noCp, { userId: 'u1', institution: 'Chase' }).merchant_name).toBe(null);
   });
+
+  it('carries Teller details.category as teller_category', () => {
+    const withCat = { ...base, details: { category: 'shopping', counterparty: { name: 'Amazon' } } };
+    expect(tellerToInternal(withCat, { userId: 'u1', institution: 'Chase', accountType: 'credit' }).teller_category).toBe('shopping');
+  });
+
+  it('teller_category is null when Teller provides none', () => {
+    const noCat = { ...base, details: { counterparty: { name: 'X' } } };
+    expect(tellerToInternal(noCat, { userId: 'u1', institution: 'Chase' }).teller_category).toBe(null);
+  });
 });

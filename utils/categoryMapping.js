@@ -1,5 +1,6 @@
 const { PFC_DETAIL_TO_CATEGORY } = require('./pfcDetailMapping');
 const { isP2PTransaction } = require('../shared/p2pDetection');
+const { TELLER_CATEGORY_TO_BASIL } = require('./tellerCategoryMapping');
 
 function matchesCondition(txn, condition) {
   const { field, op, value, min, max } = condition;
@@ -68,6 +69,7 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
         if (action) {
           if (action.type === 'categorize') {
             transaction.mappedCategory = action.categoryName;
+            transaction.category_source = 'rule';
             if (action.note) transaction.note = action.note;
           } else if (action.type === 'route') {
             transaction.mappedCategory = action.destination === 'to-sort' ? 'To Sort' : null;
@@ -93,6 +95,7 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
         ruleList.forEach(rule => {
           if (rule.rules.name && rule.rules.name.map(n => n.toLowerCase()).includes(nameList[i])) {
             transaction.mappedCategory = rule.category;
+            transaction.category_source = 'rule';
           }
         });
       }
@@ -106,6 +109,7 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
         ruleList.forEach(rule => {
           if (rule.rules.category1 && rule.rules.category1.includes(cat2List[i])) {
             transaction.mappedCategory = rule.category;
+            transaction.category_source = 'rule';
           }
         });
       }
@@ -118,16 +122,20 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
       ruleList.forEach(rule => {
         if (!transaction.mappedCategory && rule.rules.transaction_type && rule.rules.transaction_type.includes(transaction.transaction_type)) {
           transaction.mappedCategory = rule.category;
+          transaction.category_source = 'rule';
         }
         if (!transaction.mappedCategory && rule.rules.merchant_name && transaction.merchant_name &&
             rule.rules.merchant_name.map(m => m.toLowerCase()).includes(transaction.merchant_name.toLowerCase())) {
           transaction.mappedCategory = rule.category;
+          transaction.category_source = 'rule';
         }
         if (!transaction.mappedCategory && rule.rules.accountName && rule.rules.accountName.includes(transaction.accountName)) {
           transaction.mappedCategory = rule.category;
+          transaction.category_source = 'rule';
         }
         if (!transaction.mappedCategory && rule.rules.category0 && transaction.category?.[0] && rule.rules.category0.includes(transaction.category[0])) {
           transaction.mappedCategory = rule.category;
+          transaction.category_source = 'rule';
         }
       });
     }
@@ -145,6 +153,22 @@ async function mapTransactions(transactions, rulesArray, compoundRules = []) {
         const mapped = PFC_DETAIL_TO_CATEGORY[detail];
         if (mapped) {
           transaction.mappedCategory = mapped;
+        }
+      }
+    }
+  });
+
+  // RULE: Teller coarse category → Basil (a flagged guess). Specific categories only;
+  // "general"/missing fall through to To Sort. P2P always → To Sort.
+  transactions.forEach(transaction => {
+    if (!transaction.mappedCategory && transaction.teller_category) {
+      if (isP2PTransaction(transaction)) {
+        transaction.mappedCategory = 'To Sort';
+      } else {
+        const mapped = TELLER_CATEGORY_TO_BASIL[transaction.teller_category];
+        if (mapped) {
+          transaction.mappedCategory = mapped;
+          transaction.category_source = 'teller_category';
         }
       }
     }
