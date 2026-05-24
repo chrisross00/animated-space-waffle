@@ -194,6 +194,16 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Decisions Log
 
+- **2026-05-24: Shipped 4 post-migration UI fixes (prod, branch `fix/post-migration-ui`).**
+  (1) Triage "Done" button set a nonexistent `showBulkTagDialog` → now `triageOpen=false`.
+  (2) Spending breakdown detailed view showed only "Other" (grouped by Plaid PFC detail,
+  null on Teller) → now groups by `merchant_name` (works both eras; SpendingBreakdown.vue
+  + TransactionDrillDown.vue, drill query param `pfc`→`merchant`). (3) Cumulative Trends
+  chart plummeted when saving (subtracted savings from net) → added savings-neutral
+  `monthlyCashFlow` (income−expenses; payment-type already excluded by `freeCashFlow`) for
+  the cumulative only + guarded degenerate `visualMap` (min===max → invisible line). Cash
+  Flow chart's free-cash-flow definition left as-is. (4) Show All multi-select: row tap now
+  toggles the checkbox on desktop too (was `isMobile`-gated). #1/#3/#4 pre-existing; #2 Teller regression.
 - **2026-05-24: Cleaned up Plaid↔Teller cutover duplicate transactions (prod).** The
   Teller pull (~2yr) overlapped real Plaid history (Dec 2025→May); the cutover
   reconciliation matches on transaction *name*, but Plaid & Teller spell names
