@@ -3,7 +3,7 @@ const express = require("express");
 const bodyParser = require('body-parser')
 const router = express.Router();
 const { findUser, insertUser, updateUser, updateUserPreferences, findAllUsers, findCategories, insertCategory, insertCategories, updateCategory, deleteCategory, removePfcFromOtherCategories, removePfcFromAllCategories, addSimpleRule, removeSimpleRule, removeSimpleRuleFromAll, findUserRules, insertRule, updateCompoundRule, deleteCompoundRule, findTransactionsByMonth, findTransactionsPaginated, insertTransactions, updateTransaction, updateTransactionsBulk, updateTransactionsByMerchant, updateTransactionsByName, sweepTransactionsByConditions, renameTransactionCategory, deleteTransactions, findUnmappedTransactions, cleanPendingTransactions, deduplicateTransactions, clearManualOverrides, clearVenmoEnrichment, findPlaidItems, deleteAllPlaidItems, findPlaidItemByInstitution, insertPlaidItem, findMerchantsWithStats, findDistinctMerchants, findHistoricalCategoryMap, nukeAllUserData, deleteBalanceSnapshots, upsertBalanceSnapshot, getPool, findTags, insertTag, deleteTag, tagTransactions, untagTransactions, findTagSummary, findTagCategoryBreakdown, findTagTransactions, insertSplitChildren, deleteSplitChildren, findSplitChildren, TXN_COLUMNS } = require('./db/database');
-const { getNewPlaidTransactions, fetchAndStoreBalances, getCachedBalances } = require('./utils/plaidTools');
+const { pullTellerTransactions, fetchAndStoreBalances } = require('./utils/tellerTools');
 const { getMappingRuleList, mapTransactions } = require('./utils/categoryMapping');
 const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
@@ -127,7 +127,7 @@ router.post('/sync', plaidSyncLimiter, async (req, res) => {
     const decodedToken = await validateIdToken(req);
     const userId = decodedToken.uid;
     // No rejectTestUser guard — sandbox items are safe to sync
-    const syncResult = await getNewPlaidTransactions(userId);
+    const syncResult = await pullTellerTransactions(userId);
     // Also refresh balances + snapshot in the same sync
     const balanceResult = await fetchAndStoreBalances(userId);
     const items = await findPlaidItems(userId);
@@ -749,9 +749,15 @@ function aggregateSnapshots(snapshots) {
 
 function createClientSideUser(user, items=null) {
   const hasItems = items && items.length > 0;
-  let bankNames = hasItems ? items.map(item => item.institution) : [];
-  const manualInstitutions = new Set(hasItems ? items.filter(i => i.manual).map(i => i.institution) : []);
-  const itemIdByInstitution = hasItems ? Object.fromEntries(items.map(i => [i.institution, i.id])) : {};
+  // The Accounts UI shows ACTIVE connections + manual accounts. Frozen connections
+  // (active=false with an access token — e.g. Plaid-era rows kept after the Teller
+  // cutover) are hidden here so they don't appear as duplicates, but their historical
+  // balance snapshots still feed the Trends chart (balanceSnapshots aggregates ALL items).
+  const displayItems = hasItems ? items.filter(i => i.active || i.manual) : [];
+  let bankNames = displayItems.map(item => item.institution);
+  const manualInstitutions = new Set(displayItems.filter(i => i.manual).map(i => i.institution));
+  const itemIdByInstitution = Object.fromEntries(displayItems.map(i => [i.institution, i.id]));
+  const enrollmentIdByInstitution = Object.fromEntries(displayItems.filter(i => i.enrollmentId).map(i => [i.institution, i.enrollmentId]));
 
   // Extract cached balance data, snapshots, and item errors per institution
   let accountBalances = null;
@@ -759,19 +765,23 @@ function createClientSideUser(user, items=null) {
   let itemErrors = null;
   if (hasItems) {
     accountBalances = {};
-    balanceSnapshots = [];
-    for (const item of items) {
+    // Balances + errors only for displayed (active/manual) connections.
+    for (const item of displayItems) {
       if (item.balances) {
         accountBalances[item.institution] = item.balances;
-      }
-      if (item.balanceSnapshots) {
-        for (const snap of item.balanceSnapshots) {
-          balanceSnapshots.push(snap);
-        }
       }
       if (item.itemError) {
         if (!itemErrors) itemErrors = {};
         itemErrors[item.institution] = item.itemError;
+      }
+    }
+    // Snapshots from ALL items (incl. frozen) so historical net worth survives in Trends.
+    balanceSnapshots = [];
+    for (const item of items) {
+      if (item.balanceSnapshots) {
+        for (const snap of item.balanceSnapshots) {
+          balanceSnapshots.push(snap);
+        }
       }
     }
     balanceSnapshots = aggregateSnapshots(balanceSnapshots);
@@ -785,6 +795,7 @@ function createClientSideUser(user, items=null) {
     accountBalances,
     manualInstitutions: manualInstitutions.size ? [...manualInstitutions] : null,
     itemIdByInstitution: hasItems ? itemIdByInstitution : null,
+    enrollmentIdByInstitution: hasItems ? enrollmentIdByInstitution : null,
     balanceSnapshots: balanceSnapshots?.length ? balanceSnapshots : null,
     itemErrors,
     onboarded_at: user.onboarded_at || null,

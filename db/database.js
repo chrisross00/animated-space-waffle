@@ -497,7 +497,9 @@ async function insertTransactions(transactions) {
            account, plaid_pfc, plaid_pfc_detail, venmo_id, venmo_counterparty, venmo_note,
            linked_transaction, dismissed_relationship
          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
-         ON CONFLICT (transaction_id) DO NOTHING`,
+         ON CONFLICT (transaction_id) DO UPDATE SET
+           pending = EXCLUDED.pending,
+           date = EXCLUDED.date`,
         [
           t.transaction_id, t.userId, t.account_id || null,
           t.name, t.merchant_name || null, t.amount, t.date,
@@ -801,7 +803,9 @@ async function findPlaidItems(userId) {
     `SELECT id, user_id AS "userId", institution, access_token AS "accessToken",
             next_cursor AS "nextCursor", prev_cursor AS "prevCursor",
             error_code AS "errorCode", error_message AS "errorMessage",
-            error_detected_at AS "errorDetectedAt", created_at AS "createdAt"
+            error_detected_at AS "errorDetectedAt", created_at AS "createdAt",
+            active, last_transactions_hash AS "lastTransactionsHash",
+            enrollment_id AS "enrollmentId"
      FROM plaid_items WHERE user_id = $1 ORDER BY institution`,
     [userId]
   );
@@ -876,7 +880,9 @@ async function findPlaidItemByInstitution(userId, institution) {
     `SELECT id, user_id AS "userId", institution, access_token AS "accessToken",
             next_cursor AS "nextCursor", prev_cursor AS "prevCursor",
             error_code AS "errorCode", error_message AS "errorMessage",
-            error_detected_at AS "errorDetectedAt", created_at AS "createdAt"
+            error_detected_at AS "errorDetectedAt", created_at AS "createdAt",
+            active, last_transactions_hash AS "lastTransactionsHash",
+            enrollment_id AS "enrollmentId"
      FROM plaid_items WHERE user_id = $1 AND institution = $2`,
     [userId, institution]
   );
@@ -895,12 +901,12 @@ async function findPlaidItemByInstitution(userId, institution) {
   return item;
 }
 
-async function insertPlaidItem({ userId, institution, accessToken }) {
+async function insertPlaidItem({ userId, institution, accessToken, enrollmentId = null }) {
   const pool = getPool();
   const { rows } = await pool.query(
-    `INSERT INTO plaid_items (user_id, institution, access_token)
-     VALUES ($1, $2, $3) RETURNING id`,
-    [userId, institution, accessToken]
+    `INSERT INTO plaid_items (user_id, institution, access_token, enrollment_id)
+     VALUES ($1, $2, $3, $4) RETURNING id`,
+    [userId, institution, accessToken, enrollmentId]
   );
   return { id: rows[0].id };
 }
@@ -957,6 +963,17 @@ async function deletePlaidItem(userId, institution) {
   const pool = getPool();
   const result = await pool.query(
     `DELETE FROM plaid_items WHERE user_id = $1 AND institution = $2`,
+    [userId, institution]
+  );
+  return { deletedCount: result.rowCount };
+}
+
+// Delete only the ACTIVE connection for an institution (Teller path). Preserves
+// frozen Plaid-era rows that share the institution name during side-by-side.
+async function deleteActiveBankConnection(userId, institution) {
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM plaid_items WHERE user_id = $1 AND institution = $2 AND active = true`,
     [userId, institution]
   );
   return { deletedCount: result.rowCount };
@@ -1029,6 +1046,32 @@ async function upsertBalanceSnapshot(itemId, { date, net, fetchedAt }) {
        WHERE balance_snapshots.net IS DISTINCT FROM EXCLUDED.net`,
     [itemId, date, net, fetchedAt || new Date()]
   );
+}
+
+// Persist the fingerprint of a connection's last full transaction pull.
+async function updateConnectionHash(connectionId, hash) {
+  const pool = getPool();
+  await pool.query(
+    `UPDATE plaid_items SET last_transactions_hash = $2 WHERE id = $1`,
+    [connectionId, hash]
+  );
+}
+
+// Pending-sweep: delete this user's pending rows on the given accounts that the
+// latest Teller pull no longer reports (they posted under a new id, or dropped).
+// Returns the number of rows removed.
+async function sweepPendingTransactions(userId, accountIds, freshIds) {
+  if (!accountIds.length) return 0;
+  const pool = getPool();
+  const result = await pool.query(
+    `DELETE FROM transactions
+      WHERE user_id = $1
+        AND account_id = ANY($2)
+        AND pending = true
+        AND NOT (transaction_id = ANY($3))`,
+    [userId, accountIds, freshIds]
+  );
+  return result.rowCount;
 }
 
 async function findBalanceSnapshots(itemId) {
@@ -1346,10 +1389,13 @@ module.exports = {
   updatePlaidItem,
   updatePlaidItemByToken,
   deletePlaidItem,
+  deleteActiveBankConnection,
   deleteAllPlaidItems,
   upsertPlaidAccounts,
   updatePlaidAccountBalances,
   upsertBalanceSnapshot,
+  updateConnectionHash,
+  sweepPendingTransactions,
   findBalanceSnapshots,
   findBalanceSnapshotsByUser,
   deleteBalanceSnapshots,

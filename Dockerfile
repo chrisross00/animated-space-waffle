@@ -33,7 +33,7 @@ COPY --from=builder /app/frontend/dist ./frontend/dist
 COPY --from=builder /app/admin/dist ./admin/dist
 
 # Copy server source
-COPY index.js api.js auth-routes.js plaid-api.js admin-api.js ./
+COPY index.js api.js auth-routes.js plaid-api.js bank-api.js admin-api.js ./
 COPY db/ ./db/
 COPY utils/ ./utils/
 COPY shared/ ./shared/

@@ -15,6 +15,7 @@ export default defineConfig({
     proxy: {
       '/api':       { target: 'http://localhost:3000', changeOrigin: true },
       '/plaid-api': { target: 'http://localhost:3000', changeOrigin: true },
+      '/bank-api':  { target: 'http://localhost:3000', changeOrigin: true },
       '/auth':      { target: 'http://localhost:3000', changeOrigin: true },
     },
   },

@@ -31,7 +31,7 @@
         style="margin-top: var(--basil-space-1); color: var(--basil-text-secondary)"
         @click="openManualForm()"
       />
-      <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+      <BankLinkHandler v-if="showPlaidLink" @onBankSuccess="handlePlaidSuccess" @onBankExit="showPlaidLink = false" />
     </EmptyState>
 
     <!-- Main content: accounts linked -->
@@ -48,12 +48,12 @@
         </div>
       </div>
 
-      <!-- Reconnect Plaid Link (update mode) -->
-      <PlaidLinkHandler
-        v-if="reconnectToken"
-        :link-token="reconnectToken"
-        @onPlaidSuccess="handleReconnectSuccess"
-        @onPlaidExit="reconnectToken = null; reconnecting = null"
+      <!-- Reconnect Teller Connect (update mode) -->
+      <BankLinkHandler
+        v-if="reconnectEnrollmentId"
+        :reconnect-enrollment-id="reconnectEnrollmentId"
+        @onBankSuccess="handleReconnectSuccess"
+        @onBankExit="reconnectEnrollmentId = null; reconnecting = null"
       />
 
       <!-- Net Worth hero card (only when balances loaded) -->
@@ -205,7 +205,7 @@
               style="color: var(--basil-text-secondary)"
               @click="openManualForm()" />
           </div>
-          <PlaidLinkHandler v-if="showPlaidLink" @onPlaidSuccess="handlePlaidSuccess" />
+          <BankLinkHandler v-if="showPlaidLink" @onBankSuccess="handlePlaidSuccess" @onBankExit="showPlaidLink = false" />
         </BasilCard>
 
         <!-- Cash Runway card (only when balances loaded) -->
@@ -369,14 +369,14 @@
 </template>
 
 <script>
-import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, createUpdateLinkToken, clearItemError, createManualAccount, updateManualAccount, deleteManualAccountApi } from '@/api';
+import { ensureAppData, getOrAddUser, removeAccount, triggerSync, fetchTransactionsForMonth, clearConnectionError, createManualAccount, updateManualAccount, deleteManualAccountApi } from '@/api';
 import BasilTray from '../components/BasilTray.vue';
 import BasilText from '@/components/BasilText';
 import BasilAmount from '@/components/BasilAmount';
 import SwipeReveal from '../components/SwipeReveal.vue';
 import store from '../store';
 import EmptyState from '../components/EmptyState.vue';
-import PlaidLinkHandler from '../components/PlaidLinkHandler.vue';
+import BankLinkHandler from '../components/BankLinkHandler.vue';
 import VChart from 'vue-echarts';
 import { use } from 'echarts/core';
 import { LineChart } from 'echarts/charts';
@@ -391,15 +391,15 @@ const ANIMATION = { animation: true, animationDuration: 800, animationEasing: 'c
 
 export default {
   name: 'AccountsView',
-  components: { EmptyState, PlaidLinkHandler, VChart, BasilTray, SwipeReveal, BasilText, BasilAmount },
+  components: { EmptyState, BankLinkHandler, VChart, BasilTray, SwipeReveal, BasilText, BasilAmount },
 
   data() {
     return {
       showPlaidLink: false,
       syncing: false,           // true while syncing after Plaid Link success
       preDelete: {},
-      reconnecting: null,       // institution name currently reconnecting
-      reconnectToken: null,     // link token for update mode
+      reconnecting: null,        // institution name currently reconnecting
+      reconnectEnrollmentId: null, // enrollment ID for Teller reconnect (update) mode
       // Manual account form
       showManualForm: false,
       manualSaving: false,
@@ -452,6 +452,10 @@ export default {
       return this.$store.state.user?.itemIdByInstitution || {};
     },
 
+    enrollmentIdMap() {
+      return this.$store.state.user?.enrollmentIdByInstitution || {};
+    },
+
     institutions() {
       const names = this.$store.state.user?.accounts || [];
       const balances = this.balances || {};
@@ -462,6 +466,7 @@ export default {
           error: this.itemErrors[name] || null,
           manual: this.manualSet.has(name),
           itemId: this.itemIdMap[name] || null,
+          enrollmentId: this.enrollmentIdMap[name] || null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -681,26 +686,22 @@ export default {
       return 'positive';
     },
 
-    async reconnect(institution) {
-      this.reconnecting = institution;
-      try {
-        const data = await createUpdateLinkToken(institution);
-        if (data?.link_token) {
-          this.reconnectToken = data.link_token;
-        } else {
-          this.reconnecting = null;
-        }
-      } catch (err) {
-        console.error('reconnect error:', err);
-        this.reconnecting = null;
+    reconnect(institutionName) {
+      const inst = this.institutions.find(i => i.name === institutionName);
+      const enrollmentId = inst?.enrollmentId;
+      if (!enrollmentId) {
+        console.error('reconnect: no enrollmentId for', institutionName);
+        return;
       }
+      this.reconnecting = institutionName;
+      this.reconnectEnrollmentId = enrollmentId;
     },
 
     async handleReconnectSuccess() {
       const institution = this.reconnecting;
-      this.reconnectToken = null;
+      this.reconnectEnrollmentId = null;
       try {
-        await clearItemError(institution);
+        await clearConnectionError(institution);
         store.commit('clearItemError', institution);
         // Trigger a full sync to refresh balances + transactions
         const syncResult = await triggerSync();

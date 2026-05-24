@@ -115,7 +115,7 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Open Threads → Active
 
-- **[Ready to build 5/23] Plaid → Teller migration.** Migrating off Plaid (cost: ~$50
+- **[Tasks 1–9 built 5/23, awaiting smoke test] Plaid → Teller migration.** Migrating off Plaid (cost: ~$50
   for March) to Teller.io (free `development` tier, ≤100 connections). **Spec complete**
   (`docs/superpowers/specs/2026-04-22-plaid-teller-migration-design.md`) and **implementation
   plan written** (`docs/superpowers/plans/2026-05-23-plaid-teller-migration.md`).
@@ -128,9 +128,31 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   (Teller has no `pending_transaction_id`); **amount sign must be flipped** (Teller ledger
   sign is opposite Plaid's — highest-risk transform, TDD'd); **table rename + cursor-column
   drops deferred to Phase 3** (cutover migration 010 is additive-only for safe rollback);
-  added `enrollment_id` column for reconnect. Tasks 1–9 buildable with no Teller account;
-  Tasks 10–11 need user to sign up at teller.io + grab the dev cert. Branch
-  `teller-migration` not yet created (Phase 1 start).
+  added `enrollment_id` column for reconnect. **Tasks 1–9 are built + committed on branch
+  `teller-migration`** (14 commits, 157 backend tests pass, frontend builds). User's
+  Teller dev cert/key placed at `~/.teller/`; `app_psllaoddj7dq02pb1m000`, env
+  `development`, wired into root `.env` + `frontend/.env`. Build-time fixes (in plan
+  "Build session notes"): axios (not fetch) for mTLS — Node fetch ignores `agent`;
+  `deleteActiveBankConnection` so unlinking doesn't nuke frozen Plaid rows; backend
+  `enrollmentIdByInstitution` for reconnect; `bank-api.js` added to Dockerfile COPY.
+  **Task 10 sandbox smoke test PASSED** (5/23): linked Teller sandbox Chase (checking
+  + savings + credit card) as test-user-active, mTLS works, 331 txns synced, fingerprint
+  short-circuit + balance snapshot OK. **Found + fixed a real bug:** credit-card charges
+  were inverted to income — Teller signs by account-balance effect (depository purchase
+  negative, credit purchase positive), so `tellerToInternal` is now account-type-aware
+  (negate depository, keep credit). `frontend/.env` left on `sandbox` — now on
+  `development`. **Real-bank (`development`) pass also PASSED** (5/23):
+  linked real Chase (3 credit cards), 560 real txns, mTLS to real bank works; amount
+  sign validated on real data (Airbnb/Amazon = +spend, card "Payment Thank You" =
+  inflow). Reconnect/disconnect flow verified. **Archived-account display fixed**
+  (`createClientSideUser` shows active+manual connections only; snapshots still aggregate
+  ALL → Trends history safe; closes spec §7 open question, commit `ffaaff4`). A real Chase
+  connection + 560 txns now live in the LOCAL dev DB for test-user-active (frozen Plaid
+  test connections remain but are hidden). **Next:** populate `INSTITUTION_NAME_OVERRIDES`
+  from prod `SELECT DISTINCT account` (Task 10 Step 8); Task 11 cutover (verify constraint
+  drop + cert mount on prod); Task 12 Phase 3 cleanup (rename tables, drop cursors, remove
+  Plaid, update CLAUDE.md which still describes Plaid). Two minor follow-ups open (bank-api
+  401-vs-500, sync_log added_count). **Branch `teller-migration` NOT merged.**
 - **[On ice 4/9] Recurring patterns detection engine.** Branch
   `feature/recurring-patterns` (~28 commits ahead). Backend complete & tested
   (`recurring_patterns` table, `utils/recurringDetection.js`, API, sync hook). Frontend
@@ -175,6 +197,22 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Decisions Log
 
+- **2026-05-23: Teller migration validated end-to-end (sandbox + real bank).** Real-bank
+  pass confirmed the amount sign on real credit-card data. Hidden frozen (active=false)
+  connections from the Accounts UI (`createClientSideUser` → active+manual only; snapshots
+  still aggregate all) — closes spec §7 archived-display question. Branch `teller-migration`,
+  not merged; cutover (Task 11) + Phase 3 cleanup remain.
+- **2026-05-23: Teller amount sign is account-type-aware.** Teller signs by effect on
+  the account's own balance (depository purchase negative, credit-card purchase
+  positive). `tellerToInternal` negates depository, keeps credit → positive=spend
+  (matches app/Plaid convention). Caught in sandbox smoke test (credit charges were
+  inverted to income). Sandbox data is random so merchant semantics don't validate
+  signs — confirmed via raw-Teller-vs-DB comparison instead.
+- **2026-05-23: Teller migration Tasks 1–9 built** (branch `teller-migration`, subagent-driven).
+  Migration 010 (additive), tellerClient (axios mTLS), tellerTools (transforms + sync),
+  bank-api routes, frontend BankLinkHandler, env/Docker. Caught + fixed during build:
+  fetch-ignores-`agent` mTLS bug, Dockerfile missing bank-api.js, reconnect enrollmentId
+  gap, unlink-deletes-Plaid-history. Awaiting Task 10 smoke test. Branch not merged.
 - **2026-05-23: Teller migration spec finalized + implementation plan written.** Verified
   bank coverage via Teller's institution API (Chase + Citizens ✅; Citizens Access folds
   into citizens login). Amended spec Section 4 (reuse `insertTransactions` reconciliation
