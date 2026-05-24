@@ -752,6 +752,20 @@
   border-radius: var(--basil-radius-sm);
 }
 
+/* Guess badge — marks transactions auto-categorized from Teller's coarse category */
+.basil-txn-guess {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--basil-info);
+  background-color: var(--basil-info-bg);
+  padding: 2px 7px;
+  border-radius: var(--basil-radius-sm);
+  margin-left: var(--basil-space-1);
+}
+
 /* =====================================================
    Bulk action toolbar
    ===================================================== */
