@@ -87,6 +87,9 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   IDs. `insertTransactions` (`db/database.js`) reconciles by matching
   (name, amount, date, account) and adopting Plaid's current IDs to avoid sync
   duplicates; returns a `reconciled` count. Tags preserved via delete/re-insert.
+  ⚠️ **Name-exact match does NOT dedupe across providers** — Plaid vs Teller spell the
+  same transaction differently and record different dates, so the Teller cutover overlap
+  had to be deduped separately by amount+account+nearest-date (5/24 decisions log).
 - **Mobile transaction table** (`BudgetView.vue` "Show all"): flex `div` rows + virtual
   scroll, NOT `<table>`. `.basil-txn-row__name` uses `flex:1; min-width:0` (the key
   truncation fix); `.basil-txn-row__amount` is `flex-shrink:0; width:100px`.
@@ -196,6 +199,16 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 ---
 
 ## Decisions Log
+
+- **2026-05-24: Cleaned up Plaid↔Teller cutover duplicate transactions (prod).** The
+  Teller pull (~2yr) overlapped real Plaid history (Dec 2025→May); the cutover
+  reconciliation matches on transaction *name*, but Plaid & Teller spell names
+  differently AND record different dates (Plaid clustered some on one day) → ~428
+  cross-provider dupes Dec–April. Fixed with a one-off greedy dedup (match by
+  amount+account+nearest-date ≤7d, count-balanced; keep the live Teller copy, migrate
+  the Plaid copy's category, delete Plaid). Backed up first; ran in a transaction inside
+  the `web` container. One-time artifact (Plaid frozen → no new dupes). Categorization
+  preserved + improved (59%→78%).
 
 - **2026-05-23: Teller migration SHIPPED to prod.** Cutover done: migration 010 applied
   to prod (caught a custom-named unique constraint the DROP missed — fixed), Teller cert
