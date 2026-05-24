@@ -507,6 +507,12 @@
               :disabled="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
               @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null"
             />
+            <BasilButton
+              v-if="guessCount > 0"
+              variant="flat"
+              :label="showGuessesOnly ? 'Show all' : `Review ${guessCount} guesses`"
+              @click="showGuessesOnly = !showGuessesOnly"
+            />
           </template>
 
           <template v-else>
@@ -1105,6 +1111,7 @@
         splitUndoData: null,
         triageSplitMode: false,
         triageSplitRows: [],
+        showGuessesOnly: false,
       };
     },
     computed: {
@@ -1194,7 +1201,13 @@
         if (this.tagFilter) {
           rows = rows.filter(t => t.tags?.some(tag => tag.id === this.tagFilter));
         }
+        if (this.showGuessesOnly) {
+          rows = rows.filter(t => t.categorySource === 'teller_category');
+        }
         return rows;
+      },
+      guessCount() {
+        return (this.transactions || []).filter(t => t.categorySource === 'teller_category').length;
       },
       sortedTableTransactions() {
         const rows = this.tableTransactions;
