@@ -475,7 +475,7 @@ router.get('/rules', async (req, res) => {
 
 async function sweepCompoundRule(uid, conditions, action) {
   if (action?.type !== 'categorize' || !Array.isArray(conditions)) return;
-  const fields = { mappedCategory: action.categoryName };
+  const fields = { mappedCategory: action.categoryName, categorySource: 'rule' };
   if (action.note) fields.note = action.note;
   return sweepTransactionsByConditions(uid, conditions, fields);
 }
@@ -690,7 +690,7 @@ router.get('/mapunmapped', async (req, res) => {
 
     if(mappedTxns.length > 0){
       await Promise.all(mappedTxns.map(txn => {
-        return updateTransaction(userId, txn.transaction_id, { mappedCategory: txn.mappedCategory });
+        return updateTransaction(userId, txn.transaction_id, { mappedCategory: txn.mappedCategory, categorySource: txn.category_source || null });
       }));
     }
     // finish

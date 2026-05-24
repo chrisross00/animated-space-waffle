@@ -505,7 +505,7 @@
               variant="flat"
               label="Clear"
               :disabled="!tableSearch && tableMonth === null && amountMin === null && amountMax === null && !tagFilter"
-              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null"
+              @click="tableSearch = ''; tableMonth = null; amountMin = null; amountMax = null; tagFilter = null; tableServerResults = null; showGuessesOnly = false"
             />
             <BasilButton
               v-if="guessCount > 0"
