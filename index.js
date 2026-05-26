@@ -86,6 +86,15 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
 });
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`)
-})
+// Self-heal the schema native sign-in needs before serving traffic. The deploy
+// pipeline has no migration step, so this idempotently ensures users.apple_sub
+// exists (mirrors db/migrations/012-apple-sub.sql). On failure we still start, so
+// the app stays up and the error surfaces in logs / Sentry.
+const { ensureNativeAuthSchema } = require('./db/database')
+ensureNativeAuthSchema()
+  .catch((err) => console.error('ensureNativeAuthSchema failed:', err))
+  .finally(() => {
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`)
+    })
+  })

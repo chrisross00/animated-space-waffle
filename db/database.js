@@ -139,6 +139,18 @@ async function setAppleSub(userId, appleSub) {
   );
 }
 
+// Idempotently ensures the schema native sign-in needs. Called once at server
+// startup because the deploy pipeline has no migration step — this mirrors
+// db/migrations/012-apple-sub.sql and is safe to run on every boot (no-ops once
+// the column/index exist).
+async function ensureNativeAuthSchema() {
+  const pool = getPool();
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub TEXT');
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_sub ON users(apple_sub) WHERE apple_sub IS NOT NULL'
+  );
+}
+
 async function insertUser(user) {
   const pool = getPool();
   await pool.query(
@@ -1369,6 +1381,7 @@ module.exports = {
   findUser,
   findUserByAppleSub,
   setAppleSub,
+  ensureNativeAuthSchema,
   insertUser,
   updateUser,
   updateUserPreferences,

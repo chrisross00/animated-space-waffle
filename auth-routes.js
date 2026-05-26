@@ -16,7 +16,14 @@ router.use(bodyParser.json({ limit: '1mb' }));
 
 // Verifier for Google ID tokens minted by the native Google Sign-In SDK.
 const _googleClient = new OAuth2Client();
-const GOOGLE_AUDIENCES = [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_IOS_CLIENT_ID].filter(Boolean);
+// The native iOS app configures Google Sign-In with the iOS OAuth client, so the
+// ID token it returns carries this (public) iOS client id as its `aud`. Default it
+// here — like APPLE_AUDIENCE below — so production needs no new env var; set
+// GOOGLE_IOS_CLIENT_ID to override if it ever changes.
+const IOS_GOOGLE_CLIENT_ID =
+  process.env.GOOGLE_IOS_CLIENT_ID ||
+  '856566246083-qd78rn2cauujh53pjv0tstk0u1jldn7q.apps.googleusercontent.com';
+const GOOGLE_AUDIENCES = [process.env.GOOGLE_CLIENT_ID, IOS_GOOGLE_CLIENT_ID].filter(Boolean);
 
 // Apple identity tokens carry the app's bundle id as `aud`. apple-signin-auth's
 // verifyIdToken fetches Apple's JWKS, verifies the RS256 signature, and checks
