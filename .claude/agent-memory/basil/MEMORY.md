@@ -179,6 +179,14 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 - **Blur-swallows-tap (open, minor).** Pre-existing mobile issue: tapping submit while a
   dropdown has focus needs two taps. Not caused by keyboard work. Investigate when
   tackling form interactions.
+- **[Native app — backend LIVE on prod 5/25; mobile UNMERGED on `native-app-phase-0`]**
+  Native Basil app (Expo / React Native) is on TestFlight (ASC App ID 6773154406, build
+  v1.0.0(2)). Its sign-in backend (`/auth/native/google` + `/auth/native/apple`) is now
+  deployed to prod (see Decisions Log 5/25). The full thread — 8 parity tracks, post-parity
+  fixes, EAS/TestFlight setup, the `mobile/src/shared` build fix — lives in
+  `native-app-phase-0`'s MEMORY.md (that branch is UNMERGED; do not merge to main without
+  approval). NEXT: user device-tests sign-in on TestFlight (use Google for a clean account);
+  onboarding flow still DEFERRED (new-user blocker before any public release).
 
 ### Status to reconcile on next real session (memory conflicts)
 - **Basil library UAT.** The auto-memory index (4/22) says UAT in progress with "many
@@ -194,6 +202,26 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
 
 ## Decisions Log
 
+- **2026-05-25: Native app sign-in backend DEPLOYED to prod (main `e3f17cb`).** The
+  TestFlight build was 404ing on both sign-in buttons because the native auth routes lived
+  only on the unmerged `native-app-phase-0`. Cherry-picked the backend-only surface to main:
+  `POST /auth/native/google` + `/auth/native/apple` (auth-routes.js), `utils/googleUser.js`,
+  `utils/appleUser.js`, db helpers `findUserByAppleSub`/`setAppleSub` (+ `findUser` now
+  returns `appleSub`), migration `012-apple-sub.sql`, deps `apple-signin-auth` +
+  `google-auth-library`. Made it ship with **zero manual prod steps**: (a) hardcoded the
+  *public* iOS Google client id as a default audience in auth-routes.js so prod needed no
+  new env var (the native Google token's `aud` is the iOS client, not the web client);
+  (b) `ensureNativeAuthSchema()` runs at boot in index.js to idempotently add `users.apple_sub`
+  — because the deploy pipeline (deploy.yml: SSH → git pull → `docker compose up --build`)
+  has **no migration runner**. 187 backend tests green; CI deploy succeeded; routes verified
+  live (400/401, not 404/500). Account merge: Apple matches an existing account by EMAIL on
+  first sign-in, then stamps `apple_sub` for return sign-ins → Google + Apple with the same
+  email = one account, BUT only if the user picks "Share My Email" (Hide My Email → relay
+  addr → not whitelisted → waitlisted). FOLLOW-UPS: (1) the 3 deploy tweaks live on main
+  only — when `native-app-phase-0` later merges, expect minor conflicts in auth-routes.js /
+  db/database.js / index.js. (2) Prod has no real migration runner — boot-ensure is a
+  stopgap; a proper one (with a `schema_migrations` table, baselining 001–011) is the right
+  fix. (3) Optional: delete merged local branch `deploy/native-auth-backend`.
 - **2026-05-24: Shipped 4 post-migration UI fixes (prod, branch `fix/post-migration-ui`).**
   (1) Triage "Done" button set a nonexistent `showBulkTagDialog` → now `triageOpen=false`.
   (2) Spending breakdown detailed view showed only "Other" (grouped by Plaid PFC detail,
