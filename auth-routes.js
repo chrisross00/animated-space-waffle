@@ -1,9 +1,41 @@
 const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { findUser, insertUser, updateUser, getPool } = require('./db/database');
+const bodyParser = require('body-parser');
+const { OAuth2Client } = require('google-auth-library');
+const appleSignin = require('apple-signin-auth');
+const { findOrCreateGoogleUser } = require('./utils/googleUser');
+const { findOrCreateAppleUser } = require('./utils/appleUser');
 
 const router = express.Router();
+
+// Native sign-in posts a JSON body. The web OAuth routes are GET-only and
+// unaffected. Body parsing is per-router here (matching api.js / plaid-api.js /
+// admin-api.js) because index.js has no global express.json().
+router.use(bodyParser.json({ limit: '1mb' }));
+
+// Verifier for Google ID tokens minted by the native Google Sign-In SDK.
+const _googleClient = new OAuth2Client();
+const GOOGLE_AUDIENCES = [process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_IOS_CLIENT_ID].filter(Boolean);
+
+// Apple identity tokens carry the app's bundle id as `aud`. apple-signin-auth's
+// verifyIdToken fetches Apple's JWKS, verifies the RS256 signature, and checks
+// iss === 'https://appleid.apple.com', aud, and exp.
+const APPLE_AUDIENCE = process.env.APPLE_BUNDLE_ID || 'com.basilbudgeting.app';
+
+// Seam for the native sign-in routes' external dependencies. Production uses the
+// real Google/Apple verifiers + user lookups; tests override these because
+// Vitest's vi.mock cannot intercept CommonJS require() in this project (same
+// reason utils/googleUser.js takes injectable deps). Web OAuth routes never
+// touch this.
+const _deps = {
+  verifyGoogleIdToken: (idToken) =>
+    _googleClient.verifyIdToken({ idToken, audience: GOOGLE_AUDIENCES }),
+  findOrCreateGoogleUser,
+  verifyAppleIdToken: (identityToken) =>
+    appleSignin.verifyIdToken(identityToken, { audience: APPLE_AUDIENCE }),
+  findOrCreateAppleUser,
+};
 
 // In-memory CSRF state tokens (short-lived, cleared on use)
 const _pendingStates = new Map();
@@ -118,31 +150,14 @@ router.get('/google/callback', async (req, res) => {
 
     const { sub: googleSub, email, name, picture } = payload;
 
-    // Look up existing user by email first (preserves Firebase UIDs for migrated users)
-    const users = await findUser(null, email);
-    let user = users[0];
-    if (user) {
-      // Update profile info from Google (name/picture may have changed)
-      if (name !== user.name || picture !== user.picture) {
-        await updateUser(user.id, { name, picture });
-      }
-    } else {
-      // New user — check whitelist before creating
-      const pool = getPool();
-      const { rows: allowed } = await pool.query(
-        'SELECT email FROM allowed_emails WHERE LOWER(email) = LOWER($1)',
-        [email]
-      );
-      if (allowed.length === 0) {
-        console.log('User not on whitelist, redirecting to waitlist:', email);
-        const redirect = stateData.redirect || '/';
-        const sep = redirect.includes('?') ? '&' : '?';
-        return res.redirect(`${redirect}${sep}waitlisted=true`);
-      }
-
-      await insertUser({ userId: googleSub, email, name, picture });
-      user = { id: googleSub };
+    const result = await findOrCreateGoogleUser({ googleSub, email, name, picture });
+    if (result.status === 'waitlisted') {
+      console.log('User not on whitelist, redirecting to waitlist:', email);
+      const redirect = stateData.redirect || '/';
+      const sep = redirect.includes('?') ? '&' : '?';
+      return res.redirect(`${redirect}${sep}waitlisted=true`);
     }
+    const user = result.user;
 
     // Issue JWT
     const token = jwt.sign(
@@ -159,5 +174,77 @@ router.get('/google/callback', async (req, res) => {
     res.status(500).send('Authentication failed. <a href="/">Try again</a>');
   }
 });
+
+/**
+ * POST /auth/native/google — native app sign-in.
+ * Body: { idToken } — a Google ID token from the native Google Sign-In SDK.
+ * Returns: 200 { token } (self-issued JWT) | 400 | 401 | 403 { waitlisted:true }
+ */
+router.post('/native/google', async (req, res) => {
+  const { idToken } = req.body || {};
+  if (!idToken) return res.status(400).json({ message: 'Missing idToken' });
+
+  let payload;
+  try {
+    const ticket = await _deps.verifyGoogleIdToken(idToken);
+    payload = ticket.getPayload();
+  } catch (err) {
+    console.error('Native Google token verify failed:', err.message);
+    return res.status(401).json({ message: 'Invalid Google token' });
+  }
+
+  const { sub: googleSub, email, name, picture } = payload;
+  const result = await _deps.findOrCreateGoogleUser({ googleSub, email, name, picture });
+  if (result.status === 'waitlisted') return res.status(403).json({ waitlisted: true });
+
+  const token = jwt.sign({ uid: result.user.id, email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token });
+});
+
+/**
+ * POST /auth/native/apple — native app sign-in (Sign in with Apple).
+ * Required for App Store approval (Guideline 4.8) because we offer Google login.
+ *
+ * Body: { identityToken, fullName? } — identityToken is the JWT minted by
+ *   expo-apple-authentication; fullName is { givenName, familyName } and is only
+ *   provided by Apple on the FIRST sign-in.
+ * Returns: 200 { token } (self-issued JWT) | 400 | 401 | 403 { waitlisted:true }
+ */
+router.post('/native/apple', async (req, res) => {
+  const { identityToken, fullName } = req.body || {};
+  if (!identityToken) return res.status(400).json({ message: 'Missing identityToken' });
+
+  let payload;
+  try {
+    // Verifies signature against Apple's JWKS + checks iss/aud/exp.
+    payload = await _deps.verifyAppleIdToken(identityToken);
+  } catch (err) {
+    console.error('Native Apple token verify failed:', err.message);
+    return res.status(401).json({ message: 'Invalid Apple token' });
+  }
+
+  const { sub: appleSub, email } = payload;
+  if (!appleSub) return res.status(401).json({ message: 'Invalid Apple token' });
+
+  // Apple sends the name separately (not in the token) and only on first sign-in.
+  const name = fullName && (fullName.givenName || fullName.familyName)
+    ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
+    : null;
+
+  const result = await _deps.findOrCreateAppleUser({ appleSub, email, name });
+  if (result.status === 'waitlisted') return res.status(403).json({ waitlisted: true });
+  if (result.status !== 'ok') return res.status(401).json({ message: 'Unknown Apple user' });
+
+  const token = jwt.sign(
+    { uid: result.user.id, email: result.user.email || email || null },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+  res.json({ token });
+});
+
+// Test-only seam: lets specs substitute the Google/Apple verifiers + user lookups
+// for the native sign-in routes. Untouched in production.
+router.__nativeDeps = _deps;
 
 module.exports = router;

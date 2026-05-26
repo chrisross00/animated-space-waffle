@@ -108,11 +108,35 @@ async function findUser(userId, email) {
   const { rows } = await pool.query(
     `SELECT id, id AS "userId", email, name, picture,
             is_admin AS "isAdmin", onboarded_at, last_synced_at AS "lastSyncedAt",
-            is_test_user AS "isTestUser", created_at, preferences
+            is_test_user AS "isTestUser", created_at, preferences, apple_sub AS "appleSub"
      FROM users WHERE ${where}`,
     [param]
   );
   return rows;
+}
+
+// Returns the user keyed by their stable Apple "sub". Used on return Apple
+// sign-ins, when Apple no longer sends the email (only sent on first sign-in).
+async function findUserByAppleSub(appleSub) {
+  const pool = getPool();
+  const { rows } = await pool.query(
+    `SELECT id, id AS "userId", email, name, picture,
+            is_admin AS "isAdmin", onboarded_at, last_synced_at AS "lastSyncedAt",
+            is_test_user AS "isTestUser", created_at, preferences, apple_sub AS "appleSub"
+     FROM users WHERE apple_sub = $1`,
+    [appleSub]
+  );
+  return rows;
+}
+
+// Stamp a user's Apple sub (idempotent: only sets when currently NULL so we never
+// clobber an existing link).
+async function setAppleSub(userId, appleSub) {
+  const pool = getPool();
+  await pool.query(
+    `UPDATE users SET apple_sub = $2 WHERE id = $1 AND apple_sub IS NULL`,
+    [userId, appleSub]
+  );
 }
 
 async function insertUser(user) {
@@ -1343,6 +1367,8 @@ module.exports = {
   getPool,
   // Users
   findUser,
+  findUserByAppleSub,
+  setAppleSub,
   insertUser,
   updateUser,
   updateUserPreferences,
