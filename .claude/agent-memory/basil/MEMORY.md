@@ -185,8 +185,10 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   deployed to prod (see Decisions Log 5/25). The full thread — 8 parity tracks, post-parity
   fixes, EAS/TestFlight setup, the `mobile/src/shared` build fix — lives in
   `native-app-phase-0`'s MEMORY.md (that branch is UNMERGED; do not merge to main without
-  approval). NEXT: user device-tests sign-in on TestFlight (use Google for a clean account);
-  onboarding flow still DEFERRED (new-user blocker before any public release).
+  approval). Sign-in VERIFIED on the signed build 5/25 (Google + Apple both work, same
+  account). NEXT: real prod use / device feedback; biggest gap before a PUBLIC release is the
+  onboarding flow (still DEFERRED — new-user blocker), then listing rename / screenshots /
+  privacy questionnaire.
 
 ### Status to reconcile on next real session (memory conflicts)
 - **Basil library UAT.** The auto-memory index (4/22) says UAT in progress with "many
@@ -217,7 +219,9 @@ every session start. Shipped/resolved work lives in `HISTORY.md`.
   live (400/401, not 404/500). Account merge: Apple matches an existing account by EMAIL on
   first sign-in, then stamps `apple_sub` for return sign-ins → Google + Apple with the same
   email = one account, BUT only if the user picks "Share My Email" (Hide My Email → relay
-  addr → not whitelisted → waitlisted). FOLLOW-UPS: (1) the 3 deploy tweaks live on main
+  addr → not whitelisted → waitlisted). **VERIFIED 5/25 on the signed TestFlight build:**
+  both Google and Apple sign-in succeed and resolve to the SAME account (merge confirmed) —
+  which also confirms the boot-time `ensureNativeAuthSchema` created `apple_sub` on prod. FOLLOW-UPS: (1) the 3 deploy tweaks live on main
   only — when `native-app-phase-0` later merges, expect minor conflicts in auth-routes.js /
   db/database.js / index.js. (2) Prod has no real migration runner — boot-ensure is a
   stopgap; a proper one (with a `schema_migrations` table, baselining 001–011) is the right
