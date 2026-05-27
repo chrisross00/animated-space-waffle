@@ -620,13 +620,16 @@ computed: {
     canSplit() {
         if (!this.item) return false;
         if (this.item.pending) return false;
-        if (this.item.amount < 0) return false;
         if (this.item.parentTransactionId) return false;
         if (this.item.isSplitParent) return false;
+        // 2026-05-27: income block lifted — paychecks/refunds are splittable.
+        // Math is sign-agnostic (compares against abs(item.amount)); backend
+        // signs each child by parent's sign at persistence time.
         return this.dialogType === 'transaction';
     },
     splitRemaining() {
-        const total = Number(this.item?.amount || 0);
+        // Sign-agnostic: editor takes positive entries; balance against |parent|.
+        const total = Math.abs(Number(this.item?.amount || 0));
         const used = this.splitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
         return Math.round((total - used) * 100) / 100;
     },
@@ -744,7 +747,8 @@ computed: {
             this.splitRows[index].categoryName = value;
         },
         splitMaxForRow(index) {
-            const total = Number(this.item.amount);
+            // Sign-agnostic — see splitRemaining for rationale.
+            const total = Math.abs(Number(this.item.amount));
             const othersSum = this.splitRows.reduce((sum, r, i) => i === index ? sum : sum + (Number(r.amount) || 0), 0);
             return Math.round((total - othersSum) * 100) / 100;
         },
