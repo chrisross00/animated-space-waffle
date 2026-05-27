@@ -9,6 +9,7 @@ const {validateIdToken, rejectTestUser} = require('./utils/authentication');
 const path = require('path');
 const { rateLimit } = require('express-rate-limit');
 const { CATEGORY_TYPES } = require('./shared/categoryTypes');
+const { validateAndSignSplits } = require('./utils/splitValidation');
 
 // Tighter per-endpoint limiter for expensive Plaid sync operations
 const plaidSyncLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 10 });
@@ -1381,14 +1382,6 @@ router.post('/split', async (req, res) => {
     const uid = decodedToken.uid;
     const { transaction_id, splits } = req.body;
 
-    // Validate splits array
-    if (!Array.isArray(splits) || splits.length < 2) {
-      return res.status(400).json({ message: 'At least 2 splits required' });
-    }
-    if (splits.length > 20) {
-      return res.status(400).json({ message: 'Maximum 20 splits allowed' });
-    }
-
     // Find parent transaction
     const pool = getPool();
     const parentResult = await pool.query(
@@ -1400,41 +1393,21 @@ router.post('/split', async (req, res) => {
     }
     const parent = parentResult.rows[0];
 
-    // Gate checks
-    if (parent.pending) {
-      return res.status(400).json({ message: 'Cannot split pending transactions' });
+    // Pure validation + sign application (income-aware).
+    // - Drops the legacy amount<0 gate (income transactions are splittable).
+    // - Validates the split sum against |parent.amount|.
+    // - Multiplies each split amount by Math.sign(parent.amount) so children
+    //   inherit the parent's sign when persisted.
+    const validation = validateAndSignSplits(parent, splits);
+    if (!validation.ok) {
+      return res.status(validation.status).json({ message: validation.message });
     }
-    if (parent.amount < 0) {
-      return res.status(400).json({ message: 'Cannot split income transactions' });
-    }
-    if (parent.parentTransactionId) {
-      return res.status(400).json({ message: 'Cannot split a split child' });
-    }
-    if (parent.isSplitParent) {
-      return res.status(400).json({ message: 'Transaction is already split. Unsplit first.' });
-    }
-
-    // Validate split amounts
-    for (const s of splits) {
-      if (typeof s.amount !== 'number' || s.amount <= 0) {
-        return res.status(400).json({ message: 'All split amounts must be positive numbers' });
-      }
-      if (!s.categoryName || typeof s.categoryName !== 'string') {
-        return res.status(400).json({ message: 'All splits must have a categoryName' });
-      }
-    }
-
-    const splitSum = splits.reduce((sum, s) => sum + s.amount, 0);
-    if (Math.abs(splitSum - parent.amount) > 0.01) {
-      return res.status(400).json({
-        message: `Split amounts ($${splitSum.toFixed(2)}) must equal transaction amount ($${Number(parent.amount).toFixed(2)})`
-      });
-    }
+    const signedSplits = validation.signedSplits;
 
     // Validate categories exist
     const categories = await findCategories(uid);
     const categoryNames = new Set(categories.map(c => c.category));
-    for (const s of splits) {
+    for (const s of signedSplits) {
       if (!categoryNames.has(s.categoryName)) {
         return res.status(400).json({ message: `Category "${s.categoryName}" not found` });
       }
@@ -1455,7 +1428,7 @@ router.post('/split', async (req, res) => {
     };
 
     const children = await insertSplitChildren(
-      parent.id, parent.transaction_id, parentFields, splits
+      parent.id, parent.transaction_id, parentFields, signedSplits
     );
 
     // Return updated parent
